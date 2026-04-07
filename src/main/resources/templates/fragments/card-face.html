@@ -8,6 +8,7 @@
 <div th:fragment="layers(c, cp)" class="card-face card-face--layered" th:classappend="|card-face--attr-${c.attribute}|">
 	<div class="card-face__stack" aria-hidden="true">
 		<img class="card-face__layer-img card-face__layer-img--base"
+		     th:if="${c.layerBasePath != null && !c.layerBasePath.isBlank()}"
 		     th:src="|${cp != null ? cp : ''}${c.layerBasePath}|"
 		     alt=""
 		     onerror="this.hidden=true; this.removeAttribute('src');"/>
@@ -22,6 +23,7 @@
 		     alt=""
 		     onerror="this.hidden=true; this.removeAttribute('src');"/>
 		<img class="card-face__layer-img card-face__layer-img--frame"
+		     th:if="${c.layerFramePath != null && !c.layerFramePath.isBlank()}"
 		     th:src="|${cp != null ? cp : ''}${c.layerFramePath}|"
 		     alt=""
 		     fetchpriority="high"
