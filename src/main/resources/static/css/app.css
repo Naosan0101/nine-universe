@@ -138,6 +138,16 @@ body {
 	--cf-cost-left: 5.6%;
 	--cf-cost-top: 3.8%;
 	--cf-power-top: 3.9%;
+	/* 種族ラベルをほんの少し左へ */
+	--cf-attr-left: 80.85%;
+}
+.page--library .card-face__attr-label--compound {
+	/* 複合種族（2行）はほんの少し下へ */
+	bottom: calc(var(--cf-attr-bottom) - 0.6%);
+}
+.page--library .card-face__power.card-face__power--digit-4 {
+	/* 「4」だけ見た目の芯が右寄りなので、ほんの少し左へ */
+	transform: translateX(calc(-50% - 1px));
 }
 .lib-page-toolbar {
 	display: flex;
