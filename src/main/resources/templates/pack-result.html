@@ -18,7 +18,7 @@
 <p class="muted">所持ジェム: <strong th:text="${gems}">0</strong></p>
 
 <section class="panel">
-	<h2>排出カード</h2>
+	<h2>結果</h2>
 	<div class="library-grid">
 		<th:block th:each="c : ${cards}">
 			<div th:replace="~{fragments/library-card :: cell(c=${c}, cp=${contextPath})}"></div>
