@@ -125,7 +125,7 @@
 		if (!tooltipEl || !tooltipName) return;
 		const d = btn.dataset;
 		const owned = d.owned === 'true';
-		tooltipName.textContent = d.name || '';
+		tooltipName.textContent = owned ? (d.name || '') : '？？？？';
 		if (tooltipAttr) tooltipAttr.textContent = d.attributeJa || ATTR_JA[d.attribute] || d.attribute || '—';
 		if (tooltipCost) tooltipCost.textContent = owned && d.cost != null && d.cost !== '' ? String(d.cost) : '—';
 		if (tooltipPower) tooltipPower.textContent = owned && d.basePower != null && d.basePower !== '' ? String(d.basePower) : '—';
