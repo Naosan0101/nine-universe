@@ -133,22 +133,6 @@ body {
 	grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
 	gap: 0.75rem;
 }
-.page--library .card-face {
-	/* ライブラリ（一覧/詳細）だけ、数字位置を微調整 */
-	--cf-cost-left: 5.6%;
-	--cf-cost-top: 3.8%;
-	--cf-power-top: 3.9%;
-	/* 種族ラベルをほんの少し左へ */
-	--cf-attr-left: 80.85%;
-}
-.page--library .card-face__attr-label--compound {
-	/* 複合種族（2行）はほんの少し下へ */
-	bottom: calc(var(--cf-attr-bottom) - 0.6%);
-}
-.page--library .card-face__power.card-face__power--digit-4 {
-	/* 「4」だけ見た目の芯が右寄りなので、ほんの少し左へ */
-	transform: translateX(calc(-50% - 1px));
-}
 .lib-page-toolbar {
 	display: flex;
 	flex-wrap: wrap;
@@ -744,17 +728,17 @@ body {
 	aspect-ratio: 5 / 7;
 	container-type: inline-size;
 	container-name: cardface;
-	/* 500×700 モック基準 */
-	--cf-cost-top: 1.65%;
-	--cf-cost-left: 1.75%;
+	/* 500×700 モック基準（実カード枠に合わせたコスト・強さ・種族ラベル位置） */
+	--cf-cost-top: 3.8%;
+	--cf-cost-left: 5.6%;
 	--cf-cost-size: 10cqi;
-	--cf-power-top: 2.05%;
+	--cf-power-top: 3.9%;
 	--cf-power-size: 9cqi;
 	--cf-name-left: 38%;
 	--cf-name-top: 48.5%;
 	--cf-name-width: 57%;
 	--cf-name-size: 6.48cqi;
-	--cf-attr-left: 81.45%;
+	--cf-attr-left: 80.85%;
 	--cf-attr-bottom: 45.85%;
 	--cf-attr-size: 4.35cqi;
 	--cf-ability-bottom: 2.8%;
@@ -882,8 +866,15 @@ body {
 	line-height: 1.12;
 	left: calc(var(--cf-attr-left) + 14.8%);
 	font-size: 2.95cqi;
+	/* 複合種族（2行）はほんの少し下へ */
+	bottom: calc(var(--cf-attr-bottom) - 0.6%);
 }
 .card-face__attr-label--compound .card-face__attr-line { display: block; }
+
+.card-face__power.card-face__power--digit-4 {
+	/* 「4」だけ見た目の芯が右寄りなので、ほんの少し左へ */
+	transform: translateX(calc(-50% - 1px));
+}
 
 .card-face__rarity {
 	position: absolute;
