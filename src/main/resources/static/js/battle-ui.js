@@ -315,6 +315,9 @@
 			btn.type = 'button';
 			btn.dataset.instanceId = c.instanceId;
 			btn.dataset.selected = 'false';
+			const caret = el('span', 'battle-pay-modal__caret', '▼');
+			caret.setAttribute('aria-hidden', 'true');
+			btn.appendChild(caret);
 			if (d) {
 				btn.appendChild(buildBattleCardFaceShell(d, 'modal'));
 				applyBattleCardTipData(btn, d);

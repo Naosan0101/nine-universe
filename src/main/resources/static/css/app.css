@@ -1589,11 +1589,32 @@ body {
 	margin-top: 0.5rem;
 }
 .battle-pay-modal__card {
+	position: relative;
 	padding: 0;
 	border: 2px solid transparent;
 	border-radius: 12px;
 	background: transparent;
 	cursor: pointer;
+}
+.battle-pay-modal__card.is-selected {
+	border-color: #3ddc84;
+	box-shadow: 0 0 0 3px rgba(61, 220, 132, 0.18);
+}
+.battle-pay-modal__caret {
+	position: absolute;
+	top: -0.72rem;
+	left: 50%;
+	transform: translateX(-50%);
+	display: none;
+	font-size: 1.05rem;
+	line-height: 1;
+	font-weight: 900;
+	color: #3ddc84;
+	text-shadow: 0 0 10px rgba(61, 220, 132, 0.55);
+	pointer-events: none;
+}
+.battle-pay-modal__card.is-selected .battle-pay-modal__caret {
+	display: block;
 }
 .battle-pay-modal__card img { width: 100%; display: block; border-radius: 10px; }
 .battle-pay-modal__actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.25rem; }

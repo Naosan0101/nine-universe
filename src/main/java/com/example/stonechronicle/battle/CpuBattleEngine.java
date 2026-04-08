@@ -324,40 +324,188 @@ public class CpuBattleEngine {
 		return true;
 	}
 
+	private boolean canPayCostWithHand(List<BattleCard> hand, String mainInstanceId, Map<Short, CardDefinition> defs) {
+		if (mainInstanceId == null) return false;
+		BattleCard main = null;
+		for (BattleCard c : hand) {
+			if (mainInstanceId.equals(c.getInstanceId())) {
+				main = c;
+				break;
+			}
+		}
+		if (main == null) return false;
+		CardDefinition d = defs.get(main.getCardId());
+		if (d == null) return false;
+		int cost = d.getCost();
+		return hand.size() - 1 >= cost;
+	}
+
+	private BattleCard copyCard(BattleCard c) {
+		if (c == null) return null;
+		return new BattleCard(c.getInstanceId(), c.getCardId());
+	}
+
+	private List<BattleCard> copyCards(List<BattleCard> src) {
+		List<BattleCard> out = new ArrayList<>();
+		if (src == null) return out;
+		for (BattleCard c : src) {
+			out.add(copyCard(c));
+		}
+		return out;
+	}
+
+	private ZoneFighter copyZone(ZoneFighter z) {
+		if (z == null) return null;
+		ZoneFighter nz = new ZoneFighter();
+		nz.setMain(copyCard(z.getMain()));
+		List<BattleCard> under = new ArrayList<>();
+		if (z.getCostUnder() != null) {
+			for (BattleCard c : z.getCostUnder()) {
+				under.add(copyCard(c));
+			}
+		}
+		nz.setCostUnder(under);
+		nz.setTemporaryPowerBonus(z.getTemporaryPowerBonus());
+		return nz;
+	}
+
+	private CpuBattleState copyStateForCpuSim(CpuBattleState st) {
+		CpuBattleState ns = new CpuBattleState();
+		ns.setCpuLevel(st.getCpuLevel());
+		ns.setHumanGoesFirst(st.isHumanGoesFirst());
+		ns.setHumansTurn(st.isHumansTurn());
+		ns.setHumanTurnStarts(st.getHumanTurnStarts());
+		ns.setHumanStones(st.getHumanStones());
+		ns.setCpuStones(st.getCpuStones());
+		ns.setLastMessage(st.getLastMessage());
+		ns.setGameOver(st.isGameOver());
+		ns.setHumanWon(st.isHumanWon());
+		ns.setEventLog(new ArrayList<>(st.getEventLog()));
+
+		ns.setHumanDeck(copyCards(st.getHumanDeck()));
+		ns.setHumanHand(copyCards(st.getHumanHand()));
+		ns.setHumanRest(copyCards(st.getHumanRest()));
+		ns.setHumanBattle(copyZone(st.getHumanBattle()));
+
+		ns.setCpuDeck(copyCards(st.getCpuDeck()));
+		ns.setCpuHand(copyCards(st.getCpuHand()));
+		ns.setCpuRest(copyCards(st.getCpuRest()));
+		ns.setCpuBattle(copyZone(st.getCpuBattle()));
+		return ns;
+	}
+
 	public void cpuTurn(CpuBattleState st, Map<Short, CardDefinition> defs, Random rnd) {
 		if (st.isGameOver() || st.isHumansTurn()) {
 			return;
 		}
-		boolean deployed = false;
-		List<Integer> tries = new ArrayList<>();
-		for (int i = 0; i < st.getCpuHand().size(); i++) {
-			tries.add(i);
-		}
-		Collections.shuffle(tries, rnd);
-		for (int idx : tries) {
-			if (canDeployWithHand(st.getCpuHand(), idx, defs, 0, st, false)) {
-				BattleCard main = st.getCpuHand().get(idx);
-				CardDefinition mainDef = defs.get(main.getCardId());
-				st.getCpuHand().remove(idx);
-				int cost = mainDef.getCost();
-				List<BattleCard> paid = new ArrayList<>();
-				for (int i = 0; i < cost; i++) {
-					if (st.getCpuHand().isEmpty()) {
-						break;
+
+		// CPU は手札を吟味し、配置効果・常時効果・複数回レベルアップを考慮して
+		// 相手バトルゾーン以上になれるなら必ず配置する。
+		String bestInstanceId = null;
+		int bestLevelUpRest = 0;
+		int bestLevelUpStones = 0;
+		int bestDeployBonus = 0;
+		int bestScore = Integer.MIN_VALUE;
+		int bestCpuEff = -1;
+
+		int maxRest = st.getCpuHand().size();
+		int maxStones = Math.max(0, st.getCpuStones());
+
+		for (int levelUpRest = 0; levelUpRest <= maxRest; levelUpRest++) {
+			for (int levelUpStones = 0; levelUpStones <= maxStones; levelUpStones++) {
+				for (BattleCard main : st.getCpuHand()) {
+					CardDefinition mainDef = defs.get(main.getCardId());
+					if (mainDef == null) continue;
+
+					int perRest = "SHOKIN".equals(mainDef.getAbilityDeployCode()) ? 3 : 2;
+					int deployBonus = levelUpRest * perRest + levelUpStones * 2;
+
+					// シミュレーション：レベルアップ→配置→配置効果→常時計算（effectiveBattlePower）
+					CpuBattleState simSt = copyStateForCpuSim(st);
+					simSt.setHumansTurn(false);
+					simSt.setGameOver(false);
+
+					if (levelUpStones > simSt.getCpuStones()) continue;
+					simSt.setCpuStones(simSt.getCpuStones() - levelUpStones);
+					for (int i = 0; i < levelUpRest; i++) {
+						discardRightmost(simSt.getCpuHand(), simSt.getCpuRest());
 					}
-					paid.add(st.getCpuHand().remove(st.getCpuHand().size() - 1));
+
+					if (!canPayCostWithHand(simSt.getCpuHand(), main.getInstanceId(), defs)) {
+						continue;
+					}
+
+					// 配置カードを取り出す
+					BattleCard simMain = removeByInstanceId(simSt.getCpuHand(), main.getInstanceId());
+					if (simMain == null) continue;
+					int cost = mainDef.getCost();
+					List<BattleCard> paid = new ArrayList<>();
+					for (int i = 0; i < cost; i++) {
+						if (simSt.getCpuHand().isEmpty()) break;
+						paid.add(simSt.getCpuHand().remove(simSt.getCpuHand().size() - 1));
+					}
+					ZoneFighter z = new ZoneFighter();
+					z.setMain(simMain);
+					z.setCostUnder(paid);
+					z.setTemporaryPowerBonus(deployBonus);
+					simSt.setCpuBattle(z);
+
+					Random simRnd = new Random(31_337L ^ main.getCardId() ^ (levelUpRest * 31L) ^ (levelUpStones * 131L));
+					applyDeployCpu(simSt, mainDef, defs, simRnd);
+
+					int cpuEff = effectiveBattlePower(simSt.getCpuBattle(), false, simSt, defs);
+					int oppEff = effectiveBattlePower(simSt.getHumanBattle(), true, simSt, defs);
+					if (simSt.getHumanBattle() != null && cpuEff < oppEff) {
+						continue;
+					}
+
+					int score = cpuEff - oppEff;
+					if (score > bestScore || (score == bestScore && cpuEff > bestCpuEff)) {
+						bestScore = score;
+						bestCpuEff = cpuEff;
+						bestInstanceId = main.getInstanceId();
+						bestLevelUpRest = levelUpRest;
+						bestLevelUpStones = levelUpStones;
+						bestDeployBonus = deployBonus;
+					}
 				}
-				ZoneFighter z = new ZoneFighter();
-				z.setMain(main);
-				z.setCostUnder(paid);
-				z.setTemporaryPowerBonus(0);
-				st.setCpuBattle(z);
-				applyDeployCpu(st, mainDef, defs, rnd);
-				st.addLog("CPUは「" + mainDef.getName() + "」を配置した");
-				deployed = true;
-				break;
 			}
 		}
+
+		boolean deployed = false;
+		if (bestInstanceId != null) {
+			// レベルアップ確定（右端からレストへ）
+			if (bestLevelUpStones <= st.getCpuStones()) {
+				st.setCpuStones(st.getCpuStones() - bestLevelUpStones);
+			}
+			for (int i = 0; i < bestLevelUpRest; i++) {
+				discardRightmost(st.getCpuHand(), st.getCpuRest());
+			}
+
+			if (canPayCostWithHand(st.getCpuHand(), bestInstanceId, defs)) {
+				BattleCard main = removeByInstanceId(st.getCpuHand(), bestInstanceId);
+				if (main != null) {
+					CardDefinition mainDef = defs.get(main.getCardId());
+					if (mainDef != null) {
+						int cost = mainDef.getCost();
+						List<BattleCard> paid = new ArrayList<>();
+						for (int i = 0; i < cost; i++) {
+							if (st.getCpuHand().isEmpty()) break;
+							paid.add(st.getCpuHand().remove(st.getCpuHand().size() - 1));
+						}
+						ZoneFighter z = new ZoneFighter();
+						z.setMain(main);
+						z.setCostUnder(paid);
+						z.setTemporaryPowerBonus(bestDeployBonus);
+						st.setCpuBattle(z);
+						applyDeployCpu(st, mainDef, defs, rnd);
+						st.addLog("CPUは「" + mainDef.getName() + "」を配置した");
+						deployed = true;
+					}
+				}
+			}
+		}
+
 		if (!deployed) {
 			st.addLog("CPUは配置しなかった");
 		}
