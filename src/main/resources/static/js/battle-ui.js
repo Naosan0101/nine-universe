@@ -421,6 +421,64 @@
 		refresh();
 	}
 
+	function showRestModal(restCards, defs, titleText) {
+		const list = Array.isArray(restCards) ? restCards.slice() : [];
+		const title = titleText || 'レスト';
+
+		hideBattleCardTooltip();
+		hideBattleDeckTooltip();
+
+		const overlay = el('div', 'battle-pay-modal');
+		overlay.setAttribute('role', 'dialog');
+		overlay.setAttribute('aria-modal', 'true');
+
+		const panel = el('div', 'battle-pay-modal__panel');
+		const closeBtn = el('button', 'battle-pay-modal__close', '×');
+		closeBtn.type = 'button';
+		panel.appendChild(closeBtn);
+
+		panel.appendChild(el('h2', 'battle-pay-modal__title', title));
+		panel.appendChild(el('p', 'muted', '合計: ' + String(list.length) + '枚'));
+
+		const grid = el('div', 'battle-pay-modal__cardgrid');
+		list.forEach(function (c) {
+			const d = resolveCardDef(defs, c.cardId);
+			const host = el('div', 'battle-pay-modal__card', null);
+			if (d) {
+				host.appendChild(buildBattleCardFaceShell(d, 'modal'));
+				applyBattleCardTipData(host, d);
+			} else {
+				const im = document.createElement('img');
+				im.src = absUrl(cardBack);
+				im.alt = '裏';
+				host.appendChild(im);
+			}
+			grid.appendChild(host);
+		});
+		panel.appendChild(grid);
+
+		overlay.appendChild(panel);
+		document.body.appendChild(overlay);
+		wireBattleCardTooltips(overlay);
+
+		function onClose() {
+			hideBattleCardTooltip();
+			hideBattleDeckTooltip();
+			overlay.remove();
+		}
+
+		closeBtn.addEventListener('click', onClose);
+		overlay.addEventListener('click', function (e) {
+			if (e.target === overlay) onClose();
+		});
+		document.addEventListener('keydown', function onKey(e) {
+			if (e.key === 'Escape') {
+				document.removeEventListener('keydown', onKey);
+				onClose();
+			}
+		});
+	}
+
 	function wireDeckStackTooltip(wrap, count) {
 		if (!deckTipEl || !wrap) return;
 		wrap.addEventListener('pointerenter', function (e) {
@@ -431,6 +489,24 @@
 			if (!deckTipEl.hidden) positionBattleDeckTooltip(e.clientX, e.clientY);
 		});
 		wrap.addEventListener('pointerleave', hideBattleDeckTooltip);
+	}
+
+	function wireRestStackInteractions(wrap, count, onOpenList) {
+		if (!wrap) return;
+		// Hover: show "〇枚" popup (reuse deck tooltip)
+		wireDeckStackTooltip(wrap, count);
+		// Click: open list modal
+		if (typeof onOpenList === 'function') {
+			wrap.addEventListener('click', function () {
+				onOpenList();
+			});
+			wrap.addEventListener('keydown', function (e) {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					onOpenList();
+				}
+			});
+		}
 	}
 
 	/** デッキ枚数ぶんカード裏を少しずつずらして重ねる（メタの card_back ＝ カードうら画像） */
@@ -464,6 +540,61 @@
 		}
 		wrap.appendChild(pile);
 		wireDeckStackTooltip(wrap, n);
+		return wrap;
+	}
+
+	/** レスト：置かれているカードを少し重ねて表示（一覧はクリックでモーダル） */
+	function renderRestStackVisual(restCards, defs, titleText, options) {
+		const o = options || {};
+		const list = Array.isArray(restCards) ? restCards : [];
+		const n = Math.max(0, Math.floor(list.length));
+		const maxVisual = o.maxVisual != null ? o.maxVisual : 5;
+		const offsetPx = o.stackOffsetPx != null ? o.stackOffsetPx : 3;
+
+		const wrap = document.createElement('button');
+		wrap.type = 'button';
+		wrap.className = 'rest-stack deck-stack deck-stack--visual';
+		wrap.setAttribute('aria-label', (titleText || 'レスト') + ' ' + String(n) + '枚');
+		wrap.title = 'クリックで一覧';
+
+		if (n === 0) {
+			wrap.appendChild(el('span', 'deck-stack__empty', '0枚'));
+			wireRestStackInteractions(wrap, n, function () {
+				showRestModal(list, defs, titleText || 'レスト');
+			});
+			return wrap;
+		}
+
+		const pile = el('div', 'deck-stack__pile rest-stack__pile');
+		const vis = Math.min(n, Math.max(1, maxVisual));
+		const tail = list.slice(Math.max(0, n - vis)); // 上に出すのは直近（末尾）側
+		for (let i = 0; i < tail.length; i++) {
+			const c = tail[i];
+			const d = resolveCardDef(defs, c.cardId);
+			const cardHost = el('div', 'rest-stack__card');
+			const fromTop = tail.length - 1 - i;
+			cardHost.style.left = fromTop * offsetPx + 'px';
+			cardHost.style.top = fromTop * offsetPx + 'px';
+			cardHost.style.zIndex = String(i + 1);
+
+			if (d) {
+				// 表向き（レスト専用サイズは CSS で）
+				cardHost.appendChild(buildBattleCardFaceShell(d, 'rest'));
+			} else {
+				const im = document.createElement('img');
+				im.src = absUrl(cardBack);
+				im.alt = '裏';
+				im.className = 'deck-stack__back';
+				im.decoding = 'async';
+				cardHost.appendChild(im);
+			}
+			pile.appendChild(cardHost);
+		}
+		wrap.appendChild(pile);
+
+		wireRestStackInteractions(wrap, n, function () {
+			showRestModal(list, defs, titleText || 'レスト');
+		});
 		return wrap;
 	}
 
@@ -913,7 +1044,7 @@
 
 			const cellRest = el('div', 'battle-cell battle-cell--compact battle-cell--opp-rest');
 			cellRest.appendChild(el('h3', '', 'レスト'));
-			cellRest.appendChild(el('p', '', String(st.cpuRest.length) + '枚'));
+			cellRest.appendChild(renderRestStackVisual(st.cpuRest, st.defs, '相手レスト', { maxVisual: 4, stackOffsetPx: 2 }));
 			inner.appendChild(cellRest);
 
 			oppTop.appendChild(inner);
@@ -954,7 +1085,7 @@
 			const inner = el('div', 'battle-band__inner');
 			const cellRest = el('div', 'battle-cell battle-cell--compact battle-cell--you-rest');
 			cellRest.appendChild(el('h3', '', 'レスト'));
-			cellRest.appendChild(el('p', '', String(st.humanRest.length) + '枚'));
+			cellRest.appendChild(renderRestStackVisual(st.humanRest, st.defs, '自分レスト', { maxVisual: 5, stackOffsetPx: 3 }));
 			inner.appendChild(cellRest);
 
 			const cellHand = el('div', 'battle-cell battle-cell--you-hand');
