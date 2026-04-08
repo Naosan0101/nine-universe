@@ -16,11 +16,11 @@
 <header class="topbar topbar--battle">
 	<h1 class="game-title">バトル</h1>
 	<div class="topbar__actions">
+		<button type="button" class="btn btn--ghost" id="battle-log-open" aria-haspopup="dialog" aria-controls="battle-log-modal">ログ</button>
 		<form th:action="@{/battle/cpu/surrender}" method="post" class="inline">
 			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 			<button type="submit" class="btn btn--danger">降参</button>
 		</form>
-		<button type="button" class="btn btn--ghost" id="battle-log-open" aria-haspopup="dialog" aria-controls="battle-log-modal">ログ</button>
 	</div>
 </header>
 

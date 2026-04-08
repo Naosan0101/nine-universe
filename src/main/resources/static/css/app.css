@@ -868,6 +868,401 @@ body {
 .page--battle .hand-card .battle-layered--hand {
 	display: block;
 }
+/* 相手帯：ストーンは手札列の上、デッキ｜手札｜レスト */
+.page--battle .battle-band.battle-row {
+	display: block;
+	margin: 0.5rem 0;
+}
+.page--battle .battle-band--opp .battle-band__inner {
+	display: grid;
+	grid-template-columns: minmax(4.5rem, 1fr) minmax(11rem, 2.4fr) minmax(4.5rem, 1fr);
+	grid-template-rows: auto 1fr;
+	gap: 0.3rem 0.45rem;
+	align-items: start;
+}
+.page--battle .battle-band--opp .battle-band__stone--opp-top {
+	grid-column: 2;
+	grid-row: 1;
+	justify-self: center;
+	text-align: center;
+	max-width: 100%;
+	padding: 0.1rem 0.35rem;
+	background: rgba(58, 98, 216, 0.12);
+	border: 1px solid rgba(74, 125, 255, 0.28);
+	border-radius: 8px;
+}
+.page--battle .battle-band--opp .battle-cell--opp-deck {
+	grid-column: 1;
+	grid-row: 2;
+}
+.page--battle .battle-band--opp .battle-cell--opp-hand {
+	grid-column: 2;
+	grid-row: 2;
+}
+.page--battle .battle-band--opp .battle-cell--opp-rest {
+	grid-column: 3;
+	grid-row: 2;
+}
+.page--battle .battle-band__stone-title {
+	margin: 0;
+	font-size: 0.68rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+	line-height: 1.2;
+}
+.page--battle .battle-band--opp .battle-band__stone-title {
+	color: rgba(160, 190, 255, 0.9);
+}
+.page--battle .battle-band--you .battle-band__stone-title {
+	color: rgba(240, 215, 150, 0.9);
+}
+.page--battle .battle-band__stone-count {
+	margin: 0.08rem 0 0;
+	font-size: 0.88rem;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	color: var(--text);
+	line-height: 1.2;
+}
+
+/* 自分帯：レスト｜手札｜デッキ、ストーンは手札列の下 */
+.page--battle .battle-band--you .battle-band__inner {
+	display: grid;
+	grid-template-columns: minmax(4.5rem, 1fr) minmax(11rem, 2.4fr) minmax(4.5rem, 1fr);
+	grid-template-rows: 1fr auto;
+	gap: 0.3rem 0.45rem;
+	align-items: start;
+}
+.page--battle .battle-band--you .battle-cell--you-rest {
+	grid-column: 1;
+	grid-row: 1;
+}
+.page--battle .battle-band--you .battle-cell--you-hand {
+	grid-column: 2;
+	grid-row: 1;
+}
+.page--battle .battle-band--you .battle-cell--you-deck {
+	grid-column: 3;
+	grid-row: 1;
+}
+.page--battle .battle-band--you .battle-band__stone--you-below {
+	grid-column: 2;
+	grid-row: 2;
+	justify-self: center;
+	text-align: center;
+	max-width: 100%;
+	padding: 0.1rem 0.35rem;
+	margin-top: 0.05rem;
+	background: rgba(201, 162, 39, 0.1);
+	border: 1px solid rgba(201, 162, 39, 0.28);
+	border-radius: 8px;
+}
+
+/* デッキ／レストのコンパクトセル */
+.page--battle .battle-cell--compact {
+	padding: 0.45rem 0.55rem;
+	min-height: 3.5rem;
+}
+.page--battle .battle-cell--compact h3 {
+	margin: 0 0 0.28rem;
+	font-size: 0.68rem;
+	letter-spacing: 0.06em;
+}
+.page--battle .battle-cell--compact .deck-stack {
+	font-size: 0.82rem;
+}
+.page--battle .battle-cell--compact > p:not(.muted) {
+	margin: 0;
+	font-size: 0.82rem;
+	font-weight: 700;
+	color: var(--muted);
+}
+
+.page--battle .battle-cell--zone-cpu {
+	background: rgba(58, 98, 216, 0.08);
+	border-color: rgba(74, 125, 255, 0.22);
+}
+.page--battle .battle-cell--zone-cpu h3 {
+	color: rgba(160, 190, 255, 0.95);
+}
+.page--battle .battle-cell--zone-human {
+	background: rgba(201, 162, 39, 0.06);
+	border-color: rgba(201, 162, 39, 0.22);
+}
+.page--battle .battle-cell--zone-human h3 {
+	color: rgba(240, 215, 150, 0.95);
+}
+
+/* バトルゾーン列＋操作（ゾーン内カードのみやや小さく） */
+.page--battle .battle-row.battle-row--zones-split {
+	display: block;
+	margin: 0.5rem 0;
+}
+.page--battle .battle-zones-wrap {
+	position: relative;
+	min-width: 0;
+}
+.page--battle .battle-zones-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+.page--battle .battle-control-overlay {
+	position: absolute;
+	z-index: 12;
+	inset: 0;
+	pointer-events: none;
+}
+.page--battle .battle-control-overlay__cluster {
+	position: absolute;
+	top: 0.2rem;
+	right: 0;
+	left: auto;
+	bottom: auto;
+	pointer-events: auto;
+	display: flex;
+	flex-direction: row;
+	align-items: flex-end;
+	gap: 0.55rem;
+	width: min(calc(100% - 0.35rem), 42rem);
+	max-width: calc(100% - 0.35rem);
+}
+.page--battle .battle-control-overlay .battle-control {
+	flex: 1 1 auto;
+	min-width: 0;
+	max-width: min(32rem, calc(100% - 5.25rem));
+	width: auto;
+	max-height: min(calc(100vh - 6rem), 100%);
+	overflow: auto;
+	margin: 0;
+	padding: 1rem 1.15rem;
+	box-sizing: border-box;
+	box-shadow:
+		0 0 0 1px rgba(255, 255, 255, 0.1),
+		0 16px 48px rgba(0, 0, 0, 0.55);
+	backdrop-filter: blur(8px);
+	background: rgba(23, 27, 38, 0.94);
+}
+.page--battle .battle-control-overlay .battle-control--levelup h2 {
+	font-size: 1.22rem;
+	margin: 0 0 0.48rem;
+	letter-spacing: 0.04em;
+}
+.page--battle .battle-control-overlay .battle-control--levelup .battle-control--levelup__body {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 0.75rem 1.1rem;
+	align-items: start;
+}
+.page--battle .battle-control-overlay .battle-control--levelup .battle-control--levelup__controls > .muted:first-child {
+	margin-top: 0;
+}
+.page--battle .battle-control-overlay .battle-control--levelup .muted {
+	font-size: 0.95rem;
+	margin: 0.36rem 0 0;
+	line-height: 1.42;
+}
+.page--battle .battle-control-overlay .battle-control--levelup .battle-control__row {
+	gap: 0.7rem 1.05rem;
+	margin-top: 0.5rem;
+}
+.page--battle .battle-control-overlay .battle-control--levelup .battle-control__box {
+	min-width: 16.5rem;
+	gap: 0.36rem 0.62rem;
+}
+.page--battle .battle-control-overlay .battle-control--levelup .battle-control__label {
+	font-size: 1rem;
+}
+.page--battle .battle-control-overlay .battle-control--levelup .battle-control__value {
+	font-size: 1.16rem;
+}
+.page--battle .battle-control-overlay .battle-control__value--spark-host {
+	position: relative;
+	z-index: 1;
+}
+.page--battle .battle-control-overlay .battle-control__value-num {
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	position: relative;
+	z-index: 2;
+}
+.page--battle .battle-control-overlay .battle-control__value-sparks--back {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 0;
+	height: 0;
+	pointer-events: none;
+	z-index: 3;
+}
+.page--battle .battle-control-overlay .battle-control__value-sparks {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 0;
+	height: 0;
+	pointer-events: none;
+	z-index: 4;
+}
+.page--battle .battle-control-overlay .battle-control__value-spark {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 5px;
+	height: 5px;
+	margin: -2.5px 0 0 -2.5px;
+	border-radius: 50%;
+	background: radial-gradient(circle at 30% 30%, #fff 0%, #ffeaa0 42%, rgba(255, 200, 100, 0.35) 72%, transparent 100%);
+	box-shadow:
+		0 0 6px rgba(255, 248, 210, 0.95),
+		0 0 14px rgba(255, 200, 90, 0.7);
+	animation: battle-levelup-spark-rise 1s cubic-bezier(0.22, 0.82, 0.24, 1) forwards;
+	animation-delay: var(--delay, 0s);
+	will-change: transform, opacity;
+}
+/* 手前のキラと同じ軌道・タイミング、色だけ黒系（背面層） */
+.page--battle .battle-control-overlay .battle-control__value-spark--back {
+	background: radial-gradient(circle at 30% 30%, #2a2a2a 0%, #0a0a0a 48%, rgba(0, 0, 0, 0.45) 75%, transparent 100%);
+	box-shadow:
+		0 0 5px rgba(0, 0, 0, 0.9),
+		0 0 12px rgba(20, 20, 20, 0.75);
+}
+@keyframes battle-levelup-spark-rise {
+	0% {
+		transform: translate3d(var(--sx), 0, 0) scale(0.35);
+		opacity: 0;
+	}
+	12% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 1;
+	}
+	100% {
+		transform: translate3d(calc(var(--sx) * 0.2), var(--rise), 0) scale(0.12);
+		opacity: 0;
+	}
+}
+.page--battle .battle-control-overlay .battle-control--levelup .battle-control__btns {
+	gap: 0.38rem;
+}
+.page--battle .battle-control-overlay .battle-control--levelup .battle-control__btns .btn {
+	padding: 0.42rem 0.75rem;
+	font-size: 0.98rem;
+	min-height: 0;
+}
+.page--battle .battle-control--levelup__warn {
+	margin: 0.45rem 0 0;
+	font-size: 0.88rem;
+	font-weight: 700;
+	color: #ff6b6b;
+	line-height: 1.4;
+	text-shadow: 0 0 10px rgba(255, 80, 80, 0.35);
+}
+.page--battle .battle-control--levelup__warn + .battle-control--levelup__warn {
+	margin-top: 0.28rem;
+}
+.page--battle .battle-control--levelup__preview {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-start;
+	min-width: 0;
+}
+.page--battle .battle-control--levelup__preview-card {
+	max-width: 100%;
+	cursor: help;
+}
+.page--battle .battle-control--levelup__preview-card .battle-layered--hand {
+	width: clamp(112px, 13vw, 172px);
+	display: block;
+	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.48);
+}
+.page--battle .battle-control--levelup__preview-empty {
+	margin: 0;
+	align-self: center;
+	text-align: center;
+}
+/* レベルアッププレビュー強さまわりのキラ（数値ホストの座標＝強さバッジと一致） */
+.page--battle .battle-control--levelup__preview-card .battle-levelup-preview-power-spark-host {
+	position: absolute;
+	left: 50%;
+	top: var(--cf-power-top);
+	transform: translateX(-50%);
+	width: 15%;
+	aspect-ratio: 1 / 0.92;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
+	z-index: 101;
+}
+.page--battle .battle-control--levelup__preview-card .battle-levelup-preview-power-spark-host > .card-face__power {
+	position: static;
+	width: auto;
+	height: auto;
+	transform: none;
+}
+.page--battle .battle-control--levelup__preview-card .battle-levelup-preview-power-spark-host > .card-face__power.card-face__power--digit-4 {
+	transform: translateX(-1px);
+}
+.page--battle .battle-control--levelup__preview-card .card-face__power.battle-levelup-power--up {
+	color: #14854a !important;
+	text-shadow: 0 0 8px rgba(50, 210, 120, 0.4);
+}
+.page--battle .battle-control--levelup__preview-card .card-face__power.battle-levelup-power--down {
+	color: #c42e2e !important;
+	text-shadow: 0 0 8px rgba(255, 90, 90, 0.35);
+}
+.page--battle .battle-control__decide-wrap {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: flex-end;
+}
+.page--battle .battle-control__decide-external {
+	white-space: nowrap;
+	padding: 0.48rem 1.05rem;
+	font-size: 0.98rem;
+	line-height: 1.3;
+}
+.page--battle .battle-zones-stack .battle-cell--zone h3 {
+	font-size: 0.72rem;
+	margin: 0 0 0.32rem;
+	text-align: center;
+}
+.page--battle .battle-zones-stack .zone {
+	text-align: center;
+}
+.page--battle .battle-zones-stack .battle-zone-card .library-card__open--battle {
+	display: inline-block;
+	width: auto;
+	max-width: 100%;
+	vertical-align: top;
+}
+.page--battle .battle-zones-stack .zone .muted {
+	font-size: 0.78rem;
+	margin: 0.22rem 0 0;
+}
+.page--battle .battle-zones-stack .zone img {
+	width: clamp(96px, 9vw, 138px);
+	border-radius: 9px;
+	box-shadow: 0 6px 22px rgba(0, 0, 0, 0.42);
+}
+.page--battle .battle-zones-stack .battle-zone-card .hand-card__card-focus.battle-zone-card__opp-face .battle-layered--hand {
+	width: clamp(96px, 9vw, 138px);
+	box-shadow: 0 6px 22px rgba(0, 0, 0, 0.42);
+}
+.page--battle .battle-zones-stack .battle-layered--zone {
+	width: clamp(96px, 9vw, 138px);
+	box-shadow: 0 6px 22px rgba(0, 0, 0, 0.42);
+}
+.page--battle .battle-zones-stack .battle-cell--zone {
+	padding: 0.5rem 0.6rem;
+	min-height: 4.25rem;
+}
+
 .deck-stack { font-size: 1.05rem; font-weight: 800; color: var(--accent); }
 .stone-count { font-size: 0.9rem; font-weight: 700; color: var(--muted); }
 .page--battle .stone-count--small { font-size: 0.85rem; }

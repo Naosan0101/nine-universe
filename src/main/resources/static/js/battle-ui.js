@@ -27,7 +27,13 @@
 		selectedInstanceId: null,
 		levelUpRest: 0,
 		levelUpStones: 0,
-		pay: { stones: 0, cardInstanceIds: [] }
+		pay: { stones: 0, cardInstanceIds: [] },
+		warnLevelUpRest: null,
+		warnLevelUpStone: null,
+		sparkLevelUpRest: false,
+		sparkLevelUpStone: false,
+		_luPrevPowerInstanceId: null,
+		_luPrevPower: null
 	};
 
 	/** CardDefDto → card-face-layer.js（ライブラリと同一テンプレート） */
@@ -364,6 +370,10 @@
 				ui.selectedInstanceId = null;
 				ui.levelUpRest = 0;
 				ui.levelUpStones = 0;
+				ui.warnLevelUpRest = null;
+				ui.warnLevelUpStone = null;
+				ui._luPrevPowerInstanceId = null;
+				ui._luPrevPower = null;
 				ui.pay = { stones: 0, cardInstanceIds: [] };
 				render(next);
 				requestAnimationFrame(function () {
@@ -426,18 +436,161 @@
 		return st.humanHand.find((c) => c.instanceId === ui.selectedInstanceId) || null;
 	}
 
+	/** CpuBattleEngine と同じ ID（effectiveBattlePower プレビュー用） */
+	const PREVIEW_CARD_IDS = {
+		RYUOH: 30,
+		KUSURI: 8,
+		ARCHER: 12,
+		DRAGON_RIDER: 10,
+		GAIKOTSU: 18,
+		SHIREI: 20,
+		HONE: 24
+	};
+
+	function attrSegments(attribute) {
+		if (attribute == null || String(attribute).trim() === '') return [];
+		return String(attribute).split('_').filter(Boolean);
+	}
+
+	function hasCardAttribute(attribute, tribe) {
+		if (!tribe) return false;
+		const a = attribute == null ? '' : String(attribute);
+		if (!a) return false;
+		if (a === tribe) return true;
+		return attrSegments(a).indexOf(tribe) >= 0;
+	}
+
+	function zoneMainDef(zone, defs) {
+		if (!zone || !zone.main) return null;
+		return resolveCardDef(defs, zone.main.cardId);
+	}
+
+	function hasRyuohInCpuZone(cpuBattle, defs) {
+		const d = zoneMainDef(cpuBattle, defs);
+		return d != null && Number(d.id) === PREVIEW_CARD_IDS.RYUOH;
+	}
+
+	/** レベルアップで右端から捨てた後の自分レスト（配置前・サーバ状態ベース） */
+	function simulateHumanRestAfterLevelUp(st, levelUpRest) {
+		const rest = (st.humanRest || []).slice();
+		const hand = (st.humanHand || []).slice();
+		const n = Math.min(levelUpRest | 0, hand.length);
+		for (let i = 0; i < n; i++) {
+			rest.push(hand.pop());
+		}
+		return rest;
+	}
+
+	function restContainsTribe(rest, defs, tribe) {
+		for (let i = 0; i < rest.length; i++) {
+			const d = resolveCardDef(defs, rest[i].cardId);
+			if (d && hasCardAttribute(d.attribute, tribe)) return true;
+		}
+		return false;
+	}
+
+	function countUndeadInRest(rest, defs) {
+		let c = 0;
+		for (let i = 0; i < rest.length; i++) {
+			const d = resolveCardDef(defs, rest[i].cardId);
+			if (d && hasCardAttribute(d.attribute, 'UNDEAD')) c++;
+		}
+		return c;
+	}
+
 	function computeDeployBonus(def, levelUpRest, levelUpStones) {
 		if (!def) return 0;
 		const perRest = def.abilityDeployCode === 'SHOKIN' ? 3 : 2;
 		return levelUpRest * perRest + levelUpStones * 2;
 	}
 
-	function predictedDeployPower(st) {
-		const sel = selectedCard(st);
-		if (!sel) return null;
-		const def = st.defs[sel.cardId];
-		const base = def ? def.basePower : 0;
-		return base + computeDeployBonus(def, ui.levelUpRest, ui.levelUpStones);
+	/**
+	 * 選択カードを自分バトルゾーンに置いたときの強さ（CpuBattleEngine.effectiveBattlePower 相当）
+	 */
+	function previewHumanBattlePower(st, defs, mainDef, deployBonus) {
+		if (!mainDef) return 0;
+		const id = Number(mainDef.id);
+		const base = Number(mainDef.basePower != null ? mainDef.basePower : 0);
+		let p = base + deployBonus;
+
+		if (hasRyuohInCpuZone(st.cpuBattle, defs)) {
+			return Math.max(0, p);
+		}
+
+		const stonesAfterLevel = st.humanStones - (ui.levelUpStones | 0);
+		const simRest = simulateHumanRestAfterLevelUp(st, ui.levelUpRest | 0);
+
+		if (id === PREVIEW_CARD_IDS.KUSURI) {
+			p -= stonesAfterLevel;
+		}
+
+		if (id === PREVIEW_CARD_IDS.ARCHER) {
+			const opp = st.cpuBattle;
+			if (opp && opp.main) {
+				const od = resolveCardDef(defs, opp.main.cardId);
+				if (!hasCardAttribute(od && od.attribute, 'DRAGON')) {
+					p += 1;
+				}
+			}
+		}
+
+		if (id === PREVIEW_CARD_IDS.DRAGON_RIDER) {
+			if (restContainsTribe(simRest, defs, 'DRAGON')) {
+				p += 4;
+			}
+		}
+
+		if (id === PREVIEW_CARD_IDS.GAIKOTSU) {
+			const opp = st.cpuBattle;
+			if (opp && opp.main) {
+				const od = resolveCardDef(defs, opp.main.cardId);
+				if (hasCardAttribute(od && od.attribute, 'ELF')) {
+					p += 2;
+				}
+			}
+		}
+
+		if (id === PREVIEW_CARD_IDS.SHIREI) {
+			const opp = st.cpuBattle;
+			if (opp && opp.main) {
+				const od = resolveCardDef(defs, opp.main.cardId);
+				if (!hasCardAttribute(od && od.attribute, 'HUMAN')) {
+					p += 1;
+				}
+			}
+		}
+
+		if (id === PREVIEW_CARD_IDS.HONE) {
+			p += countUndeadInRest(simRest, defs);
+		}
+
+		return Math.max(0, p);
+	}
+
+	function applyLevelUpPreviewPower(shellRoot, basePower, previewPower) {
+		const powEl = shellRoot.querySelector('.card-face__power');
+		if (!powEl) return;
+		const pv = Math.max(0, Math.floor(Number(previewPower)));
+		const baseNum = Math.floor(Number(basePower));
+		powEl.textContent = String(pv);
+		powEl.classList.toggle('card-face__power--digit-4', pv === 4);
+		powEl.classList.remove('battle-levelup-power--up', 'battle-levelup-power--down');
+		if (pv > baseNum) powEl.classList.add('battle-levelup-power--up');
+		else if (pv < baseNum) powEl.classList.add('battle-levelup-power--down');
+	}
+
+	/** 強さ表示周りのキラ（レベルアップ数値と同一アニメ）用。card-face__power は absolute のためホストで枠を取る */
+	function wrapLevelUpPreviewPowerSparkHost(powEl) {
+		if (!powEl || !powEl.parentNode) return null;
+		const p = powEl.parentNode;
+		if (p.classList && p.classList.contains('battle-levelup-preview-power-spark-host')) {
+			return p;
+		}
+		const host = document.createElement('span');
+		host.className = 'battle-levelup-preview-power-spark-host battle-control__value--spark-host';
+		p.insertBefore(host, powEl);
+		host.appendChild(powEl);
+		return host;
 	}
 
 	function renderZone(zone, defs, power, opts) {
@@ -500,132 +653,251 @@
 		});
 	}
 
+	function appendLevelUpValueSparkBurst(host) {
+		host.classList.add('battle-control__value--spark-host');
+		const backLayer = document.createElement('span');
+		backLayer.className = 'battle-control__value-sparks battle-control__value-sparks--back';
+		backLayer.setAttribute('aria-hidden', 'true');
+		const layer = document.createElement('span');
+		layer.className = 'battle-control__value-sparks';
+		layer.setAttribute('aria-hidden', 'true');
+		const n = 14;
+		for (let i = 0; i < n; i++) {
+			const t = (i / n) * Math.PI * 2 + i * 0.35;
+			const r = 10 + (i % 4) * 5;
+			const sx = (Math.cos(t) * r).toFixed(1) + 'px';
+			const rise = '-' + (26 + (i % 5) * 4 + Math.floor(i / 3)).toFixed(1) + 'px';
+			const delay = (i * 0.03).toFixed(3) + 's';
+
+			const db = document.createElement('span');
+			db.className = 'battle-control__value-spark battle-control__value-spark--back';
+			db.style.setProperty('--sx', sx);
+			db.style.setProperty('--rise', rise);
+			db.style.setProperty('--delay', delay);
+			backLayer.appendChild(db);
+
+			const d = document.createElement('span');
+			d.className = 'battle-control__value-spark';
+			d.style.setProperty('--sx', sx);
+			d.style.setProperty('--rise', rise);
+			d.style.setProperty('--delay', delay);
+			layer.appendChild(d);
+		}
+		host.appendChild(backLayer);
+		host.appendChild(layer);
+	}
+
+	function buildLevelUpValueEl(numStr, sparkKey) {
+		const wrap = document.createElement('div');
+		wrap.className = 'battle-control__value';
+		const num = document.createElement('span');
+		num.className = 'battle-control__value-num';
+		num.textContent = numStr;
+		wrap.appendChild(num);
+		if (sparkKey === 'rest' && ui.sparkLevelUpRest) {
+			ui.sparkLevelUpRest = false;
+			appendLevelUpValueSparkBurst(wrap);
+		} else if (sparkKey === 'stone' && ui.sparkLevelUpStone) {
+			ui.sparkLevelUpStone = false;
+			appendLevelUpValueSparkBurst(wrap);
+		}
+		return wrap;
+	}
+
+	function buildHumanControlOverlayCluster(st) {
+		if (!st.humansTurn || st.gameOver) return null;
+		const panel = el('section', 'panel battle-control battle-control--levelup');
+		panel.appendChild(el('h2', '', 'レベルアップ'));
+
+		const sel = selectedCard(st);
+		const selName = sel ? (st.defs[sel.cardId]?.name || '—') : '（未選択）';
+		const selDef = sel ? resolveCardDef(st.defs, sel.cardId) : null;
+
+		const body = el('div', 'battle-control--levelup__body');
+		const controlsCol = el('div', 'battle-control--levelup__controls');
+		controlsCol.appendChild(el('p', 'muted', '配置するカード: ' + selName));
+
+		const row = el('div', 'battle-control__row');
+
+		const restBox = el('div', 'battle-control__box');
+		restBox.appendChild(el('div', 'battle-control__label', 'カードを捨ててレベルアップ'));
+		restBox.appendChild(buildLevelUpValueEl(String(ui.levelUpRest), 'rest'));
+		const restBtns = el('div', 'battle-control__btns');
+		const restMinus = el('button', 'btn btn--ghost', '−');
+		restMinus.type = 'button';
+		restMinus.dataset.action = 'rest_minus';
+		const restPlus = el('button', 'btn btn--ghost', '+');
+		restPlus.type = 'button';
+		restPlus.dataset.action = 'rest_plus';
+		restBtns.appendChild(restMinus);
+		restBtns.appendChild(restPlus);
+		restBox.appendChild(restBtns);
+		row.appendChild(restBox);
+
+		const stoneBox = el('div', 'battle-control__box');
+		stoneBox.appendChild(el('div', 'battle-control__label', 'ストーンを使ってレベルアップ'));
+		stoneBox.appendChild(buildLevelUpValueEl(String(ui.levelUpStones), 'stone'));
+		const stoneBtns = el('div', 'battle-control__btns');
+		const stoneMinus = el('button', 'btn btn--ghost', '−');
+		stoneMinus.type = 'button';
+		stoneMinus.dataset.action = 'stone_minus';
+		const stonePlus = el('button', 'btn btn--ghost', '+');
+		stonePlus.type = 'button';
+		stonePlus.dataset.action = 'stone_plus';
+		stoneBtns.appendChild(stoneMinus);
+		stoneBtns.appendChild(stonePlus);
+		stoneBox.appendChild(stoneBtns);
+		row.appendChild(stoneBox);
+
+		controlsCol.appendChild(row);
+		if (ui.warnLevelUpRest) {
+			const wr = el('p', 'battle-control--levelup__warn', ui.warnLevelUpRest);
+			wr.setAttribute('role', 'alert');
+			controlsCol.appendChild(wr);
+		}
+		if (ui.warnLevelUpStone) {
+			const ws = el('p', 'battle-control--levelup__warn', ui.warnLevelUpStone);
+			ws.setAttribute('role', 'alert');
+			controlsCol.appendChild(ws);
+		}
+		body.appendChild(controlsCol);
+
+		const previewCol = el('div', 'battle-control--levelup__preview');
+		if (selDef) {
+			const deployB = computeDeployBonus(selDef, ui.levelUpRest, ui.levelUpStones);
+			const previewPow = previewHumanBattlePower(st, st.defs, selDef, deployB);
+			const basePow = Number(selDef.basePower != null ? selDef.basePower : 0);
+			const instId = sel.instanceId;
+			let shouldSparkPower = false;
+			if (
+				ui._luPrevPowerInstanceId != null &&
+				ui._luPrevPowerInstanceId === instId &&
+				previewPow > ui._luPrevPower
+			) {
+				shouldSparkPower = true;
+			}
+			ui._luPrevPowerInstanceId = instId;
+			ui._luPrevPower = previewPow;
+
+			const previewWrap = el('div', 'library-card battle-control--levelup__preview-card');
+			const shell = buildBattleCardFaceShell(selDef, 'hand');
+			applyLevelUpPreviewPower(shell, basePow, previewPow);
+			const powEl = shell.querySelector('.card-face__power');
+			const sparkHost = wrapLevelUpPreviewPowerSparkHost(powEl);
+			if (shouldSparkPower && sparkHost) {
+				appendLevelUpValueSparkBurst(sparkHost);
+			}
+			previewWrap.appendChild(shell);
+			applyBattleCardTipData(previewWrap, selDef);
+			previewCol.appendChild(previewWrap);
+		} else {
+			previewCol.appendChild(el('p', 'muted battle-control--levelup__preview-empty', '—'));
+		}
+		body.appendChild(previewCol);
+
+		panel.appendChild(body);
+
+		const decide = el('button', 'btn btn--primary battle-control__decide-external', '決定');
+		decide.type = 'button';
+		decide.dataset.action = 'decide';
+
+		const cluster = el('div', 'battle-control-overlay__cluster');
+		cluster.appendChild(panel);
+		const decideWrap = el('div', 'battle-control__decide-wrap');
+		decideWrap.appendChild(decide);
+		cluster.appendChild(decideWrap);
+
+		return cluster;
+	}
+
 	function render(st) {
 		app.innerHTML = '';
 		hideBattleCardTooltip();
 
 		app.appendChild(el('p', 'battle-msg', st.lastMessage || '—'));
 
-		const oppTop = el('section', 'battle-row battle-row--opp');
+		const oppTop = el('section', 'battle-row battle-row--opp battle-band battle-band--opp');
 		{
-			const cellHand = el('div', 'battle-cell');
+			const inner = el('div', 'battle-band__inner');
+			const stoneStrip = el('div', 'battle-band__stone battle-band__stone--opp-top');
+			stoneStrip.appendChild(el('h3', 'battle-band__stone-title', '相手ストーン'));
+			stoneStrip.appendChild(el('p', 'battle-band__stone-count', String(st.cpuStones)));
+			inner.appendChild(stoneStrip);
+
+			const cellDeck = el('div', 'battle-cell battle-cell--compact battle-cell--opp-deck');
+			cellDeck.appendChild(el('h3', '', '相手デッキ'));
+			cellDeck.appendChild(el('div', 'deck-stack', String(st.cpuDeck.length) + '枚'));
+			inner.appendChild(cellDeck);
+
+			const cellHand = el('div', 'battle-cell battle-cell--opp-hand');
 			cellHand.appendChild(el('h3', '', '相手の手札'));
 			cellHand.appendChild(renderHandCards(st.cpuHand, st.defs, { faceDown: true, compactOpp: true }));
-			oppTop.appendChild(cellHand);
+			inner.appendChild(cellHand);
 
-			const cellStone = el('div', 'battle-cell');
-			cellStone.appendChild(el('h3', '', '相手ストーン'));
-			cellStone.appendChild(el('p', 'stone-count', String(st.cpuStones)));
-			oppTop.appendChild(cellStone);
+			const cellRest = el('div', 'battle-cell battle-cell--compact battle-cell--opp-rest');
+			cellRest.appendChild(el('h3', '', '相手レスト'));
+			cellRest.appendChild(el('p', '', String(st.cpuRest.length) + '枚'));
+			inner.appendChild(cellRest);
+
+			oppTop.appendChild(inner);
 		}
 		app.appendChild(oppTop);
 
-		const mid1 = el('section', 'battle-row battle-row--mid');
+		const zonesRow = el('section', 'battle-row battle-row--zones-split');
 		{
-			const cellDeck = el('div', 'battle-cell');
-			cellDeck.appendChild(el('h3', '', '相手デッキ'));
-			cellDeck.appendChild(el('div', 'deck-stack', String(st.cpuDeck.length) + '枚'));
-			mid1.appendChild(cellDeck);
+			const zonesWrap = el('div', 'battle-zones-wrap');
+			const zonesStack = el('div', 'battle-zones-stack');
+			const cellZoneOpp = el('div', 'battle-cell battle-cell--zone battle-cell--zone-cpu');
+			cellZoneOpp.appendChild(el('h3', '', '相手バトルゾーン'));
+			cellZoneOpp.appendChild(renderZone(st.cpuBattle, st.defs, st.cpuBattlePower, { opponentZone: true }));
+			zonesStack.appendChild(cellZoneOpp);
 
-			const cellZone = el('div', 'battle-cell');
-			cellZone.appendChild(el('h3', '', '相手バトルゾーン'));
-			cellZone.appendChild(renderZone(st.cpuBattle, st.defs, st.cpuBattlePower, { opponentZone: true }));
-			mid1.appendChild(cellZone);
+			const cellZoneYou = el('div', 'battle-cell battle-cell--zone battle-cell--zone-human');
+			cellZoneYou.appendChild(el('h3', '', '自分バトルゾーン'));
+			cellZoneYou.appendChild(renderZone(st.humanBattle, st.defs, st.humanBattlePower));
+			zonesStack.appendChild(cellZoneYou);
 
-			const cellRest = el('div', 'battle-cell');
-			cellRest.appendChild(el('h3', '', '相手レスト'));
-			cellRest.appendChild(el('p', '', String(st.cpuRest.length) + '枚'));
-			mid1.appendChild(cellRest);
+			zonesWrap.appendChild(zonesStack);
+
+			const controlCluster = buildHumanControlOverlayCluster(st);
+			if (controlCluster && selectedCard(st)) {
+				const overlay = el('div', 'battle-control-overlay');
+				overlay.setAttribute('role', 'region');
+				overlay.setAttribute('aria-label', 'レベルアップ');
+				overlay.appendChild(controlCluster);
+				zonesWrap.appendChild(overlay);
+			}
+
+			zonesRow.appendChild(zonesWrap);
 		}
-		app.appendChild(mid1);
+		app.appendChild(zonesRow);
 
-		const mid2 = el('section', 'battle-row battle-row--mid');
+		const you = el('section', 'battle-row battle-row--you battle-band battle-band--you');
 		{
-			const cellRest = el('div', 'battle-cell');
+			const inner = el('div', 'battle-band__inner');
+			const cellRest = el('div', 'battle-cell battle-cell--compact battle-cell--you-rest');
 			cellRest.appendChild(el('h3', '', '自分レスト'));
 			cellRest.appendChild(el('p', '', String(st.humanRest.length) + '枚'));
-			mid2.appendChild(cellRest);
+			inner.appendChild(cellRest);
 
-			const cellZone = el('div', 'battle-cell');
-			cellZone.appendChild(el('h3', '', '自分バトルゾーン'));
-			cellZone.appendChild(renderZone(st.humanBattle, st.defs, st.humanBattlePower));
-			mid2.appendChild(cellZone);
-
-			const cellDeck = el('div', 'battle-cell');
-			cellDeck.appendChild(el('h3', '', '自分デッキ'));
-			cellDeck.appendChild(el('div', 'deck-stack', String(st.humanDeck.length) + '枚'));
-			mid2.appendChild(cellDeck);
-		}
-		app.appendChild(mid2);
-
-		const you = el('section', 'battle-row battle-row--you');
-		{
-			const cellStone = el('div', 'battle-cell');
-			cellStone.appendChild(el('h3', '', '自分ストーン'));
-			cellStone.appendChild(el('p', 'stone-count stone-count--small', String(st.humanStones)));
-			you.appendChild(cellStone);
-
-			const cellHand = el('div', 'battle-cell battle-cell--wide');
+			const cellHand = el('div', 'battle-cell battle-cell--you-hand');
 			cellHand.appendChild(el('h3', '', '自分の手札'));
 			cellHand.appendChild(renderHandCards(st.humanHand, st.defs, { faceDown: false, selectable: st.humansTurn && !st.gameOver }));
-			you.appendChild(cellHand);
+			inner.appendChild(cellHand);
+
+			const cellDeck = el('div', 'battle-cell battle-cell--compact battle-cell--you-deck');
+			cellDeck.appendChild(el('h3', '', '自分デッキ'));
+			cellDeck.appendChild(el('div', 'deck-stack', String(st.humanDeck.length) + '枚'));
+			inner.appendChild(cellDeck);
+
+			const stoneStrip = el('div', 'battle-band__stone battle-band__stone--you-below');
+			stoneStrip.appendChild(el('h3', 'battle-band__stone-title', '自分ストーン'));
+			stoneStrip.appendChild(el('p', 'battle-band__stone-count', String(st.humanStones)));
+			inner.appendChild(stoneStrip);
+
+			you.appendChild(inner);
 		}
 		app.appendChild(you);
-
-		if (st.humansTurn && !st.gameOver) {
-			const panel = el('section', 'panel battle-control');
-			panel.appendChild(el('h2', '', '操作'));
-
-			const sel = selectedCard(st);
-			const selName = sel ? (st.defs[sel.cardId]?.name || '—') : '（未選択）';
-			panel.appendChild(el('p', 'muted', '配置するカード: ' + selName));
-
-			const pred = predictedDeployPower(st);
-			panel.appendChild(el('p', 'muted', '予想強さ: ' + (pred == null ? '—' : String(pred))));
-
-			const row = el('div', 'battle-control__row');
-
-			const restBox = el('div', 'battle-control__box');
-			restBox.appendChild(el('div', 'battle-control__label', 'レベルアップ：捨てる枚数'));
-			restBox.appendChild(el('div', 'battle-control__value', String(ui.levelUpRest)));
-			const restBtns = el('div', 'battle-control__btns');
-			const restMinus = el('button', 'btn btn--ghost', '−');
-			restMinus.type = 'button';
-			restMinus.dataset.action = 'rest_minus';
-			const restPlus = el('button', 'btn btn--ghost', '+');
-			restPlus.type = 'button';
-			restPlus.dataset.action = 'rest_plus';
-			restBtns.appendChild(restMinus);
-			restBtns.appendChild(restPlus);
-			restBox.appendChild(restBtns);
-			row.appendChild(restBox);
-
-			const stoneBox = el('div', 'battle-control__box');
-			stoneBox.appendChild(el('div', 'battle-control__label', '強化：ストーン使用（1回=+2）'));
-			stoneBox.appendChild(el('div', 'battle-control__value', String(ui.levelUpStones)));
-			const stoneBtns = el('div', 'battle-control__btns');
-			const stoneMinus = el('button', 'btn btn--ghost', '−');
-			stoneMinus.type = 'button';
-			stoneMinus.dataset.action = 'stone_minus';
-			const stonePlus = el('button', 'btn btn--ghost', '+');
-			stonePlus.type = 'button';
-			stonePlus.dataset.action = 'stone_plus';
-			stoneBtns.appendChild(stoneMinus);
-			stoneBtns.appendChild(stonePlus);
-			stoneBox.appendChild(stoneBtns);
-			row.appendChild(stoneBox);
-
-			panel.appendChild(row);
-
-			panel.appendChild(el('p', 'muted', '次は「決定」で支払い方法（カード/ストーン/分割）を選びます。'));
-
-			const decide = el('button', 'btn btn--primary', '決定');
-			decide.type = 'button';
-			decide.dataset.action = 'decide';
-			panel.appendChild(decide);
-
-			app.appendChild(panel);
-		}
 
 		lastEventLog = st.eventLog && st.eventLog.length ? st.eventLog.slice() : [];
 		if (battleLogModal && !battleLogModal.hidden) {
@@ -694,6 +966,51 @@
 		render(st);
 	}
 
+	/** レベルアップ欄を閉じる（外側クリック等）。手札カードを再選択すると再度開く */
+	function cancelLevelUpInProgress() {
+		ui.selectedInstanceId = null;
+		ui.levelUpRest = 0;
+		ui.levelUpStones = 0;
+		ui.warnLevelUpRest = null;
+		ui.warnLevelUpStone = null;
+		ui.sparkLevelUpRest = false;
+		ui.sparkLevelUpStone = false;
+		ui._luPrevPowerInstanceId = null;
+		ui._luPrevPower = null;
+	}
+
+	async function applyLevelUpAdjust(action) {
+		const st = await fetchState();
+		ui.levelUpStones = clamp(ui.levelUpStones, 0, st.humanStones);
+		ui.levelUpRest = clamp(ui.levelUpRest, 0, st.humanHand.length);
+		const handLen = st.humanHand ? st.humanHand.length : 0;
+
+		if (action === 'rest_minus') {
+			ui.warnLevelUpRest = null;
+			ui.levelUpRest = clamp(ui.levelUpRest - 1, 0, handLen);
+		} else if (action === 'rest_plus') {
+			if (ui.levelUpRest >= handLen) {
+				ui.warnLevelUpRest = 'これ以上、手札にカードがありません';
+			} else {
+				ui.warnLevelUpRest = null;
+				ui.levelUpRest += 1;
+				ui.sparkLevelUpRest = true;
+			}
+		} else if (action === 'stone_minus') {
+			ui.warnLevelUpStone = null;
+			ui.levelUpStones = clamp(ui.levelUpStones - 1, 0, st.humanStones);
+		} else if (action === 'stone_plus') {
+			if (ui.levelUpStones >= st.humanStones) {
+				ui.warnLevelUpStone = 'これ以上、ストーンがありません';
+			} else {
+				ui.warnLevelUpStone = null;
+				ui.levelUpStones += 1;
+				ui.sparkLevelUpStone = true;
+			}
+		}
+		render(st);
+	}
+
 	function attachHandlers() {
 		app.addEventListener('click', function (e) {
 			const t = e.target;
@@ -703,31 +1020,51 @@
 			if (cardBtn && cardBtn instanceof HTMLButtonElement && !cardBtn.disabled) {
 				const inst = cardBtn.dataset.instanceId || null;
 				ui.selectedInstanceId = ui.selectedInstanceId === inst ? null : inst;
+				if (!ui.selectedInstanceId) {
+					ui._luPrevPowerInstanceId = null;
+					ui._luPrevPower = null;
+				}
+				ui.warnLevelUpRest = null;
+				ui.warnLevelUpStone = null;
 				rerenderWithFreshState();
 				return;
 			}
 
 			const actBtn = t.closest('button[data-action]');
-			if (!actBtn) return;
-			const action = actBtn.getAttribute('data-action');
-			if (!action) return;
+			if (actBtn) {
+				const action = actBtn.getAttribute('data-action');
+				if (action) {
+					if (
+						action === 'rest_minus' ||
+						action === 'rest_plus' ||
+						action === 'stone_minus' ||
+						action === 'stone_plus'
+					) {
+						applyLevelUpAdjust(action);
+						return;
+					}
 
-			if (action === 'rest_minus') ui.levelUpRest = clamp(ui.levelUpRest - 1, 0, 4);
-			if (action === 'rest_plus') ui.levelUpRest = clamp(ui.levelUpRest + 1, 0, 4);
-			if (action === 'stone_minus') ui.levelUpStones = clamp(ui.levelUpStones - 1, 0, 99);
-			if (action === 'stone_plus') ui.levelUpStones = clamp(ui.levelUpStones + 1, 0, 99);
-
-			// decideは次TODOでモーダルにする
-			if (action === 'decide') {
-				rerenderWithFreshState().then(function () {
-					// rerenderで最新stateを描画後、同じstateでモーダルを表示したいので再取得
-					return fetchState();
-				}).then(function (st) {
-					showPayModal(st);
-				});
+					if (action === 'decide') {
+						rerenderWithFreshState().then(function () {
+							return fetchState();
+						}).then(function (st) {
+							showPayModal(st);
+						});
+						return;
+					}
+				}
+				rerenderWithFreshState();
 				return;
 			}
-			rerenderWithFreshState();
+
+			if (t.closest('.battle-control-overlay__cluster')) {
+				return;
+			}
+
+			if (ui.selectedInstanceId) {
+				cancelLevelUpInProgress();
+				rerenderWithFreshState();
+			}
 		});
 	}
 
