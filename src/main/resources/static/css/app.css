@@ -1057,6 +1057,19 @@ body {
 	margin-top: 0.1rem;
 	cursor: help;
 }
+.page--battle button.deck-stack--visual {
+	border: none;
+	background: transparent;
+	padding: 0;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+}
+.page--battle button.deck-stack--visual:focus-visible {
+	outline: 2px solid var(--accent-2);
+	outline-offset: 3px;
+	border-radius: 10px;
+}
 .page--battle .deck-stack--visual .deck-stack__pile {
 	position: relative;
 	display: inline-block;
@@ -1099,6 +1112,41 @@ body {
 }
 .page--battle .battle-cell--you-deck .deck-stack--visual .deck-stack__empty {
 	font-size: 1.2em;
+}
+
+/* レスト：表向きカードを少し重ねて表示 */
+.page--battle .rest-stack .rest-stack__pile {
+	/* デッキと同じ計算式を使う（カード幅・ずれ幅は各セルで上書き） */
+	--rest-card-w: clamp(52px, 6.2vw, 76px);
+	--rest-off: 3px;
+	width: calc(var(--rest-card-w) + 7 * var(--rest-off));
+	height: calc(var(--rest-card-w) * 88 / 63 + 7 * var(--rest-off));
+}
+.page--battle .rest-stack .rest-stack__card {
+	position: absolute;
+	width: var(--rest-card-w);
+	aspect-ratio: 63 / 88;
+}
+.page--battle .rest-stack .rest-stack__card .library-card__inner,
+.page--battle .rest-stack .rest-stack__card .battle-layered--rest {
+	width: 100%;
+	display: block;
+}
+.page--battle .battle-layered--rest {
+	width: var(--rest-card-w);
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.42);
+}
+/* レストは枚数ポップアップ／クリックを優先するため、内部はポインタを通さない */
+.page--battle .rest-stack .rest-stack__pile,
+.page--battle .rest-stack .rest-stack__card,
+.page--battle .rest-stack .rest-stack__card * {
+	pointer-events: none;
+}
+
+/* 自分レスト：自分デッキと同じサイズ */
+.page--battle .battle-cell--you-rest .rest-stack .rest-stack__pile {
+	--rest-card-w: clamp(96px, 9.2vw, 128px);
+	--rest-off: 4px;
 }
 .page--battle .battle-cell--compact > p:not(.muted) {
 	margin: 0;
