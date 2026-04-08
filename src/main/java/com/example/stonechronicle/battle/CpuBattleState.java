@@ -10,6 +10,8 @@ public class CpuBattleState implements Serializable {
 	private int cpuLevel;
 	private boolean humanGoesFirst;
 	private boolean humansTurn;
+	/** 人間側の「ターン開始」回数（先攻1ターン目の例外判定用） */
+	private int humanTurnStarts;
 
 	private List<BattleCard> humanDeck = new ArrayList<>();
 	private List<BattleCard> humanHand = new ArrayList<>();
