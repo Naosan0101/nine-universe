@@ -89,9 +89,38 @@
 	const battleTipName = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__name') : null;
 	const battleTipAttr = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__attr') : null;
 	const battleTipAbility = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__ability') : null;
+	const deckTipEl = document.getElementById('battle-deck-tooltip');
 
 	function hideBattleCardTooltip() {
 		if (battleTipEl) battleTipEl.hidden = true;
+	}
+
+	function hideBattleDeckTooltip() {
+		if (deckTipEl) deckTipEl.hidden = true;
+	}
+
+	function positionBattleDeckTooltip(clientX, clientY) {
+		if (!deckTipEl) return;
+		const pad = 12;
+		const tw = deckTipEl.offsetWidth;
+		const th = deckTipEl.offsetHeight;
+		let x = clientX + pad;
+		let y = clientY + pad;
+		if (x + tw > window.innerWidth - pad) {
+			x = Math.max(pad, clientX - tw - pad);
+		}
+		if (y + th > window.innerHeight - pad) {
+			y = Math.max(pad, window.innerHeight - th - pad);
+		}
+		deckTipEl.style.left = x + 'px';
+		deckTipEl.style.top = y + 'px';
+	}
+
+	function showBattleDeckTooltip(count, clientX, clientY) {
+		if (!deckTipEl) return;
+		deckTipEl.textContent = String(count) + '枚';
+		deckTipEl.hidden = false;
+		positionBattleDeckTooltip(clientX, clientY);
 	}
 
 	function formatBattleCardAttr(d) {
@@ -164,6 +193,7 @@
 
 	function showBattleCardTooltipFromDataset(host, clientX, clientY) {
 		if (!battleTipEl || !battleTipName || !battleTipAttr || !battleTipAbility) return;
+		hideBattleDeckTooltip();
 		battleTipName.textContent = host.dataset.battleName || '';
 		battleTipAttr.textContent = host.dataset.battleAttr || '—';
 		fillBattleTooltipAbility(battleTipAbility, host.dataset.battleAbility || '');
@@ -310,6 +340,7 @@
 
 		function teardown() {
 			hideBattleCardTooltip();
+			hideBattleDeckTooltip();
 			overlay.remove();
 		}
 
@@ -388,6 +419,52 @@
 		});
 
 		refresh();
+	}
+
+	function wireDeckStackTooltip(wrap, count) {
+		if (!deckTipEl || !wrap) return;
+		wrap.addEventListener('pointerenter', function (e) {
+			hideBattleCardTooltip();
+			showBattleDeckTooltip(count, e.clientX, e.clientY);
+		});
+		wrap.addEventListener('pointermove', function (e) {
+			if (!deckTipEl.hidden) positionBattleDeckTooltip(e.clientX, e.clientY);
+		});
+		wrap.addEventListener('pointerleave', hideBattleDeckTooltip);
+	}
+
+	/** デッキ枚数ぶんカード裏を少しずつずらして重ねる（メタの card_back ＝ カードうら画像） */
+	function renderDeckStackVisual(count, deckLabel, options) {
+		const o = options || {};
+		const offsetPx = o.stackOffsetPx != null ? o.stackOffsetPx : 3;
+		const wrap = document.createElement('div');
+		wrap.className = 'deck-stack deck-stack--visual';
+		const n = Math.max(0, Math.floor(Number(count) || 0));
+		wrap.setAttribute('role', 'img');
+		wrap.setAttribute('aria-label', deckLabel + ' ' + n + '枚');
+
+		if (n === 0) {
+			wrap.appendChild(el('span', 'deck-stack__empty', '0枚'));
+			wireDeckStackTooltip(wrap, n);
+			return wrap;
+		}
+
+		const pile = el('div', 'deck-stack__pile');
+		for (let i = 0; i < n; i++) {
+			const im = document.createElement('img');
+			im.src = absUrl(cardBack);
+			im.alt = '';
+			im.className = 'deck-stack__back';
+			im.decoding = 'async';
+			const fromTop = n - 1 - i;
+			im.style.left = fromTop * offsetPx + 'px';
+			im.style.top = fromTop * offsetPx + 'px';
+			im.style.zIndex = String(i + 1);
+			pile.appendChild(im);
+		}
+		wrap.appendChild(pile);
+		wireDeckStackTooltip(wrap, n);
+		return wrap;
 	}
 
 	function renderHandCards(hand, defs, { faceDown, selectable, compactOpp }) {
@@ -813,6 +890,7 @@
 	function render(st) {
 		app.innerHTML = '';
 		hideBattleCardTooltip();
+		hideBattleDeckTooltip();
 
 		app.appendChild(el('p', 'battle-msg', st.lastMessage || '—'));
 
@@ -825,8 +903,7 @@
 			inner.appendChild(stoneStrip);
 
 			const cellDeck = el('div', 'battle-cell battle-cell--compact battle-cell--opp-deck');
-			cellDeck.appendChild(el('h3', '', '相手デッキ'));
-			cellDeck.appendChild(el('div', 'deck-stack', String(st.cpuDeck.length) + '枚'));
+			cellDeck.appendChild(renderDeckStackVisual(st.cpuDeck.length, '相手デッキ'));
 			inner.appendChild(cellDeck);
 
 			const cellHand = el('div', 'battle-cell battle-cell--opp-hand');
@@ -835,7 +912,7 @@
 			inner.appendChild(cellHand);
 
 			const cellRest = el('div', 'battle-cell battle-cell--compact battle-cell--opp-rest');
-			cellRest.appendChild(el('h3', '', '相手レスト'));
+			cellRest.appendChild(el('h3', '', 'レスト'));
 			cellRest.appendChild(el('p', '', String(st.cpuRest.length) + '枚'));
 			inner.appendChild(cellRest);
 
@@ -876,24 +953,23 @@
 		{
 			const inner = el('div', 'battle-band__inner');
 			const cellRest = el('div', 'battle-cell battle-cell--compact battle-cell--you-rest');
-			cellRest.appendChild(el('h3', '', '自分レスト'));
+			cellRest.appendChild(el('h3', '', 'レスト'));
 			cellRest.appendChild(el('p', '', String(st.humanRest.length) + '枚'));
 			inner.appendChild(cellRest);
 
 			const cellHand = el('div', 'battle-cell battle-cell--you-hand');
 			cellHand.appendChild(el('h3', '', '自分の手札'));
+			const stonesTop = el('div', 'battle-you-hand-stones');
+			stonesTop.setAttribute('aria-label', 'ストーン所持数 ' + String(st.humanStones));
+			stonesTop.appendChild(el('span', 'battle-you-hand-stones__label', 'ストーン'));
+			stonesTop.appendChild(el('span', 'battle-you-hand-stones__value', String(st.humanStones)));
+			cellHand.appendChild(stonesTop);
 			cellHand.appendChild(renderHandCards(st.humanHand, st.defs, { faceDown: false, selectable: st.humansTurn && !st.gameOver }));
 			inner.appendChild(cellHand);
 
 			const cellDeck = el('div', 'battle-cell battle-cell--compact battle-cell--you-deck');
-			cellDeck.appendChild(el('h3', '', '自分デッキ'));
-			cellDeck.appendChild(el('div', 'deck-stack', String(st.humanDeck.length) + '枚'));
+			cellDeck.appendChild(renderDeckStackVisual(st.humanDeck.length, '自分デッキ', { stackOffsetPx: 4 }));
 			inner.appendChild(cellDeck);
-
-			const stoneStrip = el('div', 'battle-band__stone battle-band__stone--you-below');
-			stoneStrip.appendChild(el('h3', 'battle-band__stone-title', '自分ストーン'));
-			stoneStrip.appendChild(el('p', 'battle-band__stone-count', String(st.humanStones)));
-			inner.appendChild(stoneStrip);
 
 			you.appendChild(inner);
 		}
@@ -1072,6 +1148,7 @@
 		wireBattleLogModal();
 		try {
 			document.addEventListener('scroll', hideBattleCardTooltip, true);
+			document.addEventListener('scroll', hideBattleDeckTooltip, true);
 			const st = await fetchState();
 			render(st);
 			attachHandlers();
