@@ -271,8 +271,8 @@ public class CpuBattleEngine {
 							st.addLog("ふわふわ: 次に手札へ戻る");
 						}
 					} else if ("NIDONEBI".equals(pc.getAbilityDeployCode())) {
-						moveOneCardIdToDeckBottom(st.getHumanRest(), st.getHumanDeck(), (short) 23);
-						st.addLog("二度寝ゾンビ: デッキ最下段へ");
+						moveOneCardIdToDeckBottom(st.getHumanRest(), st.getHumanDeck(), (short) 18);
+						st.addLog("ネクロマンサー: デッキ最下段へ");
 					} else if ("RYUNOTAMAGO".equals(pc.getAbilityDeployCode())) {
 						// ドラゴンを選ぶ
 						List<String> opts = new ArrayList<>();
@@ -1264,7 +1264,7 @@ public class CpuBattleEngine {
 					for (BattleCard c : st.getHumanRest()) opts.add(c.getInstanceId());
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.SELECT_ONE_FROM_REST_TO_HAND,
-							"きのこ拾い（レストから1枚選択）",
+							"ピクシー（レストから1枚選択）",
 							true,
 							"KINOKO",
 							0,
@@ -1294,10 +1294,10 @@ public class CpuBattleEngine {
 				}
 			}
 			case "NIDONEBI" -> {
-				if (st.getHumanStones() >= 1 && restContainsCardId(st.getHumanRest(), (short) 23)) {
+				if (st.getHumanStones() >= 1 && restContainsCardId(st.getHumanRest(), (short) 18)) {
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"二度寝ゾンビ",
+							"ネクロマンサー",
 							true,
 							"NIDONEBI",
 							1,
@@ -1520,9 +1520,10 @@ public class CpuBattleEngine {
 				}
 			}
 			case "NIDONEBI" -> {
-				if (st.getCpuStones() >= 1 && restContainsCardId(st.getCpuRest(), (short) 23)) {
+				if (st.getCpuStones() >= 1 && restContainsCardId(st.getCpuRest(), (short) 18)) {
 					st.setCpuStones(st.getCpuStones() - 1);
-					moveOneCardIdToDeckBottom(st.getCpuRest(), st.getCpuDeck(), (short) 23);
+					moveOneCardIdToDeckBottom(st.getCpuRest(), st.getCpuDeck(), (short) 18);
+					st.addLog("CPUネクロマンサー: デッキ最下段へ");
 				}
 			}
 			case "RYUNOTAMAGO" -> {
