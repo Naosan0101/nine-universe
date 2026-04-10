@@ -67,12 +67,12 @@ public class CpuBattleService {
 		return cardCatalogService.mapById();
 	}
 
-	public void humanAct(HttpSession session, int levelUpRest, int levelUpStones, boolean deploy, int deployIndex) {
+	public void humanAct(HttpSession session, int levelUpRest, List<String> levelUpDiscardInstanceIds, int levelUpStones, boolean deploy, int deployIndex) {
 		CpuBattleState st = current(session);
 		if (st == null) {
 			return;
 		}
-		engine.humanTurn(st, levelUpRest, levelUpStones, deploy, deployIndex, defs());
+		engine.humanTurn(st, levelUpRest, levelUpDiscardInstanceIds, levelUpStones, deploy, deployIndex, defs());
 	}
 
 	public CpuBattleStateDto humanCommit(HttpSession session, int levelUpRest, List<String> levelUpDiscardInstanceIds, int levelUpStones,
@@ -133,6 +133,18 @@ public class CpuBattleService {
 				));
 
 		var pc = st.getPendingChoice();
+		boolean noLegalDeploy = false;
+		if (!st.isGameOver()) {
+			BattlePhase ph = st.getPhase();
+			if (ph == BattlePhase.HUMAN_INPUT && st.isHumansTurn()
+					&& st.getCpuBattle() != null && st.getCpuBattle().getMain() != null) {
+				noLegalDeploy = !engine.canMakeLegalDeploy(st, true, defs);
+			} else if (ph == BattlePhase.CPU_THINKING && !st.isHumansTurn()
+					&& st.getHumanBattle() != null && st.getHumanBattle().getMain() != null) {
+				noLegalDeploy = !engine.canMakeLegalDeploy(st, false, defs);
+			}
+		}
+
 		return new CpuBattleStateDto(
 				st.isPvp(),
 				st.getCpuLevel(),
@@ -160,6 +172,7 @@ public class CpuBattleService {
 				st.getLastMessage(),
 				st.isGameOver(),
 				st.isHumanWon(),
+				noLegalDeploy,
 				st.getPendingEffect() != null
 						? new com.example.stonechronicle.web.dto.PendingEffectDto(
 								st.getPendingEffect().isOwnerHuman(),

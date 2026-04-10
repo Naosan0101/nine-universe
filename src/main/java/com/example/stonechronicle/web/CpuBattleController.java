@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.List;
+
 @Controller
 @RequestMapping("/battle/cpu")
 @RequiredArgsConstructor
@@ -133,12 +135,13 @@ public class CpuBattleController {
 
 	@PostMapping("/act")
 	public String act(@RequestParam(defaultValue = "0") int levelUpRest,
+			@RequestParam(required = false) List<String> levelUpDiscardInstanceIds,
 			@RequestParam(defaultValue = "0") int levelUpStones,
 			@RequestParam(required = false) String deploy,
 			@RequestParam(defaultValue = "0") int deployIndex,
 			HttpSession session) {
 		boolean doDeploy = "true".equalsIgnoreCase(deploy);
-		cpuBattleService.humanAct(session, levelUpRest, levelUpStones, doDeploy, deployIndex);
+		cpuBattleService.humanAct(session, levelUpRest, levelUpDiscardInstanceIds, levelUpStones, doDeploy, deployIndex);
 		return "redirect:/battle/cpu/play";
 	}
 

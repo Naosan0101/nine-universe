@@ -20,6 +20,12 @@
 	const modalName = document.getElementById('lib-modal-name');
 	const modalAttr = document.getElementById('lib-modal-attr');
 	const modalAbility = document.getElementById('lib-modal-ability');
+	const sideTitle = document.getElementById('lib-modal-side-title');
+	const sideAttr = document.getElementById('lib-modal-side-attr');
+	const sideCost = document.getElementById('lib-modal-side-cost');
+	const sidePower = document.getElementById('lib-modal-side-power');
+	const sideRarity = document.getElementById('lib-modal-side-rarity');
+	const sideAbility = document.getElementById('lib-modal-side-ability');
 
 	const tooltipEl = document.getElementById('library-tooltip');
 	const tooltipName = tooltipEl ? tooltipEl.querySelector('.deck-tooltip__name') : null;
@@ -209,6 +215,30 @@
 		return [{ h: '', b: s }];
 	}
 
+	function rarityLabelJa(code, label) {
+		const l = (label || '').trim();
+		if (
+			l === 'レジェンダリー' ||
+			l === 'エピック' ||
+			l === 'レア' ||
+			l === 'コモン'
+		) {
+			return l;
+		}
+		const c = (code || '').trim();
+		if (c === 'Reg') return 'レジェンダリー';
+		if (c === 'Ep') return 'エピック';
+		if (c === 'R') return 'レア';
+		return 'コモン';
+	}
+
+	function rarityCode4(code) {
+		const c = (code || 'C').trim();
+		if (c === 'Reg' || c === 'Ep' || c === 'R' || c === 'C') return c;
+		// 予期しない値はコモン扱い
+		return 'C';
+	}
+
 	function openModal(btn) {
 		hideHoverTooltip();
 		if (!modal || !modalCost || !modalAbility) return;
@@ -216,8 +246,8 @@
 		const owned = d.owned === 'true';
 		if (!owned) return;
 
-		const rarity = (d.rarity || 'C').trim();
-		const rarityLabel = (d.rarityLabel || rarity || 'C').trim();
+		const rarity = rarityCode4(d.rarity);
+		const rarityLabel = rarityLabelJa(rarity, d.rarityLabel || rarity || 'C');
 		const modalFaceRoot = document.getElementById('library-modal-card-face');
 		const modalRarity = document.getElementById('lib-modal-rarity');
 		const modalSpark = document.getElementById('lib-modal-spark');
@@ -227,7 +257,11 @@
 			modalFaceRoot.classList.add('card-face--rarity-' + rarity);
 		}
 		if (modalRarity) {
-			modalRarity.textContent = rarityLabel;
+			// カード面の表示はコード（Reg/Ep/R/C）
+			modalRarity.textContent = rarity;
+		}
+		if (sideRarity) {
+			sideRarity.textContent = rarityLabel;
 		}
 
 		if (modalCost) {
@@ -244,6 +278,9 @@
 			if (pn === 4) modalPower.classList.add('card-face__power--digit-4');
 		}
 		if (modalName) modalName.textContent = d.name || '';
+		if (sideTitle) sideTitle.textContent = d.name || '';
+		if (sideCost) sideCost.textContent = d.cost != null && d.cost !== '' ? String(d.cost) : '—';
+		if (sidePower) sidePower.textContent = d.basePower != null && d.basePower !== '' ? String(d.basePower) : '—';
 		if (modalAttr) {
 			const pipe = (d.attrPipe || '').trim();
 			let lines = pipe ? pipe.split('|').filter(Boolean) : [];
@@ -272,9 +309,13 @@
 				modalAttr.textContent = d.attributeJa || ATTR_JA[d.attribute] || d.attribute || '';
 			}
 		}
+		if (sideAttr) {
+			sideAttr.textContent = tooltipAttributeDisplay(d);
+		}
 
 		modalAbility.innerHTML = '';
-		buildAbilityBlocksFromCanonical(d.canonicalLine).forEach(function (bl) {
+		const blocks = buildAbilityBlocksFromCanonical(d.canonicalLine);
+		blocks.forEach(function (bl) {
 			if (bl.h) {
 				const ph = document.createElement('p');
 				ph.className = 'card-face__ability-head';
@@ -286,6 +327,13 @@
 			pb.textContent = bl.b;
 			modalAbility.appendChild(pb);
 		});
+		if (sideAbility) {
+			// 右側テキスト用（見出し付きのブロックを1つの文章にまとめる）
+			const t = blocks.map(function (b) {
+				return b.h ? (b.h + '\n' + b.b) : b.b;
+			}).join('\n\n');
+			sideAbility.textContent = t || '—';
+		}
 
 		if (artWrap) {
 			artWrap.classList.toggle('library-detail-modal__art-wrap--locked', !owned);

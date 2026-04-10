@@ -6,7 +6,7 @@
 	<title>ナインユニバース — ホーム</title>
 	<link rel="stylesheet" th:href="@{/css/app.css}"/>
 </head>
-<body class="page">
+<body class="page page--theme-arcane">
 <header class="topbar">
 	<h1 class="game-title">ナインユニバース</h1>
 	<div class="topbar__meta">
@@ -32,50 +32,82 @@
 	</div>
 </div>
 
-<main class="home-grid">
-	<a class="tile" th:href="@{/pack}">
-		<span class="tile__label">カードパックを購入</span>
-		<span class="tile__hint">3〜5ジェム / 4枚</span>
-	</a>
-	<a class="tile" th:href="@{/battle/cpu}">
-		<span class="tile__label">CPUとバトル</span>
-	</a>
-	<a class="tile" th:href="@{/battle/pvp}">
-		<span class="tile__label">他のプレイヤーとバトル</span>
-	</a>
-	<a class="tile" th:href="@{/decks}">
-		<span class="tile__label">デッキを作成</span>
-	</a>
-	<a class="tile" th:href="@{/library}">
-		<span class="tile__label">ライブラリを見る</span>
-	</a>
-	<a class="tile" th:href="@{/missions}">
-		<span class="tile__label">ミッション</span>
-	</a>
-</main>
+<div class="container">
+	<section class="home-hero" aria-label="メインメニュー">
+		<div class="home-hero__bg" aria-hidden="true"></div>
+		<div class="home-hero__body">
+			<div class="home-hero__title-row">
+				<p class="home-hero__eyebrow">ナインユニバース</p>
+				<h2 class="home-hero__title">ホーム</h2>
+				<p class="home-hero__lead">パック、デッキ、ライブラリ、ミッション。やることを一気に選べます。</p>
+			</div>
+			<div class="home-hero__stats">
+				<div class="stat-pill" role="status" aria-label="所持ジェム">
+					<span class="stat-pill__label">ジェム</span>
+					<span class="stat-pill__value" th:text="${user.coins}">0</span>
+				</div>
+				<a class="btn btn--primary home-hero__cta" th:href="@{/pack}">パック購入へ</a>
+				<a class="btn btn--ghost home-hero__cta" th:href="@{/decks}">デッキ編集</a>
+			</div>
+		</div>
+	</section>
 
-<section class="panel" th:if="${missions != null && !missions.isEmpty()}">
-	<h2>今日のミッション</h2>
-	<ul class="mission-mini">
-		<li th:each="m : ${missions}">
-			<span th:text="${m.title}">—</span>
-			— <span th:text="${m.progress}">0</span> / <span th:text="${m.targetCount}">0</span>
-			<span th:if="${m.rewardGranted}" class="ok">（報酬受取済）</span>
-		</li>
-	</ul>
-</section>
+	<main class="home-grid" aria-label="メニュー">
+		<a class="tile tile--featured" th:href="@{/pack}">
+			<span class="tile__icon" aria-hidden="true">✦</span>
+			<span class="tile__label">カードパックを購入</span>
+			<span class="tile__hint">3〜5ジェム / 4枚</span>
+		</a>
+		<a class="tile" th:href="@{/battle/cpu}">
+			<span class="tile__icon" aria-hidden="true">⌁</span>
+			<span class="tile__label">CPUとバトル</span>
+			<span class="tile__hint">練習して立ち回りを固める</span>
+		</a>
+		<a class="tile" th:href="@{/battle/pvp}">
+			<span class="tile__icon" aria-hidden="true">⚔</span>
+			<span class="tile__label">他のプレイヤーとバトル</span>
+			<span class="tile__hint">腕試し（対戦）</span>
+		</a>
+		<a class="tile" th:href="@{/decks}">
+			<span class="tile__icon" aria-hidden="true">▦</span>
+			<span class="tile__label">デッキを作成</span>
+			<span class="tile__hint">所持カードから構築</span>
+		</a>
+		<a class="tile" th:href="@{/library}">
+			<span class="tile__icon" aria-hidden="true">⧉</span>
+			<span class="tile__label">ライブラリを見る</span>
+			<span class="tile__hint">カード詳細を確認</span>
+		</a>
+		<a class="tile" th:href="@{/missions}">
+			<span class="tile__icon" aria-hidden="true">✓</span>
+			<span class="tile__label">ミッション</span>
+			<span class="tile__hint">ジェムを獲得</span>
+		</a>
+	</main>
 
-<section class="panel" th:if="${weeklyMissions != null && !weeklyMissions.isEmpty()}">
-	<h2>今週のミッション</h2>
-	<p class="muted home-weekly-mission__hint">月曜更新・各6ジェム</p>
-	<ul class="mission-mini">
-		<li th:each="w : ${weeklyMissions}">
-			<span th:text="${w.title}">—</span>
-			— <span th:text="${w.progress}">0</span> / <span th:text="${w.targetCount}">0</span>
-			<span th:if="${w.rewardGranted}" class="ok">（報酬受取済）</span>
-		</li>
-	</ul>
-</section>
+	<section class="panel" th:if="${missions != null && !missions.isEmpty()}">
+		<h2>今日のミッション</h2>
+		<ul class="mission-mini">
+			<li th:each="m : ${missions}">
+				<span th:text="${m.title}">—</span>
+				— <span th:text="${m.progress}">0</span> / <span th:text="${m.targetCount}">0</span>
+				<span th:if="${m.rewardGranted}" class="ok">（報酬受取済）</span>
+			</li>
+		</ul>
+	</section>
+
+	<section class="panel" th:if="${weeklyMissions != null && !weeklyMissions.isEmpty()}">
+		<h2>今週のミッション</h2>
+		<p class="muted home-weekly-mission__hint">月曜更新・各6ジェム</p>
+		<ul class="mission-mini">
+			<li th:each="w : ${weeklyMissions}">
+				<span th:text="${w.title}">—</span>
+				— <span th:text="${w.progress}">0</span> / <span th:text="${w.targetCount}">0</span>
+				<span th:if="${w.rewardGranted}" class="ok">（報酬受取済）</span>
+			</li>
+		</ul>
+	</section>
+</div>
 <script th:if="${welcomeHomeBonusShown}">
 (function () {
 	var modal = document.getElementById('welcome-bonus-modal');

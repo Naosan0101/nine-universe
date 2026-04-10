@@ -12,29 +12,45 @@
 	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
 </header>
 
-<p>所持ジェム: <strong th:text="${coins}">0</strong></p>
-<p class="error" th:if="${error}" th:text="${error}"></p>
-
-<div class="pack-stage">
-	<form th:action="@{/pack/open}" method="post" class="inline">
-		<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-		<button type="submit" class="btn btn--primary pack-open-btn">パックを開ける（0ジェム）</button>
-	</form>
-	<img class="pack-art" th:src="|${contextPath != null ? contextPath : ''}${packImage}|" alt="カードパック"/>
-</div>
-
-<div class="pull-grid" th:if="${pulledFaces != null}">
-	<h2>獲得カード</h2>
-	<div class="card-strip">
-		<button type="button" class="card-thumb" th:each="c, iter : ${pulledFaces}"
-		        th:data-pack-index="${iter.index}">
-			<div class="card-thumb__face" th:insert="~{fragments/card-face :: layers(c=${c}, cp=${contextPath})}"></div>
-		</button>
-	</div>
-	<div id="pack-big-stage" class="pack-big-stage" th:if="${!pulledFaces.isEmpty()}">
-		<div class="pack-big-slide" th:each="c, iter : ${pulledFaces}" th:classappend="${iter.first} ? ' is-active' : ''">
-			<div th:replace="~{fragments/card-face :: layers(c=${c}, cp=${contextPath})}"></div>
+<div class="container">
+	<section class="panel pack-buy-head">
+		<div class="pack-buy-head__row">
+			<div class="pack-buy-head__left">
+				<p class="pack-buy-head__label">所持ジェム</p>
+				<p class="pack-buy-head__value"><strong th:text="${coins}">0</strong></p>
+			</div>
+			<div class="pack-buy-head__right">
+				<form th:action="@{/pack/open}" method="post" class="inline">
+					<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+					<button type="submit" class="btn btn--primary pack-open-btn">パックを開ける（0ジェム）</button>
+				</form>
+			</div>
 		</div>
+		<p class="error pack-buy-head__error" th:if="${error}" th:text="${error}"></p>
+	</section>
+
+	<section class="panel">
+		<div class="pack-stage">
+			<img class="pack-art" th:src="|${contextPath != null ? contextPath : ''}${packImage}|" alt="カードパック"/>
+			<p class="muted" style="margin:0;">開封後、下にカードが表示されます</p>
+		</div>
+	</section>
+
+	<div class="pull-grid" th:if="${pulledFaces != null}">
+		<section class="panel">
+			<h2>獲得カード</h2>
+			<div class="card-strip">
+				<button type="button" class="card-thumb" th:each="c, iter : ${pulledFaces}"
+				        th:data-pack-index="${iter.index}">
+					<div class="card-thumb__face" th:insert="~{fragments/card-face :: layers(c=${c}, cp=${contextPath})}"></div>
+				</button>
+			</div>
+			<div id="pack-big-stage" class="pack-big-stage" th:if="${!pulledFaces.isEmpty()}">
+				<div class="pack-big-slide" th:each="c, iter : ${pulledFaces}" th:classappend="${iter.first} ? ' is-active' : ''">
+					<div th:replace="~{fragments/card-face :: layers(c=${c}, cp=${contextPath})}"></div>
+				</div>
+			</div>
+		</section>
 	</div>
 </div>
 

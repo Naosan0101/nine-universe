@@ -32,6 +32,46 @@ body {
 }
 
 /* =========================
+   Theme: Arcane (fantasy / stone & gold)
+   ========================= */
+.page--theme-arcane {
+	--bg: #0b0a0e;
+	--panel: #14111a;
+	--accent: #d6b35d;   /* gold */
+	--accent-2: #c8d2ff; /* moonlight */
+	--muted: rgba(225, 230, 255, 0.62);
+}
+.page--theme-arcane::before {
+	background:
+		radial-gradient(1100px 620px at 50% -10%, rgba(214, 179, 93, 0.14) 0%, transparent 56%),
+		radial-gradient(900px 560px at 12% 20%, rgba(200, 210, 255, 0.10) 0%, transparent 62%),
+		radial-gradient(1200px 900px at 50% 110%, rgba(0, 0, 0, 0.64) 0%, rgba(0, 0, 0, 0.0) 58%),
+		linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.0)),
+		linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+	background-size:
+		auto,
+		auto,
+		auto,
+		auto,
+		56px 56px,
+		56px 56px;
+	opacity: 0.8;
+	mix-blend-mode: screen;
+	filter: saturate(1.02);
+}
+.page--theme-arcane::after {
+	opacity: 0.10;
+	mix-blend-mode: overlay;
+}
+
+.container {
+	width: 100%;
+	max-width: 1080px;
+	margin: 0 auto;
+}
+
+/* =========================
    Global background FX
    ========================= */
 .page::before,
@@ -246,6 +286,103 @@ body {
 .battle-toast--danger {
 	border-color: rgba(255, 110, 110, 0.62);
 }
+
+/* ターン表示の配置基準（#battle-app を内包。ポップアップは fixed せずスクロールに乗る） */
+.battle-turn-popup-host {
+	position: relative;
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	box-sizing: border-box;
+}
+
+/* ターン開始の中央ポップアップ（バトル領域基準の absolute／ビューポート追従なし） */
+.battle-turn-popup {
+	position: absolute;
+	z-index: 125;
+	left: 50%;
+	top: 36%;
+	transform: translate(-50%, -50%) scale(0.94);
+	max-width: min(420px, calc(100vw - 2rem));
+	padding: 1rem 1.5rem;
+	border-radius: 16px;
+	background: rgba(10, 12, 18, 0.94);
+	border: 2px solid rgba(255, 255, 255, 0.18);
+	box-shadow: 0 24px 80px rgba(0, 0, 0, 0.65);
+	color: var(--text);
+	font-weight: 900;
+	font-size: clamp(1.15rem, 3.8vw, 1.45rem);
+	letter-spacing: 0.06em;
+	text-align: center;
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.28s ease, transform 0.28s cubic-bezier(.2, .85, .2, 1);
+}
+.battle-turn-popup.is-visible {
+	opacity: 1;
+	transform: translate(-50%, -50%) scale(1);
+}
+.battle-turn-popup[hidden] {
+	display: none !important;
+}
+.battle-turn-popup--yours {
+	border-color: rgba(120, 195, 255, 0.55);
+	box-shadow:
+		0 0 0 1px rgba(120, 195, 255, 0.12),
+		0 24px 80px rgba(0, 0, 0, 0.65);
+}
+.battle-turn-popup--opp {
+	border-color: rgba(255, 145, 115, 0.5);
+	box-shadow:
+		0 0 0 1px rgba(255, 145, 115, 0.1),
+		0 24px 80px rgba(0, 0, 0, 0.65);
+}
+
+/* 配置不能（相手以上に届かない）の通知：画面右 */
+.battle-unwinnable-pop {
+	position: fixed;
+	z-index: 110;
+	right: max(1rem, env(safe-area-inset-right, 0px));
+	top: 50%;
+	transform: translateY(-50%);
+	width: min(300px, calc(100vw - 2rem));
+	padding: 1rem 1.05rem 1.1rem;
+	border-radius: 14px;
+	background:
+		radial-gradient(420px 200px at 100% 0%, rgba(255, 110, 110, 0.12), transparent 55%),
+		rgba(10, 12, 18, 0.94);
+	border: 1px solid rgba(255, 110, 110, 0.45);
+	box-shadow: 0 22px 70px rgba(0, 0, 0, 0.55);
+	color: var(--text);
+	animation: battle-unwinnable-in 0.35s ease-out;
+}
+@keyframes battle-unwinnable-in {
+	from {
+		opacity: 0;
+		transform: translate(12px, -50%);
+	}
+	to {
+		opacity: 1;
+		transform: translate(0, -50%);
+	}
+}
+.battle-unwinnable-pop__title {
+	margin: 0 0 0.45rem;
+	font-size: 1rem;
+	font-weight: 900;
+	letter-spacing: 0.04em;
+	color: #fecaca;
+}
+.battle-unwinnable-pop__body {
+	margin: 0 0 1rem;
+	font-size: 0.88rem;
+	line-height: 1.55;
+	color: var(--muted);
+}
+.battle-unwinnable-pop .btn {
+	width: 100%;
+}
+
 .battle-log-modal__empty {
 	list-style: none;
 	margin-left: -1.15rem;
@@ -303,21 +440,266 @@ body {
 	margin: 1rem 0;
 }
 
+.home-hero {
+	position: relative;
+	overflow: hidden;
+	border-radius: 18px;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	box-shadow:
+		0 0 0 1px rgba(0, 0, 0, 0.18),
+		0 22px 80px rgba(0, 0, 0, 0.42);
+	background: rgba(10, 12, 18, 0.35);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	margin: 0.25rem 0 1rem;
+}
+.home-hero__bg {
+	position: absolute;
+	inset: -40%;
+	pointer-events: none;
+	background:
+		radial-gradient(700px 240px at 15% 10%, rgba(74, 125, 255, 0.24), transparent 62%),
+		radial-gradient(640px 260px at 90% 20%, rgba(201, 162, 39, 0.16), transparent 62%),
+		linear-gradient(120deg, rgba(255,255,255,0.08), rgba(255,255,255,0.0) 55%);
+	opacity: 0.9;
+	filter: blur(14px) saturate(1.25);
+	transform: rotate(-6deg);
+}
+.home-hero__body {
+	position: relative;
+	padding: 1.25rem 1.25rem 1.15rem;
+	display: grid;
+	gap: 0.9rem;
+}
+.home-hero__eyebrow {
+	margin: 0;
+	font-size: 0.75rem;
+	letter-spacing: 0.18em;
+	color: rgba(160, 190, 255, 0.92);
+	text-transform: uppercase;
+}
+.home-hero__title {
+	margin: 0.25rem 0 0;
+	font-size: clamp(1.45rem, 3.2vw, 2.05rem);
+	font-weight: 900;
+	letter-spacing: 0.04em;
+	color: rgba(255, 255, 255, 0.94);
+	text-shadow: 0 0 28px rgba(74, 125, 255, 0.22);
+}
+.home-hero__lead {
+	margin: 0.35rem 0 0;
+	color: var(--muted);
+	line-height: 1.55;
+}
+.home-hero__stats {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.6rem;
+}
+
+/* Arcane overrides: stone + gold, less neon */
+.page--theme-arcane .home-hero {
+	background:
+		radial-gradient(900px 300px at 35% 0%, rgba(214, 179, 93, 0.16), transparent 62%),
+		linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)),
+		var(--panel);
+	border-color: rgba(214, 179, 93, 0.22);
+	box-shadow:
+		0 0 0 1px rgba(0, 0, 0, 0.22),
+		0 0 42px rgba(214, 179, 93, 0.08),
+		0 22px 80px rgba(0, 0, 0, 0.48);
+}
+.page--theme-arcane .home-hero__bg {
+	background:
+		radial-gradient(700px 260px at 20% 15%, rgba(214, 179, 93, 0.25), transparent 60%),
+		radial-gradient(760px 300px at 85% 25%, rgba(200, 210, 255, 0.10), transparent 62%),
+		linear-gradient(110deg, rgba(255,255,255,0.12), rgba(255,255,255,0.0) 55%);
+	opacity: 0.75;
+	filter: blur(16px) saturate(1.06);
+	transform: rotate(-4deg);
+}
+.page--theme-arcane .home-hero__eyebrow {
+	color: rgba(214, 179, 93, 0.92);
+	letter-spacing: 0.22em;
+}
+.page--theme-arcane .home-hero__title {
+	text-shadow:
+		0 0 26px rgba(214, 179, 93, 0.12),
+		0 0 44px rgba(200, 210, 255, 0.08);
+}
+.page--theme-arcane .stat-pill {
+	background: rgba(10, 8, 12, 0.72);
+	border-color: rgba(214, 179, 93, 0.22);
+}
+.page--theme-arcane .stat-pill__label {
+	color: rgba(214, 179, 93, 0.9);
+}
+.page--theme-arcane .stat-pill__value {
+	color: var(--accent);
+	text-shadow: 0 0 18px rgba(214, 179, 93, 0.18);
+}
+
+.page--theme-arcane .tile {
+	background:
+		linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.0)),
+		radial-gradient(800px 260px at 25% 0%, rgba(214, 179, 93, 0.12), transparent 62%),
+		radial-gradient(800px 260px at 90% 20%, rgba(200, 210, 255, 0.06), transparent 66%),
+		rgba(10, 8, 12, 0.62);
+	border-color: rgba(255, 255, 255, 0.12);
+	box-shadow:
+		inset 0 1px 0 rgba(255,255,255,0.06),
+		0 18px 70px rgba(0, 0, 0, 0.26);
+}
+.page--theme-arcane .tile:hover {
+	border-color: rgba(214, 179, 93, 0.38);
+	box-shadow:
+		inset 0 1px 0 rgba(255,255,255,0.08),
+		0 0 28px rgba(214, 179, 93, 0.10),
+		0 18px 70px rgba(0, 0, 0, 0.32);
+}
+.page--theme-arcane .tile__icon {
+	background: rgba(214, 179, 93, 0.08);
+	border-color: rgba(214, 179, 93, 0.22);
+	color: rgba(255, 245, 220, 0.92);
+}
+.page--theme-arcane .tile--featured {
+	border-color: rgba(214, 179, 93, 0.45);
+	box-shadow:
+		inset 0 1px 0 rgba(255,255,255,0.08),
+		0 0 34px rgba(214, 179, 93, 0.12),
+		0 18px 70px rgba(0, 0, 0, 0.32);
+}
+.home-hero__cta {
+	white-space: nowrap;
+}
+
+.stat-pill {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 0.55rem;
+	padding: 0.5rem 0.75rem;
+	border-radius: 999px;
+	background: rgba(10, 12, 18, 0.66);
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.06),
+		0 12px 40px rgba(0, 0, 0, 0.35);
+}
+.stat-pill__label {
+	font-size: 0.72rem;
+	font-weight: 800;
+	letter-spacing: 0.12em;
+	color: rgba(240, 215, 150, 0.9);
+	text-transform: uppercase;
+}
+.stat-pill__value {
+	font-size: 1.15rem;
+	font-weight: 900;
+	font-variant-numeric: tabular-nums;
+	color: var(--accent);
+	text-shadow: 0 0 14px rgba(201, 162, 39, 0.18);
+}
+
 .tile {
 	display: flex;
 	flex-direction: column;
 	gap: 0.25rem;
 	padding: 1rem 1.1rem;
-	border-radius: 12px;
-	background: linear-gradient(160deg, rgba(74, 125, 255, 0.12), rgba(201, 162, 39, 0.08));
-	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 14px;
+	background: rgba(10, 12, 18, 0.56);
+	border: 1px solid rgba(255, 255, 255, 0.12);
 	color: inherit;
 	text-decoration: none;
-	transition: transform 0.12s ease, border-color 0.12s ease;
+	transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+	box-shadow:
+		inset 0 1px 0 rgba(255,255,255,0.06),
+		0 18px 70px rgba(0, 0, 0, 0.22);
+	position: relative;
+	overflow: hidden;
 }
-.tile:hover { transform: translateY(-2px); border-color: rgba(201, 162, 39, 0.45); }
-.tile__label { font-weight: 600; }
+.tile::before {
+	content: "";
+	position: absolute;
+	inset: -35%;
+	background:
+		radial-gradient(650px 260px at 25% 0%, rgba(74, 125, 255, 0.22), transparent 62%),
+		radial-gradient(620px 260px at 85% 15%, rgba(201, 162, 39, 0.14), transparent 65%);
+	opacity: 0.22;
+	pointer-events: none;
+	filter: blur(14px);
+}
+.tile:hover {
+	transform: translateY(-2px);
+	border-color: rgba(160, 190, 255, 0.38);
+	background: rgba(10, 12, 18, 0.68);
+	box-shadow:
+		inset 0 1px 0 rgba(255,255,255,0.08),
+		0 0 26px rgba(74, 125, 255, 0.12),
+		0 18px 70px rgba(0, 0, 0, 0.28);
+}
+.tile__icon {
+	width: 2.25rem;
+	height: 2.25rem;
+	border-radius: 12px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+	color: rgba(235, 240, 255, 0.9);
+	font-weight: 900;
+	letter-spacing: 0.02em;
+	margin-bottom: 0.15rem;
+}
+.tile__label { font-weight: 800; letter-spacing: 0.02em; }
 .tile__hint { font-size: 0.85rem; color: var(--muted); }
+.tile--featured {
+	border-color: rgba(74, 125, 255, 0.42);
+	box-shadow:
+		inset 0 1px 0 rgba(255,255,255,0.08),
+		0 0 28px rgba(74, 125, 255, 0.12),
+		0 18px 70px rgba(0, 0, 0, 0.28);
+}
+.tile--featured:hover {
+	border-color: rgba(74, 125, 255, 0.55);
+	box-shadow:
+		inset 0 1px 0 rgba(255,255,255,0.08),
+		0 0 30px rgba(74, 125, 255, 0.18),
+		0 18px 70px rgba(0, 0, 0, 0.28);
+}
+
+.pack-buy-head__row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem 1rem;
+}
+.pack-buy-head__label {
+	margin: 0;
+	font-size: 0.78rem;
+	font-weight: 800;
+	letter-spacing: 0.14em;
+	color: var(--muted);
+	text-transform: uppercase;
+}
+.pack-buy-head__value {
+	margin: 0.15rem 0 0;
+	font-size: 1.35rem;
+	font-weight: 900;
+	color: var(--accent);
+	letter-spacing: 0.02em;
+	text-shadow: 0 0 14px rgba(201, 162, 39, 0.18);
+}
+.pack-buy-head__hint {
+	margin: 0;
+	font-size: 0.92rem;
+}
+.pack-buy-head__error {
+	margin: 0.65rem 0 0;
+}
 
 .panel {
 	background: var(--panel);
@@ -460,6 +842,13 @@ a:hover {
 .error { color: #ff8a8a; }
 .ok { color: #8df0a6; }
 
+.measure {
+	max-width: 36rem;
+}
+.panel--narrow {
+	max-width: 28rem;
+}
+
 .page--auth { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
 .auth-card {
 	width: min(420px, 100%);
@@ -567,7 +956,7 @@ a:hover {
 	position: relative;
 	border-radius: 10px;
 	overflow: hidden;
-	border: 1px solid rgba(255,255,255,0.12);
+	border: none;
 }
 .library-card__inner img { width: 100%; display: block; vertical-align: middle; }
 
@@ -644,10 +1033,10 @@ a:hover {
 }
 .library-detail-modal__panel {
 	position: relative;
-	display: inline-flex;
-	flex-wrap: wrap;
-	align-items: flex-start;
-	gap: 1.75rem;
+	display: grid;
+	grid-template-columns: minmax(240px, 320px) minmax(320px, 520px);
+	gap: 1.25rem 1.75rem;
+	align-items: start;
 	max-width: min(1040px, 100%);
 	width: auto;
 	max-height: min(94vh, 960px);
@@ -678,30 +1067,43 @@ a:hover {
 	background: rgba(255, 255, 255, 0.14);
 }
 .library-detail-modal__art-wrap {
-	flex: 0 0 auto;
 	border-radius: 14px;
 	overflow: hidden;
-	border: 1px solid rgba(255, 255, 255, 0.1);
+	/* 枠は中のカードに密着させる（ラッパーに付けない） */
+	border: none;
 	align-self: flex-start;
 }
 .library-detail-modal__art-wrap .card-face {
 	width: clamp(200px, 40vw, 300px);
 	display: block;
+	border-radius: 14px;
+	border: none;
 }
 .library-detail-modal__art-wrap img {
 	width: clamp(200px, 40vw, 300px);
 	display: block;
 	vertical-align: middle;
 	box-shadow: 0 16px 56px rgba(0, 0, 0, 0.5);
+	border-radius: 14px;
+	border: none;
 }
 .library-detail-modal__art-wrap--locked img {
 	filter: blur(14px) brightness(0.18) saturate(0.35) contrast(0.75);
 	transform: scale(1.08);
 }
 .library-detail-modal__body {
-	flex: 1 1 min(420px, 100%);
 	min-width: 0;
 	padding-right: 0.35rem;
+}
+
+@media (max-width: 860px) {
+	.library-detail-modal__panel {
+		grid-template-columns: 1fr;
+	}
+	.library-detail-modal__art-wrap .card-face,
+	.library-detail-modal__art-wrap img {
+		width: min(420px, 92vw);
+	}
 }
 .library-detail-modal__name-label {
 	margin: 0 0 0.2rem;
@@ -1116,29 +1518,38 @@ a:hover {
  * バトルだけ縦並びに上書きする。
  */
 .page--battle #battle-card-tooltip.deck-tooltip {
-	max-width: min(420px, 96vw);
+	max-width: min(520px, 96vw);
 	overflow: visible;
 }
 .page--battle #battle-card-tooltip .deck-tooltip__inner {
 	display: flex;
-	flex-direction: column;
-	align-items: stretch;
+	flex-direction: row;
+	align-items: flex-start;
+	column-gap: 1.35rem;
+	row-gap: 0.75rem;
 	grid-template-columns: unset;
 	grid-template-areas: none;
-	column-gap: unset;
 }
 .page--battle #battle-card-tooltip .battle-card-tooltip__preview {
 	flex: 0 0 auto;
 	overflow: visible;
 	min-width: 0;
 }
+.page--battle #battle-card-tooltip .battle-card-tooltip__details {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	padding-left: 0.4rem;
+}
 
-/* バトル：カード詳細ツールチップ上部にカードを中央表示 */
+/* バトル：ツールチップ左にカード画像、右に詳細テキスト */
 .page--battle .battle-card-tooltip__preview {
 	display: flex;
-	justify-content: center;
+	justify-content: flex-start;
 	align-items: flex-start;
-	margin: 0.1rem 0 0.15rem;
+	margin: 0;
 }
 .page--battle .battle-layered--tip {
 	width: clamp(140px, 14vw, 190px);
@@ -1701,10 +2112,11 @@ a:hover {
 	position: absolute;
 	inset: auto;
 	top: 0.2rem;
-	left: 92%;
+	left: 95%;
 	right: auto;
 	bottom: auto;
-	transform: translateX(-50%);
+	/* 右寄せ気味に（端で切れにくいよう center 寄りは残す） */
+	transform: translateX(-42%);
 	z-index: 40;
 	width: min(42rem, calc(100% - 0.75rem));
 	max-height: min(calc(100vh - 6.5rem), 100%);

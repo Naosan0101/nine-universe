@@ -30,6 +30,8 @@ public record CpuBattleStateDto(
 		String lastMessage,
 		boolean gameOver,
 		boolean humanWon,
+		// 現在の視点のプレイヤーが手番で、相手以上のファイターを出せない（配置不可）
+		boolean noLegalDeploy,
 		PendingEffectDto pendingEffect,
 		PendingChoiceDto pendingChoice,
 		List<String> eventLog,

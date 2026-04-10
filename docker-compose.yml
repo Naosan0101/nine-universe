@@ -11,5 +11,17 @@ services:
     volumes:
       - stone-chronicle-pgdata:/var/lib/postgresql/data
 
+  app:
+    build: .
+    container_name: stone-chronicle-app
+    depends_on:
+      - postgres
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/springdb
+      SPRING_DATASOURCE_USERNAME: springuser
+      SPRING_DATASOURCE_PASSWORD: "p@ss"
+    ports:
+      - "8080:8080"
+
 volumes:
   stone-chronicle-pgdata:

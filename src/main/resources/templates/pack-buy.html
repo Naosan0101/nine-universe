@@ -12,34 +12,45 @@
 	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
 </header>
 
-<p>所持ジェム: <strong th:text="${gems}">0</strong></p>
-<p class="error" th:if="${error}" th:text="${error}"></p>
+<div class="container">
+	<section class="panel pack-buy-head">
+		<div class="pack-buy-head__row">
+			<div class="pack-buy-head__left">
+				<p class="pack-buy-head__label">所持ジェム</p>
+				<p class="pack-buy-head__value"><strong th:text="${gems}">0</strong></p>
+			</div>
+			<div class="pack-buy-head__right">
+				<p class="muted pack-buy-head__hint">パックを選択すると下に購入バーが表示されます</p>
+			</div>
+		</div>
+		<p class="error pack-buy-head__error" th:if="${error}" th:text="${error}"></p>
+	</section>
 
-<section class="pack-buy">
-	<div class="pack-buy__grid">
-		<div class="pack-buy__cell">
-			<button type="button" class="pack-buy__item" data-pack-type="STANDARD" data-pack-name="スタンダードパック" data-pack-cost="3">
-				<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${standardPackImage}?v=${packArtCacheKey}|" alt="スタンダードパック"/>
-				<span class="pack-buy__label">スタンダードパック（3ジェム）</span>
-			</button>
-			<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-standard">詳細を見る</button>
+	<section class="pack-buy">
+		<div class="pack-buy__grid">
+			<div class="pack-buy__cell">
+				<button type="button" class="pack-buy__item" data-pack-type="STANDARD" data-pack-name="スタンダードパック" data-pack-cost="3">
+					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${standardPackImage}?v=${packArtCacheKey}|" alt="スタンダードパック"/>
+					<span class="pack-buy__label">スタンダードパック（3ジェム）</span>
+				</button>
+				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-standard">詳細を見る</button>
+			</div>
+			<div class="pack-buy__cell">
+				<button type="button" class="pack-buy__item" data-pack-type="WINDY_HILL" data-pack-name="風吹く丘パック" data-pack-cost="4">
+					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${windyHillPackImage}?v=${packArtCacheKey}|" alt="風吹く丘パック"/>
+					<span class="pack-buy__label">風吹く丘パック（4ジェム）</span>
+				</button>
+				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-windy-hill">詳細を見る</button>
+			</div>
+			<div class="pack-buy__cell">
+				<button type="button" class="pack-buy__item" data-pack-type="EVIL_THREAT" data-pack-name="邪悪なる脅威パック" data-pack-cost="5">
+					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${evilThreatPackImage}?v=${packArtCacheKey}|" alt="邪悪なる脅威パック"/>
+					<span class="pack-buy__label">邪悪なる脅威パック（5ジェム）</span>
+				</button>
+				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-evil-threat">詳細を見る</button>
+			</div>
 		</div>
-		<div class="pack-buy__cell">
-			<button type="button" class="pack-buy__item" data-pack-type="WINDY_HILL" data-pack-name="風吹く丘パック" data-pack-cost="4">
-				<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${windyHillPackImage}?v=${packArtCacheKey}|" alt="風吹く丘パック"/>
-				<span class="pack-buy__label">風吹く丘パック（4ジェム）</span>
-			</button>
-			<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-windy-hill">詳細を見る</button>
-		</div>
-		<div class="pack-buy__cell">
-			<button type="button" class="pack-buy__item" data-pack-type="EVIL_THREAT" data-pack-name="邪悪なる脅威パック" data-pack-cost="5">
-				<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${evilThreatPackImage}?v=${packArtCacheKey}|" alt="邪悪なる脅威パック"/>
-				<span class="pack-buy__label">邪悪なる脅威パック（5ジェム）</span>
-			</button>
-			<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-evil-threat">詳細を見る</button>
-		</div>
-	</div>
-</section>
+	</section>
 
 <section id="pack-buy-confirm-bar" class="pack-buy-confirm" hidden>
 	<div class="pack-buy-confirm__inner">
@@ -54,6 +65,7 @@
 		</div>
 	</div>
 </section>
+ </div>
 
 <!-- スタンダード -->
 <div id="pack-detail-standard" class="pack-detail-modal" hidden>

@@ -15,61 +15,63 @@
 	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
 </header>
 
-<section class="panel">
-	<div class="lib-page-toolbar">
-		<p class="lib-page-toolbar__title">全カードを表示しています。検索（カード名・効果）・絞り込みで表示を限定できます。</p>
-		<div class="lib-page-toolbar__controls">
-			<label class="lib-page-field">検索
-				<input type="search" id="library-search" class="lib-page-input" autocomplete="off" placeholder="カード名・効果の一部"/>
-			</label>
-			<label class="lib-page-field">種族
-				<select id="library-filter-attr" class="lib-page-select">
-					<option value="" selected>すべて</option>
-					<option value="HUMAN">人間</option>
-					<option value="ELF">エルフ</option>
-					<option value="UNDEAD">アンデッド</option>
-					<option value="DRAGON">ドラゴン</option>
-				</select>
-			</label>
-			<label class="lib-page-field">コスト
-				<select id="library-filter-cost" class="lib-page-select">
-					<option value="" selected>すべて</option>
-					<option value="0">0</option>
-					<option value="1">1</option>
-					<option value="2">2</option>
-					<option value="3">3</option>
-				</select>
-			</label>
-			<label class="lib-page-field">強さ
-				<select id="library-filter-power" class="lib-page-select">
-					<option value="" selected>すべて</option>
-					<option value="0">0</option>
-					<option value="1">1</option>
-					<option value="2">2</option>
-					<option value="3">3</option>
-					<option value="4">4</option>
-					<option value="5">5</option>
-					<option value="6">6</option>
-				</select>
-			</label>
-			<label class="lib-page-field">★
-				<select id="library-filter-rarity" class="lib-page-select">
-					<option value="" selected>すべて</option>
-					<option value="Reg">レジェンダリー</option>
-					<option value="Ep">エピック</option>
-					<option value="R">レア</option>
-					<option value="C">コモン</option>
-				</select>
-			</label>
+<div class="container">
+	<section class="panel">
+		<div class="lib-page-toolbar">
+			<p class="lib-page-toolbar__title">全カードを表示しています。検索（カード名・効果）・絞り込みで表示を限定できます。</p>
+			<div class="lib-page-toolbar__controls">
+				<label class="lib-page-field">検索
+					<input type="search" id="library-search" class="lib-page-input" autocomplete="off" placeholder="カード名・効果の一部"/>
+				</label>
+				<label class="lib-page-field">種族
+					<select id="library-filter-attr" class="lib-page-select">
+						<option value="" selected>すべて</option>
+						<option value="HUMAN">人間</option>
+						<option value="ELF">エルフ</option>
+						<option value="UNDEAD">アンデッド</option>
+						<option value="DRAGON">ドラゴン</option>
+					</select>
+				</label>
+				<label class="lib-page-field">コスト
+					<select id="library-filter-cost" class="lib-page-select">
+						<option value="" selected>すべて</option>
+						<option value="0">0</option>
+						<option value="1">1</option>
+						<option value="2">2</option>
+						<option value="3">3</option>
+					</select>
+				</label>
+				<label class="lib-page-field">強さ
+					<select id="library-filter-power" class="lib-page-select">
+						<option value="" selected>すべて</option>
+						<option value="0">0</option>
+						<option value="1">1</option>
+						<option value="2">2</option>
+						<option value="3">3</option>
+						<option value="4">4</option>
+						<option value="5">5</option>
+						<option value="6">6</option>
+					</select>
+				</label>
+				<label class="lib-page-field">★
+					<select id="library-filter-rarity" class="lib-page-select">
+						<option value="" selected>すべて</option>
+						<option value="Reg">レジェンダリー</option>
+						<option value="Ep">エピック</option>
+						<option value="R">レア</option>
+						<option value="C">コモン</option>
+					</select>
+				</label>
+			</div>
 		</div>
-	</div>
-	<p id="library-empty-msg" class="muted" hidden>検索に一致するカードがありません。</p>
-	<div id="library-all-grid" class="library-grid">
-		<th:block th:each="c : ${cards}">
-			<div th:replace="~{fragments/library-card :: cell(c=${c}, cp=${contextPath})}"></div>
-		</th:block>
-	</div>
-</section>
+		<p id="library-empty-msg" class="muted" hidden>検索に一致するカードがありません。</p>
+		<div id="library-all-grid" class="library-grid">
+			<th:block th:each="c : ${cards}">
+				<div th:replace="~{fragments/library-card :: cell(c=${c}, cp=${contextPath})}"></div>
+			</th:block>
+		</div>
+	</section>
+</div>
 
 <div id="library-tooltip" class="deck-tooltip library-page-tooltip" hidden role="tooltip">
 	<div class="deck-tooltip__inner">
@@ -108,6 +110,18 @@
 				</div>
 				<div id="lib-modal-spark" class="card-spark" hidden aria-hidden="true"></div>
 			</div>
+		</div>
+		<div class="library-detail-modal__body">
+			<p class="library-detail-modal__name-label">カード</p>
+			<h2 class="library-detail-modal__title" id="lib-modal-side-title">—</h2>
+			<dl class="library-detail-modal__stats">
+				<dt>種族：</dt><dd id="lib-modal-side-attr">—</dd>
+				<dt>コスト：</dt><dd id="lib-modal-side-cost">—</dd>
+				<dt>強さ：</dt><dd id="lib-modal-side-power">—</dd>
+				<dt>レアリティ：</dt><dd id="lib-modal-side-rarity">—</dd>
+			</dl>
+			<p class="library-detail-modal__ability-label">効果</p>
+			<p class="library-detail-modal__detail" id="lib-modal-side-ability">—</p>
 		</div>
 	</div>
 </div>
