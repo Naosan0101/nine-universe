@@ -333,6 +333,7 @@ public class PvpBattleService {
 				b.lastMessage(),
 				b.gameOver(),
 				!b.humanWon(),
+				b.noLegalDeploy(),
 				npe,
 				npc,
 				b.eventLog(),
@@ -348,7 +349,7 @@ public class PvpBattleService {
 				b.cpuDeck(), b.cpuHand(), b.cpuRest(), b.cpuBattle(),
 				b.humanBattlePower(), b.cpuBattlePower(),
 				b.humanNextDeployBonus(), b.humanNextElfOnlyBonus(), b.humanNextDeployCostBonusTimes(),
-				b.lastMessage(), b.gameOver(), b.humanWon(),
+				b.lastMessage(), b.gameOver(), b.humanWon(), b.noLegalDeploy(),
 				b.pendingEffect(), b.pendingChoice(), b.eventLog(), b.defs());
 	}
 
@@ -370,7 +371,7 @@ public class PvpBattleService {
 				b.cpuDeck(), b.cpuHand(), b.cpuRest(), b.cpuBattle(),
 				b.humanBattlePower(), b.cpuBattlePower(),
 				b.humanNextDeployBonus(), b.humanNextElfOnlyBonus(), b.humanNextDeployCostBonusTimes(),
-				b.lastMessage(), b.gameOver(), b.humanWon(),
+				b.lastMessage(), b.gameOver(), b.humanWon(), b.noLegalDeploy(),
 				b.pendingEffect(), npc, b.eventLog(), b.defs());
 	}
 }

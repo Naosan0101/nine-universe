@@ -1,0 +1,15 @@
+{
+  "name": "stone-chronicle-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron shell for Stone Chronicle (loads local Spring or production URL)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "start:prod": "cross-env STONE_CHRONICLE_URL=https://nine-universe.jp electron ."
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^34.0.0"
+  }
+}

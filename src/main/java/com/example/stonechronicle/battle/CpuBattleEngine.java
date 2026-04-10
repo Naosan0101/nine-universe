@@ -477,6 +477,16 @@ public class CpuBattleEngine {
 							st.setHumanKoryuBonus(elves);
 							st.addLog("古竜: 次の相手ターン終了まで +" + elves);
 						}
+					} else if ("NOROWARETA".equals(pc.getAbilityDeployCode())) {
+						// 呪われた亡者: ストーン1消費で「レストからランダム1枚→デッキへ戻してシャッフル」
+						if (!st.getHumanRest().isEmpty()) {
+							Random rr = rnd != null ? rnd : new Random();
+							int r = rr.nextInt(st.getHumanRest().size());
+							BattleCard c = st.getHumanRest().remove(r);
+							st.getHumanDeck().add(0, c);
+							Collections.shuffle(st.getHumanDeck(), rr);
+							st.addLog("呪われた亡者: レストから1枚をデッキへ戻しシャッフル");
+						}
 					}
 				} else {
 					st.addLog("効果を使用しなかった");
@@ -684,6 +694,15 @@ public class CpuBattleEngine {
 							st.setCpuKoryuBonus(elves);
 							st.addLog("古竜: 次の相手ターン終了まで +" + elves);
 						}
+					} else if ("NOROWARETA".equals(pc.getAbilityDeployCode())) {
+						if (!st.getCpuRest().isEmpty()) {
+							Random rr = rnd != null ? rnd : new Random();
+							int r = rr.nextInt(st.getCpuRest().size());
+							BattleCard c = st.getCpuRest().remove(r);
+							st.getCpuDeck().add(0, c);
+							Collections.shuffle(st.getCpuDeck(), rr);
+							st.addLog("呪われた亡者: レストから1枚をデッキへ戻しシャッフル");
+						}
 					}
 				} else {
 					st.addLog("効果を使用しなかった");
@@ -830,7 +849,7 @@ public class CpuBattleEngine {
 		return ns;
 	}
 
-	public void humanTurn(CpuBattleState st, int levelUpRest, int levelUpStones, boolean deploy, int deployHandIndex,
+	public void humanTurn(CpuBattleState st, int levelUpRest, List<String> levelUpDiscardInstanceIds, int levelUpStones, boolean deploy, int deployHandIndex,
 			Map<Short, CardDefinition> defs) {
 		if (st.isGameOver() || !st.isHumansTurn()) {
 			return;
@@ -851,9 +870,29 @@ public class CpuBattleEngine {
 			return;
 		}
 
+		List<String> discIds = levelUpDiscardInstanceIds != null ? levelUpDiscardInstanceIds : List.of();
+		long luDistinct = discIds.stream().distinct().count();
+		if (luDistinct != discIds.size()) {
+			st.setLastMessage("捨てるカード指定が重複しています");
+			return;
+		}
+		if (levelUpRest > 0) {
+			if (discIds.size() != levelUpRest) {
+				st.setLastMessage("レベルアップで捨てるカードを指定してください");
+				return;
+			}
+		} else if (!discIds.isEmpty()) {
+			st.setLastMessage("レベルアップ指定が不正です");
+			return;
+		}
+
 		List<BattleCard> simHand = new ArrayList<>(st.getHumanHand());
-		for (int i = 0; i < levelUpRest; i++) {
-			simHand.remove(simHand.size() - 1);
+		for (String did : discIds) {
+			BattleCard rm = removeByInstanceId(simHand, did);
+			if (rm == null) {
+				st.setLastMessage("捨てるカードが手札にありません");
+				return;
+			}
 		}
 		int deployBonus = 0;
 		if (deploy) {
@@ -885,8 +924,12 @@ public class CpuBattleEngine {
 			if (levelUpStones > 0) b.append("ストーン").append(levelUpStones).append("個");
 			st.addLog(b.toString());
 		}
-		for (int i = 0; i < levelUpRest; i++) {
-			BattleCard c = st.getHumanHand().remove(st.getHumanHand().size() - 1);
+		for (String did : discIds) {
+			BattleCard c = removeByInstanceId(st.getHumanHand(), did);
+			if (c == null) {
+				st.setLastMessage("捨てるカードが手札にありません");
+				return;
+			}
 			st.getHumanRest().add(c);
 		}
 
@@ -941,7 +984,7 @@ public class CpuBattleEngine {
 
 	/**
 	 * クリックUI向け: 手札の instanceId で配置カード・支払いカードを指定し、配置コストは「カード/ストーン/分割」で支払える。
-	 * levelUpRest は右端からレストへ捨てる枚数、levelUpStones は強化回数（1回=+2、ストーン1消費）。
+	 * levelUpRest はレストへ捨てる枚数（捨てるカードは levelUpDiscardInstanceIds で指定）、levelUpStones は強化回数（1回=+2、ストーン1消費）。
 	 */
 	public void humanTurnInteractive(CpuBattleState st, int levelUpRest, List<String> levelUpDiscardInstanceIds, int levelUpStones,
 			String deployInstanceId, int payCostStones, List<String> payCostCardInstanceIds,
@@ -975,31 +1018,29 @@ public class CpuBattleEngine {
 			return;
 		}
 
-		// レベルアップで捨てるカード指定（任意指定。未指定の場合のみ旧挙動＝右端）
 		List<String> discIds = levelUpDiscardInstanceIds != null ? levelUpDiscardInstanceIds : List.of();
 		long distinct = discIds.stream().distinct().count();
 		if (distinct != discIds.size()) {
 			st.setLastMessage("捨てるカード指定が重複しています");
 			return;
 		}
-		if (!discIds.isEmpty() && discIds.size() != levelUpRest) {
-			st.setLastMessage("捨てるカードの枚数が一致しません");
+		if (levelUpRest > 0) {
+			if (discIds.size() != levelUpRest) {
+				st.setLastMessage("レベルアップで捨てるカードを指定してください");
+				return;
+			}
+		} else if (!discIds.isEmpty()) {
+			st.setLastMessage("レベルアップ指定が不正です");
 			return;
 		}
 
 		// シミュレーション（レベルアップ後の手札）
 		List<BattleCard> simHand = new ArrayList<>(st.getHumanHand());
-		if (!discIds.isEmpty()) {
-			for (String did : discIds) {
-				BattleCard c = removeByInstanceId(simHand, did);
-				if (c == null) {
-					st.setLastMessage("捨てるカードが手札にありません");
-					return;
-				}
-			}
-		} else {
-			for (int i = 0; i < levelUpRest; i++) {
-				simHand.remove(simHand.size() - 1);
+		for (String did : discIds) {
+			BattleCard c = removeByInstanceId(simHand, did);
+			if (c == null) {
+				st.setLastMessage("捨てるカードが手札にありません");
+				return;
 			}
 		}
 
@@ -1087,20 +1128,13 @@ public class CpuBattleEngine {
 		// ここから確定適用
 		st.setHumanStones(st.getHumanStones() - levelUpStones);
 		List<BattleCard> levelUpCards = new ArrayList<>();
-		if (!discIds.isEmpty()) {
-			for (String did : discIds) {
-				BattleCard c = removeByInstanceId(st.getHumanHand(), did);
-				if (c == null) {
-					st.setLastMessage("捨てるカードが手札にありません");
-					return;
-				}
-				levelUpCards.add(c);
+		for (String did : discIds) {
+			BattleCard c = removeByInstanceId(st.getHumanHand(), did);
+			if (c == null) {
+				st.setLastMessage("捨てるカードが手札にありません");
+				return;
 			}
-		} else {
-			for (int i = 0; i < levelUpRest; i++) {
-				BattleCard c = st.getHumanHand().remove(st.getHumanHand().size() - 1);
-				levelUpCards.add(c);
-			}
+			levelUpCards.add(c);
 		}
 
 		if (!levelUpCards.isEmpty() || levelUpStones > 0) {
@@ -1209,23 +1243,22 @@ public class CpuBattleEngine {
 			st.setLastMessage("捨てるカード指定が重複しています");
 			return;
 		}
-		if (!discIds.isEmpty() && discIds.size() != levelUpRest) {
-			st.setLastMessage("捨てるカードの枚数が一致しません");
+		if (levelUpRest > 0) {
+			if (discIds.size() != levelUpRest) {
+				st.setLastMessage("レベルアップで捨てるカードを指定してください");
+				return;
+			}
+		} else if (!discIds.isEmpty()) {
+			st.setLastMessage("レベルアップ指定が不正です");
 			return;
 		}
 
 		List<BattleCard> simHand = new ArrayList<>(st.getCpuHand());
-		if (!discIds.isEmpty()) {
-			for (String did : discIds) {
-				BattleCard c = removeByInstanceId(simHand, did);
-				if (c == null) {
-					st.setLastMessage("捨てるカードが手札にありません");
-					return;
-				}
-			}
-		} else {
-			for (int i = 0; i < levelUpRest; i++) {
-				simHand.remove(simHand.size() - 1);
+		for (String did : discIds) {
+			BattleCard c = removeByInstanceId(simHand, did);
+			if (c == null) {
+				st.setLastMessage("捨てるカードが手札にありません");
+				return;
 			}
 		}
 
@@ -1305,20 +1338,13 @@ public class CpuBattleEngine {
 
 		st.setCpuStones(st.getCpuStones() - levelUpStones);
 		List<BattleCard> levelUpCards = new ArrayList<>();
-		if (!discIds.isEmpty()) {
-			for (String did : discIds) {
-				BattleCard c = removeByInstanceId(st.getCpuHand(), did);
-				if (c == null) {
-					st.setLastMessage("捨てるカードが手札にありません");
-					return;
-				}
-				levelUpCards.add(c);
+		for (String did : discIds) {
+			BattleCard c = removeByInstanceId(st.getCpuHand(), did);
+			if (c == null) {
+				st.setLastMessage("捨てるカードが手札にありません");
+				return;
 			}
-		} else {
-			for (int i = 0; i < levelUpRest; i++) {
-				BattleCard c = st.getCpuHand().remove(st.getCpuHand().size() - 1);
-				levelUpCards.add(c);
-			}
+			levelUpCards.add(c);
 		}
 
 		if (!levelUpCards.isEmpty() || levelUpStones > 0) {
@@ -1409,7 +1435,7 @@ public class CpuBattleEngine {
 	}
 
 	/**
-	 * CPU の配置コスト支払い: ストーンをできるだけ使い、足りない分を手札から払う（右端から）。
+	 * CPU の配置コスト支払い: ストーンをできるだけ使い、足りない分を手札から払う（CPU の自動処理）。
 	 * @return カードで払う枚数。支払不可のときは -1
 	 */
 	private int cpuDeployPayCardCount(int cost, int stonesAvailable, int handSizeIncludingMain) {
@@ -2072,12 +2098,15 @@ public class CpuBattleEngine {
 				}
 			}
 			case "NOROWARETA" -> {
-				if (!st.getHumanRest().isEmpty()) {
-					int r = new Random().nextInt(st.getHumanRest().size());
-					BattleCard c = st.getHumanRest().remove(r);
-					st.getHumanDeck().add(0, c);
-					Collections.shuffle(st.getHumanDeck(), new Random());
-					st.addLog("呪われた亡者: レストから1枚をデッキへ戻しシャッフル");
+				if (st.getHumanStones() >= 1 && !st.getHumanRest().isEmpty()) {
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.CONFIRM_OPTIONAL_STONE,
+							"呪われた亡者",
+							true,
+							"NOROWARETA",
+							1,
+							List.of()
+					));
 				}
 			}
 			case "FUWAFUWA" -> {
@@ -2147,7 +2176,7 @@ public class CpuBattleEngine {
 							opts
 					));
 				}
-				// CPU側は自動（簡易: 右端）
+				// CPU側は自動で1枚捨てる
 				discardRightmost(st.getCpuHand(), st.getCpuRest());
 				st.addLog("剣闘士: お互い手札を1枚レストへ");
 			}
@@ -2273,12 +2302,16 @@ public class CpuBattleEngine {
 				}
 			}
 			case "NOROWARETA" -> {
-				if (!st.getCpuRest().isEmpty()) {
-					int r = new Random().nextInt(st.getCpuRest().size());
-					BattleCard c = st.getCpuRest().remove(r);
-					st.getCpuDeck().add(0, c);
-					Collections.shuffle(st.getCpuDeck(), new Random());
-					st.addLog("呪われた亡者: レストから1枚をデッキへ戻しシャッフル");
+				if (st.getCpuStones() >= 1 && !st.getCpuRest().isEmpty()) {
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.CONFIRM_OPTIONAL_STONE,
+							"呪われた亡者",
+							false,
+							"NOROWARETA",
+							1,
+							List.of(),
+							true
+					));
 				}
 			}
 			case "FUWAFUWA" -> {
@@ -2351,6 +2384,7 @@ public class CpuBattleEngine {
 							opts
 					));
 				}
+				// CPU側は自動で1枚捨てる
 				discardRightmost(st.getCpuHand(), st.getCpuRest());
 				st.addLog("剣闘士: お互い手札を1枚レストへ");
 			}
@@ -2440,6 +2474,7 @@ public class CpuBattleEngine {
 							opts
 					));
 				}
+				// CPU側は自動で1枚捨てる
 				discardRightmost(st.getCpuHand(), st.getCpuRest());
 			}
 			case "KARYUDO" -> {
@@ -2506,11 +2541,13 @@ public class CpuBattleEngine {
 				}
 			}
 			case "NOROWARETA" -> {
-				if (!st.getCpuRest().isEmpty()) {
+				if (st.getCpuStones() >= 1 && !st.getCpuRest().isEmpty()) {
+					st.setCpuStones(st.getCpuStones() - 1);
 					int r = rnd.nextInt(st.getCpuRest().size());
 					BattleCard c = st.getCpuRest().remove(r);
 					st.getCpuDeck().add(0, c);
 					Collections.shuffle(st.getCpuDeck(), rnd);
+					st.addLog("CPU呪われた亡者: ストーン1使用。レストから1枚をデッキへ戻しシャッフル");
 				}
 			}
 			case "FUWAFUWA" -> {
@@ -2594,6 +2631,7 @@ public class CpuBattleEngine {
 		return n;
 	}
 
+	/** CPU の簡易処理用（プレイヤーのレベルアップ捨てルールとは無関係）。 */
 	private void discardRightmost(List<BattleCard> hand, List<BattleCard> rest) {
 		if (!hand.isEmpty()) {
 			rest.add(hand.remove(hand.size() - 1));
@@ -2622,7 +2660,10 @@ public class CpuBattleEngine {
 		return out;
 	}
 
-	private boolean canMakeLegalDeploy(CpuBattleState st, boolean forHuman, Map<Short, CardDefinition> defs) {
+	/**
+	 * 手番側が、相手バトルゾーンの強さ以上になる配置（レベルアップ・コスト支払い・配置効果のシミュレーション込み）が存在するか。
+	 */
+	public boolean canMakeLegalDeploy(CpuBattleState st, boolean forHuman, Map<Short, CardDefinition> defs) {
 		ZoneFighter oppZone = forHuman ? st.getCpuBattle() : st.getHumanBattle();
 		if (oppZone == null || oppZone.getMain() == null) {
 			return true; // 相手バトルゾーンが空なら、そもそも「出せないと負け」の条件にならない
@@ -2632,73 +2673,102 @@ public class CpuBattleEngine {
 		List<BattleCard> hand = forHuman ? st.getHumanHand() : st.getCpuHand();
 		int stones = forHuman ? st.getHumanStones() : st.getCpuStones();
 
-		// 手札最大4枚想定なので全探索で十分
-		for (int luRest = 0; luRest <= hand.size(); luRest++) {
-			for (int luSt = 0; luSt <= stones; luSt++) {
-				CpuBattleState sim = copyState(st);
-				if (forHuman) {
-					sim.setHumanStones(sim.getHumanStones() - luSt);
-					for (int i = 0; i < luRest; i++) discardRightmost(sim.getHumanHand(), sim.getHumanRest());
-				} else {
-					sim.setCpuStones(sim.getCpuStones() - luSt);
-					for (int i = 0; i < luRest; i++) discardRightmost(sim.getCpuHand(), sim.getCpuRest());
-				}
+		// CPU先攻の初手はレベルアップ不可（{@link #cpuTurn} と同じ）
+		int maxLuRest = hand.size();
+		int maxLuSt = stones;
+		if (!forHuman) {
+			boolean cpuIsFirstPlayer = !st.isHumanGoesFirst();
+			boolean cpuIsFirstTurnAsFirstPlayer = cpuIsFirstPlayer && st.getCpuTurnStarts() == 1;
+			if (cpuIsFirstTurnAsFirstPlayer) {
+				maxLuRest = 0;
+				maxLuSt = 0;
+			}
+		}
 
-				List<BattleCard> simHand = forHuman ? sim.getHumanHand() : sim.getCpuHand();
-				int simStones = forHuman ? sim.getHumanStones() : sim.getCpuStones();
-
-				for (BattleCard main : new ArrayList<>(simHand)) {
-					CardDefinition mainDef = defs.get(main.getCardId());
-					if (mainDef == null) continue;
-					int cost = mainDef.getCost();
-
-					for (int payStone = 0; payStone <= Math.min(cost, simStones); payStone++) {
-						int needCards = cost - payStone;
-						if (simHand.size() - 1 < needCards) continue;
-
-						List<BattleCard> others = new ArrayList<>();
-						for (BattleCard c : simHand) {
-							if (!c.getInstanceId().equals(main.getInstanceId())) others.add(c);
-						}
-						if (others.size() < needCards) continue;
-
-						int maxMask = 1 << others.size();
-						for (int mask = 0; mask < maxMask; mask++) {
-							if (Integer.bitCount(mask) != needCards) continue;
-
-							CpuBattleState sim2 = copyState(sim);
-							List<BattleCard> sim2Hand = forHuman ? sim2.getHumanHand() : sim2.getCpuHand();
-
-							BattleCard pickedMain = removeByInstanceId(sim2Hand, main.getInstanceId());
-							if (pickedMain == null) continue;
-
-							if (forHuman) sim2.setHumanStones(sim2.getHumanStones() - payStone);
-							else sim2.setCpuStones(sim2.getCpuStones() - payStone);
-
-							List<BattleCard> paid = new ArrayList<>();
-							for (int i = 0; i < others.size(); i++) {
-								if (((mask >> i) & 1) == 1) {
-									BattleCard p = removeByInstanceId(sim2Hand, others.get(i).getInstanceId());
-									if (p != null) paid.add(p);
-								}
+		// 手札最大4枚想定なので全探索で十分。
+		// レベルアップ捨ては任意のカードの組み合わせを考慮する（手札の並びに依存しない）。
+		for (int luRest = 0; luRest <= maxLuRest; luRest++) {
+			List<List<String>> discardPlans = cpuDiscardPlans(hand, luRest);
+			for (int luSt = 0; luSt <= maxLuSt; luSt++) {
+				for (List<String> discIds : discardPlans) {
+					CpuBattleState sim = copyState(st);
+					if (forHuman) {
+						sim.setHumanStones(sim.getHumanStones() - luSt);
+						for (String did : discIds) {
+							BattleCard dc = removeByInstanceId(sim.getHumanHand(), did);
+							if (dc != null) {
+								sim.getHumanRest().add(dc);
 							}
-							if (paid.size() != needCards) continue;
+						}
+					} else {
+						sim.setCpuStones(sim.getCpuStones() - luSt);
+						for (String did : discIds) {
+							BattleCard dc = removeByInstanceId(sim.getCpuHand(), did);
+							if (dc != null) {
+								sim.getCpuRest().add(dc);
+							}
+						}
+					}
 
-							int deployBonus = (luRest * 2) + (luSt * 2);
-							ZoneFighter z = new ZoneFighter();
-							z.setMain(pickedMain);
-							z.setCostUnder(paid);
-							z.setTemporaryPowerBonus(deployBonus);
-							if (forHuman) sim2.setHumanBattle(z);
-							else sim2.setCpuBattle(z);
+					List<BattleCard> simHand = forHuman ? sim.getHumanHand() : sim.getCpuHand();
+					int simStones = forHuman ? sim.getHumanStones() : sim.getCpuStones();
+					if (simHand.size() != hand.size() - luRest) {
+						continue;
+					}
 
-							// 配置能力反映
-							if (forHuman) applyDeployHuman(sim2, mainDef, defs);
-							else applyDeployCpu(sim2, mainDef, defs, new Random(31_337L));
+					for (BattleCard main : new ArrayList<>(simHand)) {
+						CardDefinition mainDef = defs.get(main.getCardId());
+						if (mainDef == null) continue;
+						int cost = mainDef.getCost();
 
-							int eff = effectiveBattlePower(forHuman ? sim2.getHumanBattle() : sim2.getCpuBattle(), forHuman, sim2, defs);
-							if (eff >= oppEff) {
-								return true;
+						for (int payStone = 0; payStone <= Math.min(cost, simStones); payStone++) {
+							int needCards = cost - payStone;
+							if (simHand.size() - 1 < needCards) continue;
+
+							List<BattleCard> others = new ArrayList<>();
+							for (BattleCard c : simHand) {
+								if (!c.getInstanceId().equals(main.getInstanceId())) others.add(c);
+							}
+							if (others.size() < needCards) continue;
+
+							int maxMask = 1 << others.size();
+							for (int mask = 0; mask < maxMask; mask++) {
+								if (Integer.bitCount(mask) != needCards) continue;
+
+								CpuBattleState sim2 = copyState(sim);
+								List<BattleCard> sim2Hand = forHuman ? sim2.getHumanHand() : sim2.getCpuHand();
+
+								BattleCard pickedMain = removeByInstanceId(sim2Hand, main.getInstanceId());
+								if (pickedMain == null) continue;
+
+								if (forHuman) sim2.setHumanStones(sim2.getHumanStones() - payStone);
+								else sim2.setCpuStones(sim2.getCpuStones() - payStone);
+
+								List<BattleCard> paid = new ArrayList<>();
+								for (int i = 0; i < others.size(); i++) {
+									if (((mask >> i) & 1) == 1) {
+										BattleCard p = removeByInstanceId(sim2Hand, others.get(i).getInstanceId());
+										if (p != null) paid.add(p);
+									}
+								}
+								if (paid.size() != needCards) continue;
+
+								int deployBonus = (luRest * 2) + (luSt * 2);
+								ZoneFighter z = new ZoneFighter();
+								z.setMain(pickedMain);
+								z.setCostUnder(paid);
+								z.setTemporaryPowerBonus(deployBonus);
+								if (forHuman) sim2.setHumanBattle(z);
+								else sim2.setCpuBattle(z);
+
+								// 配置能力反映
+								if (forHuman) applyDeployHuman(sim2, mainDef, defs);
+								else applyDeployCpu(sim2, mainDef, defs, new Random(31_337L));
+
+								int eff = effectiveBattlePower(forHuman ? sim2.getHumanBattle() : sim2.getCpuBattle(), forHuman, sim2, defs);
+								if (eff >= oppEff) {
+									return true;
+								}
 							}
 						}
 					}

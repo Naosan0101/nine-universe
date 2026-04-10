@@ -12,27 +12,35 @@
 	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
 </header>
 
-<p class="error" th:if="${error}" th:text="${error}"></p>
+<div class="container">
+	<p class="error" th:if="${error}" th:text="${error}"></p>
 
-<p th:if="${decks == null || decks.isEmpty()}" class="muted">
-	デッキがありません。先にデッキを8枚作成してください。
-</p>
+	<section class="panel measure">
+		<p class="muted" style="margin:0;">
+			デッキを選んでCPUと対戦します。
+		</p>
+	</section>
 
-<form th:if="${decks != null && !decks.isEmpty()}" th:action="@{/battle/cpu/start}" method="post" class="stack panel" style="max-width:28rem">
-	<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-	<label>デッキ
-		<select name="deckId" required>
-			<option th:each="d : ${decks}" th:value="${d.id}" th:text="${d.name}">デッキ</option>
-		</select>
-	</label>
-	<label>CPUレベル
-		<select name="level" required>
-			<option value="1">レベル1（やさしい）</option>
-			<option value="2">レベル2</option>
-			<option value="3">レベル3（強い）</option>
-		</select>
-	</label>
-	<button type="submit" class="btn btn--primary">バトル開始</button>
-</form>
+	<p th:if="${decks == null || decks.isEmpty()}" class="muted">
+		デッキがありません。先にデッキを8枚作成してください。
+	</p>
+
+	<form th:if="${decks != null && !decks.isEmpty()}" th:action="@{/battle/cpu/start}" method="post" class="stack panel panel--narrow">
+		<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+		<label>デッキ
+			<select name="deckId" required>
+				<option th:each="d : ${decks}" th:value="${d.id}" th:text="${d.name}">デッキ</option>
+			</select>
+		</label>
+		<label>CPUレベル
+			<select name="level" required>
+				<option value="1">レベル1（やさしい）</option>
+				<option value="2">レベル2</option>
+				<option value="3">レベル3（強い）</option>
+			</select>
+		</label>
+		<button type="submit" class="btn btn--primary">バトル開始</button>
+	</form>
+</div>
 </body>
 </html>

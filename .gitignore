@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Node (Electron desktop shell) ###
+electron/node_modules/

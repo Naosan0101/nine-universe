@@ -50,7 +50,10 @@
 		_resultShown: false,
 		_resultModalEl: null,
 		_pvpPollTimer: null,
-		_turnTimer: null
+		_turnTimer: null,
+		_lastTurnNotifyKey: null,
+		_turnPopupTimer: null,
+		_effectPopupEl: null
 	};
 
 	const turnTimer = {
@@ -91,6 +94,180 @@
 		window.setTimeout(function () {
 			t.hidden = true;
 		}, 2600);
+	}
+
+	/** ターン表示をバトル領域に載せ、ビューポート固定（スクロール追従）にしない */
+	function ensureBattleTurnPopupHost() {
+		if (app.dataset.turnPopupHostReady === '1') {
+			const h = document.getElementById('battle-turn-popup-host');
+			return h || app.parentElement;
+		}
+		const parent = app.parentNode;
+		if (!parent) return app;
+		const host = document.createElement('div');
+		host.id = 'battle-turn-popup-host';
+		host.className = 'battle-turn-popup-host';
+		parent.insertBefore(host, app);
+		host.appendChild(app);
+		app.dataset.turnPopupHostReady = '1';
+		return host;
+	}
+
+	function showTurnChangePopup(isHumanTurn) {
+		const text = isHumanTurn ? 'あなたのターン' : '相手のターン';
+		const host = ensureBattleTurnPopupHost();
+		let el = document.getElementById('battle-turn-popup');
+		if (!el) {
+			el = document.createElement('div');
+			el.id = 'battle-turn-popup';
+			el.setAttribute('role', 'status');
+			el.setAttribute('aria-live', 'polite');
+		}
+		if (el.parentNode !== host) {
+			host.appendChild(el);
+		}
+		if (ui._turnPopupTimer != null) {
+			clearTimeout(ui._turnPopupTimer);
+			ui._turnPopupTimer = null;
+		}
+		el.className =
+			'battle-turn-popup' +
+			(isHumanTurn ? ' battle-turn-popup--yours' : ' battle-turn-popup--opp');
+		el.textContent = text;
+		el.hidden = false;
+		el.classList.remove('is-visible');
+		void el.offsetWidth;
+		el.classList.add('is-visible');
+		ui._turnPopupTimer = window.setTimeout(function () {
+			ui._turnPopupTimer = null;
+			el.classList.remove('is-visible');
+			window.setTimeout(function () {
+				if (el && !el.classList.contains('is-visible')) {
+					el.hidden = true;
+				}
+			}, 320);
+		}, 2200);
+	}
+
+	/**
+	 * ターン開始（turnStartedAtMs 更新）ごとに一度だけ通知。
+	 */
+	function syncTurnChangeNotice(st) {
+		if (!st || st.gameOver) {
+			if (st && st.gameOver) {
+				ui._lastTurnNotifyKey = null;
+			}
+			return;
+		}
+		const key = String(st.turnStartedAtMs || 0) + '|' + (st.humansTurn ? '1' : '0');
+		if (ui._lastTurnNotifyKey === key) {
+			return;
+		}
+		ui._lastTurnNotifyKey = key;
+		showTurnChangePopup(!!st.humansTurn);
+	}
+
+	const unwinnableDeployNotice = {
+		timer: null,
+		armedKey: null,
+		shownKey: null,
+		popEl: null
+	};
+
+	function hideUnwinnableDeployPop() {
+		if (unwinnableDeployNotice.popEl && unwinnableDeployNotice.popEl.parentNode) {
+			unwinnableDeployNotice.popEl.remove();
+		}
+		unwinnableDeployNotice.popEl = null;
+	}
+
+	function showUnwinnableDeployPop() {
+		hideUnwinnableDeployPop();
+		const panel = el('aside', 'battle-unwinnable-pop');
+		panel.setAttribute('role', 'status');
+		panel.setAttribute('aria-live', 'polite');
+		panel.appendChild(el('p', 'battle-unwinnable-pop__title', 'この手番では勝てません'));
+		panel.appendChild(el(
+			'p',
+			'battle-unwinnable-pop__body',
+			'相手バトルゾーンのファイターの強さ以上になる配置は、レベルアップやカード効果を含めて存在しません。'
+		));
+		const btn = el('button', 'btn btn--danger', '降参');
+		btn.type = 'button';
+		btn.addEventListener('click', function () {
+			hideUnwinnableDeployPop();
+			const form = document.querySelector('.topbar--battle form[action*="surrender"]');
+			if (form instanceof HTMLFormElement) {
+				const sub = form.querySelector('button[type="submit"]');
+				if (sub instanceof HTMLElement) {
+					sub.click();
+				}
+			}
+		});
+		panel.appendChild(btn);
+		document.body.appendChild(panel);
+		unwinnableDeployNotice.popEl = panel;
+	}
+
+	/**
+	 * サーバが noLegalDeploy を返したとき、2秒後に右側へ通知（同一手番では1回だけ）。
+	 */
+	function syncUnwinnableDeployNotice(st) {
+		const want =
+			!!(
+				st &&
+				st.noLegalDeploy &&
+				!st.gameOver &&
+				st.humansTurn &&
+				String(st.phase || '') === 'HUMAN_INPUT'
+			);
+		const key = want ? 'uw|' + String(st.turnStartedAtMs || 0) + '|' + String(st.phase || '') : null;
+
+		if (!want) {
+			if (unwinnableDeployNotice.timer != null) {
+				clearTimeout(unwinnableDeployNotice.timer);
+				unwinnableDeployNotice.timer = null;
+			}
+			unwinnableDeployNotice.armedKey = null;
+			unwinnableDeployNotice.shownKey = null;
+			hideUnwinnableDeployPop();
+			return;
+		}
+
+		if (unwinnableDeployNotice.shownKey === key) {
+			return;
+		}
+		if (unwinnableDeployNotice.armedKey === key && unwinnableDeployNotice.timer != null) {
+			return;
+		}
+
+		if (unwinnableDeployNotice.timer != null) {
+			clearTimeout(unwinnableDeployNotice.timer);
+			unwinnableDeployNotice.timer = null;
+		}
+		hideUnwinnableDeployPop();
+		unwinnableDeployNotice.shownKey = null;
+		unwinnableDeployNotice.armedKey = key;
+
+		const fireKey = key;
+		unwinnableDeployNotice.timer = window.setTimeout(function () {
+			unwinnableDeployNotice.timer = null;
+			const cur = lastStateForHandPower;
+			const curWant =
+				!!(
+					cur &&
+					cur.noLegalDeploy &&
+					!cur.gameOver &&
+					cur.humansTurn &&
+					String(cur.phase || '') === 'HUMAN_INPUT'
+				);
+			const curKey = curWant ? 'uw|' + String(cur.turnStartedAtMs || 0) + '|' + String(cur.phase || '') : null;
+			if (curKey !== fireKey || !curWant) {
+				return;
+			}
+			showUnwinnableDeployPop();
+			unwinnableDeployNotice.shownKey = fireKey;
+		}, 2000);
 	}
 
 	function teardownResultModal() {
@@ -446,24 +623,29 @@
 		el.textContent = text;
 	}
 
-	function positionBattleCardTooltip(clientX, clientY) {
-		if (!battleTipEl) return;
+	/** ホバー中のカードの右側（はみ出すときは左）にツールチップを置く */
+	function positionBattleCardTooltip(host) {
+		if (!battleTipEl || !(host instanceof Element)) return;
 		const pad = 12;
+		const r = host.getBoundingClientRect();
 		const tw = battleTipEl.offsetWidth;
 		const th = battleTipEl.offsetHeight;
-		let x = clientX + pad;
-		let y = clientY + pad;
+		let x = r.right + pad;
+		let y = r.top;
 		if (x + tw > window.innerWidth - pad) {
-			x = Math.max(pad, clientX - tw - pad);
+			x = Math.max(pad, r.left - tw - pad);
 		}
 		if (y + th > window.innerHeight - pad) {
 			y = Math.max(pad, window.innerHeight - th - pad);
+		}
+		if (y < pad) {
+			y = pad;
 		}
 		battleTipEl.style.left = x + 'px';
 		battleTipEl.style.top = y + 'px';
 	}
 
-	function showBattleCardTooltipFromDataset(host, clientX, clientY) {
+	function showBattleCardTooltipFromDataset(host) {
 		if (!battleTipEl || !battleTipName || !battleTipAttr || !battleTipAbility) return;
 		hideBattleDeckTooltip();
 		if (battleTipPreview) {
@@ -481,7 +663,12 @@
 		fillBattleTooltipPowerSection(host);
 		fillBattleTooltipAbility(battleTipAbility, host.dataset.battleAbility || '');
 		battleTipEl.hidden = false;
-		positionBattleCardTooltip(clientX, clientY);
+		requestAnimationFrame(function () {
+			positionBattleCardTooltip(host);
+			requestAnimationFrame(function () {
+				positionBattleCardTooltip(host);
+			});
+		});
 	}
 
 	function applyBattleCardTipData(el, d) {
@@ -495,11 +682,8 @@
 
 	function wireBattleCardTooltipHost(el) {
 		if (!el || !battleTipEl) return;
-		el.addEventListener('pointerenter', function (e) {
-			showBattleCardTooltipFromDataset(el, e.clientX, e.clientY);
-		});
-		el.addEventListener('pointermove', function (e) {
-			if (!battleTipEl.hidden) positionBattleCardTooltip(e.clientX, e.clientY);
+		el.addEventListener('pointerenter', function () {
+			showBattleCardTooltipFromDataset(el);
 		});
 		el.addEventListener('pointerleave', hideBattleCardTooltip);
 	}
@@ -651,14 +835,23 @@
 			return ui.pay.stones + ui.pay.cardInstanceIds.length;
 		}
 
+		function maxStonesForPay() {
+			return Math.min(st.humanStones, Math.max(0, cost - ui.pay.cardInstanceIds.length));
+		}
+
 		function refresh() {
+			const maxS = maxStonesForPay();
+			if (ui.pay.stones > maxS) {
+				ui.pay.stones = maxS;
+			}
 			const paid = totalPaid();
 			const remain = cost - paid;
 			stoneVal.textContent = String(ui.pay.stones);
-			status.textContent = remain > 0
-				? '残り ' + String(remain) + ' 必要です'
-				: (remain === 0 ? 'OK（支払いが揃いました）' : '支払いが超過しています');
+			status.textContent =
+				remain > 0 ? '残り ' + String(remain) + ' 必要です' : 'OK（支払いが揃いました）';
 			ok.disabled = remain !== 0;
+			plus.disabled = ui.pay.stones >= maxS;
+			minus.disabled = ui.pay.stones <= 0;
 		}
 
 		function teardown() {
@@ -672,11 +865,13 @@
 		}
 
 		minus.addEventListener('click', function () {
-			ui.pay.stones = clamp(ui.pay.stones - 1, 0, st.humanStones);
+			ui.pay.stones = Math.max(0, ui.pay.stones - 1);
 			refresh();
 		});
 		plus.addEventListener('click', function () {
-			ui.pay.stones = clamp(ui.pay.stones + 1, 0, st.humanStones);
+			const cap = maxStonesForPay();
+			if (ui.pay.stones >= cap) return;
+			ui.pay.stones = clamp(ui.pay.stones + 1, 0, cap);
 			refresh();
 		});
 
@@ -693,6 +888,7 @@
 				ui.pay.cardInstanceIds.splice(i, 1);
 				btn.classList.remove('is-selected');
 			} else {
+				if (ui.pay.stones + ui.pay.cardInstanceIds.length >= cost) return;
 				ui.pay.cardInstanceIds.push(inst);
 				btn.classList.add('is-selected');
 			}
@@ -776,6 +972,14 @@
 			if (d) {
 				host.appendChild(buildBattleCardFaceShell(d, 'modal'));
 				applyBattleCardTipData(host, d);
+				host.addEventListener('contextmenu', function (e) {
+					e.preventDefault();
+					showBattleZoneDetailModal(d, []);
+				});
+				host.addEventListener('dblclick', function (e) {
+					e.preventDefault();
+					showBattleZoneDetailModal(d, []);
+				});
 			} else {
 				const im = document.createElement('img');
 				im.src = absUrl(cardBack);
@@ -931,9 +1135,22 @@
 		if (!wrap) return;
 		// Hover: show "〇枚" popup (reuse deck tooltip)
 		wireDeckStackTooltip(wrap, count);
-		// Click: open list modal
+		// Click: open list modal（カード面上はダブルクリックと区別するため短い遅延）
 		if (typeof onOpenList === 'function') {
-			wrap.addEventListener('click', function () {
+			wrap.addEventListener('click', function (e) {
+				const cardHit = e.target.closest('.rest-stack__card');
+				clearTimeout(wrap._restListDelay);
+				wrap._restListDelay = null;
+				if (cardHit) {
+					if (e.detail >= 2) {
+						return;
+					}
+					wrap._restListDelay = setTimeout(function () {
+						wrap._restListDelay = null;
+						onOpenList();
+					}, 280);
+					return;
+				}
 				onOpenList();
 			});
 			wrap.addEventListener('keydown', function (e) {
@@ -1016,6 +1233,14 @@
 			if (d) {
 				// 表向き（レスト専用サイズは CSS で）
 				cardHost.appendChild(buildBattleCardFaceShell(d, 'rest'));
+				applyBattleCardTipData(cardHost, d);
+				cardHost.addEventListener('dblclick', function (e) {
+					e.preventDefault();
+					e.stopPropagation();
+					clearTimeout(wrap._restListDelay);
+					wrap._restListDelay = null;
+					showBattleZoneDetailModal(d, []);
+				});
 			} else {
 				const im = document.createElement('img');
 				im.src = absUrl(cardBack);
@@ -1134,13 +1359,21 @@
 		return d != null && Number(d.id) === PREVIEW_CARD_IDS.RYUOH;
 	}
 
-	/** レベルアップで右端から捨てた後の自分レスト（配置前・サーバ状態ベース） */
-	function simulateHumanRestAfterLevelUp(st, levelUpRest) {
+	/**
+	 * レベルアップで選んだ手札がレストへ移った後の自分レスト（配置前・プレビュー用）。
+	 * discardIds は ui.levelUpDiscardIds（選択中の instanceId）に対応。
+	 */
+	function simulateHumanRestAfterLevelUp(st, discardIds) {
 		const rest = (st.humanRest || []).slice();
 		const hand = (st.humanHand || []).slice();
-		const n = Math.min(levelUpRest | 0, hand.length);
-		for (let i = 0; i < n; i++) {
-			rest.push(hand.pop());
+		const ids = Array.isArray(discardIds) ? discardIds : [];
+		for (let i = 0; i < ids.length; i++) {
+			const inst = ids[i];
+			if (!inst) continue;
+			const idx = hand.findIndex((c) => c.instanceId === inst);
+			if (idx >= 0) {
+				rest.push(hand.splice(idx, 1)[0]);
+			}
 		}
 		return rest;
 	}
@@ -1261,7 +1494,7 @@
 		}
 
 		const stonesAfterLevel = st.humanStones - (ui.levelUpStones | 0);
-		const simRest = simulateHumanRestAfterLevelUp(st, ui.levelUpRest | 0);
+		const simRest = simulateHumanRestAfterLevelUp(st, ui.levelUpDiscardIds);
 
 		// 薬売り（相手の常時）: 相手が薬売りを配置している間、自分ファイターは相手ストーン数ぶん弱体化
 		// ただし自分が竜王を配置している場合、相手の常時は無効
@@ -1761,8 +1994,8 @@
 				hideBattleCardTooltip();
 				overlay.remove();
 			}
-			closeBtn.addEventListener('click', teardown);
-			overlay.addEventListener('click', function (e) { if (e.target === overlay) teardown(); });
+			/* 「使用する」「しない」でのみ閉じる（×・背景クリックでは閉じない） */
+			closeBtn.hidden = true;
 
 			noBtn.addEventListener('click', function () {
 				const prev = captureAnimRects();
@@ -1822,6 +2055,14 @@
 				}).catch(function () { rerenderWithFreshState(); });
 			});
 		} else {
+			/* 手札→レストはルール上必須（剣闘士等）。キャンセルや閉じるで先に進めない */
+			const mandatoryHandToRest =
+				pc.kind === 'SELECT_ONE_FROM_HAND_TO_REST' ||
+				pc.kind === 'SELECT_TWO_FROM_HAND_TO_REST';
+			if (mandatoryHandToRest) {
+				closeBtn.hidden = true;
+			}
+
 			const grid = el('div', 'battle-pay-modal__cardgrid');
 			const ids = pc.optionInstanceIds || [];
 			ids.forEach(function (inst) {
@@ -1843,12 +2084,15 @@
 			panel.appendChild(grid);
 
 			const actions = el('div', 'battle-pay-modal__actions');
-			const cancel = el('button', 'btn btn--ghost', 'キャンセル');
-			cancel.type = 'button';
+			let cancel = null;
+			if (!mandatoryHandToRest) {
+				cancel = el('button', 'btn btn--ghost', 'キャンセル');
+				cancel.type = 'button';
+				actions.appendChild(cancel);
+			}
 			const ok = el('button', 'btn btn--primary', '決定');
 			ok.type = 'button';
 			ok.disabled = true;
-			actions.appendChild(cancel);
 			actions.appendChild(ok);
 			panel.appendChild(actions);
 
@@ -1887,9 +2131,11 @@
 				hideBattleCardTooltip();
 				overlay.remove();
 			}
-			closeBtn.addEventListener('click', teardown);
-			cancel.addEventListener('click', teardown);
-			overlay.addEventListener('click', function (e) { if (e.target === overlay) teardown(); });
+			if (!mandatoryHandToRest) {
+				closeBtn.addEventListener('click', teardown);
+				if (cancel) cancel.addEventListener('click', teardown);
+				overlay.addEventListener('click', function (e) { if (e.target === overlay) teardown(); });
+			}
 
 			ok.addEventListener('click', function () {
 				const prev = captureAnimRects();
@@ -2012,6 +2258,22 @@
 		closeBtn.focus();
 	}
 
+	/** 効果待ちポップアップ（body 直下）と resolve タイマーを確実に片付ける */
+	function removeBattleEffectPopup() {
+		if (ui._resolveTimer != null) {
+			clearTimeout(ui._resolveTimer);
+			ui._resolveTimer = null;
+		}
+		if (ui._effectPopupEl && ui._effectPopupEl.parentNode) {
+			ui._effectPopupEl.remove();
+		}
+		ui._effectPopupEl = null;
+		const stray = document.getElementById('battle-pending-effect-popup');
+		if (stray && stray.parentNode) {
+			stray.remove();
+		}
+	}
+
 	function render(st) {
 		lastStateForHandPower = st;
 		lastDefsForTooltip = st.defs || null;
@@ -2041,7 +2303,7 @@
 			inner.appendChild(cellDeck);
 
 			const cellHand = el('div', 'battle-cell battle-cell--opp-hand');
-			cellHand.appendChild(el('h3', '', '相手の手札'));
+			cellHand.setAttribute('aria-label', '相手の手札');
 			const oppHandRow = el('div', 'battle-opp-hand-row');
 			oppHandRow.appendChild(renderHandCards(st.cpuHand, st.defs, { faceDown: true, compactOpp: true, nextDeployBonus: 0, nextElfOnlyBonus: 0, nextDeployCostBonusTimes: 0 }));
 			const oppStonesInline = el('div', 'battle-opp-hand-row__stones');
@@ -2066,12 +2328,12 @@
 			const zonesWrap = el('div', 'battle-zones-wrap');
 			const zonesStack = el('div', 'battle-zones-stack');
 			const cellZoneOpp = el('div', 'battle-cell battle-cell--zone battle-cell--zone-cpu');
-			cellZoneOpp.appendChild(el('h3', '', 'バトルゾーン'));
+			cellZoneOpp.setAttribute('aria-label', '相手のバトルゾーン');
 			cellZoneOpp.appendChild(renderZone(st.cpuBattle, st.defs, st.cpuBattlePower, { opponentZone: true }));
 			zonesStack.appendChild(cellZoneOpp);
 
 			const cellZoneYou = el('div', 'battle-cell battle-cell--zone battle-cell--zone-human');
-			cellZoneYou.appendChild(el('h3', '', 'バトルゾーン'));
+			cellZoneYou.setAttribute('aria-label', '自分のバトルゾーン');
 			cellZoneYou.appendChild(renderZone(st.humanBattle, st.defs, st.humanBattlePower));
 			zonesStack.appendChild(cellZoneYou);
 
@@ -2100,7 +2362,7 @@
 			inner.appendChild(cellRest);
 
 			const cellHand = el('div', 'battle-cell battle-cell--you-hand');
-			cellHand.appendChild(el('h3', '', '自分の手札'));
+			cellHand.setAttribute('aria-label', '自分の手札');
 			const stonesTop = el('div', 'battle-you-hand-stones');
 			stonesTop.setAttribute('aria-label', 'ストーン所持数 ' + String(st.humanStones));
 			stonesTop.appendChild(el('span', 'battle-you-hand-stones__label', 'ストーン'));
@@ -2173,15 +2435,20 @@
 
 		// Show effect for 3 seconds, then resolve
 		if ((st.phase === 'HUMAN_EFFECT_PENDING' || st.phase === 'CPU_EFFECT_PENDING') && st.pendingEffect && !st.gameOver) {
-			// cancel existing to avoid duplication
+			/* 再描画のたびに新パネルだけ作って古い body 上の DOM を消さないと残り続ける */
 			if (ui._resolveTimer != null) {
 				clearTimeout(ui._resolveTimer);
 				ui._resolveTimer = null;
 			}
+			if (ui._effectPopupEl && ui._effectPopupEl.parentNode) {
+				ui._effectPopupEl.remove();
+			}
+			ui._effectPopupEl = null;
 
 			const pe = st.pendingEffect;
 			const def = resolveCardDef(st.defs, pe.cardId);
 			const side = el('div', 'panel', null);
+			side.id = 'battle-pending-effect-popup';
 			// absolute: scroll with the page (do NOT follow viewport)
 			side.style.position = 'absolute';
 			side.style.left = '16px';
@@ -2226,6 +2493,7 @@
 			body.textContent = (first === '〈配置〉' || first === '〈常時〉') ? lines.slice(1).join('\n') : String(raw || '—');
 			side.appendChild(body);
 
+			ui._effectPopupEl = side;
 			document.body.appendChild(side);
 
 			// Position the effect popup next to the triggering fighter card (prefer the main instance).
@@ -2258,7 +2526,10 @@
 
 			ui._resolveTimer = window.setTimeout(function () {
 				ui._resolveTimer = null;
-				side.remove();
+				if (ui._effectPopupEl && ui._effectPopupEl.parentNode) {
+					ui._effectPopupEl.remove();
+				}
+				ui._effectPopupEl = null;
 				const prev = captureAnimRects();
 				resolvePending().then(function (next) {
 					render(next);
@@ -2269,11 +2540,17 @@
 					rerenderWithFreshState();
 				});
 			}, 3000);
+		} else {
+			/* HUMAN_INPUT 等へ移ったあとにタイマーだけ残る／パネルだけ残るケースを掃除 */
+			removeBattleEffectPopup();
 		}
 
 		if (st.phase === 'HUMAN_CHOICE' && st.pendingChoice && !st.gameOver) {
 			showChoiceModal(st);
 		}
+
+		syncTurnChangeNotice(st);
+		syncUnwinnableDeployNotice(st);
 	}
 
 	function installOrUpdateTurnTimer(st) {
@@ -2560,9 +2837,46 @@
 			}
 		});
 
+		/* #battle-app 外（ヘッダー等）や、app 内で取りこぼしたクリックでもレベルアップを閉じる */
+		document.addEventListener(
+			'click',
+			function (e) {
+				const t = e.target;
+				if (!(t instanceof Element)) return;
+				if (!ui.selectedInstanceId) return;
+				if (!app.querySelector('.battle-control-overlay--levelup-popup')) return;
+				if (
+					document.querySelector('.battle-pay-modal') ||
+					document.getElementById('battle-pending-choice-modal') ||
+					document.querySelector('.battle-result-modal')
+				) {
+					return;
+				}
+				const logModal = document.getElementById('battle-log-modal');
+				if (logModal && !logModal.hidden && logModal.contains(t)) return;
+				if (t.closest('.battle-control-overlay__cluster')) return;
+				const handPick = t.closest('button.hand-card.battle-card');
+				if (handPick && !handPick.disabled) return;
+				cancelLevelUpInProgress();
+				rerenderWithFreshState();
+			},
+			false
+		);
+
 		app.addEventListener('contextmenu', function (e) {
 			const t = e.target;
 			if (!(t instanceof Element)) return;
+
+			const restCardHost = t.closest('.rest-stack__card');
+			if (restCardHost && restCardHost instanceof HTMLElement) {
+				const cid = restCardHost.dataset.battleCardId;
+				const d = cid ? resolveCardDef(lastDefsForTooltip, cid) : null;
+				if (d) {
+					e.preventDefault();
+					showBattleZoneDetailModal(d, []);
+				}
+				return;
+			}
 
 			const zoneCard = t.closest('.battle-zone-card');
 			if (zoneCard && zoneCard instanceof HTMLElement) {
@@ -2604,6 +2918,7 @@
 			document.addEventListener('scroll', hideBattleDeckTooltip, true);
 			window.addEventListener('resize', applyBattleZoom);
 			applyBattleZoom();
+			ensureBattleTurnPopupHost();
 			const st = await fetchState();
 			render(st);
 			attachHandlers();
