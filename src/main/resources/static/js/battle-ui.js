@@ -771,7 +771,7 @@
 		const layout = el('div', 'battle-pay-modal__layout');
 		const mainCol = el('div', 'battle-pay-modal__main');
 
-		mainCol.appendChild(el('h2', 'battle-pay-modal__title', 'コストの支払い方法'));
+		mainCol.appendChild(el('h2', 'battle-pay-modal__title', 'コストの支払い'));
 		mainCol.appendChild(el('p', 'muted', '必要コスト: ' + String(cost) + '（カード/ストーン/分割OK）'));
 
 		const status = el('p', 'battle-pay-modal__status', '');
@@ -2055,8 +2055,8 @@
 				hideBattleCardTooltip();
 				overlay.remove();
 			}
-			closeBtn.addEventListener('click', teardown);
-			overlay.addEventListener('click', function (e) { if (e.target === overlay) teardown(); });
+			/* 「キャンセル」「はい」のみ（×・背景クリックでは閉じない） */
+			closeBtn.hidden = true;
 
 			cancelBtn.addEventListener('click', function () {
 				const prev = captureAnimRects();
