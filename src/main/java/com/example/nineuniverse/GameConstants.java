@@ -195,6 +195,26 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_PACK_RESULT_DRAW_AGAIN_LAST_DAY =
 			ANNOUNCEMENT_PACK_RESULT_DRAW_AGAIN_START.plusDays(30 - 1);
 
+	/** お知らせ配布（「隊長」カードのテキスト修正） */
+	public static final String ANNOUNCEMENT_CAPTAIN_TEXT_KEY = "captain_text_2026_04";
+
+	public static final int ANNOUNCEMENT_CAPTAIN_TEXT_GEMS = 5;
+
+	public static final LocalDate ANNOUNCEMENT_CAPTAIN_TEXT_START = LocalDate.of(2026, 4, 14);
+
+	public static final LocalDate ANNOUNCEMENT_CAPTAIN_TEXT_LAST_DAY =
+			ANNOUNCEMENT_CAPTAIN_TEXT_START.plusDays(30 - 1);
+
+	/** お知らせ配布（ミッション達成不具合の修正） */
+	public static final String ANNOUNCEMENT_MISSION_FIX_KEY = "mission_fix_2026_04";
+
+	public static final int ANNOUNCEMENT_MISSION_FIX_GEMS = 5;
+
+	public static final LocalDate ANNOUNCEMENT_MISSION_FIX_START = LocalDate.of(2026, 4, 14);
+
+	public static final LocalDate ANNOUNCEMENT_MISSION_FIX_LAST_DAY =
+			ANNOUNCEMENT_MISSION_FIX_START.plusDays(30 - 1);
+
 	/**
 	 * お知らせモーダルで「新規ユーザー」に古い項目を出さないための判定。
 	 * 登録からこの日数以内を新規とみなし、{@link #announcementVisibleInNewUserWindow} と組み合わせる。
@@ -241,7 +261,7 @@ public final class GameConstants {
 	/**
 	 * お知らせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
 	 */
-	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-16-2";
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-16-4";
 
 	private GameConstants() {
 	}

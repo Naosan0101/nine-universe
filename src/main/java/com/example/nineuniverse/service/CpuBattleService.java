@@ -264,7 +264,7 @@ public class CpuBattleService {
 		if (st == null || st.isPvp() || st.getCpuBattleUserId() == null) {
 			return;
 		}
-		if (st.getPhase() != BattlePhase.GAME_OVER || !st.isHumanWon()) {
+		if (!st.isGameOver() || !st.isHumanWon()) {
 			return;
 		}
 		if (st.isCpuWinMissionNotified()) {
