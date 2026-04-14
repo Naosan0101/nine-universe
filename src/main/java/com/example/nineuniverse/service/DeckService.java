@@ -19,7 +19,6 @@ public class DeckService {
 	private final DeckMapper deckMapper;
 	private final DeckEntryMapper deckEntryMapper;
 	private final UserCollectionMapper userCollectionMapper;
-	private final MissionService missionService;
 
 	public List<Deck> listDecks(long userId) {
 		return deckMapper.findByUserId(userId);
@@ -38,7 +37,7 @@ public class DeckService {
 	}
 
 	@Transactional
-	public long createDeck(long userId, String name, List<Short> cardIds, boolean countMission) {
+	public long createDeck(long userId, String name, List<Short> cardIds) {
 		validateEight(cardIds, userId);
 		Deck d = new Deck();
 		d.setUserId(userId);
@@ -48,9 +47,6 @@ public class DeckService {
 			throw new IllegalStateException("デッキIDの採番に失敗しました（DB設定を確認してください）");
 		}
 		saveEntries(d.getId(), cardIds);
-		if (countMission) {
-			missionService.onDeckSaved(userId);
-		}
 		return d.getId();
 	}
 
@@ -61,7 +57,6 @@ public class DeckService {
 		deckMapper.updateName(deckId, userId, name.trim().isEmpty() ? "マイデッキ" : name.trim());
 		deckEntryMapper.deleteByDeckId(deckId);
 		saveEntries(deckId, cardIds);
-		missionService.onDeckSaved(userId);
 	}
 
 	private void saveEntries(long deckId, List<Short> cardIds) {

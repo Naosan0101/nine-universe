@@ -3,6 +3,8 @@ package com.example.nineuniverse;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Locale;
 import org.springframework.web.util.UriUtils;
 
@@ -163,8 +165,63 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_TIME_PACK_LAST_DAY =
 			ANNOUNCEMENT_TIME_PACK_START.plusDays(30 - 1);
 
+	/** お知らせ配布（UI・ミッション見直し＆カードバランス調整） */
+	public static final String ANNOUNCEMENT_BALANCE_UI_MISSION_KEY = "balance_ui_mission_2026_04";
+
+	public static final int ANNOUNCEMENT_BALANCE_UI_MISSION_GEMS = 10;
+
+	public static final LocalDate ANNOUNCEMENT_BALANCE_UI_MISSION_START = LocalDate.of(2026, 4, 14);
+
+	public static final LocalDate ANNOUNCEMENT_BALANCE_UI_MISSION_LAST_DAY =
+			ANNOUNCEMENT_BALANCE_UI_MISSION_START.plusDays(30 - 1);
+
+	/**
+	 * お知らせモーダルで「新規ユーザー」に古い項目を出さないための判定。
+	 * 登録からこの日数以内を新規とみなし、{@link #announcementVisibleInNewUserWindow} と組み合わせる。
+	 */
+	public static final int ANNOUNCEMENT_NEW_USER_ACCOUNT_MAX_AGE_DAYS = 14;
+
+	/** 新規ユーザーには、開始日が「今日から遡ってこの日数以内」のお知らせだけを表示する。 */
+	public static final int ANNOUNCEMENT_NEW_USER_VISIBLE_LOOKBACK_DAYS = 14;
+
+	/**
+	 * 登録から {@link #ANNOUNCEMENT_NEW_USER_ACCOUNT_MAX_AGE_DAYS} 日以内なら、お知らせ一覧を直近分に制限する対象。
+	 */
+	public static boolean isNewUserForAnnouncementList(LocalDate today, LocalDateTime createdAt, ZoneId zone) {
+		if (createdAt == null || zone == null) {
+			return false;
+		}
+		LocalDate reg = createdAt.atZone(zone).toLocalDate();
+		return !reg.isBefore(today.minusDays(ANNOUNCEMENT_NEW_USER_ACCOUNT_MAX_AGE_DAYS));
+	}
+
+	/**
+	 * 新規ユーザー向けお知らせの表示可否（開始日が直近 {@link #ANNOUNCEMENT_NEW_USER_VISIBLE_LOOKBACK_DAYS} 日以内）。
+	 */
+	public static boolean announcementVisibleInNewUserWindow(LocalDate today, LocalDate announcementStart) {
+		if (today == null || announcementStart == null) {
+			return false;
+		}
+		LocalDate cutoff = today.minusDays(ANNOUNCEMENT_NEW_USER_VISIBLE_LOOKBACK_DAYS);
+		return !announcementStart.isBefore(cutoff);
+	}
+
+	/** お知らせカードを出すか（既存ユーザーは常に候補を見る／新規は直近開始のものだけ）。 */
+	public static boolean shouldListAnnouncementForUser(
+			LocalDate today, LocalDateTime userCreatedAt, ZoneId zone, LocalDate announcementStart) {
+		if (!isNewUserForAnnouncementList(today, userCreatedAt, zone)) {
+			return true;
+		}
+		return announcementVisibleInNewUserWindow(today, announcementStart);
+	}
+
 	/** ホームの無料スタンダードパック用ゲージが MAX になるまでの時間（ミリ秒） */
 	public static final long TIME_PACK_CYCLE_DURATION_MS = 12L * 60 * 60 * 1000;
+
+	/**
+	 * お知らせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
+	 */
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-15-2";
 
 	private GameConstants() {
 	}

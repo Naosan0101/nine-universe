@@ -1,6 +1,5 @@
 package com.example.nineuniverse.service;
 
-import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.domain.AppUser;
 import com.example.nineuniverse.domain.UserDailyMission;
 import com.example.nineuniverse.domain.UserWeeklyMission;
@@ -14,6 +13,7 @@ import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,16 +25,19 @@ public class MissionService {
 	private static final ZoneId TZ = ZoneId.of("Asia/Tokyo");
 
 	private static final String[][] DAILY_POOL = {
-			{"OPEN_PACK", "カードパックを2回引く", "2"},
-			{"CPU_BATTLE", "CPUバトルを1回開始する", "1"},
-			{"SAVE_DECK", "デッキを1回保存する", "1"},
+			{"D_CPU_WIN_L1", "「ひとりで対戦」でレベル1のCPUに1回勝利する", "1"},
+			{"D_CPU_WIN_L2", "「ひとりで対戦」でレベル2のCPUに1回勝利する", "1"},
+			{"D_PVP", "「だれかと対戦」を1回する", "1"},
+			{"D_PACK", "パックを2回引く", "2"},
+			{"D_BONUS", "ボーナスパックを1回開封する", "1"},
 	};
 
-	/** おおよそ4日程度のプレイで達成しやすい週次目標 */
 	private static final String[][] WEEKLY_POOL = {
-			{"W_OPEN_PACK", "カードパックを5回引く", "5"},
-			{"W_CPU_BATTLE", "CPUバトルを4回開始する", "4"},
-			{"W_SAVE_DECK", "デッキを3回保存する", "3"},
+			{"W_CPU_WIN_L2", "「ひとりで対戦」でレベル2のCPUに5回勝利する", "5"},
+			{"W_CPU_WIN_L3", "「ひとりで対戦」でレベル3のCPUに5回勝利する", "5"},
+			{"W_PVP", "「だれかと対戦」を10回する", "10"},
+			{"W_PACK", "パックを10回引く", "10"},
+			{"W_BONUS", "ボーナスパックを6回開封する", "6"},
 	};
 
 	private final UserDailyMissionMapper dailyMissionMapper;
@@ -51,6 +54,30 @@ public class MissionService {
 		return weeklyMissionMapper.findByUserAndWeekStart(userId, weekStart);
 	}
 
+	public boolean hasUnclaimedMissionRewards(long userId) {
+		LocalDate today = LocalDate.now(TZ);
+		LocalDate weekStart = weekStartMonday(LocalDate.now(TZ));
+		for (UserDailyMission m : dailyMissionMapper.findByUserAndDate(userId, today)) {
+			if (Boolean.TRUE.equals(m.getRewardGranted())) {
+				continue;
+			}
+			if (m.getProgress() != null && m.getTargetCount() != null
+					&& m.getProgress() >= m.getTargetCount()) {
+				return true;
+			}
+		}
+		for (UserWeeklyMission w : weeklyMissionMapper.findByUserAndWeekStart(userId, weekStart)) {
+			if (Boolean.TRUE.equals(w.getRewardGranted())) {
+				continue;
+			}
+			if (w.getProgress() != null && w.getTargetCount() != null
+					&& w.getProgress() >= w.getTargetCount()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private static LocalDate weekStartMonday(LocalDate d) {
 		return d.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
 	}
@@ -62,8 +89,9 @@ public class MissionService {
 		if (!existing.isEmpty()) {
 			return;
 		}
-		List<Integer> idx = new ArrayList<>(List.of(0, 1, 2));
+		List<Integer> idx = new ArrayList<>(List.of(0, 1, 2, 3, 4));
 		Collections.shuffle(idx);
+		var rnd = ThreadLocalRandom.current();
 		for (int s = 0; s < 3; s++) {
 			int p = idx.get(s);
 			UserDailyMission row = new UserDailyMission();
@@ -75,6 +103,7 @@ public class MissionService {
 			row.setTargetCount(Integer.parseInt(DAILY_POOL[p][2]));
 			row.setProgress(0);
 			row.setRewardGranted(false);
+			row.setRewardGems(3 + rnd.nextInt(2));
 			dailyMissionMapper.insert(row);
 		}
 		AppUser u = appUserMapper.findById(userId);
@@ -90,7 +119,7 @@ public class MissionService {
 		if (!existing.isEmpty()) {
 			return;
 		}
-		List<Integer> idx = new ArrayList<>(List.of(0, 1, 2));
+		List<Integer> idx = new ArrayList<>(List.of(0, 1, 2, 3, 4));
 		Collections.shuffle(idx);
 		for (int s = 0; s < 3; s++) {
 			int p = idx.get(s);
@@ -103,93 +132,108 @@ public class MissionService {
 			row.setTargetCount(Integer.parseInt(WEEKLY_POOL[p][2]));
 			row.setProgress(0);
 			row.setRewardGranted(false);
+			row.setRewardGems(10);
 			weeklyMissionMapper.insert(row);
 		}
 	}
 
 	@Transactional
-	public void onPackOpened(long userId) {
+	public void onPaidPackOpened(long userId) {
 		ensureDailyMissions(userId);
 		ensureWeeklyMissions(userId);
-		bumpDaily(userId, "OPEN_PACK");
-		bumpWeekly(userId, "W_OPEN_PACK");
+		bumpDaily(userId, "D_PACK", 1);
+		bumpWeekly(userId, "W_PACK", 1);
 	}
 
 	@Transactional
-	public void onCpuBattleStarted(long userId) {
+	public void onBonusPackOpened(long userId) {
 		ensureDailyMissions(userId);
 		ensureWeeklyMissions(userId);
-		bumpDaily(userId, "CPU_BATTLE");
-		bumpWeekly(userId, "W_CPU_BATTLE");
+		bumpDaily(userId, "D_BONUS", 1);
+		bumpWeekly(userId, "W_BONUS", 1);
 	}
 
 	@Transactional
-	public void onDeckSaved(long userId) {
+	public void onCpuBattleWon(long userId, int cpuLevel) {
 		ensureDailyMissions(userId);
 		ensureWeeklyMissions(userId);
-		bumpDaily(userId, "SAVE_DECK");
-		bumpWeekly(userId, "W_SAVE_DECK");
+		if (cpuLevel == 1) {
+			bumpDaily(userId, "D_CPU_WIN_L1", 1);
+		} else if (cpuLevel == 2) {
+			bumpDaily(userId, "D_CPU_WIN_L2", 1);
+			bumpWeekly(userId, "W_CPU_WIN_L2", 1);
+		} else if (cpuLevel == 3) {
+			bumpWeekly(userId, "W_CPU_WIN_L3", 1);
+		}
 	}
 
-	private void bumpDaily(long userId, String code) {
+	@Transactional
+	public void onPvpBattlePlayed(long userId) {
+		ensureDailyMissions(userId);
+		ensureWeeklyMissions(userId);
+		bumpDaily(userId, "D_PVP", 1);
+		bumpWeekly(userId, "W_PVP", 1);
+	}
+
+	private void bumpDaily(long userId, String code, int delta) {
 		LocalDate today = LocalDate.now(TZ);
 		List<UserDailyMission> rows = dailyMissionMapper.findByUserAndDate(userId, today);
 		for (UserDailyMission r : rows) {
 			if (!code.equals(r.getMissionCode()) || Boolean.TRUE.equals(r.getRewardGranted())) {
 				continue;
 			}
-			int np = Math.min(r.getTargetCount(), r.getProgress() + 1);
+			int np = Math.min(r.getTargetCount(), r.getProgress() + delta);
 			dailyMissionMapper.updateProgress(userId, today, r.getSlot(), np);
-			if (np >= r.getTargetCount()) {
-				grantDaily(userId, today, r.getSlot());
-			}
 		}
 	}
 
-	private void bumpWeekly(long userId, String code) {
+	private void bumpWeekly(long userId, String code, int delta) {
 		LocalDate weekStart = weekStartMonday(LocalDate.now(TZ));
 		List<UserWeeklyMission> rows = weeklyMissionMapper.findByUserAndWeekStart(userId, weekStart);
 		for (UserWeeklyMission r : rows) {
 			if (!code.equals(r.getMissionCode()) || Boolean.TRUE.equals(r.getRewardGranted())) {
 				continue;
 			}
-			int np = Math.min(r.getTargetCount(), r.getProgress() + 1);
+			int np = Math.min(r.getTargetCount(), r.getProgress() + delta);
 			weeklyMissionMapper.updateProgress(userId, weekStart, r.getSlot(), np);
-			if (np >= r.getTargetCount()) {
-				grantWeekly(userId, weekStart, r.getSlot());
-			}
 		}
 	}
 
-	private void grantDaily(long userId, LocalDate today, short slot) {
+	@Transactional
+	public void claimDailyReward(long userId, short slot) {
+		LocalDate today = LocalDate.now(TZ);
 		UserDailyMission row = dailyMissionMapper.findByUserAndDate(userId, today).stream()
-				.filter(m -> m.getSlot() == slot)
+				.filter(m -> m.getSlot() != null && m.getSlot() == slot)
 				.findFirst()
-				.orElse(null);
-		if (row == null || Boolean.TRUE.equals(row.getRewardGranted())) {
-			return;
+				.orElseThrow(() -> new IllegalArgumentException("ミッションが見つかりません"));
+		if (Boolean.TRUE.equals(row.getRewardGranted())) {
+			throw new IllegalStateException("すでに受け取り済みです");
 		}
-		AppUser u = appUserMapper.findById(userId);
-		if (u == null) {
-			return;
+		if (row.getProgress() == null || row.getTargetCount() == null
+				|| row.getProgress() < row.getTargetCount()) {
+			throw new IllegalStateException("まだ達成していません");
 		}
-		appUserMapper.updateCoins(userId, u.getCoins() + GameConstants.MISSION_REWARD_COINS);
+		int gems = row.getRewardGems() != null ? row.getRewardGems() : 3;
+		appUserMapper.addCoinsDelta(userId, gems);
 		dailyMissionMapper.markRewardGranted(userId, today, slot);
 	}
 
-	private void grantWeekly(long userId, LocalDate weekStart, short slot) {
+	@Transactional
+	public void claimWeeklyReward(long userId, short slot) {
+		LocalDate weekStart = weekStartMonday(LocalDate.now(TZ));
 		UserWeeklyMission row = weeklyMissionMapper.findByUserAndWeekStart(userId, weekStart).stream()
-				.filter(m -> m.getSlot() == slot)
+				.filter(m -> m.getSlot() != null && m.getSlot() == slot)
 				.findFirst()
-				.orElse(null);
-		if (row == null || Boolean.TRUE.equals(row.getRewardGranted())) {
-			return;
+				.orElseThrow(() -> new IllegalArgumentException("ミッションが見つかりません"));
+		if (Boolean.TRUE.equals(row.getRewardGranted())) {
+			throw new IllegalStateException("すでに受け取り済みです");
 		}
-		AppUser u = appUserMapper.findById(userId);
-		if (u == null) {
-			return;
+		if (row.getProgress() == null || row.getTargetCount() == null
+				|| row.getProgress() < row.getTargetCount()) {
+			throw new IllegalStateException("まだ達成していません");
 		}
-		appUserMapper.updateCoins(userId, u.getCoins() + GameConstants.MISSION_WEEKLY_REWARD_COINS);
+		int gems = row.getRewardGems() != null ? row.getRewardGems() : 10;
+		appUserMapper.addCoinsDelta(userId, gems);
 		weeklyMissionMapper.markRewardGranted(userId, weekStart, slot);
 	}
 }

@@ -4,7 +4,8 @@
 
 	<select id="findByUserAndDate" resultType="com.example.nineuniverse.domain.UserDailyMission">
 		SELECT user_id AS userId, mission_date AS missionDate, slot, mission_code AS missionCode,
-		       title, target_count AS targetCount, progress, reward_granted AS rewardGranted
+		       title, target_count AS targetCount, progress, reward_granted AS rewardGranted,
+		       reward_gems AS rewardGems
 		FROM user_daily_mission WHERE user_id = #{userId} AND mission_date = #{missionDate} ORDER BY slot
 	</select>
 
@@ -13,8 +14,8 @@
 	</delete>
 
 	<insert id="insert">
-		INSERT INTO user_daily_mission (user_id, mission_date, slot, mission_code, title, target_count, progress, reward_granted)
-		VALUES (#{userId}, #{missionDate}, #{slot}, #{missionCode}, #{title}, #{targetCount}, #{progress}, #{rewardGranted})
+		INSERT INTO user_daily_mission (user_id, mission_date, slot, mission_code, title, target_count, progress, reward_granted, reward_gems)
+		VALUES (#{userId}, #{missionDate}, #{slot}, #{missionCode}, #{title}, #{targetCount}, #{progress}, #{rewardGranted}, #{rewardGems})
 	</insert>
 
 	<update id="updateProgress">

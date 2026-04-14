@@ -28,7 +28,22 @@ public class HomeController {
 	@GetMapping({"/", "/home"})
 	public String home(Model model) {
 		long uid = CurrentUser.require().getId();
-		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var userForAnnouncements = appUserMapper.findById(uid);
+		boolean listPerfLight = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_PERF_LIGHT_START);
+		boolean listTimePack = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_TIME_PACK_START);
+		boolean listBalanceUi = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_BALANCE_UI_MISSION_START);
+		model.addAttribute("announcementListPerfLight", listPerfLight);
+		model.addAttribute("announcementListTimePack", listTimePack);
+		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
+
 		boolean perfClaimed = announcementRewardService.hasClaimedPerfLight(uid);
 		boolean perfInWindow = announcementRewardService.isWithinPerfLightWindow(today);
 		model.addAttribute("perfLightAnnouncementClaimed", perfClaimed);
@@ -49,11 +64,22 @@ public class HomeController {
 				!timeAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_TIME_PACK_START));
 		model.addAttribute("timePackAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_TIME_PACK_GEMS);
 
+		boolean balanceAnnClaimed = announcementRewardService.hasClaimedBalanceUiMission(uid);
+		boolean balanceAnnInWindow = announcementRewardService.isWithinBalanceUiMissionWindow(today);
+		model.addAttribute("balanceUiMissionAnnouncementClaimed", balanceAnnClaimed);
+		model.addAttribute("balanceUiMissionAnnouncementClaimable", balanceAnnInWindow && !balanceAnnClaimed);
+		model.addAttribute("balanceUiMissionAnnouncementExpiredUnclaimed",
+				!balanceAnnClaimed && today.isAfter(GameConstants.ANNOUNCEMENT_BALANCE_UI_MISSION_LAST_DAY));
+		model.addAttribute("balanceUiMissionAnnouncementFutureUnclaimed",
+				!balanceAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_BALANCE_UI_MISSION_START));
+		model.addAttribute("balanceUiMissionAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_BALANCE_UI_MISSION_GEMS);
+
 		var gauge = timePackGaugeService.snapshotForUser(uid);
 		model.addAttribute("timePackFillPercent", gauge.fillPercent());
 		model.addAttribute("timePackAvailablePacks", gauge.availablePacks());
 		model.addAttribute("timePackCycleStartEpochMs", gauge.cycleStartEpochMilli());
 		model.addAttribute("timePackDurationMs", gauge.durationMs());
+		model.addAttribute("announcementUiEpoch", GameConstants.ANNOUNCEMENT_UI_EPOCH);
 
 		int granted = appUserMapper.grantWelcomeHomeBonusIfPending(uid, GameConstants.WELCOME_HOME_BONUS_GEMS);
 		if (granted > 0) {
@@ -66,12 +92,21 @@ public class HomeController {
 		model.addAttribute("user", fresh);
 		model.addAttribute("missions", missionService.todayMissions(uid));
 		model.addAttribute("weeklyMissions", missionService.currentWeekMissions(uid));
+		model.addAttribute("missionHasUnclaimedReward", missionService.hasUnclaimedMissionRewards(uid));
 		return "home";
 	}
 
 	@PostMapping("/home/announcements/perf-light/claim")
 	public String claimPerfLightAnnouncement(RedirectAttributes ra) {
 		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_PERF_LIGHT_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			return "redirect:/home";
+		}
 		ClaimOutcome outcome = announcementRewardService.claimPerfLightBonus(uid);
 		switch (outcome) {
 			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
@@ -85,10 +120,39 @@ public class HomeController {
 	@PostMapping("/home/announcements/time-pack/claim")
 	public String claimTimePackAnnouncement(RedirectAttributes ra) {
 		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_TIME_PACK_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			return "redirect:/home";
+		}
 		ClaimOutcome outcome = announcementRewardService.claimTimePackAnnouncementBonus(uid);
 		switch (outcome) {
 			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
 					GameConstants.ANNOUNCEMENT_TIME_PACK_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/balance-ui-mission/claim")
+	public String claimBalanceUiMissionAnnouncement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_BALANCE_UI_MISSION_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimBalanceUiMissionBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_BALANCE_UI_MISSION_GEMS + "ジェムを受け取りました。");
 			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
 			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
 		}

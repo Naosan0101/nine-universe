@@ -14,4 +14,5 @@ public class UserWeeklyMission {
 	private Integer targetCount;
 	private Integer progress;
 	private Boolean rewardGranted;
+	private Integer rewardGems;
 }

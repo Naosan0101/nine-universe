@@ -3,38 +3,62 @@
 <head>
 	<meta charset="UTF-8"/>
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
-	<title>ミッション — ナインユニバース</title>
+	<title>ミッション — Nine Universe</title>
 	<link rel="stylesheet" th:href="@{/css/app.css}"/>
 </head>
 <body class="page">
 <header class="topbar">
-	<h1 class="game-title">ミッション</h1>
+	<h1 class="game-title">
+		<span class="missions-page__title-wrap">
+			ミッション
+			<span class="missions-page__notify-dot" th:if="${missionHasUnclaimedReward}" aria-hidden="true"></span>
+		</span>
+	</h1>
 	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
 </header>
 
 <div class="container">
+	<p th:if="${missionMsg}" class="ok mission-flash" th:text="${missionMsg}"></p>
+	<p th:if="${missionErr}" class="error mission-flash" th:text="${missionErr}"></p>
+
 	<section class="panel mission-section" th:if="${missions != null && !missions.isEmpty()}">
 		<h2 class="mission-section__heading">デイリーミッション</h2>
-		<p class="muted mission-section__hint">毎日0時（日本時間）に更新</p>
+		<p class="muted mission-section__hint">毎日0時（日本時間）に更新・報酬は3〜4ジェム（ミッションごと）</p>
 		<ul class="mission-list">
 			<li class="mission-list__item panel mission-list__card" th:each="m : ${missions}">
 				<h3 th:text="${m.title}">タイトル</h3>
-				<p>進捗: <span th:text="${m.progress}">0</span> / <span th:text="${m.targetCount}">0</span></p>
-				<p class="muted">達成で3ジェム（自動付与）</p>
-				<p class="ok" th:if="${m.rewardGranted}">報酬受取済</p>
+				<p>進捗: <span th:text="${m.progress}">0</span> / <span th:text="${m.targetCount}">0</span>
+					<span class="mission-done-mark" th:if="${m.progress != null and m.targetCount != null and m.progress >= m.targetCount}" title="達成">✓</span>
+				</p>
+				<form th:if="${m.progress != null and m.targetCount != null and m.progress >= m.targetCount and !m.rewardGranted}"
+				      th:action="@{/missions/claim/daily}" method="post" class="mission-claim-form">
+					<input type="hidden" name="slot" th:value="${m.slot}"/>
+					<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+					<button type="submit" class="btn btn--primary">
+						報酬を受け取る（<span th:text="${m.rewardGems != null ? m.rewardGems : 3}">3</span>ジェム）
+					</button>
+				</form>
+				<p class="muted" th:if="${m.rewardGranted}">受取済</p>
 			</li>
 		</ul>
 	</section>
 
 	<section class="panel mission-section" th:if="${weeklyMissions != null && !weeklyMissions.isEmpty()}">
 		<h2 class="mission-section__heading">ウィークリーミッション</h2>
-		<p class="muted mission-section__hint">毎週月曜0時（日本時間）に更新</p>
+		<p class="muted mission-section__hint">毎週月曜0時（日本時間）に更新・各10ジェム</p>
 		<ul class="mission-list">
 			<li class="mission-list__item panel mission-list__card" th:each="w : ${weeklyMissions}">
 				<h3 th:text="${w.title}">タイトル</h3>
-				<p>進捗: <span th:text="${w.progress}">0</span> / <span th:text="${w.targetCount}">0</span></p>
-				<p class="muted">達成で6ジェム（自動付与）</p>
-				<p class="ok" th:if="${w.rewardGranted}">報酬受取済</p>
+				<p>進捗: <span th:text="${w.progress}">0</span> / <span th:text="${w.targetCount}">0</span>
+					<span class="mission-done-mark" th:if="${w.progress != null and w.targetCount != null and w.progress >= w.targetCount}" title="達成">✓</span>
+				</p>
+				<form th:if="${w.progress != null and w.targetCount != null and w.progress >= w.targetCount and !w.rewardGranted}"
+				      th:action="@{/missions/claim/weekly}" method="post" class="mission-claim-form">
+					<input type="hidden" name="slot" th:value="${w.slot}"/>
+					<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+					<button type="submit" class="btn btn--primary">報酬を受け取る（10ジェム）</button>
+				</form>
+				<p class="muted" th:if="${w.rewardGranted}">受取済</p>
 			</li>
 		</ul>
 	</section>

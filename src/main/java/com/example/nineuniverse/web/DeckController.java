@@ -82,7 +82,7 @@ public class DeckController {
 				deckService.updateDeck(uid, editDeckId, name, ids);
 				ra.addFlashAttribute("msg", "デッキを保存しました");
 			} else {
-				deckService.createDeck(uid, name, ids, true);
+				deckService.createDeck(uid, name, ids);
 				ra.addFlashAttribute("msg", "デッキを作成しました");
 			}
 			return "redirect:/decks";

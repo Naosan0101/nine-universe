@@ -42,12 +42,12 @@ public class CpuBattleService {
 		Map<Short, CardDefinition> defs = cardCatalogService.mapById();
 		Random rnd = new Random();
 		CpuBattleState st = engine.newBattle(ids, level, rnd, defs);
+		st.setCpuBattleUserId(userId);
 		st.setPhase(st.isHumansTurn() ? BattlePhase.HUMAN_INPUT : BattlePhase.CPU_THINKING);
 		if (st.getTurnStartedAtMs() <= 0) {
 			st.setTurnStartedAtMs(System.currentTimeMillis());
 		}
 		session.setAttribute(SESSION_KEY, st);
-		missionService.onCpuBattleStarted(userId);
 		return st;
 	}
 
@@ -96,6 +96,7 @@ public class CpuBattleService {
 	}
 
 	public CpuBattleStateDto stateDtoFromState(CpuBattleState st) {
+		maybeNotifyCpuWinMission(st);
 		Map<Short, CardDefinition> defs = defs();
 		int hbPow = engine.effectiveBattlePower(st.getHumanBattle(), true, st, defs);
 		int cbPow = engine.effectiveBattlePower(st.getCpuBattle(), false, st, defs);
@@ -257,5 +258,19 @@ public class CpuBattleService {
 		var under = z.getCostUnder().stream().map(c -> new BattleCardDto(c.getInstanceId(), c.getCardId())).toList();
 		List<BattlePowerModifierDto> mods = powerModifiers != null ? powerModifiers : List.of();
 		return new ZoneFighterDto(main, under, z.getTemporaryPowerBonus(), mods);
+	}
+
+	private void maybeNotifyCpuWinMission(CpuBattleState st) {
+		if (st == null || st.isPvp() || st.getCpuBattleUserId() == null) {
+			return;
+		}
+		if (st.getPhase() != BattlePhase.GAME_OVER || !st.isHumanWon()) {
+			return;
+		}
+		if (st.isCpuWinMissionNotified()) {
+			return;
+		}
+		st.setCpuWinMissionNotified(true);
+		missionService.onCpuBattleWon(st.getCpuBattleUserId(), st.getCpuLevel());
 	}
 }
