@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="card">
+		<article class="announcement-modal__card"
+		         th:if="${announcementListCaptainText and (captainTextAnnouncementClaimable or captainTextAnnouncementClaimed or captainTextAnnouncementExpiredUnclaimed or captainTextAnnouncementFutureUnclaimed)}">
+			<div class="announcement-modal__mailbox">
+				<div class="announcement-modal__mailbox-body">
+					<p class="announcement-modal__card-text">・「隊長」のテキストを修正しました。</p>
+				</div>
+				<aside class="announcement-modal__mailbox-aside">
+					<span th:if="${captainTextAnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
+					<form th:if="${captainTextAnnouncementClaimable}"
+					      th:action="@{/home/announcements/captain-text/claim}"
+					      method="post"
+					      class="announcement-modal__gem-form">
+						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+						<button type="submit" class="btn btn--primary announcement-modal__gem-btn"
+						        th:text="|${captainTextAnnouncementGemAmount}ジェム|">5ジェム</button>
+					</form>
+					<p th:if="${captainTextAnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
+					<p th:if="${captainTextAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
+					<p th:if="${captainTextAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
+				</aside>
+			</div>
+		</article>
+</th:block>
+</body>
+</html>

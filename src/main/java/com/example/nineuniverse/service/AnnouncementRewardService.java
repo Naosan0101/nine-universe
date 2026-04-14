@@ -36,6 +36,14 @@ public class AnnouncementRewardService {
 		return userAnnouncementClaimMapper.exists(userId, GameConstants.ANNOUNCEMENT_PACK_RESULT_DRAW_AGAIN_KEY);
 	}
 
+	public boolean hasClaimedCaptainTextAnnouncement(long userId) {
+		return userAnnouncementClaimMapper.exists(userId, GameConstants.ANNOUNCEMENT_CAPTAIN_TEXT_KEY);
+	}
+
+	public boolean hasClaimedMissionFixAnnouncement(long userId) {
+		return userAnnouncementClaimMapper.exists(userId, GameConstants.ANNOUNCEMENT_MISSION_FIX_KEY);
+	}
+
 	/** 受け取り可能期間内（開始日〜終了日を含む）か。 */
 	public boolean isWithinPerfLightWindow(LocalDate today) {
 		if (today.isBefore(GameConstants.ANNOUNCEMENT_PERF_LIGHT_START)) {
@@ -75,6 +83,20 @@ public class AnnouncementRewardService {
 			return false;
 		}
 		return !today.isAfter(GameConstants.ANNOUNCEMENT_PACK_RESULT_DRAW_AGAIN_LAST_DAY);
+	}
+
+	public boolean isWithinCaptainTextAnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_CAPTAIN_TEXT_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_CAPTAIN_TEXT_LAST_DAY);
+	}
+
+	public boolean isWithinMissionFixAnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_MISSION_FIX_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_MISSION_FIX_LAST_DAY);
 	}
 
 	public enum ClaimOutcome {
@@ -166,6 +188,40 @@ public class AnnouncementRewardService {
 			return ClaimOutcome.ALREADY_CLAIMED;
 		}
 		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_PACK_RESULT_DRAW_AGAIN_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimCaptainTextAnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_CAPTAIN_TEXT_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_CAPTAIN_TEXT_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_CAPTAIN_TEXT_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_CAPTAIN_TEXT_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimMissionFixAnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_MISSION_FIX_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_MISSION_FIX_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_MISSION_FIX_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_MISSION_FIX_GEMS);
 		return ClaimOutcome.SUCCESS;
 	}
 }

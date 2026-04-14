@@ -12,13 +12,15 @@
                data-ttp-claimable=${timePackAnnouncementClaimable and announcementListTimePack},
                data-balance-claimable=${balanceUiMissionAnnouncementClaimable and announcementListBalanceUiMission},
                data-pack-rates-claimable=${packRatesAnnouncementClaimable and announcementListPackRates},
-               data-pack-result-draw-again-claimable=${packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain}">
+               data-pack-result-draw-again-claimable=${packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain},
+               data-captain-text-claimable=${captainTextAnnouncementClaimable and announcementListCaptainText},
+               data-mission-fix-claimable=${missionFixAnnouncementClaimable and announcementListMissionFix}">
 <header class="topbar">
 	<div th:replace="~{fragments/game-title-brand :: brand}"></div>
 	<div class="topbar__meta">
 		<button type="button"
 		        class="btn btn--ghost topbar__announce"
-		        th:classappend="${(perfLightAnnouncementClaimable and announcementListPerfLight) or (timePackAnnouncementClaimable and announcementListTimePack) or (balanceUiMissionAnnouncementClaimable and announcementListBalanceUiMission) or (packRatesAnnouncementClaimable and announcementListPackRates) or (packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain) or (timePackAvailablePacks != null and timePackAvailablePacks > 0)} ? ' topbar__announce--highlight' : ''"
+		        th:classappend="${(perfLightAnnouncementClaimable and announcementListPerfLight) or (timePackAnnouncementClaimable and announcementListTimePack) or (balanceUiMissionAnnouncementClaimable and announcementListBalanceUiMission) or (packRatesAnnouncementClaimable and announcementListPackRates) or (packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain) or (captainTextAnnouncementClaimable and announcementListCaptainText) or (missionFixAnnouncementClaimable and announcementListMissionFix) or (timePackAvailablePacks != null and timePackAvailablePacks > 0)} ? ' topbar__announce--highlight' : ''"
 		        id="announcement-open"
 		        aria-haspopup="dialog"
 		        aria-controls="announcement-modal">
@@ -160,6 +162,31 @@
 				</aside>
 			</div>
 		</article>
+
+		<article class="announcement-modal__card"
+		         th:if="${announcementListMissionFix and (missionFixAnnouncementClaimable or missionFixAnnouncementClaimed or missionFixAnnouncementExpiredUnclaimed or missionFixAnnouncementFutureUnclaimed)}">
+			<div class="announcement-modal__mailbox">
+				<div class="announcement-modal__mailbox-body">
+					<p class="announcement-modal__card-text">・ミッションの達成が正しく動作しないのを修正しました。</p>
+				</div>
+				<aside class="announcement-modal__mailbox-aside">
+					<span th:if="${missionFixAnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
+					<form th:if="${missionFixAnnouncementClaimable}"
+					      th:action="@{/home/announcements/mission-fix/claim}"
+					      method="post"
+					      class="announcement-modal__gem-form">
+						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+						<button type="submit" class="btn btn--primary announcement-modal__gem-btn"
+						        th:text="|${missionFixAnnouncementGemAmount}ジェム|">5ジェム</button>
+					</form>
+					<p th:if="${missionFixAnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
+					<p th:if="${missionFixAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
+					<p th:if="${missionFixAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
+				</aside>
+			</div>
+		</article>
+
+		<div th:replace="~{fragments/announcement-captain-text :: card}"></div>
 		<p th:if="${flashAnnouncementSuccess}" class="announcement-modal__flash ok" th:text="${flashAnnouncementSuccess}">受け取りました。</p>
 		<p th:if="${flashAnnouncementError}" class="announcement-modal__flash err" th:text="${flashAnnouncementError}">エラー</p>
 		<button type="button" class="btn btn--ghost announcement-modal__close" id="announcement-close">閉じる</button>
@@ -354,6 +381,8 @@
 		var bal = document.body.getAttribute('data-balance-claimable') === 'true';
 		var pack = document.body.getAttribute('data-pack-rates-claimable') === 'true';
 		var drawAgain = document.body.getAttribute('data-pack-result-draw-again-claimable') === 'true';
+		var captainText = document.body.getAttribute('data-captain-text-claimable') === 'true';
+		var missionFix = document.body.getAttribute('data-mission-fix-claimable') === 'true';
 		var ack = '';
 		try {
 			ack = localStorage.getItem('nu_ann_ack') || '';
@@ -361,7 +390,7 @@
 			ack = '';
 		}
 		var unseen = epoch !== '' && ack !== epoch;
-		var show = perf || ttp || bal || pack || drawAgain || unseen;
+		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || unseen;
 		dot.hidden = !show;
 		dot.setAttribute('aria-hidden', show ? 'false' : 'true');
 	}

@@ -192,7 +192,7 @@ public class PvpBattleService {
 	}
 
 	private void notifyPvpMissionIfNeeded(PvpMatch m, CpuBattleState st) {
-		if (st == null || !st.isPvp() || st.getPhase() != BattlePhase.GAME_OVER) {
+		if (st == null || !st.isPvp() || !st.isGameOver()) {
 			return;
 		}
 		if (m.isMissionCompletionNotified()) {
