@@ -61,6 +61,10 @@ public class CpuBattleState implements Serializable {
 	private String lastMessage;
 	private boolean gameOver;
 	private boolean humanWon;
+	/** CPU 戦のみ。ミッション重複通知防止 */
+	private boolean cpuWinMissionNotified;
+	/** CPU 戦の人間プレイヤー */
+	private Long cpuBattleUserId;
 	private List<String> eventLog = new ArrayList<>();
 
 	public void addLog(String line) {

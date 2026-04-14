@@ -154,9 +154,22 @@ public class CpuBattleEngine {
 				// ② Rarity bias: higher level → higher rarity is more likely.
 				int rr = rarityRank(d.getRarity());
 				ww *= (1.0 + rr * rarityFactor);
-				// Extra push at higher rarities (keeps C possible but makes Reg/Ep noticeably more common at high lvl).
-				if (rr >= 2) ww *= (1.0 + 0.35 * rarityFactor);
-				if (rr >= 3) ww *= (1.0 + 0.55 * rarityFactor);
+				// レベル1〜2: レジェンダリー・エピックを極めて／かなり出にくくする
+				if (lvl <= 2 && d.getRarity() != null) {
+					String tr = d.getRarity().trim();
+					if ("Reg".equalsIgnoreCase(tr)) {
+						ww *= lvl == 1 ? 0.012 : 0.06;
+					} else if ("Ep".equalsIgnoreCase(tr)) {
+						ww *= lvl == 1 ? 0.18 : 0.35;
+					} else if ("R".equalsIgnoreCase(tr)) {
+						ww *= lvl == 1 ? 0.58 : 0.72;
+					}
+				}
+				// Extra push at higher rarities — low CPU levels skip this so L1/L2 stay mostly C/R.
+				if (lvl > 2) {
+					if (rr >= 2) ww *= (1.0 + 0.35 * rarityFactor);
+					if (rr >= 3) ww *= (1.0 + 0.55 * rarityFactor);
+				}
 
 				// Mild variety: avoid too many exact same id early.
 				int already = cnt.getOrDefault(id, 0);
@@ -419,9 +432,6 @@ public class CpuBattleEngine {
 							));
 							return;
 						}
-					} else if ("KAGAKUSHA".equals(pc.getAbilityDeployCode())) {
-						st.setPowerSwapActive(true);
-						st.addLog("科学者: 強さを入れ替えた");
 					} else if ("MIKO".equals(pc.getAbilityDeployCode())) {
 						st.setHumanNextDeployBonus(st.getHumanNextDeployBonus() + 1);
 						st.addLog("エルフの巫女: 次の配置+1");
@@ -431,21 +441,6 @@ public class CpuBattleEngine {
 					} else if ("SHOKIN".equals(pc.getAbilityDeployCode())) {
 						st.setHumanNextDeployCostBonusTimes(st.getHumanNextDeployCostBonusTimes() + 1);
 						st.addLog("隊長: 次の配置はコストぶん強化");
-					} else if ("KINOKO".equals(pc.getAbilityDeployCode())) {
-						// ピクシー: ストーン1消費で「レストから1枚選んで手札へ」
-						if (!st.getHumanRest().isEmpty()) {
-							List<String> opts = new ArrayList<>();
-							for (BattleCard c : st.getHumanRest()) opts.add(c.getInstanceId());
-							st.setPendingChoice(new PendingChoice(
-									ChoiceKind.SELECT_ONE_FROM_REST_TO_HAND,
-									"ピクシー（レストから1枚選択）",
-									true,
-									"KINOKO",
-									0,
-									opts
-							));
-							return;
-						}
 					} else if ("FUWAFUWA".equals(pc.getAbilityDeployCode())) {
 						if (st.getHumanBattle() != null) {
 							st.getHumanBattle().setReturnToHandOnKnock(true);
@@ -636,9 +631,6 @@ public class CpuBattleEngine {
 							));
 							return;
 						}
-					} else if ("KAGAKUSHA".equals(pc.getAbilityDeployCode())) {
-						st.setPowerSwapActive(true);
-						st.addLog("科学者: 強さを入れ替えた");
 					} else if ("MIKO".equals(pc.getAbilityDeployCode())) {
 						st.setCpuNextDeployBonus(st.getCpuNextDeployBonus() + 1);
 						st.addLog("エルフの巫女: 次の配置+1");
@@ -648,21 +640,6 @@ public class CpuBattleEngine {
 					} else if ("SHOKIN".equals(pc.getAbilityDeployCode())) {
 						st.setCpuNextDeployCostBonusTimes(st.getCpuNextDeployCostBonusTimes() + 1);
 						st.addLog("隊長: 次の配置はコストぶん強化");
-					} else if ("KINOKO".equals(pc.getAbilityDeployCode())) {
-						if (!st.getCpuRest().isEmpty()) {
-							List<String> opts = new ArrayList<>();
-							for (BattleCard c : st.getCpuRest()) opts.add(c.getInstanceId());
-							st.setPendingChoice(new PendingChoice(
-									ChoiceKind.SELECT_ONE_FROM_REST_TO_HAND,
-									"ピクシー（レストから1枚選択）",
-									false,
-									"KINOKO",
-									0,
-									opts,
-									true
-							));
-							return;
-						}
 					} else if ("FUWAFUWA".equals(pc.getAbilityDeployCode())) {
 						if (st.getCpuBattle() != null) {
 							st.getCpuBattle().setReturnToHandOnKnock(true);
@@ -2047,15 +2024,9 @@ public class CpuBattleEngine {
 				// 用心棒（旧: 工作員）に変更されたため効果なし
 			}
 			case "KAGAKUSHA" -> {
-				if (st.getHumanStones() >= 1 && st.getHumanBattle() != null && st.getCpuBattle() != null) {
-					st.setPendingChoice(new PendingChoice(
-							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"科学者",
-							true,
-							"KAGAKUSHA",
-							1,
-							List.of()
-					));
+				if (st.getHumanBattle() != null && st.getCpuBattle() != null) {
+					st.setPowerSwapActive(true);
+					st.addLog("科学者: 強さを入れ替えた");
 				}
 			}
 			case "OKAMI_OTOKO" -> {
@@ -2086,14 +2057,20 @@ public class CpuBattleEngine {
 				st.addLog("隊長: 次の配置はコストぶん強化");
 			}
 			case "KINOKO" -> {
-				if (st.getHumanStones() >= 1 && !st.getHumanRest().isEmpty()) {
+				List<String> pixieOpts = new ArrayList<>();
+				for (BattleCard c : st.getHumanRest()) {
+					if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "ELF")) {
+						pixieOpts.add(c.getInstanceId());
+					}
+				}
+				if (!pixieOpts.isEmpty()) {
 					st.setPendingChoice(new PendingChoice(
-							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"ピクシー",
+							ChoiceKind.SELECT_ONE_FROM_REST_TO_HAND,
+							"ピクシー（レストのエルフを1枚選択）",
 							true,
 							"KINOKO",
-							1,
-							List.of()
+							0,
+							pixieOpts
 					));
 				}
 			}
@@ -2196,6 +2173,8 @@ public class CpuBattleEngine {
 				}
 			}
 			case "DAKU_DORAGON" -> {
+				st.setHumanStones(st.getHumanStones() + 2);
+				st.addLog("ダークドラゴン: ストーン+2");
 				if (st.getCpuBattle() != null
 						&& CardAttributes.hasAttribute(defs.get(st.getCpuBattle().getMain().getCardId()), "DRAGON")) {
 					moveZoneToRest(st.getCpuBattle(), st.getCpuRest());
@@ -2250,16 +2229,9 @@ public class CpuBattleEngine {
 				}
 			}
 			case "KAGAKUSHA" -> {
-				if (st.getCpuStones() >= 1 && st.getHumanBattle() != null && st.getCpuBattle() != null) {
-					st.setPendingChoice(new PendingChoice(
-							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"科学者",
-							false,
-							"KAGAKUSHA",
-							1,
-							List.of(),
-							true
-					));
+				if (st.getHumanBattle() != null && st.getCpuBattle() != null) {
+					st.setPowerSwapActive(true);
+					st.addLog("科学者: 強さを入れ替えた");
 				}
 			}
 			case "OKAMI_OTOKO" -> {
@@ -2289,14 +2261,20 @@ public class CpuBattleEngine {
 				st.addLog("隊長: 次の配置はコストぶん強化");
 			}
 			case "KINOKO" -> {
-				if (st.getCpuStones() >= 1 && !st.getCpuRest().isEmpty()) {
+				List<String> pixieGuestOpts = new ArrayList<>();
+				for (BattleCard c : st.getCpuRest()) {
+					if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "ELF")) {
+						pixieGuestOpts.add(c.getInstanceId());
+					}
+				}
+				if (!pixieGuestOpts.isEmpty()) {
 					st.setPendingChoice(new PendingChoice(
-							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"ピクシー",
+							ChoiceKind.SELECT_ONE_FROM_REST_TO_HAND,
+							"ピクシー（レストのエルフを1枚選択）",
 							false,
 							"KINOKO",
-							1,
-							List.of(),
+							0,
+							pixieGuestOpts,
 							true
 					));
 				}
@@ -2404,6 +2382,8 @@ public class CpuBattleEngine {
 				}
 			}
 			case "DAKU_DORAGON" -> {
+				st.setCpuStones(st.getCpuStones() + 2);
+				st.addLog("ダークドラゴン: ストーン+2");
 				if (st.getHumanBattle() != null
 						&& CardAttributes.hasAttribute(defs.get(st.getHumanBattle().getMain().getCardId()), "DRAGON")) {
 					moveZoneToRest(st.getHumanBattle(), st.getHumanRest());
@@ -2490,6 +2470,16 @@ public class CpuBattleEngine {
 					st.setHumanBattle(null);
 				}
 			}
+			case "DAKU_DORAGON" -> {
+				st.setCpuStones(st.getCpuStones() + 2);
+				st.addLog("CPUダークドラゴン: ストーン+2");
+				if (st.getHumanBattle() != null
+						&& CardAttributes.hasAttribute(defs.get(st.getHumanBattle().getMain().getCardId()), "DRAGON")) {
+					moveZoneToRest(st.getHumanBattle(), st.getHumanRest());
+					st.setHumanBattle(null);
+					st.addLog("CPUダークドラゴン: 相手ドラゴンをレストへ");
+				}
+			}
 			case "GURIFON" -> {
 				if (st.getHumanStones() > 0) {
 					st.setHumanStones(st.getHumanStones() - 1);
@@ -2502,15 +2492,9 @@ public class CpuBattleEngine {
 				// 用心棒（旧: 工作員）に変更されたため効果なし
 			}
 			case "KAGAKUSHA" -> {
-				if (st.getCpuStones() >= 1 && st.getHumanBattle() != null && st.getCpuBattle() != null) {
-					// 簡易: 使う（強さ差がひっくり返るなら得）
-					int cpuEff = effectiveBattlePower(st.getCpuBattle(), false, st, defs);
-					int humEff = effectiveBattlePower(st.getHumanBattle(), true, st, defs);
-					if (cpuEff < humEff) {
-						st.setCpuStones(st.getCpuStones() - 1);
-						st.setPowerSwapActive(true);
-						st.addLog("CPU科学者: 強さを入れ替えた");
-					}
+				if (st.getHumanBattle() != null && st.getCpuBattle() != null) {
+					st.setPowerSwapActive(true);
+					st.addLog("CPU科学者: 強さを入れ替えた");
 				}
 			}
 			case "OKAMI_OTOKO" -> {
@@ -2533,11 +2517,14 @@ public class CpuBattleEngine {
 				st.setCpuNextDeployCostBonusTimes(st.getCpuNextDeployCostBonusTimes() + 1);
 			}
 			case "KINOKO" -> {
-				// CPU: ストーンがあれば使って回収（簡易: 最後の1枚）
-				if (st.getCpuStones() >= 1 && !st.getCpuRest().isEmpty()) {
-					st.setCpuStones(st.getCpuStones() - 1);
-					BattleCard c = st.getCpuRest().remove(st.getCpuRest().size() - 1);
-					st.getCpuHand().add(0, c);
+				for (int i = st.getCpuRest().size() - 1; i >= 0; i--) {
+					BattleCard c = st.getCpuRest().get(i);
+					if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "ELF")) {
+						st.getCpuRest().remove(i);
+						st.getCpuHand().add(0, c);
+						st.addLog("CPUピクシー: エルフを手札へ");
+						break;
+					}
 				}
 			}
 			case "NOROWARETA" -> {

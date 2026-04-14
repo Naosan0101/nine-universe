@@ -11,4 +11,6 @@ public class PvpMatch {
 	private Long guestUserId;
 	private Long guestDeckId;
 	private CpuBattleState state;
+	/** 対人戦終了時のミッション通知を一度だけ */
+	private boolean missionCompletionNotified;
 }

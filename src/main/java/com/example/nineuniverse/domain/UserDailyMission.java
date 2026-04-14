@@ -13,4 +13,6 @@ public class UserDailyMission {
 	private Integer targetCount;
 	private Integer progress;
 	private Boolean rewardGranted;
+	/** 受け取り時に付与するジェム数（デイリーは3〜4） */
+	private Integer rewardGems;
 }

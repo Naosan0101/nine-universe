@@ -50,7 +50,7 @@ public class PackService {
 			throw new IllegalArgumentException("ジェムが足りません（" + t.cost + "ジェム必要）");
 		}
 		appUserMapper.updateCoins(userId, u.getCoins() - t.cost);
-		return pullPackIntoCollection(userId, t);
+		return pullPackIntoCollection(userId, t, true);
 	}
 
 	/**
@@ -58,10 +58,10 @@ public class PackService {
 	 */
 	@Transactional
 	public List<CardDefinition> openStandardPackWithoutGemCost(long userId) {
-		return pullPackIntoCollection(userId, PackType.STANDARD);
+		return pullPackIntoCollection(userId, PackType.STANDARD, false);
 	}
 
-	private List<CardDefinition> pullPackIntoCollection(long userId, PackType t) {
+	private List<CardDefinition> pullPackIntoCollection(long userId, PackType t, boolean paidWithGems) {
 		Random rnd = new Random();
 		List<CardDefinition> pulled = new ArrayList<>();
 		List<CardDefinition> all = filterCardsForPack(cardCatalogService.all(), t);
@@ -73,7 +73,11 @@ public class PackService {
 			userCollectionMapper.upsertAdd(userId, c.getId(), 1);
 			pulled.add(c);
 		}
-		missionService.onPackOpened(userId);
+		if (paidWithGems) {
+			missionService.onPaidPackOpened(userId);
+		} else {
+			missionService.onBonusPackOpened(userId);
+		}
 		return pulled;
 	}
 

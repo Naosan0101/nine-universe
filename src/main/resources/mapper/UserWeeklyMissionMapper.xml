@@ -4,13 +4,14 @@
 
 	<select id="findByUserAndWeekStart" resultType="com.example.nineuniverse.domain.UserWeeklyMission">
 		SELECT user_id AS userId, week_start AS weekStart, slot, mission_code AS missionCode,
-		       title, target_count AS targetCount, progress, reward_granted AS rewardGranted
+		       title, target_count AS targetCount, progress, reward_granted AS rewardGranted,
+		       reward_gems AS rewardGems
 		FROM user_weekly_mission WHERE user_id = #{userId} AND week_start = #{weekStart} ORDER BY slot
 	</select>
 
 	<insert id="insert">
-		INSERT INTO user_weekly_mission (user_id, week_start, slot, mission_code, title, target_count, progress, reward_granted)
-		VALUES (#{userId}, #{weekStart}, #{slot}, #{missionCode}, #{title}, #{targetCount}, #{progress}, #{rewardGranted})
+		INSERT INTO user_weekly_mission (user_id, week_start, slot, mission_code, title, target_count, progress, reward_granted, reward_gems)
+		VALUES (#{userId}, #{weekStart}, #{slot}, #{missionCode}, #{title}, #{targetCount}, #{progress}, #{rewardGranted}, #{rewardGems})
 	</insert>
 
 	<update id="updateProgress">

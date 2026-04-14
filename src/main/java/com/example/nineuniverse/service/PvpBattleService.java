@@ -25,6 +25,7 @@ public class PvpBattleService {
 	private final CpuBattleService cpuBattleService;
 	private final DeckService deckService;
 	private final CardCatalogService cardCatalogService;
+	private final MissionService missionService;
 
 	private final Map<String, PvpMatch> matches = new ConcurrentHashMap<>();
 
@@ -79,9 +80,8 @@ public class PvpBattleService {
 				return null;
 			}
 			enforceTimeoutIfNeeded(st);
-			CpuBattleStateDto base = cpuBattleService.stateDtoFromState(st);
 			boolean host = m.getHostUserId() == userId;
-			return adaptForViewer(base, st, host);
+			return wrapPvpState(m, st, host);
 		}
 	}
 
@@ -97,7 +97,7 @@ public class PvpBattleService {
 			boolean host = m.getHostUserId() == userId;
 			if (host) {
 				if (!st.isHumansTurn() || st.getPhase() != BattlePhase.HUMAN_INPUT) {
-					return adaptForViewer(cpuBattleService.stateDtoFromState(st), st, true);
+					return wrapPvpState(m, st, true);
 				}
 				engine.humanTurnInteractive(st,
 						req.levelUpRest(),
@@ -109,7 +109,7 @@ public class PvpBattleService {
 						cardCatalogService.mapById());
 			} else {
 				if (st.isHumansTurn() || st.getPhase() != BattlePhase.CPU_THINKING) {
-					return adaptForViewer(cpuBattleService.stateDtoFromState(st), st, false);
+					return wrapPvpState(m, st, false);
 				}
 				engine.opponentTurnInteractive(st,
 						req.levelUpRest(),
@@ -120,7 +120,7 @@ public class PvpBattleService {
 						req.payCostCardInstanceIds(),
 						cardCatalogService.mapById());
 			}
-			return adaptForViewer(cpuBattleService.stateDtoFromState(st), st, host);
+			return wrapPvpState(m, st, host);
 		}
 	}
 
@@ -135,7 +135,7 @@ public class PvpBattleService {
 			enforceTimeoutIfNeeded(st);
 			boolean host = m.getHostUserId() == userId;
 			engine.resolvePendingEffectAndAdvance(st, cardCatalogService.mapById(), new Random());
-			return adaptForViewer(cpuBattleService.stateDtoFromState(st), st, host);
+			return wrapPvpState(m, st, host);
 		}
 	}
 
@@ -169,7 +169,7 @@ public class PvpBattleService {
 					}
 				}
 			}
-			return adaptForViewer(cpuBattleService.stateDtoFromState(st), st, host);
+			return wrapPvpState(m, st, host);
 		}
 	}
 
@@ -181,7 +181,27 @@ public class PvpBattleService {
 			if (st == null) return null;
 			enforceTimeoutIfNeeded(st);
 			boolean host = m.getHostUserId() == userId;
-			return adaptForViewer(cpuBattleService.stateDtoFromState(st), st, host);
+			return wrapPvpState(m, st, host);
+		}
+	}
+
+	private CpuBattleStateDto wrapPvpState(PvpMatch m, CpuBattleState st, boolean host) {
+		CpuBattleStateDto base = cpuBattleService.stateDtoFromState(st);
+		notifyPvpMissionIfNeeded(m, st);
+		return adaptForViewer(base, st, host);
+	}
+
+	private void notifyPvpMissionIfNeeded(PvpMatch m, CpuBattleState st) {
+		if (st == null || !st.isPvp() || st.getPhase() != BattlePhase.GAME_OVER) {
+			return;
+		}
+		if (m.isMissionCompletionNotified()) {
+			return;
+		}
+		m.setMissionCompletionNotified(true);
+		missionService.onPvpBattlePlayed(m.getHostUserId());
+		if (m.getGuestUserId() != null) {
+			missionService.onPvpBattlePlayed(m.getGuestUserId());
 		}
 	}
 
