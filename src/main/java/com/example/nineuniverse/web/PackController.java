@@ -28,10 +28,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class PackController {
 
 	private static final List<PackRarityRateRow> PACK_RARITY_RATES = List.of(
-			new PackRarityRateRow("レジェンダリー", "3%"),
-			new PackRarityRateRow("エピック", "17%"),
+			new PackRarityRateRow("レジェンダリー", "2%"),
+			new PackRarityRateRow("エピック", "10%"),
 			new PackRarityRateRow("レア", "30%"),
-			new PackRarityRateRow("コモン", "50%"));
+			new PackRarityRateRow("コモン", "58%"));
 
 	private final PackService packService;
 	private final AppUserMapper appUserMapper;
@@ -183,6 +183,12 @@ public class PackController {
 		model.addAttribute("contextPath", "");
 		model.addAttribute("cardPlateUrl", GameConstants.CARD_LAYER_BASE);
 		model.addAttribute("cardDataUrl", GameConstants.CARD_LAYER_DATA);
+		Object packTypeObj = session.getAttribute("pack_last_type");
+		String lastPackType = PackType.STANDARD.name();
+		if (packTypeObj instanceof String s && !s.isBlank()) {
+			lastPackType = s;
+		}
+		model.addAttribute("lastPackType", lastPackType);
 		return "pack-result";
 	}
 

@@ -34,9 +34,12 @@
 				      th:action="@{/missions/claim/daily}" method="post" class="mission-claim-form">
 					<input type="hidden" name="slot" th:value="${m.slot}"/>
 					<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-					<button type="submit" class="btn btn--primary">
-						報酬を受け取る（<span th:text="${m.rewardGems != null ? m.rewardGems : 3}">3</span>ジェム）
+					<button type="submit" class="btn btn--primary"
+					        th:aria-label="${'報酬 ' + (m.rewardGems != null ? m.rewardGems : 3) + 'ジェムを受け取る'}">
+						受け取る
 					</button>
+					<span class="muted mission-claim-gems"
+					      th:text="|報酬: ${m.rewardGems != null ? m.rewardGems : 3}ジェム|">報酬: 3ジェム</span>
 				</form>
 				<p class="muted" th:if="${m.rewardGranted}">受取済</p>
 			</li>
@@ -56,7 +59,10 @@
 				      th:action="@{/missions/claim/weekly}" method="post" class="mission-claim-form">
 					<input type="hidden" name="slot" th:value="${w.slot}"/>
 					<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-					<button type="submit" class="btn btn--primary">報酬を受け取る（10ジェム）</button>
+					<button type="submit" class="btn btn--primary" aria-label="報酬 10ジェムを受け取る">
+						受け取る
+					</button>
+					<span class="muted mission-claim-gems">報酬: 10ジェム</span>
 				</form>
 				<p class="muted" th:if="${w.rewardGranted}">受取済</p>
 			</li>

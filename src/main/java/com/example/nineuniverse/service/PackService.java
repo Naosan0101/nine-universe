@@ -161,13 +161,13 @@ public class PackService {
 	}
 
 	/**
-	 * 排出率: C 50% / R 30% / Ep 17% / Reg 3%
+	 * 排出率: Reg 2% / Ep 10% / R 30% / C 58%
 	 */
 	private static String rollRarity(Random rnd) {
 		int x = rnd.nextInt(100); // 0..99
-		if (x < 50) return "C";
-		if (x < 80) return "R";
-		if (x < 97) return "Ep";
-		return "Reg";
+		if (x < 2) return "Reg";
+		if (x < 12) return "Ep";
+		if (x < 42) return "R";
+		return "C";
 	}
 }

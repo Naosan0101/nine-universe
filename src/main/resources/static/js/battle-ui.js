@@ -774,6 +774,9 @@
 		mainCol.appendChild(el('h2', 'battle-pay-modal__title', 'コストの支払い'));
 		mainCol.appendChild(el('p', 'muted', '必要コスト: ' + String(cost) + '（カード/ストーン/分割OK）'));
 
+		const ownedStonesP = el('p', 'battle-pay-modal__owned muted', '');
+		mainCol.appendChild(ownedStonesP);
+
 		const status = el('p', 'battle-pay-modal__status', '');
 		mainCol.appendChild(status);
 
@@ -855,8 +858,22 @@
 			return ui.pay.stones + ui.pay.cardInstanceIds.length;
 		}
 
+		function stonesAfterLevelUp() {
+			return Math.max(0, st.humanStones - (ui.levelUpStones | 0));
+		}
+
 		function maxStonesForPay() {
-			return Math.min(st.humanStones, Math.max(0, cost - ui.pay.cardInstanceIds.length));
+			const cap = Math.max(0, cost - ui.pay.cardInstanceIds.length);
+			return Math.min(stonesAfterLevelUp(), cap);
+		}
+
+		function syncHandStonesPreview() {
+			const val = document.querySelector('.battle-you-hand-stones__value');
+			const wrap = document.querySelector('.battle-you-hand-stones');
+			if (!(val instanceof Element) || !(wrap instanceof Element)) return;
+			const n = Math.max(0, stonesAfterLevelUp() - (ui.pay.stones | 0));
+			val.textContent = String(n);
+			wrap.setAttribute('aria-label', 'ストーン所持数 ' + String(n));
 		}
 
 		function refresh() {
@@ -867,11 +884,15 @@
 			const paid = totalPaid();
 			const remain = cost - paid;
 			stoneVal.textContent = String(ui.pay.stones);
+			const afterLv = stonesAfterLevelUp();
+			const ownedRemain = Math.max(0, afterLv - (ui.pay.stones | 0));
+			ownedStonesP.textContent = '所持ストーン: ' + String(ownedRemain);
 			status.textContent =
 				remain > 0 ? '残り ' + String(remain) + ' 必要です' : 'OK（支払いが揃いました）';
 			ok.disabled = remain !== 0;
 			plus.disabled = ui.pay.stones >= maxS;
 			minus.disabled = ui.pay.stones <= 0;
+			syncHandStonesPreview();
 		}
 
 		function teardown() {
@@ -916,7 +937,12 @@
 		});
 
 		function onClose() {
+			ui.pay = { stones: 0, cardInstanceIds: [] };
 			teardown();
+			rerenderWithFreshState().catch(function (e) {
+				// eslint-disable-next-line no-console
+				console.error(e);
+			});
 		}
 
 		closeBtn.addEventListener('click', onClose);
@@ -927,15 +953,16 @@
 
 		ok.addEventListener('click', function () {
 			const prev = captureAnimRects();
-			teardown();
 			const payload = {
 				levelUpRest: ui.levelUpRest,
 				levelUpDiscardInstanceIds: ui.levelUpDiscardIds,
 				levelUpStones: ui.levelUpStones,
 				deployInstanceId: sel.instanceId,
 				payCostStones: ui.pay.stones,
-				payCostCardInstanceIds: ui.pay.cardInstanceIds
+				payCostCardInstanceIds: ui.pay.cardInstanceIds.slice()
 			};
+			teardown();
+			ui.pay = { stones: 0, cardInstanceIds: [] };
 			commitAction(payload).then(function (next) {
 				// 1ターン終了したのでUI入力はリセット
 				ui.selectedInstanceId = null;
@@ -2384,9 +2411,12 @@
 			const cellHand = el('div', 'battle-cell battle-cell--you-hand');
 			cellHand.setAttribute('aria-label', '自分の手札');
 			const stonesTop = el('div', 'battle-you-hand-stones');
-			stonesTop.setAttribute('aria-label', 'ストーン所持数 ' + String(st.humanStones));
+			const levelUpUsed = ui.levelUpStones | 0;
+			const payUsed = ui.pay && typeof ui.pay.stones === 'number' ? ui.pay.stones | 0 : 0;
+			const displayHumanStones = Math.max(0, st.humanStones - levelUpUsed - payUsed);
+			stonesTop.setAttribute('aria-label', 'ストーン所持数 ' + String(displayHumanStones));
 			stonesTop.appendChild(el('span', 'battle-you-hand-stones__label', 'ストーン'));
-			stonesTop.appendChild(el('span', 'battle-you-hand-stones__value', String(st.humanStones)));
+			stonesTop.appendChild(el('span', 'battle-you-hand-stones__value', String(displayHumanStones)));
 			cellHand.appendChild(stonesTop);
 			cellHand.appendChild(renderHandCards(st.humanHand, st.defs, {
 				faceDown: false,

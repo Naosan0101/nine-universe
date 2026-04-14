@@ -508,21 +508,27 @@ body {
 	z-index: 81;
 	background: rgba(0, 0, 0, 0.82);
 	display: flex;
-	align-items: center;
+	/* 内容が多い時に上下が切れないよう、上寄せ + スクロール */
+	align-items: flex-start;
 	justify-content: center;
-	padding: 1rem;
+	padding: clamp(0.75rem, 4.5vh, 1.6rem) 1rem;
 	overflow-y: auto;
+	overscroll-behavior: contain;
 }
 .announcement-modal__panel {
 	position: relative;
 	width: 100%;
-	max-width: min(440px, 100%);
+	/* 文章が1行に収まりやすいよう横長に */
+	max-width: min(760px, 100%);
 	padding: 1.75rem 1.5rem 1.5rem;
 	border-radius: 16px;
 	border: 1px solid rgba(200, 210, 255, 0.35);
 	background: linear-gradient(165deg, rgba(36, 42, 72, 0.96), rgba(18, 20, 32, 0.98));
 	box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
 	text-align: center;
+	/* パネルが画面からはみ出さないようにする */
+	max-height: calc(100dvh - 2.2rem);
+	overflow: auto;
 }
 .announcement-modal__heading {
 	margin: 0 0 0.85rem;
@@ -564,9 +570,19 @@ body {
 }
 .announcement-modal__card-text {
 	margin: 0;
-	font-size: 0.98rem;
+	/* 1行に収めやすいよう、少し小さめ */
+	font-size: 0.92rem;
 	line-height: 1.6;
 	color: var(--text);
+}
+.announcement-modal__mailbox-body .announcement-modal__card-text {
+	/* 横幅がある端末では1行に収める（狭い端末は折り返す） */
+	white-space: normal;
+}
+@media (min-width: 640px) {
+	.announcement-modal__mailbox-body .announcement-modal__card-text {
+		white-space: nowrap;
+	}
 }
 .announcement-modal__card-text + .announcement-modal__card-text {
 	margin-top: 0.4rem;
@@ -649,24 +665,46 @@ body {
 .home-time-pack__lead {
 	margin: 0;
 	font-size: 0.9rem;
-	line-height: 1.5;
+	line-height: 1.55;
 	color: var(--muted);
+}
+.home-time-pack__lead-line {
+	margin: 0 0 0.5rem;
+}
+.home-time-pack__bullets {
+	margin: 0;
+	padding-left: 1.2rem;
+	list-style: disc;
+}
+.home-time-pack__bullets li {
+	margin: 0.35rem 0;
+	padding-right: 0.25rem;
+	word-break: break-word;
+}
+.home-time-pack__tier {
+	display: inline-block;
+	min-width: 2.5rem;
+	font-weight: 800;
+	font-size: 0.82rem;
+	color: rgba(235, 240, 255, 0.88);
+	letter-spacing: 0.02em;
 }
 .home-time-pack__bar-wrap {
 	position: relative;
-	margin: 0.5rem 0 0.35rem;
+	margin: 0.85rem 0 0.35rem;
+	padding-top: 0.15rem;
 }
 .home-time-pack__ruler {
 	position: relative;
 	width: 100%;
-	min-height: 1.15rem;
+	min-height: 1.25rem;
 }
 .home-time-pack__ruler--labels {
-	margin-bottom: 0.35rem;
+	margin-bottom: 0.45rem;
 }
 .home-time-pack__ruler--times {
-	margin-top: 0.35rem;
-	min-height: 1.35rem;
+	margin-top: 0.5rem;
+	min-height: 1.45rem;
 }
 .home-time-pack__ruler-point {
 	position: absolute;
@@ -675,13 +713,13 @@ body {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	max-width: 48%;
+	max-width: min(46%, 11rem);
 }
 .home-time-pack__ruler-point--max {
 	transform: translateX(-100%);
 	align-items: flex-end;
 	text-align: right;
-	max-width: 48%;
+	max-width: min(46%, 11rem);
 }
 .home-time-pack__track {
 	height: 14px;
@@ -977,19 +1015,23 @@ body {
 }
 .tile__label { font-weight: 800; letter-spacing: 0.02em; }
 .tile__hint { font-size: 0.85rem; color: var(--muted); }
-/* ホーム：ミッションタイルに未受取バッジ */
-.tile--mission-tile {
+/* ホーム：ミッションタイル「ミッション」ラベル右上に未受取バッジ（お知らせボタンと同様） */
+.tile__label--notify {
 	position: relative;
+	display: inline-block;
+	align-self: flex-start;
+	/* 右上バッジが「ミッション」の末文と重ならないよう余白を確保 */
+	padding-right: 0.7rem;
 }
-.tile__mission-dot {
+.tile__label--notify .tile__mission-dot {
 	position: absolute;
-	top: -0.15rem;
-	right: -0.15rem;
-	width: 0.58rem;
-	height: 0.58rem;
+	top: -0.18rem;
+	right: -0.28rem;
+	width: 0.55rem;
+	height: 0.55rem;
 	border-radius: 50%;
 	background: #e53935;
-	box-shadow: 0 0 0 2px rgba(10, 12, 18, 0.85);
+	box-shadow: 0 0 0 2px rgba(15, 17, 24, 0.95);
 	pointer-events: none;
 	z-index: 2;
 }
@@ -1408,6 +1450,18 @@ a:hover {
 	grid-template-columns: repeat(auto-fill, minmax(188px, 1fr));
 	gap: 1rem;
 	max-width: min(920px, 100%);
+}
+.page--pack-result .topbar .pack-result__actions {
+	margin: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	align-items: center;
+	justify-content: flex-end;
+	flex: 0 1 auto;
+}
+.pack-result__draw-again-form {
+	margin: 0;
 }
 .lib-page-toolbar {
 	display: flex;
@@ -3422,20 +3476,34 @@ a:hover {
 }
 .mission-claim-form {
 	margin-top: 0.5rem;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.35rem;
 }
 .missions-page__title-wrap {
 	position: relative;
 	display: inline-block;
+	/* ページ見出し右上の未受取ドットが文字と重ならないよう余白を確保 */
+	padding-right: 0.7rem;
 }
+/* ホーム「お知らせ」の未読ドットと同サイズ・同位置関係 */
 .missions-page__notify-dot {
 	position: absolute;
-	top: -0.1rem;
-	right: -0.85rem;
-	width: 0.6rem;
-	height: 0.6rem;
+	top: -0.18rem;
+	right: -0.28rem;
+	width: 0.55rem;
+	height: 0.55rem;
 	border-radius: 50%;
 	background: #e53935;
-	box-shadow: 0 0 0 2px rgba(10, 12, 18, 0.92);
+	box-shadow: 0 0 0 2px rgba(15, 17, 24, 0.95);
+	pointer-events: none;
+	z-index: 1;
+}
+.mission-claim-gems {
+	display: block;
+	margin-top: 0;
+	font-size: 0.88rem;
 }
 .home-weekly-mission__hint {
 	margin: 0 0 0.5rem;
@@ -3448,6 +3516,8 @@ a:hover {
 .mission-section__hint {
 	margin: 0 0 0.75rem;
 	font-size: 0.9rem;
+	line-height: 1.55;
+	word-break: break-word;
 }
 .mission-section + .mission-section {
 	margin-top: 1rem;
@@ -3469,9 +3539,12 @@ a:hover {
 .mission-list__card h3 {
 	margin: 0 0 0.4rem;
 	font-size: 1rem;
+	line-height: 1.45;
+	word-break: break-word;
 }
 .mission-list__card p {
 	margin: 0.25rem 0;
+	line-height: 1.5;
 }
 
 /* =========================
