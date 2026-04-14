@@ -52,6 +52,9 @@ public class HomeController {
 		boolean listMissionFix = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_MISSION_FIX_START);
+		boolean listCardTextFix = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_CARD_TEXT_FIX_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -59,6 +62,7 @@ public class HomeController {
 		model.addAttribute("announcementListPackResultDrawAgain", listPackResultDrawAgain);
 		model.addAttribute("announcementListCaptainText", listCaptainText);
 		model.addAttribute("announcementListMissionFix", listMissionFix);
+		model.addAttribute("announcementListCardTextFix", listCardTextFix);
 
 		boolean perfClaimed = announcementRewardService.hasClaimedPerfLight(uid);
 		boolean perfInWindow = announcementRewardService.isWithinPerfLightWindow(today);
@@ -134,6 +138,16 @@ public class HomeController {
 		model.addAttribute("missionFixAnnouncementFutureUnclaimed",
 				!missionFixAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_MISSION_FIX_START));
 		model.addAttribute("missionFixAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_MISSION_FIX_GEMS);
+
+		boolean cardTextFixAnnClaimed = announcementRewardService.hasClaimedCardTextFixAnnouncement(uid);
+		boolean cardTextFixAnnInWindow = announcementRewardService.isWithinCardTextFixAnnouncementWindow(today);
+		model.addAttribute("cardTextFixAnnouncementClaimed", cardTextFixAnnClaimed);
+		model.addAttribute("cardTextFixAnnouncementClaimable", cardTextFixAnnInWindow && !cardTextFixAnnClaimed);
+		model.addAttribute("cardTextFixAnnouncementExpiredUnclaimed",
+				!cardTextFixAnnClaimed && today.isAfter(GameConstants.ANNOUNCEMENT_CARD_TEXT_FIX_LAST_DAY));
+		model.addAttribute("cardTextFixAnnouncementFutureUnclaimed",
+				!cardTextFixAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_CARD_TEXT_FIX_START));
+		model.addAttribute("cardTextFixAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_CARD_TEXT_FIX_GEMS);
 
 		var gauge = timePackGaugeService.snapshotForUser(uid);
 		model.addAttribute("timePackFillPercent", gauge.fillPercent());
@@ -297,6 +311,27 @@ public class HomeController {
 		switch (outcome) {
 			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
 					GameConstants.ANNOUNCEMENT_MISSION_FIX_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/card-text-fix/claim")
+	public String claimCardTextFixAnnouncement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_CARD_TEXT_FIX_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimCardTextFixAnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_CARD_TEXT_FIX_GEMS + "ジェムを受け取りました。");
 			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
 			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
 		}
