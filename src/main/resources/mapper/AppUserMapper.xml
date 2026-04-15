@@ -29,6 +29,13 @@
 		UPDATE app_user SET coins = #{coins} WHERE id = #{id}
 	</update>
 
+	<update id="updateCoinsAndMarkWelcomeHomeBonusGranted">
+		UPDATE app_user
+		SET coins = #{coins},
+		    welcome_home_bonus_granted = TRUE
+		WHERE id = #{id}
+	</update>
+
 	<update id="addCoinsDelta">
 		UPDATE app_user SET coins = COALESCE(coins, 0) + #{delta} WHERE id = #{id}
 	</update>
