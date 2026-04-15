@@ -14,4 +14,12 @@
 		INSERT INTO user_collection (user_id, card_id, quantity) VALUES (#{userId}, #{cardId}, #{delta})
 		ON CONFLICT (user_id, card_id) DO UPDATE SET quantity = user_collection.quantity + EXCLUDED.quantity
 	</insert>
+
+	<delete id="deleteByUserId">
+		DELETE FROM user_collection WHERE user_id = #{userId}
+	</delete>
+
+	<insert id="insertQuantity">
+		INSERT INTO user_collection (user_id, card_id, quantity) VALUES (#{userId}, #{cardId}, #{quantity})
+	</insert>
 </mapper>

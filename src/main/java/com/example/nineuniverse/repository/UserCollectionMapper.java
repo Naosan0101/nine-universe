@@ -10,4 +10,8 @@ public interface UserCollectionMapper {
 	Integer findQuantity(@Param("userId") long userId, @Param("cardId") short cardId);
 
 	int upsertAdd(@Param("userId") long userId, @Param("cardId") short cardId, @Param("delta") int delta);
+
+	int deleteByUserId(@Param("userId") long userId);
+
+	int insertQuantity(@Param("userId") long userId, @Param("cardId") short cardId, @Param("quantity") int quantity);
 }

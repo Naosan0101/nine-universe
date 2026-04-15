@@ -17,6 +17,9 @@ public interface AppUserMapper {
 
 	int updateCoins(@Param("id") long id, @Param("coins") int coins);
 
+	/** コインを上書きし、ウェルカムジェム付与済みにする（開発用 testuser のログインリセットなど）。 */
+	int updateCoinsAndMarkWelcomeHomeBonusGranted(@Param("id") long id, @Param("coins") int coins);
+
 	/** {@code coins} に {@code delta} を加算する（報酬付与など）。 */
 	int addCoinsDelta(@Param("id") long id, @Param("delta") int delta);
 
