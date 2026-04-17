@@ -19,6 +19,8 @@
                data-samurai-fix-claimable=${samuraiFixAnnouncementClaimable and announcementListSamuraiFix},
                data-pack-mission-bonus-fix-claimable=${packMissionBonusFixAnnouncementClaimable and announcementListPackMissionBonusFix},
                data-celebrate-30-users-claimable=${celebrate30UsersAnnouncementClaimable and announcementList30Users},
+               data-kaenryu-status-claimable=${kaenryuStatusAnnouncementClaimable and announcementListKaenryuStatus},
+               data-samurai-status-claimable=${samuraiStatusAnnouncementClaimable and announcementListSamuraiStatus},
                data-operator-message-popup-enabled=${operatorMessagePopupEnabled and announcementListOperatorMessage},
                data-user-id=${user.id}">
 <header class="topbar">
@@ -26,7 +28,7 @@
 	<div class="topbar__meta">
 		<button type="button"
 		        class="btn btn--ghost topbar__announce"
-		        th:classappend="${(perfLightAnnouncementClaimable and announcementListPerfLight) or (timePackAnnouncementClaimable and announcementListTimePack) or (balanceUiMissionAnnouncementClaimable and announcementListBalanceUiMission) or (packRatesAnnouncementClaimable and announcementListPackRates) or (packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain) or (captainTextAnnouncementClaimable and announcementListCaptainText) or (missionFixAnnouncementClaimable and announcementListMissionFix) or (cardTextFixAnnouncementClaimable and announcementListCardTextFix) or (samuraiFixAnnouncementClaimable and announcementListSamuraiFix) or (packMissionBonusFixAnnouncementClaimable and announcementListPackMissionBonusFix) or (celebrate30UsersAnnouncementClaimable and announcementList30Users) or (timePackAvailablePacks != null and timePackAvailablePacks > 0)} ? ' topbar__announce--highlight' : ''"
+		        th:classappend="${(perfLightAnnouncementClaimable and announcementListPerfLight) or (timePackAnnouncementClaimable and announcementListTimePack) or (balanceUiMissionAnnouncementClaimable and announcementListBalanceUiMission) or (packRatesAnnouncementClaimable and announcementListPackRates) or (packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain) or (captainTextAnnouncementClaimable and announcementListCaptainText) or (missionFixAnnouncementClaimable and announcementListMissionFix) or (cardTextFixAnnouncementClaimable and announcementListCardTextFix) or (samuraiFixAnnouncementClaimable and announcementListSamuraiFix) or (packMissionBonusFixAnnouncementClaimable and announcementListPackMissionBonusFix) or (celebrate30UsersAnnouncementClaimable and announcementList30Users) or (kaenryuStatusAnnouncementClaimable and announcementListKaenryuStatus) or (samuraiStatusAnnouncementClaimable and announcementListSamuraiStatus) or (timePackAvailablePacks != null and timePackAvailablePacks > 0)} ? ' topbar__announce--highlight' : ''"
 		        id="announcement-open"
 		        aria-haspopup="dialog"
 		        aria-controls="announcement-modal">
@@ -297,6 +299,8 @@
 		</article>
 
 		<div th:replace="~{fragments/announcement-captain-text :: card}"></div>
+		<div th:replace="~{fragments/announcement-kaenryu-status :: card}"></div>
+		<div th:replace="~{fragments/announcement-samurai-status :: card}"></div>
 		<p th:if="${flashAnnouncementSuccess}" class="announcement-modal__flash ok" th:text="${flashAnnouncementSuccess}">受け取りました。</p>
 		<p th:if="${flashAnnouncementError}" class="announcement-modal__flash err" th:text="${flashAnnouncementError}">エラー</p>
 		<button type="button" class="btn btn--ghost announcement-modal__close" id="announcement-close">閉じる</button>
@@ -527,6 +531,8 @@
 		var samuraiFix = document.body.getAttribute('data-samurai-fix-claimable') === 'true';
 		var packMissionBonusFix = document.body.getAttribute('data-pack-mission-bonus-fix-claimable') === 'true';
 		var celebrate30 = document.body.getAttribute('data-celebrate-30-users-claimable') === 'true';
+		var kaenryuStatus = document.body.getAttribute('data-kaenryu-status-claimable') === 'true';
+		var samuraiStatus = document.body.getAttribute('data-samurai-status-claimable') === 'true';
 		var ack = '';
 		try {
 			ack = localStorage.getItem('nu_ann_ack') || '';
@@ -534,7 +540,7 @@
 			ack = '';
 		}
 		var unseen = epoch !== '' && ack !== epoch;
-		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || cardTextFix || samuraiFix || packMissionBonusFix || celebrate30 || unseen;
+		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || cardTextFix || samuraiFix || packMissionBonusFix || celebrate30 || kaenryuStatus || samuraiStatus || unseen;
 		dot.hidden = !show;
 		dot.setAttribute('aria-hidden', show ? 'false' : 'true');
 	}

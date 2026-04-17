@@ -66,6 +66,12 @@ public class HomeController {
 		boolean list30Users = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_30_USERS_START);
+		boolean listKaenryuStatus = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_KAENRYU_STATUS_START);
+		boolean listSamuraiStatus = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_START);
 		boolean listOperatorMessage = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_OPERATOR_MESSAGE_START);
@@ -80,6 +86,8 @@ public class HomeController {
 		model.addAttribute("announcementListSamuraiFix", listSamuraiFix);
 		model.addAttribute("announcementListPackMissionBonusFix", listPackMissionBonusFix);
 		model.addAttribute("announcementList30Users", list30Users);
+		model.addAttribute("announcementListKaenryuStatus", listKaenryuStatus);
+		model.addAttribute("announcementListSamuraiStatus", listSamuraiStatus);
 		model.addAttribute("announcementListOperatorMessage", listOperatorMessage);
 
 		Set<String> claimedKeys = announcementRewardService.findClaimedKeys(uid);
@@ -201,6 +209,26 @@ public class HomeController {
 		model.addAttribute("celebrate30UsersAnnouncementFutureUnclaimed",
 				!celebrate30Claimed && today.isBefore(GameConstants.ANNOUNCEMENT_30_USERS_START));
 		model.addAttribute("celebrate30UsersAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_30_USERS_GEMS);
+
+		boolean kaenryuStatusAnnClaimed = claimedKeys.contains(GameConstants.ANNOUNCEMENT_KAENRYU_STATUS_KEY);
+		boolean kaenryuStatusAnnInWindow = announcementRewardService.isWithinKaenryuStatusAnnouncementWindow(today);
+		model.addAttribute("kaenryuStatusAnnouncementClaimed", kaenryuStatusAnnClaimed);
+		model.addAttribute("kaenryuStatusAnnouncementClaimable", kaenryuStatusAnnInWindow && !kaenryuStatusAnnClaimed);
+		model.addAttribute("kaenryuStatusAnnouncementExpiredUnclaimed",
+				!kaenryuStatusAnnClaimed && today.isAfter(GameConstants.ANNOUNCEMENT_KAENRYU_STATUS_LAST_DAY));
+		model.addAttribute("kaenryuStatusAnnouncementFutureUnclaimed",
+				!kaenryuStatusAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_KAENRYU_STATUS_START));
+		model.addAttribute("kaenryuStatusAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_KAENRYU_STATUS_GEMS);
+
+		boolean samuraiStatusAnnClaimed = claimedKeys.contains(GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_KEY);
+		boolean samuraiStatusAnnInWindow = announcementRewardService.isWithinSamuraiStatusAnnouncementWindow(today);
+		model.addAttribute("samuraiStatusAnnouncementClaimed", samuraiStatusAnnClaimed);
+		model.addAttribute("samuraiStatusAnnouncementClaimable", samuraiStatusAnnInWindow && !samuraiStatusAnnClaimed);
+		model.addAttribute("samuraiStatusAnnouncementExpiredUnclaimed",
+				!samuraiStatusAnnClaimed && today.isAfter(GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_LAST_DAY));
+		model.addAttribute("samuraiStatusAnnouncementFutureUnclaimed",
+				!samuraiStatusAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_START));
+		model.addAttribute("samuraiStatusAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_GEMS);
 
 		LocalDateTime now = LocalDateTime.now(zone);
 		LocalDateTime operatorPopupEnd = LocalDateTime.of(2026, 4, 19, 23, 59);
@@ -452,6 +480,48 @@ public class HomeController {
 		switch (outcome) {
 			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
 					GameConstants.ANNOUNCEMENT_30_USERS_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/kaenryu-status/claim")
+	public String claimKaenryuStatusAnnouncement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_KAENRYU_STATUS_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimKaenryuStatusAnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_KAENRYU_STATUS_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/samurai-status/claim")
+	public String claimSamuraiStatusAnnouncement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimSamuraiStatusAnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_GEMS + "ジェムを受け取りました。");
 			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
 			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
 		}

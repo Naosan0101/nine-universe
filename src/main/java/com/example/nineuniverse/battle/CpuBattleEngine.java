@@ -2098,13 +2098,13 @@ public class CpuBattleEngine {
 				}
 			}
 			case "SAMURAI" -> {
-				if (st.getHumanStones() >= 2 && !st.getCpuHand().isEmpty()) {
+				if (st.getHumanStones() >= 3 && !st.getCpuHand().isEmpty()) {
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.CONFIRM_OPTIONAL_STONE,
 							"サムライ",
 							true,
 							"SAMURAI",
-							2,
+							3,
 							List.of()
 					));
 				}
@@ -2305,13 +2305,13 @@ public class CpuBattleEngine {
 				}
 			}
 			case "SAMURAI" -> {
-				if (st.getCpuStones() >= 2 && st.getHumanHand().size() >= 2) {
+				if (st.getCpuStones() >= 3 && st.getHumanHand().size() >= 2) {
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.CONFIRM_OPTIONAL_STONE,
 							"サムライ",
 							false,
 							"SAMURAI",
-							2,
+							3,
 							List.of(),
 							true
 					));
@@ -2513,8 +2513,8 @@ public class CpuBattleEngine {
 			}
 			case "SAMURAI" -> {
 				// CPUは自動判断。ストーンがあり、相手手札があるなら使う（簡易）
-				if (st.getCpuStones() >= 2 && !st.getHumanHand().isEmpty()) {
-					st.setCpuStones(st.getCpuStones() - 2);
+				if (st.getCpuStones() >= 3 && !st.getHumanHand().isEmpty()) {
+					st.setCpuStones(st.getCpuStones() - 3);
 					// 人間に選ばせる
 					List<String> opts = new ArrayList<>();
 					for (BattleCard c : st.getHumanHand()) opts.add(c.getInstanceId());
@@ -2527,7 +2527,7 @@ public class CpuBattleEngine {
 								0,
 								opts
 						));
-						st.addLog("CPUサムライ: ストーン2使用。手札を1枚レストへ（選択）");
+						st.addLog("CPUサムライ: ストーン3使用。手札を1枚レストへ（選択）");
 					} else {
 						st.setPendingChoice(new PendingChoice(
 								ChoiceKind.SELECT_TWO_FROM_HAND_TO_REST,
@@ -2537,7 +2537,7 @@ public class CpuBattleEngine {
 								0,
 								opts
 						));
-						st.addLog("CPUサムライ: ストーン2使用。手札を2枚レストへ（選択）");
+						st.addLog("CPUサムライ: ストーン3使用。手札を2枚レストへ（選択）");
 					}
 				}
 			}
