@@ -41,6 +41,9 @@
 			</th:block>
 		</span>
 		<span class="card-face__rarity" th:text="${c.rarityLabel != null ? c.rarityLabel : 'C'}">C</span>
+		<span class="card-face__pack-initial"
+		      th:if="${c.packInitial != null && !c.packInitial.isBlank() && c.packInitial.trim() != 'STD'}"
+		      th:text="${c.packInitial}">STD</span>
 	</div>
 	<div class="card-face__layer card-face__narrative">
 		<div class="card-face__ability">

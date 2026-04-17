@@ -32,6 +32,7 @@
 	const sideCost = document.getElementById('lib-modal-side-cost');
 	const sidePower = document.getElementById('lib-modal-side-power');
 	const sideRarity = document.getElementById('lib-modal-side-rarity');
+	const sidePack = document.getElementById('lib-modal-side-pack');
 	const sideAbility = document.getElementById('lib-modal-side-ability');
 	const libSearch = document.getElementById('lib-search');
 	const libSort = document.getElementById('lib-sort');
@@ -48,6 +49,14 @@
 
 	const ATTR_LABEL = { HUMAN: '人間', ELF: 'エルフ', UNDEAD: 'アンデッド', DRAGON: 'ドラゴン' };
 	const RARITY_LABEL = { Reg: 'レジェンダリー', Ep: 'エピック', R: 'レア', C: 'コモン' };
+	const PACK_JA = { STD: 'スタンダードパック1', WH: '風吹く丘パック', ET: '邪悪なる脅威パック' };
+
+	function packSourcesForInitial(piRaw) {
+		const pi = (piRaw || 'STD').trim().toUpperCase() || 'STD';
+		if (pi === 'WH') return ['風吹く丘パック', 'スタンダードパック1'];
+		if (pi === 'ET') return ['邪悪なる脅威パック', 'スタンダードパック1'];
+		return [PACK_JA[pi] || 'スタンダードパック1'];
+	}
 
 	function hideBrokenImg(img) {
 		if (!img) return;
@@ -162,6 +171,9 @@
 		if (sideRarity) {
 			sideRarity.textContent = rarityLabel;
 		}
+		if (sidePack) {
+			sidePack.textContent = packSourcesForInitial(c.packInitial).join('\n');
+		}
 
 		if (modalCost) {
 			modalCost.textContent = c.cost != null && c.cost !== '' ? String(c.cost) : '';
@@ -268,6 +280,18 @@
 
 		detailModal.hidden = false;
 		document.body.style.overflow = 'hidden';
+
+		// モーダルのカード名が2行になる場合は1行に収める
+		const modalFaceRoot = document.getElementById('library-modal-card-face');
+		if (modalFaceRoot && typeof window.fitCardFaceNameToOneLine === 'function') {
+			setTimeout(function () {
+				try {
+					window.fitCardFaceNameToOneLine(modalFaceRoot);
+				} catch (e) {
+					// noop
+				}
+			}, 0);
+		}
 
 		if (modalSpark && typeof fillContinuousCardSpark === 'function') {
 			fillContinuousCardSpark(modalSpark, rarity);

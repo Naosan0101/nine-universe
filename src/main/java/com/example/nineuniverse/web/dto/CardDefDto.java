@@ -8,6 +8,8 @@ public record CardDefDto(
 		short cost,
 		short basePower,
 		String attribute,
+		/** 表示用（カード右下など）: 所属パックのイニシャル（例: STD） */
+		String packInitial,
 		/** C / R / Ep / Reg（ライブラリの card-face と同じ） */
 		String rarity,
 		String rarityLabel,

@@ -5,6 +5,69 @@
 (function (global) {
 	'use strict';
 
+	function clamp(n, lo, hi) {
+		return Math.max(lo, Math.min(hi, n));
+	}
+
+	/**
+	 * カード名が長い場合、フォントサイズを落として1行に収める。
+	 * 省略（…）は使わず、必要なら字間も詰めて「全文表示」を優先する。
+	 */
+	function fitCardFaceNameToOneLine(faceRoot) {
+		if (!faceRoot) return;
+		const nameEl = faceRoot.querySelector
+			? faceRoot.querySelector('.card-face__name')
+			: null;
+		if (!nameEl) return;
+		const text = (nameEl.textContent || '').trim();
+		if (!text) return;
+
+		// 既に調整済みならスキップ
+		if (nameEl.dataset && nameEl.dataset.nameFitDone === 'true') return;
+		if (nameEl.dataset) nameEl.dataset.nameFitDone = 'true';
+
+		const cs = window.getComputedStyle ? window.getComputedStyle(nameEl) : null;
+
+		// 1行に収めるための調整（折り返し判定は scrollWidth で行う）
+		nameEl.style.display = 'block';
+		nameEl.style.whiteSpace = 'nowrap';
+		nameEl.style.overflow = 'hidden';
+		nameEl.style.textOverflow = 'clip';
+
+		const fontPxRaw = cs ? parseFloat(cs.fontSize) : NaN;
+		const startPx = Number.isFinite(fontPxRaw) && fontPxRaw > 0 ? fontPxRaw : 14;
+		// かなり長いカード名でも全文表示できるよう、下限は低めにする
+		const minPx = clamp(startPx * 0.55, 7, startPx);
+		let px = startPx;
+
+		// 最大80ステップで縮める（表示の揺れを抑える）
+		for (let i = 0; i < 80; i++) {
+			// clientWidth が 0（非表示/描画前）ならやめる
+			if (nameEl.clientWidth <= 0) break;
+			if (nameEl.scrollWidth <= nameEl.clientWidth + 0.5) return;
+			if (px <= minPx + 0.01) break;
+			px = Math.max(minPx, px - 0.25);
+			nameEl.style.fontSize = px + 'px';
+		}
+
+		// まだ溢れているなら字間を詰める（最小フォントでも収まらないケース）
+		if (nameEl.clientWidth > 0 && nameEl.scrollWidth > nameEl.clientWidth + 0.5) {
+			nameEl.style.letterSpacing = '-0.04em';
+		}
+		// さらに縮める（字間調整後）
+		for (let i = 0; i < 60; i++) {
+			if (nameEl.clientWidth <= 0) break;
+			if (nameEl.scrollWidth <= nameEl.clientWidth + 0.5) return;
+			if (px <= 7.01) break;
+			px = Math.max(7, px - 0.25);
+			nameEl.style.fontSize = px + 'px';
+		}
+
+		// ここまで来たら、可能な限り縮めた状態で全文表示（省略はしない）
+		nameEl.style.textOverflow = 'clip';
+		}
+	}
+
 	function hideBrokenImg(img) {
 		if (!img) return;
 		img.setAttribute('hidden', '');
@@ -186,7 +249,8 @@
 		datum.appendChild(
 			elSpan('card-face__power' + (pow === 4 ? ' card-face__power--digit-4' : ''), String(pow))
 		);
-		datum.appendChild(elSpan('card-face__name', card.name || ''));
+		const nameEl = elSpan('card-face__name', card.name || '');
+		datum.appendChild(nameEl);
 
 		let attrLines = [];
 		if (card.attributeLabelLines && card.attributeLabelLines.length) {
@@ -210,6 +274,11 @@
 				: rar;
 		datum.appendChild(elSpan('card-face__rarity', rlab));
 
+		const pi = card.packInitial != null ? String(card.packInitial).trim() : '';
+		if (pi && pi.toUpperCase() !== 'STD') {
+			datum.appendChild(elSpan('card-face__pack-initial', pi));
+		}
+
 		face.appendChild(datum);
 
 		const nar = document.createElement('div');
@@ -228,6 +297,13 @@
 		spark.className = 'card-spark';
 		spark.setAttribute('aria-hidden', 'true');
 		face.appendChild(spark);
+
+		// カード名の折り返しを1行に収める（必要な場合のみ）
+		try {
+			fitCardFaceNameToOneLine(face);
+		} catch (e) {
+			// noop
+		}
 
 		return face;
 	}
@@ -254,4 +330,41 @@
 	global.buildLibraryCardFace = buildLibraryCardFace;
 	global.wireLibraryCardFaceImages = wireLibraryCardFaceImages;
 	global.applyLibraryCardFaceSpark = applyLibraryCardFaceSpark;
+	global.fitCardFaceNameToOneLine = fitCardFaceNameToOneLine;
+
+	// サーバーレンダリングされたカードも対象（ライブラリ/パック結果など）
+	if (typeof document !== 'undefined') {
+		function runFitAll() {
+			document.querySelectorAll('.card-face.card-face--layered').forEach(function (face) {
+				try {
+					fitCardFaceNameToOneLine(face);
+				} catch (e) {
+					// noop
+				}
+			});
+		}
+		if (document.readyState === 'loading') {
+			document.addEventListener('DOMContentLoaded', runFitAll);
+		} else {
+			setTimeout(runFitAll, 0);
+		}
+		// リサイズでレイアウトが変わったときも再調整（軽量なので全件でOK）
+		window.addEventListener('resize', function () {
+			// data フラグを外して再計測できるようにする
+			document.querySelectorAll('.card-face__name[data-name-fit-done="true"]').forEach(function (el) {
+				try {
+					delete el.dataset.nameFitDone;
+					el.style.fontSize = '';
+					el.style.textOverflow = '';
+						el.style.letterSpacing = '';
+					el.style.whiteSpace = '';
+					el.style.overflow = '';
+					el.style.display = '';
+				} catch (e) {
+					// noop
+				}
+			});
+			runFitAll();
+		});
+	}
 })(typeof window !== 'undefined' ? window : globalThis);

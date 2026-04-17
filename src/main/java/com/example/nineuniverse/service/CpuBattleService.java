@@ -198,12 +198,15 @@ public class CpuBattleService {
 							d -> {
 								String rarity = d.getRarity();
 								String rar = rarity != null && !rarity.isBlank() ? rarity : "C";
+								String pi = d.getPackInitial();
+								boolean isField = d.getCardKind() != null && d.getCardKind().trim().equalsIgnoreCase("FIELD");
 								return new CardDefDto(
 									d.getId(),
 									d.getName(),
 									(short) (d.getCost() != null ? d.getCost() : 0),
 									(short) (d.getBasePower() != null ? d.getBasePower() : 0),
 									d.getAttribute(),
+									pi != null && !pi.isBlank() ? pi.trim() : "STD",
 									rar,
 									rar,
 									d.getImageFile(),
@@ -212,7 +215,7 @@ public class CpuBattleService {
 									CardAttributeLabels.japaneseNameLines(d.getAttribute()),
 									GameConstants.CARD_LAYER_BASE,
 									GameConstants.cardLayerBarPath(d.getAttribute()),
-									GameConstants.CARD_LAYER_DATA,
+									isField ? GameConstants.CARD_LAYER_DATA_FIELD : GameConstants.CARD_LAYER_DATA,
 									GameConstants.namedTribePortraitLayerPath(d.getAttribute(), d.getName()),
 									CardFaceAbilityFormatter.blocksForCardId(d.getId()).stream()
 											.map(b -> new AbilityBlockDto(b.getHeadline(), b.getBody()))

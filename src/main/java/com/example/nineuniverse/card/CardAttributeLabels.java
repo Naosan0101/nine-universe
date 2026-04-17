@@ -41,6 +41,8 @@ public final class CardAttributeLabels {
 			case "ELF" -> "エルフ";
 			case "UNDEAD" -> "アンデッド";
 			case "DRAGON" -> "ドラゴン";
+			case "MACHINE" -> "マシン";
+			case "CARBUNCLE" -> "カーバンクル";
 			default -> code;
 		};
 	}

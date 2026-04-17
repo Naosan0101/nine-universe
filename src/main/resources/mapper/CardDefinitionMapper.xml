@@ -3,14 +3,16 @@
 <mapper namespace="com.example.nineuniverse.repository.CardDefinitionMapper">
 
 	<select id="findAll" resultType="com.example.nineuniverse.domain.CardDefinition">
-		SELECT id, name, cost, base_power AS basePower, attribute, rarity, image_file AS imageFile,
+		SELECT id, name, cost, base_power AS basePower, attribute, card_kind AS cardKind, rarity, image_file AS imageFile,
+		       pack_initial AS packInitial,
 		       ability_deploy_code AS abilityDeployCode, ability_passive_code AS abilityPassiveCode,
 		       deploy_help AS deployHelp, passive_help AS passiveHelp
 		FROM card_definition ORDER BY id
 	</select>
 
 	<select id="findById" resultType="com.example.nineuniverse.domain.CardDefinition">
-		SELECT id, name, cost, base_power AS basePower, attribute, rarity, image_file AS imageFile,
+		SELECT id, name, cost, base_power AS basePower, attribute, card_kind AS cardKind, rarity, image_file AS imageFile,
+		       pack_initial AS packInitial,
 		       ability_deploy_code AS abilityDeployCode, ability_passive_code AS abilityPassiveCode,
 		       deploy_help AS deployHelp, passive_help AS passiveHelp
 		FROM card_definition WHERE id = #{id}
