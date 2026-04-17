@@ -71,6 +71,8 @@ public class LibraryService {
 		v.setId(c.getId());
 		v.setName(c.getName());
 		v.setAttribute(c.getAttribute());
+		String pi = c.getPackInitial();
+		v.setPackInitial(pi != null && !pi.isBlank() ? pi.trim() : "STD");
 		String rarity = c.getRarity();
 		v.setRarity(rarity != null && !rarity.isBlank() ? rarity : "C");
 		v.setRarityLabel(v.getRarity());
@@ -87,14 +89,15 @@ public class LibraryService {
 		v.setAttributeLabelPipe(attrLines.isEmpty() ? "" : String.join("|", attrLines));
 		v.setBarImagePath(GameConstants.cardLayerBarPath(c.getAttribute()));
 		v.setLayerBasePath(GameConstants.CARD_LAYER_BASE);
-		v.setLayerFramePath(GameConstants.CARD_LAYER_DATA);
+		boolean isField = c.getCardKind() != null && c.getCardKind().trim().equalsIgnoreCase("FIELD");
+		v.setLayerFramePath(isField ? GameConstants.CARD_LAYER_DATA_FIELD : GameConstants.CARD_LAYER_DATA);
 		String dep = c.getDeployHelp();
 		String pas = c.getPassiveHelp();
 		v.setDeployHelp(dep != null ? dep : "");
 		v.setPassiveHelp(pas != null ? pas : "");
 		v.setAbilityBlocks(CardFaceAbilityFormatter.blocksForCardId(c.getId()));
 		v.setCostFaceCssClass(cardFaceCostClass(v.getCost()));
-		v.setPowerFaceCssClass(cardFacePowerClass(v.getBasePower()));
+		v.setPowerFaceCssClass(isField ? "card-face__power card-face__power--hidden" : cardFacePowerClass(v.getBasePower()));
 	}
 
 	private static String cardFaceCostClass(short cost) {

@@ -64,6 +64,9 @@ public final class GameConstants {
 	/** ③カード基礎データ（装飾・枠・最前面の画像レイヤー） */
 	public static final String CARD_LAYER_DATA = encCardFile("カード基礎データ.PNG");
 
+	/** ③カード基礎データ（フィールド用） */
+	public static final String CARD_LAYER_DATA_FIELD = encCardFile("カード基礎データ_フィールド.PNG");
+
 	/** ②種族バー */
 	public static String cardLayerBarPath(String attribute) {
 		String file = switch (attribute == null || attribute.isBlank() ? "HUMAN" : attribute.toUpperCase(Locale.ROOT)) {
@@ -72,6 +75,10 @@ public final class GameConstants {
 			case "UNDEAD" -> "アンデッドバー.PNG";
 			case "DRAGON" -> "ドラゴンバー.PNG";
 			case "ELF_UNDEAD" -> "エルフアンデッドバー.PNG";
+			case "HUMAN_UNDEAD" -> "人間アンデッドバー.PNG";
+			case "HUMAN_ELF" -> "人間エルフバー.PNG";
+			case "MACHINE" -> "マシンバー.PNG";
+			case "CARBUNCLE" -> "カーバンクルバー.PNG";
 			default -> "人間バー.PNG";
 		};
 		return encCardFile(file);

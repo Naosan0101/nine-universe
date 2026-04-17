@@ -40,7 +40,10 @@ public class PackController {
 	private static final List<String> PACK_ART_CLASSPATH_FILES = List.of(
 			"static/images/cards/スタンダードパック.PNG",
 			"static/images/cards/風吹く丘パック.PNG",
-			"static/images/cards/邪悪なる脅威パック.PNG");
+			"static/images/cards/邪悪なる脅威パック.PNG",
+			"static/images/cards/スタンダードパック2.PNG",
+			"static/images/cards/宝石の秘境パック.PNG",
+			"static/images/cards/鉄面の艦隊パック.PNG");
 
 	private static final String CARD_BACK_CLASSPATH = "static/images/cards/card-back.PNG";
 
@@ -57,11 +60,18 @@ public class PackController {
 		model.addAttribute("standardPackImage", GameConstants.packArtImageUrl("スタンダードパック.PNG"));
 		model.addAttribute("windyHillPackImage", GameConstants.packArtImageUrl("風吹く丘パック.PNG"));
 		model.addAttribute("evilThreatPackImage", GameConstants.packArtImageUrl("邪悪なる脅威パック.PNG"));
+		// 新パック（画像が未実装でも購入画面が崩れないよう、存在しない場合は onerror で非表示）
+		model.addAttribute("standard2PackImage", GameConstants.packArtImageUrl("スタンダードパック2.PNG"));
+		model.addAttribute("jewelUtopiaPackImage", GameConstants.packArtImageUrl("宝石の秘境パック.PNG"));
+		model.addAttribute("ironFleetPackImage", GameConstants.packArtImageUrl("鉄面の艦隊パック.PNG"));
 		model.addAttribute("gems", fresh != null && fresh.getCoins() != null ? fresh.getCoins() : 0);
 		model.addAttribute("packRarityRates", PACK_RARITY_RATES);
 		model.addAttribute("standardPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.STANDARD)));
 		model.addAttribute("windyHillPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.WINDY_HILL)));
 		model.addAttribute("evilThreatPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.EVIL_THREAT)));
+		model.addAttribute("standard2PackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.STANDARD_2)));
+		model.addAttribute("jewelUtopiaPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.JEWEL_UTOPIA)));
+		model.addAttribute("ironFleetPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.IRON_FLEET)));
 		return "pack-buy";
 	}
 
@@ -199,6 +209,9 @@ public class PackController {
 			case "STANDARD" -> PackType.STANDARD;
 			case "WINDY_HILL" -> PackType.WINDY_HILL;
 			case "EVIL_THREAT" -> PackType.EVIL_THREAT;
+			case "STANDARD_2" -> PackType.STANDARD_2;
+			case "JEWEL_UTOPIA" -> PackType.JEWEL_UTOPIA;
+			case "IRON_FLEET" -> PackType.IRON_FLEET;
 			default -> PackType.STANDARD;
 		};
 	}

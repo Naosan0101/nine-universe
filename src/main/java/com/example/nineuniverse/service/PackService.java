@@ -20,7 +20,10 @@ public class PackService {
 	public enum PackType {
 		STANDARD(3),
 		WINDY_HILL(4),
-		EVIL_THREAT(5);
+		EVIL_THREAT(5),
+		STANDARD_2(3),
+		JEWEL_UTOPIA(4),
+		IRON_FLEET(5);
 
 		public final int cost;
 
@@ -116,29 +119,26 @@ public class PackService {
 
 	private static List<CardDefinition> filterCardsForPack(List<CardDefinition> all, PackType type) {
 		if (all == null || all.isEmpty()) return List.of();
-		if (type == null || type == PackType.STANDARD) return all;
+		PackType t = type != null ? type : PackType.STANDARD;
 		List<CardDefinition> out = new ArrayList<>();
+		// 「スタンダードパック1」は WINDY_HILL / EVIL_THREAT の収録カードも排出対象。
+		// ただし将来パックのカードは混ざらないよう、明示的に STD/WH/ET のみ対象にする。
+		List<String> wants = switch (t) {
+			case STANDARD -> List.of("STD", "WH", "ET");
+			case WINDY_HILL -> List.of("WH");
+			case EVIL_THREAT -> List.of("ET");
+			case STANDARD_2 -> List.of("JU", "IF");
+			case JEWEL_UTOPIA -> List.of("JU");
+			case IRON_FLEET -> List.of("IF");
+		};
 		for (CardDefinition c : all) {
 			if (c == null) continue;
-			// 風の魔人（ID=14）は邪悪なる脅威パックから除外
-			if (type == PackType.EVIL_THREAT && c.getId() != null && c.getId() == 14) continue;
-			String attr = c.getAttribute();
-			if (attr == null) continue;
-			boolean isHuman = hasAttr(attr, "HUMAN");
-			boolean isElf = hasAttr(attr, "ELF");
-			boolean isUndead = hasAttr(attr, "UNDEAD");
-			boolean isDragon = hasAttr(attr, "DRAGON");
-			if (type == PackType.WINDY_HILL && (isHuman || isElf)) out.add(c);
-			if (type == PackType.EVIL_THREAT && (isUndead || isDragon)) out.add(c);
+			String pi = c.getPackInitial();
+			String got = (pi != null && !pi.isBlank()) ? pi.trim().toUpperCase() : "STD";
+			if (!wants.contains(got)) continue;
+			out.add(c);
 		}
 		return out;
-	}
-
-	private static boolean hasAttr(String attr, String seg) {
-		String a = attr.trim().toUpperCase();
-		String s = seg.trim().toUpperCase();
-		if (a.equals(s)) return true;
-		return a.contains("_") && List.of(a.split("_")).contains(s);
 	}
 
 	private static CardDefinition pickWeightedByRarity(List<CardDefinition> all, Random rnd) {

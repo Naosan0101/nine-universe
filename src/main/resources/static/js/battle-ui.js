@@ -459,6 +459,7 @@
 	const battleTipEl = document.getElementById('battle-card-tooltip');
 	const battleTipName = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__name') : null;
 	const battleTipAttr = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__attr') : null;
+	const battleTipPack = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__pack') : null;
 	const battleTipAbility = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__ability') : null;
 	const battleTipPreview = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__preview') : null;
 	const battleTipPowerLabel = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__power-label') : null;
@@ -466,6 +467,13 @@
 	const deckTipEl = document.getElementById('battle-deck-tooltip');
 	let lastDefsForTooltip = null;
 	let lastStateForHandPower = null;
+
+	function packSourcesForInitial(piRaw) {
+		const pi = (piRaw || 'STD').trim().toUpperCase() || 'STD';
+		if (pi === 'WH') return ['風吹く丘パック', 'スタンダードパック1'];
+		if (pi === 'ET') return ['邪悪なる脅威パック', 'スタンダードパック1'];
+		return ['スタンダードパック1'];
+	}
 
 	function hideBattleCardTooltip() {
 		if (battleTipPreview) battleTipPreview.textContent = '';
@@ -648,11 +656,12 @@
 	function showBattleCardTooltipFromDataset(host) {
 		if (!battleTipEl || !battleTipName || !battleTipAttr || !battleTipAbility) return;
 		hideBattleDeckTooltip();
+		let def = null;
 		if (battleTipPreview) {
 			battleTipPreview.textContent = '';
 			const cid = host.dataset.battleCardId;
 			if (cid && lastDefsForTooltip) {
-				const def = resolveCardDef(lastDefsForTooltip, cid);
+				def = resolveCardDef(lastDefsForTooltip, cid);
 				if (def) {
 					battleTipPreview.appendChild(buildBattleCardFaceShell(def, 'tip'));
 				}
@@ -660,6 +669,9 @@
 		}
 		battleTipName.textContent = host.dataset.battleName || '';
 		battleTipAttr.textContent = host.dataset.battleAttr || '—';
+		if (battleTipPack) {
+			battleTipPack.textContent = def ? packSourcesForInitial(def.packInitial).join('\n') : '—';
+		}
 		fillBattleTooltipPowerSection(host);
 		fillBattleTooltipAbility(battleTipAbility, host.dataset.battleAbility || '');
 		battleTipEl.hidden = false;
@@ -2236,13 +2248,16 @@
 		function statRow(label, value) {
 			const wrap = el('div', 'battle-zone-detail-modal__stat');
 			wrap.appendChild(el('dt', '', label));
-			wrap.appendChild(el('dd', '', value));
+			const dd = el('dd', '', value);
+			if (label === '収録パック') dd.classList.add('battle-zone-detail-modal__pack');
+			wrap.appendChild(dd);
 			return wrap;
 		}
 		stats.appendChild(statRow('種族', formatBattleCardAttr(def)));
 		stats.appendChild(statRow('コスト', String(def.cost != null ? def.cost : '—')));
 		stats.appendChild(statRow('強さ', String(def.basePower != null ? def.basePower : '—')));
 		stats.appendChild(statRow('★', String(def.rarity != null ? def.rarity : '—')));
+		stats.appendChild(statRow('収録パック', packSourcesForInitial(def.packInitial).join('\n')));
 		right.appendChild(stats);
 
 		right.appendChild(el('p', 'battle-zone-detail-modal__label', '効果'));

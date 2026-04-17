@@ -19,12 +19,14 @@
 	const modalPower = document.getElementById('lib-modal-power');
 	const modalName = document.getElementById('lib-modal-name');
 	const modalAttr = document.getElementById('lib-modal-attr');
+	const modalPackInitial = document.getElementById('lib-modal-pack-initial');
 	const modalAbility = document.getElementById('lib-modal-ability');
 	const sideTitle = document.getElementById('lib-modal-side-title');
 	const sideAttr = document.getElementById('lib-modal-side-attr');
 	const sideCost = document.getElementById('lib-modal-side-cost');
 	const sidePower = document.getElementById('lib-modal-side-power');
 	const sideRarity = document.getElementById('lib-modal-side-rarity');
+	const sidePack = document.getElementById('lib-modal-side-pack');
 	const sideAbility = document.getElementById('lib-modal-side-ability');
 
 	const tooltipEl = document.getElementById('library-tooltip');
@@ -34,6 +36,7 @@
 	const tooltipPower = tooltipEl ? tooltipEl.querySelector('.deck-tooltip__power') : null;
 	const tooltipAbility = tooltipEl ? tooltipEl.querySelector('.deck-tooltip__ability') : null;
 	const tooltipRarity = tooltipEl ? tooltipEl.querySelector('.deck-tooltip__rarity') : null;
+	const tooltipPack = tooltipEl ? tooltipEl.querySelector('.deck-tooltip__pack') : null;
 
 	const ATTR_JA = {
 		HUMAN: '人間',
@@ -41,6 +44,21 @@
 		UNDEAD: 'アンデッド',
 		DRAGON: 'ドラゴン'
 	};
+
+	const PACK_JA = {
+		STD: 'スタンダードパック1',
+		WH: '風吹く丘パック',
+		ET: '邪悪なる脅威パック'
+	};
+
+	// 「スタンダードパック1」は WH/ET の全収録カードも排出対象
+	function packSourcesForInitial(piRaw) {
+		const pi = (piRaw || 'STD').trim().toUpperCase() || 'STD';
+		if (pi === 'WH') return ['風吹く丘パック', 'スタンダードパック1'];
+		if (pi === 'ET') return ['邪悪なる脅威パック', 'スタンダードパック1'];
+		// STD（その他の未定義値も一旦ここ）
+		return ['スタンダードパック1'];
+	}
 
 	function hideBrokenImg(img) {
 		if (!img) return;
@@ -83,6 +101,7 @@
 		if (tooltipEl) {
 			tooltipEl.hidden = true;
 			tooltipEl.classList.remove('deck-tooltip--wide-attr');
+			tooltipEl.classList.remove('deck-tooltip--wide-pack');
 		}
 		if (tooltipAttr) tooltipAttr.classList.remove('deck-tooltip__attr--oneline');
 	}
@@ -159,7 +178,7 @@
 		if (!tooltipEl || !tooltipName) return;
 		const d = btn.dataset;
 		const owned = d.owned === 'true';
-		tooltipName.textContent = owned ? (d.name || '') : '？？？？';
+		tooltipName.textContent = d.name || '';
 		const compound = tooltipAttributeIsCompound(d);
 		if (tooltipEl.classList) tooltipEl.classList.toggle('deck-tooltip--wide-attr', compound);
 		if (tooltipAttr) {
@@ -169,6 +188,13 @@
 		if (tooltipCost) tooltipCost.textContent = owned && d.cost != null && d.cost !== '' ? String(d.cost) : '—';
 		if (tooltipPower) tooltipPower.textContent = owned && d.basePower != null && d.basePower !== '' ? String(d.basePower) : '—';
 		if (tooltipRarity) tooltipRarity.textContent = owned ? (d.rarityLabel || d.rarity || 'C') : '—';
+		if (tooltipPack) {
+			const sources = packSourcesForInitial(d.packInitial);
+			tooltipPack.textContent = sources.join('\n');
+			if (tooltipEl?.classList) {
+				tooltipEl.classList.toggle('deck-tooltip--wide-pack', sources.length >= 2);
+			}
+		}
 		if (tooltipAbility) fillDeckTooltipAbility(tooltipAbility, owned ? d.ability : '');
 		tooltipEl.hidden = false;
 		positionHoverTooltip(clientX, clientY);
@@ -178,7 +204,7 @@
 		if (!tooltipEl) return;
 		// `.library-card` の外枠にイベントを付けると、ブラウザ差やDOM入れ替えで発火が不安定になるため、
 		// 実際のホバー対象（ボタン）に付ける。
-		const target = btn || cardEl;
+		const target = btn && !btn.disabled ? btn : cardEl;
 		target.addEventListener('pointerenter', function (e) {
 			showHoverTooltip(btn, e.clientX, e.clientY);
 		});
@@ -260,8 +286,21 @@
 			// カード面の表示はコード（Reg/Ep/R/C）
 			modalRarity.textContent = rarity;
 		}
+		if (modalPackInitial) {
+			const pi = (d.packInitial || '').trim();
+			if (pi && pi.toUpperCase() !== 'STD') {
+				modalPackInitial.textContent = pi;
+				modalPackInitial.hidden = false;
+			} else {
+				modalPackInitial.textContent = '';
+				modalPackInitial.hidden = true;
+			}
+		}
 		if (sideRarity) {
 			sideRarity.textContent = rarityLabel;
+		}
+		if (sidePack) {
+			sidePack.textContent = packSourcesForInitial(d.packInitial).join('\n');
 		}
 
 		if (modalCost) {
@@ -372,6 +411,17 @@
 
 		modal.hidden = false;
 		document.body.style.overflow = 'hidden';
+
+		// モーダルのカード名が2行になる場合は1行に収める
+		if (modalFaceRoot && typeof window.fitCardFaceNameToOneLine === 'function') {
+			setTimeout(function () {
+				try {
+					window.fitCardFaceNameToOneLine(modalFaceRoot);
+				} catch (e) {
+					// noop
+				}
+			}, 0);
+		}
 
 		if (modalSpark && typeof fillContinuousCardSpark === 'function') {
 			fillContinuousCardSpark(modalSpark, rarity);

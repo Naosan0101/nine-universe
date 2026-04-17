@@ -42,7 +42,15 @@ public final class CardFaceAbilityFormatter {
 		if (s.contains("/効果なし。") || s.contains("/能力なし。")) {
 			return List.of(new AbilityBlockView("", "効果なし。"));
 		}
-		int idx = s.indexOf("/配置：");
+		int idx = s.indexOf("/フィールド：");
+		if (idx >= 0) {
+			return List.of(new AbilityBlockView("〈フィールド〉", s.substring(idx + "/フィールド：".length())));
+		}
+		idx = s.indexOf("/フィールド:");
+		if (idx >= 0) {
+			return List.of(new AbilityBlockView("〈フィールド〉", s.substring(idx + "/フィールド:".length())));
+		}
+		idx = s.indexOf("/配置：");
 		if (idx >= 0) {
 			return List.of(new AbilityBlockView("〈配置〉", s.substring(idx + "/配置：".length())));
 		}

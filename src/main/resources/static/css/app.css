@@ -1732,6 +1732,13 @@ a:hover {
 	font-size: 1.2rem;
 	font-variant-numeric: tabular-nums;
 }
+.library-detail-modal__stats dd.library-detail-modal__pack {
+	white-space: pre-line;
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: var(--muted);
+	line-height: 1.25;
+}
 .library-detail-modal__meta {
 	margin: 0 0 0.65rem;
 	font-size: 1.02rem;
@@ -2058,6 +2065,10 @@ a:hover {
 .deck-edit-page-tooltip.deck-tooltip--wide-attr {
 	max-width: min(520px, 96vw);
 }
+.library-page-tooltip.deck-tooltip--wide-pack,
+.deck-edit-page-tooltip.deck-tooltip--wide-pack {
+	max-width: min(520px, 96vw);
+}
 .library-page-tooltip .deck-tooltip__stats dd.deck-tooltip__attr--oneline,
 .deck-edit-page-tooltip .deck-tooltip__stats dd.deck-tooltip__attr--oneline {
 	white-space: nowrap;
@@ -2100,6 +2111,13 @@ a:hover {
 	margin: 0;
 	font-weight: 800;
 	font-variant-numeric: tabular-nums;
+}
+.deck-tooltip__pack {
+	font-size: 0.85em;
+	font-weight: 600;
+	color: var(--muted);
+	white-space: pre-line;
+	line-height: 1.25;
 }
 .deck-tooltip__label {
 	margin: 0;
@@ -3313,6 +3331,13 @@ a:hover {
 	font-weight: 800;
 	font-variant-numeric: tabular-nums;
 }
+.battle-zone-detail-modal__stats dd.battle-zone-detail-modal__pack {
+	white-space: pre-line;
+	font-size: 0.9em;
+	font-weight: 600;
+	color: var(--muted);
+	line-height: 1.25;
+}
 .battle-zone-detail-modal__label {
 	margin: 0.75rem 0 0.35rem;
 	font-size: 0.82rem;
@@ -3742,6 +3767,9 @@ a:hover {
 	font-size: var(--cf-power-size);
 	line-height: 1;
 }
+.card-face__power--hidden {
+	display: none;
+}
 .card-face__name {
 	position: absolute;
 	left: var(--cf-name-left);
@@ -3772,6 +3800,10 @@ a:hover {
 	font-size: var(--cf-attr-size);
 	line-height: 1.15;
 	letter-spacing: 0.04em;
+}
+.card-face--attr-CARBUNCLE .card-face__attr-label {
+	/* 「カーバンクル」は文字幅がやや大きいので少しだけ小さく */
+	font-size: calc(var(--cf-attr-size) * 0.86);
 }
 .card-face__attr-line { display: inline; }
 .card-face__attr-label--compound {
@@ -3806,6 +3838,25 @@ a:hover {
 	font-size: 5.1cqi;
 	letter-spacing: 0.08em;
 	text-shadow: 0 2px 3px rgba(0,0,0,0.6);
+}
+
+.card-face__pack-initial {
+	position: absolute;
+	right: 3.2%;
+	bottom: 1.2%;
+	z-index: 120;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.18em 0.4em;
+	border-radius: 8px;
+	font-weight: 600;
+	font-size: 3.6cqi;
+	letter-spacing: 0.08em;
+	color: #f8f8f8;
+	background: rgba(0,0,0,0.45);
+	box-shadow: 0 2px 6px rgba(0,0,0,0.22);
+	text-shadow: 0 2px 3px rgba(0,0,0,0.55);
 }
 
 /* レア度の光り（R:緑 / Ep:紫 / Reg:金） */
@@ -3891,6 +3942,10 @@ a:hover {
 	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 	gap: 14px;
 	align-items: start;
+}
+.page--pack .pack-buy__row-break {
+	grid-column: 1 / -1;
+	height: 0;
 }
 .pack-buy__item {
 	border: 1px solid rgba(255,255,255,0.12);

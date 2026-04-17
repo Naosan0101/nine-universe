@@ -10,6 +10,8 @@ public class LibraryCardView {
 	private String attribute;
 	/** C / R / Ep / Reg */
 	private String rarity = "C";
+	/** 表示用（カード右下など）: 所属パックのイニシャル（例: STD） */
+	private String packInitial = "STD";
 	private String imagePath;
 	private int quantity;
 	private boolean owned;
