@@ -255,6 +255,26 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_30_USERS_LAST_DAY =
 			ANNOUNCEMENT_30_USERS_START.plusDays(30 - 1);
 
+	/** お知らせ配布（「火炎竜」のステータス修正） */
+	public static final String ANNOUNCEMENT_KAENRYU_STATUS_KEY = "kaenryu_status_2026_04";
+
+	public static final int ANNOUNCEMENT_KAENRYU_STATUS_GEMS = 3;
+
+	public static final LocalDate ANNOUNCEMENT_KAENRYU_STATUS_START = LocalDate.of(2026, 4, 17);
+
+	public static final LocalDate ANNOUNCEMENT_KAENRYU_STATUS_LAST_DAY =
+			ANNOUNCEMENT_KAENRYU_STATUS_START.plusDays(30 - 1);
+
+	/** お知らせ配布（「サムライ」のステータス修正） */
+	public static final String ANNOUNCEMENT_SAMURAI_STATUS_KEY = "samurai_status_2026_04";
+
+	public static final int ANNOUNCEMENT_SAMURAI_STATUS_GEMS = 3;
+
+	public static final LocalDate ANNOUNCEMENT_SAMURAI_STATUS_START = LocalDate.of(2026, 4, 17);
+
+	public static final LocalDate ANNOUNCEMENT_SAMURAI_STATUS_LAST_DAY =
+			ANNOUNCEMENT_SAMURAI_STATUS_START.plusDays(30 - 1);
+
 	/** 運営より、皆様へ（ポップアップ表示＆お知らせから再閲覧） */
 	public static final LocalDate ANNOUNCEMENT_OPERATOR_MESSAGE_START = LocalDate.of(2026, 4, 16);
 
@@ -304,7 +324,7 @@ public final class GameConstants {
 	/**
 	 * お知らせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
 	 */
-	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-16-8";
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-17-2";
 
 	private GameConstants() {
 	}
