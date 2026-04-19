@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Locale;
+import java.util.Set;
 import org.springframework.web.util.UriUtils;
 
 /**
@@ -13,6 +14,12 @@ import org.springframework.web.util.UriUtils;
  */
 public final class GameConstants {
 	public static final String CARD_ASSET_DIR = "/images/cards/";
+
+	/**
+	 * イラストファイル名が「カード名.PNG」（スペース）と異なる（アンダースコア名など）場合、{@code image_file} をそのまま参照する。
+	 * 他カードは従来どおり「カード名.PNG」優先のまま。
+	 */
+	private static final Set<Short> PORTRAIT_USE_DB_IMAGE_FILE_IDS = Set.of((short) 41, (short) 42, (short) 65, (short) 68);
 
 	private static String normalizeImageExtension(String filename) {
 		if (filename == null || filename.isBlank()) {
@@ -84,7 +91,11 @@ public final class GameConstants {
 		return encCardFileNfc(file);
 	}
 
-	/** キャライラスト（DB image_file）。拡張子は .PNG / .JPEG に正規化。 */
+	/**
+	 * キャライラスト（DB {@code image_file} または「カード名.PNG」）。
+	 * クラスパス上の実ファイル名に合わせ {@link #encCardFile}（NFD URL）を使う。
+	 * NFC 名のみのファイルは読めないため、素材はリポジトリで NFD に揃えるかファイル名を DB と揃える。
+	 */
 	public static String cardPortraitPath(String imageFile) {
 		if (imageFile == null || imageFile.isBlank()) {
 			return "";
@@ -93,9 +104,8 @@ public final class GameConstants {
 	}
 
 	/**
-	 * カード面のイラスト層（①基盤と種族バーの間）。種族が単一の次のいずれかのときのみ:
-	 * {@code HUMAN} / {@code ELF} / {@code UNDEAD} / {@code ELF_UNDEAD} / {@code DRAGON}。
-	 * 素材ファイル名はカード名と一致する {@code 名前.PNG}。
+	 * カード面のイラスト層（①基盤と種族バーの間）。素材は {@code カード名.PNG}（または DB の image_file）。
+	 * 種族: 人間・エルフ・アンデッド・ドラゴン・エルフアンデッド・カーバンクル（カード名とファイル名を一致させる）。
 	 */
 	public static String namedTribePortraitLayerPath(String attribute, String cardName) {
 		if (attribute == null || cardName == null) {
@@ -106,7 +116,8 @@ public final class GameConstants {
 				&& !attr.equals("ELF")
 				&& !attr.equals("UNDEAD")
 				&& !attr.equals("ELF_UNDEAD")
-				&& !attr.equals("DRAGON")) {
+				&& !attr.equals("DRAGON")
+				&& !attr.equals("CARBUNCLE")) {
 			return "";
 		}
 		String n = cardName.trim();
@@ -114,6 +125,37 @@ public final class GameConstants {
 			return "";
 		}
 		return encCardFile(n + ".PNG");
+	}
+
+	/**
+	 * カード面のイラスト層 URL（カード ID 不明時は {@link #cardFacePortraitLayerPath(String, String, String, Short)} に {@code null} を渡すのと同じ）。
+	 */
+	public static String cardFacePortraitLayerPath(String attribute, String cardName, String imageFile) {
+		return cardFacePortraitLayerPath(attribute, cardName, imageFile, null);
+	}
+
+	/**
+	 * カード面のイラスト層 URL。
+	 * <p>単一種族は通常 {@link #namedTribePortraitLayerPath}（カード名.PNG）を優先。
+	 * {@link #PORTRAIT_USE_DB_IMAGE_FILE_IDS} のみ {@code image_file} を優先（静的ファイル名がカード名と異なる場合）。
+	 * その URL は {@link #encCardFileNfc}（NFC）で組む。Windows 資産のファイル名が NFC のとき {@link #cardPortraitPath}（NFD）だと 404 になるため。
+	 */
+	public static String cardFacePortraitLayerPath(String attribute, String cardName, String imageFile, Short cardId) {
+		String img = imageFile != null ? imageFile.trim() : "";
+		if (cardId != null
+				&& PORTRAIT_USE_DB_IMAGE_FILE_IDS.contains(cardId)
+				&& !img.isEmpty()
+				&& !img.equalsIgnoreCase("__missing__.PNG")) {
+			return encCardFileNfc(imageFile);
+		}
+		String named = namedTribePortraitLayerPath(attribute, cardName);
+		if (named != null && !named.isBlank()) {
+			return named;
+		}
+		if (!img.isEmpty() && !img.equalsIgnoreCase("__missing__.PNG")) {
+			return cardPortraitPath(imageFile);
+		}
+		return cardPortraitPath(imageFile);
 	}
 
 	/** ASCII 名に統一（Git が NFD の「カードうら.PNG」だと URL 解決が環境で不一致になりやすい）。 */

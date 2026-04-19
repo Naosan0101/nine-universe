@@ -226,7 +226,7 @@ public class CpuBattleService {
 									GameConstants.CARD_LAYER_BASE,
 									GameConstants.cardLayerBarPath(d.getAttribute()),
 									isField ? GameConstants.CARD_LAYER_DATA_FIELD : GameConstants.CARD_LAYER_DATA,
-									GameConstants.namedTribePortraitLayerPath(d.getAttribute(), d.getName()),
+									GameConstants.cardFacePortraitLayerPath(d.getAttribute(), d.getName(), d.getImageFile(), d.getId()),
 									isField,
 									CardFaceAbilityFormatter.blocksForCardId(d.getId()).stream()
 											.map(b -> new AbilityBlockDto(b.getHeadline(), b.getBody()))
