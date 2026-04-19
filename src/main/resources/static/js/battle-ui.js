@@ -17,6 +17,21 @@
 	const pvpMatchId = document.querySelector('meta[name="pvp_match_id"]')?.getAttribute('content') || '';
 	const battleIsPvp = pvpMatchId.length > 0;
 	const battleApiBase = battleIsPvp ? (contextPath + '/battle/pvp/api/' + encodeURIComponent(pvpMatchId)) : null;
+	/** {@code battle-deck-select.js} と同じキー（降参後もデッキ選択の先頭に使う） */
+	const LAST_BATTLE_DECK_STORAGE_KEY = 'nu.lastBattleDeckId';
+
+	function persistLastBattleDeckIdForMenu() {
+		var meta = document.querySelector('meta[name="my_battle_deck_id"]');
+		var id = meta && meta.getAttribute('content');
+		if (id == null || String(id).trim() === '') {
+			return;
+		}
+		try {
+			localStorage.setItem(LAST_BATTLE_DECK_STORAGE_KEY, String(id).trim());
+		} catch (e) {
+			/* private mode 等 */
+		}
+	}
 
 	// Intercept surrender immediately (before async init finishes).
 	const surrenderGuard = {
@@ -40,6 +55,8 @@
 		pay: { stones: 0, cardInstanceIds: [] },
 		_cpuThinkTimer: null,
 		_resolveTimer: null,
+		/** HUMAN_EFFECT_PENDING 用: 同じ pendingEffect では resolve 用 3 秒タイマーを再描画でリセットしない */
+		_resolveEffectWaitKey: null,
 		_prevPowerByInstanceId: Object.create(null),
 		warnLevelUpRest: null,
 		warnLevelUpStone: null,
@@ -55,7 +72,9 @@
 		_turnPopupTimer: null,
 		_effectPopupEl: null,
 		_powerContributorPopupEl: null,
-		_powerContributorPopupHideTimer: null
+		_powerContributorPopupHideTimer: null,
+		/** 忍者配置: 入れ替え resolve を 3 秒待ちせず一度だけ起動する */
+		_ninjaAutoResolveInFlight: false
 	};
 
 	const turnTimer = {
@@ -279,8 +298,20 @@
 		ui._resultModalEl = null;
 	}
 
+	function teardownSurrenderConfirmModal() {
+		if (ui._surrenderConfirmEscapeHandler) {
+			document.removeEventListener('keydown', ui._surrenderConfirmEscapeHandler, true);
+			ui._surrenderConfirmEscapeHandler = null;
+		}
+		if (ui._surrenderConfirmEl && ui._surrenderConfirmEl.parentNode) {
+			ui._surrenderConfirmEl.remove();
+		}
+		ui._surrenderConfirmEl = null;
+	}
+
 	function showResultModal(kind, title, detail, options) {
 		const o = options || {};
+		teardownSurrenderConfirmModal();
 		teardownResultModal();
 		hideBattleCardTooltip();
 		hideBattleDeckTooltip();
@@ -325,6 +356,66 @@
 		close.focus();
 	}
 
+	function showSurrenderConfirmModal(form) {
+		teardownSurrenderConfirmModal();
+		teardownResultModal();
+		hideBattleCardTooltip();
+		hideBattleDeckTooltip();
+
+		const overlay = el('div', 'battle-result-modal battle-result-modal--defeat battle-surrender-confirm');
+		overlay.setAttribute('role', 'dialog');
+		overlay.setAttribute('aria-modal', 'true');
+		overlay.setAttribute('aria-labelledby', 'battle-surrender-confirm-title');
+
+		const panel = el('div', 'battle-result-modal__panel');
+		const h = el('h2', 'battle-result-modal__title', '降参しますか？');
+		h.id = 'battle-surrender-confirm-title';
+		panel.appendChild(h);
+
+		const actions = el('div', 'battle-result-modal__actions');
+		const cancel = el('button', 'btn btn--ghost', 'キャンセル');
+		cancel.type = 'button';
+		const confirmBtn = el('button', 'btn btn--danger', '降参する');
+		confirmBtn.type = 'button';
+		actions.appendChild(cancel);
+		actions.appendChild(confirmBtn);
+		panel.appendChild(actions);
+
+		overlay.appendChild(panel);
+		document.body.appendChild(overlay);
+		ui._surrenderConfirmEl = overlay;
+
+		function close() {
+			teardownSurrenderConfirmModal();
+		}
+		function doSurrender() {
+			surrenderGuard.submitting = true;
+			persistLastBattleDeckIdForMenu();
+			teardownSurrenderConfirmModal();
+			try {
+				form.submit();
+			} catch (_) {
+				/* ignore */
+			}
+		}
+		cancel.addEventListener('click', close);
+		confirmBtn.addEventListener('click', doSurrender);
+		overlay.addEventListener('click', function (e) {
+			if (e.target === overlay) {
+				close();
+			}
+		});
+		ui._surrenderConfirmEscapeHandler = function (e) {
+			if (e.key === 'Escape') {
+				e.preventDefault();
+				e.stopPropagation();
+				close();
+			}
+		};
+		document.addEventListener('keydown', ui._surrenderConfirmEscapeHandler, true);
+		cancel.focus();
+	}
+
 	function isSurrenderForm(el) {
 		if (!(el instanceof HTMLFormElement)) return false;
 		const raw = (el.getAttribute('action') || '').trim();
@@ -341,12 +432,7 @@
 		function openSurrenderModalAndBlock(form) {
 			if (!isSurrenderForm(form)) return;
 			if (surrenderGuard.submitting) return;
-			showResultModal('defeat', '敗北', '降参しました。', {
-				onClose: function () {
-					surrenderGuard.submitting = true;
-					try { form.submit(); } catch (_) { /* ignore */ }
-				}
-			});
+			showSurrenderConfirmModal(form);
 		}
 
 		// Capture click on the surrender submit button to block navigation even if submit event
@@ -388,11 +474,20 @@
 		if (!st) return;
 		if (!st.gameOver) {
 			ui._resultShown = false;
+			teardownSurrenderConfirmModal();
 			teardownResultModal();
 			return;
 		}
 		if (ui._resultShown) return;
 		ui._resultShown = true;
+
+		if (st.myBattleDeckId != null && String(st.myBattleDeckId).trim() !== '') {
+			try {
+				localStorage.setItem(LAST_BATTLE_DECK_STORAGE_KEY, String(st.myBattleDeckId).trim());
+			} catch (e) {
+				/* ignore */
+			}
+		}
 
 		const msg = st.lastMessage != null ? String(st.lastMessage) : '';
 		if (st.humanWon) {
@@ -464,6 +559,60 @@
 		const blank = battleCard && (battleCard.blankEffects === true || battleCard.blankEffects === 'true');
 		if (!blank) return d;
 		return Object.assign({}, d, { abilityBlocks: [{ headline: '', body: '効果なし。' }] });
+	}
+
+	function resolveLayerBarPathForTribe(defs, tribeCode) {
+		if (!defs || !tribeCode) return null;
+		const want = String(tribeCode).trim().toUpperCase();
+		for (const k in defs) {
+			if (!Object.prototype.hasOwnProperty.call(defs, k)) continue;
+			const cd = defs[k];
+			if (cd && cd.attribute === want && cd.layerBarPath) return cd.layerBarPath;
+		}
+		return null;
+	}
+
+	function effectiveCardAttributeCode(def, battleCard) {
+		if (!def) return '';
+		const ov = battleCard && battleCard.battleTribeOverride;
+		if (ov != null && String(ov).trim() !== '') return String(ov).trim().toUpperCase();
+		return def.attribute != null ? String(def.attribute) : '';
+	}
+
+	function hasCardAttributeResolved(def, battleCard, tribe) {
+		return hasCardAttribute(effectiveCardAttributeCode(def, battleCard), tribe);
+	}
+
+	/** CpuBattleEngine.hasAttributeForDeployPreview 相当（手札の次配置が SPEC-666 でアンデッド扱いになる予定） */
+	function hasCardAttributeForDeployPreview(def, battleCard, spec666NextSlotPending, tribe) {
+		if (!tribe) return false;
+		if (
+			spec666NextSlotPending &&
+			(!battleCard || battleCard.battleTribeOverride == null || String(battleCard.battleTribeOverride).trim() === '')
+		) {
+			return tribe === 'UNDEAD';
+		}
+		return hasCardAttributeResolved(def, battleCard, tribe);
+	}
+
+	function defWithBattleTribeOverride(d, battleCard, defs) {
+		const base = defWithBlankEffectsIfNeeded(d, battleCard);
+		if (!base) return base;
+		const ov = battleCard && battleCard.battleTribeOverride;
+		if (ov == null || String(ov).trim() === '') return base;
+		const code = String(ov).trim().toUpperCase();
+		if (code !== 'UNDEAD') return base;
+		const barPath = resolveLayerBarPathForTribe(defs, 'UNDEAD') || base.layerBarPath;
+		return Object.assign({}, base, {
+			attribute: 'UNDEAD',
+			attributeLabelJa: 'アンデッド',
+			attributeLabelLines: ['アンデッド'],
+			layerBarPath: barPath
+		});
+	}
+
+	function cardDefForBattleFace(def, battleCard, defs) {
+		return defWithBattleTribeOverride(defWithBlankEffectsIfNeeded(def, battleCard), battleCard, defs);
 	}
 
 	const battleTipEl = document.getElementById('battle-card-tooltip');
@@ -548,17 +697,21 @@
 
 	function resolveDefByAbilityDeployCode(defs, abilityDeployCode, promptHint) {
 		if (!defs || !abilityDeployCode) return null;
-		const code = String(abilityDeployCode);
+		const raw = String(abilityDeployCode);
+		const codesToTry = raw === 'SPEC0' || raw === 'SPEC1' ? ['SPEC1', 'SPEC0'] : [raw];
 		const hint = promptHint != null ? String(promptHint) : '';
 		let fallback = null;
 		const keys = Object.keys(defs);
-		for (let i = 0; i < keys.length; i++) {
-			const d = defs[keys[i]];
-			if (!d) continue;
-			if (d.abilityDeployCode !== code) continue;
-			// Prefer exact name match when available (prompt is often the card name)
-			if (hint && d.name && String(d.name) === hint) return d;
-			if (!fallback) fallback = d;
+		for (let ci = 0; ci < codesToTry.length; ci++) {
+			const code = codesToTry[ci];
+			for (let i = 0; i < keys.length; i++) {
+				const d = defs[keys[i]];
+				if (!d) continue;
+				if (d.abilityDeployCode !== code) continue;
+				// Prefer exact name match when available (prompt is often the card name)
+				if (hint && d.name && String(d.name) === hint) return d;
+				if (!fallback) fallback = d;
+			}
 		}
 		return fallback;
 	}
@@ -802,18 +955,20 @@
 		if (!battleTipEl || !battleTipName || !battleTipAttr || !battleTipAbility) return;
 		hideBattleDeckTooltip();
 		let def = null;
+		let defDetail = null;
 		if (battleTipPreview) {
 			battleTipPreview.textContent = '';
 			const cid = host.dataset.battleCardId;
 			if (cid && lastDefsForTooltip) {
-				def = resolveCardDef(lastDefsForTooltip, cid);
+				defDetail = zoneOrHandDetailDef(host, cid);
+				def = defDetail || resolveCardDef(lastDefsForTooltip, cid);
 				if (def) {
-					battleTipPreview.appendChild(buildBattleCardFaceShell(def, 'tip'));
+					battleTipPreview.appendChild(buildBattleCardFaceShell(defDetail || def, 'tip'));
 				}
 			}
 		}
 		battleTipName.textContent = host.dataset.battleName || '';
-		battleTipAttr.textContent = host.dataset.battleAttr || '—';
+		battleTipAttr.textContent = defDetail ? formatBattleCardAttr(defDetail) : host.dataset.battleAttr || '—';
 		if (battleTipPack) {
 			battleTipPack.textContent = def ? packSourcesForInitial(def.packInitial).join('\n') : '—';
 		}
@@ -904,6 +1059,12 @@
 		return Math.max(min, Math.min(max, n));
 	}
 
+	/** レベルアップでレストに捨てられる枚数の上限（配置カードを手札に残すため手札枚数−1） */
+	function maxLevelUpRestDiscard(handLen) {
+		const n = handLen | 0;
+		return Math.max(0, n - 1);
+	}
+
 	/** ボタンラベル等のテキストノードを直接クリックしたとき、closest 用に要素へ正規化する */
 	function eventTargetElement(ev) {
 		const n = ev && ev.target;
@@ -987,7 +1148,7 @@
 			const val = document.querySelector('.battle-you-hand-stones__value');
 			const wrap = document.querySelector('.battle-you-hand-stones');
 			if (!(val instanceof Element) || !(wrap instanceof Element)) return;
-			const n = Math.max(0, stonesAfterLevelUp() - (ui.pay.stones | 0));
+			const n = humanStonesPreviewReserveAdjusted(st);
 			val.textContent = String(n);
 			wrap.setAttribute('aria-label', 'ストーン所持数 ' + String(n));
 		}
@@ -1282,7 +1443,7 @@
 			const val = document.querySelector('.battle-you-hand-stones__value');
 			const wrap = document.querySelector('.battle-you-hand-stones');
 			if (!(val instanceof Element) || !(wrap instanceof Element)) return;
-			const n = Math.max(0, stonesAfterLevelUp() - (ui.pay.stones | 0));
+			const n = humanStonesPreviewReserveAdjusted(st);
 			val.textContent = String(n);
 			wrap.setAttribute('aria-label', 'ストーン所持数 ' + String(n));
 		}
@@ -1440,7 +1601,7 @@
 		refresh();
 	}
 
-	function showRestModal(restCards, defs, titleText) {
+	function showRestModal(restCards, defs, titleText, battleState) {
 		const list = Array.isArray(restCards) ? restCards.slice() : [];
 		const title = titleText || 'レスト';
 
@@ -1465,18 +1626,22 @@
 
 		const grid = el('div', 'battle-pay-modal__cardgrid');
 		list.forEach(function (c) {
-			const d = resolveCardDef(defs, c.cardId);
+			const d0 = resolveCardDef(defs, c.cardId);
+			const d = d0 ? cardDefForBattleFace(d0, c, defs) : null;
 			const host = el('div', 'battle-pay-modal__card', null);
+			if (c.instanceId != null) host.dataset.battleInstanceId = String(c.instanceId);
 			if (d) {
-				host.appendChild(buildBattleCardFaceShell(d, 'modal'));
+				const shell = buildBattleCardFaceShell(d, 'modal');
+				host.appendChild(shell);
+				if (battleState && d0 && !d0.fieldCard) {
+					applyCurrentCostDisplay(shell, d, battleState, c);
+				}
 				applyBattleCardTipData(host, d);
-				host.addEventListener('contextmenu', function (e) {
+				host.addEventListener('click', function (e) {
+					if (e.button !== 0) return;
 					e.preventDefault();
-					showBattleZoneDetailModal(d, []);
-				});
-				host.addEventListener('dblclick', function (e) {
-					e.preventDefault();
-					showBattleZoneDetailModal(d, []);
+					e.stopPropagation();
+					showBattleZoneDetailModal(d, [], battleState, c);
 				});
 			} else {
 				const im = document.createElement('img');
@@ -1522,7 +1687,7 @@
 		const sel = selectedCard(st);
 		if (!sel) return;
 		const hand = Array.isArray(st.humanHand) ? st.humanHand.slice() : [];
-		const n = Math.max(0, Math.min(ui.levelUpRest | 0, hand.length));
+		const n = Math.max(0, Math.min(ui.levelUpRest | 0, maxLevelUpRestDiscard(hand.length)));
 		if (n <= 0) {
 			if (typeof onOk === 'function') onOk();
 			return;
@@ -1635,6 +1800,24 @@
 		if (!wrap) return;
 		// Hover: show "〇枚" popup (reuse deck tooltip)
 		wireDeckStackTooltip(wrap, count);
+		// 右クリック: 座標から重なっている .rest-stack__card を特定（CSS で pointer-events:none のため）
+		wrap.addEventListener('contextmenu', function (e) {
+			const stackEls = document.elementsFromPoint(e.clientX, e.clientY);
+			for (let i = 0; i < stackEls.length; i++) {
+				const el = stackEls[i];
+				if (!(el instanceof HTMLElement)) continue;
+				if (!el.classList.contains('rest-stack__card')) continue;
+				const cid = el.dataset.battleCardId;
+				const d = cid && lastDefsForTooltip ? resolveCardDef(lastDefsForTooltip, cid) : null;
+				if (d) {
+					e.preventDefault();
+					const dFull = lastDefsForTooltip ? zoneOrHandDetailDef(el, el.dataset.battleCardId) : d;
+					const bc = battleCardFromZoneHandOrRestEl(el);
+					showBattleZoneDetailModal(dFull || d, [], lastStateForHandPower, bc);
+				}
+				return;
+			}
+		});
 		// Click: open list modal（カード面上はダブルクリックと区別するため短い遅延）
 		if (typeof onOpenList === 'function') {
 			wrap.addEventListener('click', function (e) {
@@ -1696,7 +1879,7 @@
 		return wrap;
 	}
 
-	/** レスト：置かれているカードを少し重ねて表示（一覧はクリックでモーダル） */
+	/** レスト：置かれているカードを少し重ねて表示（一覧はクリックでモーダル・右クリックで詳細） */
 	function renderRestStackVisual(restCards, defs, titleText, options) {
 		const o = options || {};
 		const list = Array.isArray(restCards) ? restCards : [];
@@ -1713,7 +1896,7 @@
 		if (n === 0) {
 			wrap.appendChild(el('span', 'deck-stack__empty', '0枚'));
 			wireRestStackInteractions(wrap, n, function () {
-				showRestModal(list, defs, titleText || 'レスト');
+				showRestModal(list, defs, titleText || 'レスト', o.battleState);
 			});
 			return wrap;
 		}
@@ -1729,18 +1912,23 @@
 			cardHost.style.left = fromTop * offsetPx + 'px';
 			cardHost.style.top = fromTop * offsetPx + 'px';
 			cardHost.style.zIndex = String(i + 1);
+			if (c.instanceId != null) cardHost.dataset.battleInstanceId = String(c.instanceId);
 
 			if (d) {
 				// 表向き（レスト専用サイズは CSS で）
-				const disp = defWithBlankEffectsIfNeeded(d, c);
-				cardHost.appendChild(buildBattleCardFaceShell(disp, 'rest'));
+				const disp = cardDefForBattleFace(d, c, defs);
+				const shell = buildBattleCardFaceShell(disp, 'rest');
+				cardHost.appendChild(shell);
+				if (o.battleState && !d.fieldCard) {
+					applyCurrentCostDisplay(shell, disp, o.battleState, c);
+				}
 				applyBattleCardTipData(cardHost, disp);
 				cardHost.addEventListener('dblclick', function (e) {
 					e.preventDefault();
 					e.stopPropagation();
 					clearTimeout(wrap._restListDelay);
 					wrap._restListDelay = null;
-					showBattleZoneDetailModal(d, []);
+					showBattleZoneDetailModal(disp, [], o.battleState, c);
 				});
 			} else {
 				const im = document.createElement('img');
@@ -1755,7 +1943,7 @@
 		wrap.appendChild(pile);
 
 		wireRestStackInteractions(wrap, n, function () {
-			showRestModal(list, defs, titleText || 'レスト');
+			showRestModal(list, defs, titleText || 'レスト', o.battleState);
 		});
 		return wrap;
 	}
@@ -1776,7 +1964,10 @@
 		}
 		hand.forEach((c) => {
 			const dRaw = defs[c.cardId] != null ? defs[c.cardId] : resolveCardDef(defs, c.cardId);
-			const d = defWithBlankEffectsIfNeeded(dRaw, c);
+			const d = cardDefForBattleFace(dRaw, c, defs);
+			const pending666 =
+				battleState &&
+				(battleState.spec666NextHumanUndead === true || battleState.spec666NextHumanUndead === 'true');
 			const cardWrap = el('button', 'hand-card battle-card', null);
 			cardWrap.type = 'button';
 			cardWrap.dataset.instanceId = c.instanceId;
@@ -1794,7 +1985,7 @@
 				const shell = buildBattleCardFaceShell(d, 'hand');
 				const basePow = Number(d.basePower != null ? d.basePower : 0);
 				let bonus = Number(nextDeployBonus || 0);
-				if (Number(nextElfOnlyBonus || 0) > 0 && hasCardAttribute(d.attribute, 'ELF')) {
+				if (Number(nextElfOnlyBonus || 0) > 0 && hasCardAttributeForDeployPreview(dRaw, c, pending666, 'ELF')) {
 					bonus += Number(nextElfOnlyBonus || 0);
 				}
 				if (Number(nextDeployCostBonusTimes || 0) > 0) {
@@ -1841,9 +2032,11 @@
 		ARTHUR: 43,
 		FIELD_GLORIA: 41,
 		FIELD_KAMUI: 49,
+		/** 武器庫 VV-E4-PON（〈フィールド〉・マシン・ファイターコスト1） */
+		WEAPON_DEPOT_FIELD: 64,
 		/** ネムリィ（CpuBattleEngine.NEMURY_ID） */
 		NEMURY: 40,
-		/** ストーニア（配置：所持ストーン1つにつき強さ+1 / CpuBattleEngine STONIA deploy） */
+		/** ノクスクル（id=37 / STONIA：所持ストーン1つにつき強さ+1 / CpuBattleEngine） */
 		STONIA: 37,
 		/** シャイニ（常時：レストのカーバンクル種類×+2 / CpuBattleEngine.SHINY_ID） */
 		SHINY: 31
@@ -1853,17 +2046,29 @@
 		return st && st.activeField && Number(st.activeField.cardId) === PREVIEW_CARD_IDS.FIELD_KAMUI;
 	}
 
+	function weaponDepotFieldActive(st) {
+		return st && st.activeField && Number(st.activeField.cardId) === PREVIEW_CARD_IDS.WEAPON_DEPOT_FIELD;
+	}
+
+	/** 〈フィールド〉以外のマシン・ファイター（印字コストとの差で緑／赤表示） */
+	function weaponDepotMachineFighterForCost(def, handCard) {
+		if (!def || def.fieldCard) return false;
+		const ck = String(def.cardKind || '').trim().toUpperCase();
+		if (ck !== 'FIGHTER') return false;
+		return hasCardAttributeResolved(def, handCard, 'MACHINE');
+	}
+
 	/**
 	 * 〈宝石の地 グロリア輝石台地〉: 場にある間、カーバンクルは強さ+2（CpuBattleEngine.fieldGloriaCarbunclePowerBonus と同順・同条件）
 	 */
-	function fieldGloriaCarbunclePowerBonus(st, def) {
+	function fieldGloriaCarbunclePowerBonus(st, def, battleCard) {
 		if (!st || !def || def.fieldCard) return 0;
 		if (!st.activeField || Number(st.activeField.cardId) !== PREVIEW_CARD_IDS.FIELD_GLORIA) return 0;
-		if (!hasCardAttribute(def.attribute, 'CARBUNCLE')) return 0;
+		if (!hasCardAttributeResolved(def, battleCard, 'CARBUNCLE')) return 0;
 		return 2;
 	}
 
-	/** 画面上のストーン表示と同じ（レベルアップ・支払モーダルで予約した分を除く） */
+	/** 画面上のストーン表示と同じ（レベルアップ・支払モーダルで予約した分を除く。ネビュラ坑道の+1は配置コミット応答に含まれる） */
 	function humanStonesPreviewReserveAdjusted(st) {
 		if (!st) return 0;
 		const levelUpUsed = ui.levelUpStones | 0;
@@ -1920,8 +2125,9 @@
 
 	function restContainsTribe(rest, defs, tribe) {
 		for (let i = 0; i < rest.length; i++) {
-			const d = resolveCardDef(defs, rest[i].cardId);
-			if (d && hasCardAttribute(d.attribute, tribe)) return true;
+			const card = rest[i];
+			const d = resolveCardDef(defs, card.cardId);
+			if (d && hasCardAttributeResolved(d, card, tribe)) return true;
 		}
 		return false;
 	}
@@ -1930,8 +2136,9 @@
 		let c = 0;
 		if (!Array.isArray(rest)) return 0;
 		for (let i = 0; i < rest.length; i++) {
-			const d = resolveCardDef(defs, rest[i].cardId);
-			if (d && hasCardAttribute(d.attribute, attr)) c++;
+			const card = rest[i];
+			const d = resolveCardDef(defs, card.cardId);
+			if (d && hasCardAttributeResolved(d, card, attr)) c++;
 		}
 		return c;
 	}
@@ -1965,7 +2172,7 @@
 			if (!c) continue;
 			if (c.instanceId != null && under[String(c.instanceId)]) continue;
 			const d = resolveCardDef(defs, c.cardId);
-			if (!d || !hasCardAttribute(d.attribute, 'CARBUNCLE')) continue;
+			if (!d || !hasCardAttributeResolved(d, c, 'CARBUNCLE')) continue;
 			const cid = Number(c.cardId);
 			if (seen[cid]) continue;
 			seen[cid] = true;
@@ -1986,7 +2193,10 @@
 	 */
 	function effectiveFighterDeployCostFromState(def, st, handCard) {
 		if (!def || def.fieldCard) return Number(def.cost != null ? def.cost : 0);
-		const base = Number(def.cost != null ? def.cost : 0);
+		let base = Number(def.cost != null ? def.cost : 0);
+		if (weaponDepotFieldActive(st) && weaponDepotMachineFighterForCost(def, handCard)) {
+			base = 1;
+		}
 		const mechanic = Number(st && st.humanNextMechanicStacks != null ? st.humanNextMechanicStacks : 0);
 		let handAdj = 0;
 		if (handCard && handCard.handDeployCostModifier != null) {
@@ -2004,11 +2214,12 @@
 		return Math.max(0, core + mechanic + handAdj);
 	}
 
-	function computeHumanNextDeployBonusForDef(st, def) {
+	function computeHumanNextDeployBonusForDef(st, def, handCard) {
 		if (!st || !def) return 0;
 		let bonus = Number(st.humanNextDeployBonus || 0);
 		const elfOnly = Number(st.humanNextElfOnlyBonus || 0);
-		if (elfOnly > 0 && hasCardAttribute(def.attribute, 'ELF')) {
+		const p666 = !!(st.spec666NextHumanUndead === true || st.spec666NextHumanUndead === 'true');
+		if (elfOnly > 0 && hasCardAttributeForDeployPreview(def, handCard, p666, 'ELF')) {
 			bonus += elfOnly;
 		}
 		const costTimes = Number(st.humanNextDeployCostBonusTimes || 0);
@@ -2026,9 +2237,9 @@
 		const id = Number(mainDef.id);
 		const base = Number(mainDef.basePower != null ? mainDef.basePower : 0);
 		let p = base + Number(deployBonus || 0);
-		p += fieldGloriaCarbunclePowerBonus(st, mainDef);
+		p += fieldGloriaCarbunclePowerBonus(st, mainDef, handCard);
 
-		// ストーニア〈配置〉: 配置時に当時の所持ストーン数ぶん temporaryPowerBonus（engine と同様）
+		// ノクスクル(id=37/STONIA): CpuBattleEngine は所持ストーン数を effectiveBattlePower で常時加算
 		if (id === PREVIEW_CARD_IDS.STONIA) {
 			p += humanStonesPreviewReserveAdjusted(st);
 		}
@@ -2055,8 +2266,9 @@
 		if (id === PREVIEW_CARD_IDS.ARCHER) {
 			const opp = st.cpuBattle;
 			if (opp && opp.main) {
-				const od = resolveCardDef(defs, opp.main.cardId);
-				if (!hasCardAttribute(od && od.attribute, 'DRAGON')) {
+				const om = opp.main;
+				const od = resolveCardDef(defs, om.cardId);
+				if (!hasCardAttributeResolved(od, om, 'DRAGON')) {
 					p += 1;
 				}
 			}
@@ -2071,8 +2283,9 @@
 		if (id === PREVIEW_CARD_IDS.GAIKOTSU) {
 			const opp = st.cpuBattle;
 			if (opp && opp.main) {
-				const od = resolveCardDef(defs, opp.main.cardId);
-				if (hasCardAttribute(od && od.attribute, 'ELF')) {
+				const om = opp.main;
+				const od = resolveCardDef(defs, om.cardId);
+				if (hasCardAttributeResolved(od, om, 'ELF')) {
 					p += 2;
 				}
 			}
@@ -2081,8 +2294,9 @@
 		if (id === PREVIEW_CARD_IDS.SHIREI) {
 			const opp = st.cpuBattle;
 			if (opp && opp.main) {
-				const od = resolveCardDef(defs, opp.main.cardId);
-				if (!hasCardAttribute(od && od.attribute, 'HUMAN')) {
+				const om = opp.main;
+				const od = resolveCardDef(defs, om.cardId);
+				if (!hasCardAttributeResolved(od, om, 'HUMAN')) {
 					p += 1;
 				}
 			}
@@ -2111,7 +2325,7 @@
 		const id = Number(mainDef.id);
 		const base = Number(mainDef.basePower != null ? mainDef.basePower : 0);
 		let p = base + deployBonus;
-		p += fieldGloriaCarbunclePowerBonus(st, mainDef);
+		p += fieldGloriaCarbunclePowerBonus(st, mainDef, handCard);
 
 		if (id === PREVIEW_CARD_IDS.STONIA) {
 			p += humanStonesPreviewReserveAdjusted(st);
@@ -2140,8 +2354,9 @@
 		if (id === PREVIEW_CARD_IDS.ARCHER) {
 			const opp = st.cpuBattle;
 			if (opp && opp.main) {
-				const od = resolveCardDef(defs, opp.main.cardId);
-				if (!hasCardAttribute(od && od.attribute, 'DRAGON')) {
+				const om = opp.main;
+				const od = resolveCardDef(defs, om.cardId);
+				if (!hasCardAttributeResolved(od, om, 'DRAGON')) {
 					p += 1;
 				}
 			}
@@ -2156,8 +2371,9 @@
 		if (id === PREVIEW_CARD_IDS.GAIKOTSU) {
 			const opp = st.cpuBattle;
 			if (opp && opp.main) {
-				const od = resolveCardDef(defs, opp.main.cardId);
-				if (hasCardAttribute(od && od.attribute, 'ELF')) {
+				const om = opp.main;
+				const od = resolveCardDef(defs, om.cardId);
+				if (hasCardAttributeResolved(od, om, 'ELF')) {
 					p += 2;
 				}
 			}
@@ -2166,8 +2382,9 @@
 		if (id === PREVIEW_CARD_IDS.SHIREI) {
 			const opp = st.cpuBattle;
 			if (opp && opp.main) {
-				const od = resolveCardDef(defs, opp.main.cardId);
-				if (!hasCardAttribute(od && od.attribute, 'HUMAN')) {
+				const om = opp.main;
+				const od = resolveCardDef(defs, om.cardId);
+				if (!hasCardAttributeResolved(od, om, 'HUMAN')) {
 					p += 1;
 				}
 			}
@@ -2344,9 +2561,10 @@
 			box.appendChild(el('p', 'muted', 'なし'));
 			return box;
 		}
-		const d = defWithBlankEffectsIfNeeded(resolveCardDef(defs, zone.main.cardId), zone.main);
+		const d = cardDefForBattleFace(resolveCardDef(defs, zone.main.cardId), zone.main, defs);
 		if (d) {
 			const wrap = el('div', 'library-card battle-zone-card', null);
+			if (zone.main.instanceId != null) wrap.dataset.battleInstanceId = String(zone.main.instanceId);
 			// Under-cards (cost/levelup): show as a small fanned stack of card backs
 			const under = Array.isArray(zone.costUnder)
 				? zone.costUnder
@@ -2397,6 +2615,9 @@
 			const shell = buildBattleCardFaceShell(d, opponentZone ? 'hand' : 'zone');
 			applyCurrentPowerDisplay(shell, Number(d.basePower || 0), power);
 			maybeSparkPowerIncrease(shell, zone.main.instanceId, power);
+			if (opts.battleState && d && !d.fieldCard) {
+				applyCurrentCostDisplay(shell, d, opts.battleState, zone.main);
+			}
 			if (opponentZone) {
 				/* 手札と同じ battle-layered--hand + hand-card__card-focus でキラ等の見え方を揃える */
 				const faceMount = el('div', 'hand-card__card-focus battle-zone-card__opp-face', null);
@@ -2508,7 +2729,11 @@
 		fetchState()
 			.then(function (st) {
 				ui.levelUpStones = clamp(ui.levelUpStones, 0, st.humanStones);
-				ui.levelUpRest = clamp(ui.levelUpRest, 0, (st.humanHand && st.humanHand.length) || 0);
+				ui.levelUpRest = clamp(
+					ui.levelUpRest,
+					0,
+					maxLevelUpRestDiscard((st.humanHand && st.humanHand.length) || 0)
+				);
 				const sel = selectedCard(st);
 				if (!sel) {
 					showBattleToast('配置するカードが手札に見つかりません。手札からもう一度選んでください。', 'warn');
@@ -2660,7 +2885,7 @@
 				previewCol.appendChild(previewWrap);
 			} else {
 			const deployB = computeDeployBonus(selDef, ui.levelUpRest, ui.levelUpStones)
-				+ computeHumanNextDeployBonusForDef(st, selDef);
+				+ computeHumanNextDeployBonusForDef(st, selDef, sel);
 			const previewPow = previewHumanBattlePower(st, st.defs, selDef, deployB, sel);
 			const basePow = Number(selDef.basePower != null ? selDef.basePower : 0);
 			const instId = sel.instanceId;
@@ -2676,7 +2901,8 @@
 			ui._luPrevPower = previewPow;
 
 			const previewWrap = el('div', 'library-card battle-control--levelup__preview-card');
-			const shell = buildBattleCardFaceShell(defWithBlankEffectsIfNeeded(selDef, sel), 'hand');
+			const faceDef = cardDefForBattleFace(selDef, sel, st.defs);
+			const shell = buildBattleCardFaceShell(faceDef, 'hand');
 			applyLevelUpPreviewPower(shell, basePow, previewPow);
 			applyCurrentCostDisplay(shell, defWithBlankEffectsIfNeeded(selDef, sel), st, sel);
 			const powEl = shell.querySelector('.card-face__power');
@@ -2685,7 +2911,7 @@
 				appendLevelUpValueSparkBurst(sparkHost);
 			}
 			previewWrap.appendChild(shell);
-			applyBattleCardTipData(previewWrap, defWithBlankEffectsIfNeeded(selDef, sel));
+			applyBattleCardTipData(previewWrap, faceDef);
 			previewCol.appendChild(previewWrap);
 			}
 		} else {
@@ -2759,6 +2985,9 @@
 		if (!pc) return;
 		const may = pc.viewerMayRespond !== undefined && pc.viewerMayRespond !== null ? pc.viewerMayRespond : pc.forHuman;
 		if (!may) return;
+
+		/* 「この手番では勝てません」(z-index 110) の上に選択 UI を出す前提で、残っていれば掃除 */
+		hideUnwinnableDeployPop();
 
 		const choiceKey = pendingChoiceModalKey(pc);
 		const existingChoice = document.getElementById('battle-pending-choice-modal');
@@ -2849,6 +3078,126 @@
 					if (next2) render(next2);
 				}).catch(function () { rerenderWithFreshState(); });
 			});
+		} else if (pc.kind === 'CONFIRM_MIRAJUKUL_MIRROR') {
+			panel.appendChild(
+				el('p', 'muted', 'コピーした効果を使う場合、相手カードと同じ手順（ストーンを使用しますか？など）で解決されます。')
+			);
+			const detailDefMj = resolveDefByAbilityDeployCode(st.defs, pc.abilityDeployCode, pc.prompt);
+			if (detailDefMj) {
+				const detailMj = el('div', 'muted', null);
+				detailMj.style.whiteSpace = 'pre-wrap';
+				detailMj.style.wordBreak = 'break-word';
+				detailMj.style.overflowWrap = 'anywhere';
+				detailMj.style.lineHeight = '1.55';
+				detailMj.style.marginTop = '0.55rem';
+				detailMj.style.padding = '0.55rem 0.65rem';
+				detailMj.style.borderRadius = '10px';
+				detailMj.style.border = '1px solid rgba(255, 255, 255, 0.12)';
+				detailMj.style.background = 'rgba(0, 0, 0, 0.18)';
+				const rawMj = battleCardAbilityTooltipText(detailDefMj);
+				const linesMj = String(rawMj || '').split('\n');
+				const firstMj = linesMj.length ? String(linesMj[0]).trim() : '';
+				detailMj.textContent =
+					firstMj === '〈配置〉' || firstMj === '〈常時〉' || firstMj === '〈フィールド〉'
+						? linesMj.slice(1).join('\n')
+						: String(rawMj || '—');
+				panel.appendChild(detailMj);
+			}
+			const actionsMj = el('div', 'battle-pay-modal__actions');
+			const noBtnMj = el('button', 'btn btn--ghost', '使わない');
+			noBtnMj.type = 'button';
+			const yesBtnMj = el('button', 'btn btn--primary', '使う');
+			yesBtnMj.type = 'button';
+			actionsMj.appendChild(noBtnMj);
+			actionsMj.appendChild(yesBtnMj);
+			panel.appendChild(actionsMj);
+			function teardownMj() {
+				hideBattleCardTooltip();
+				overlay.remove();
+			}
+			closeBtn.hidden = true;
+			noBtnMj.addEventListener('click', function () {
+				const prev = captureAnimRects();
+				teardownMj();
+				sendChoice({ confirm: false, pickedInstanceIds: [] }).then(function (next) {
+					render(next);
+					requestAnimationFrame(function () { playFLIP(prev); });
+					return resolvePending();
+				}).then(function (next2) {
+					if (next2) render(next2);
+				}).catch(function () { rerenderWithFreshState(); });
+			});
+			yesBtnMj.addEventListener('click', function () {
+				const prev = captureAnimRects();
+				teardownMj();
+				sendChoice({ confirm: true, pickedInstanceIds: [] }).then(function (next) {
+					render(next);
+					requestAnimationFrame(function () { playFLIP(prev); });
+					return resolvePending();
+				}).then(function (next2) {
+					if (next2) render(next2);
+				}).catch(function () { rerenderWithFreshState(); });
+			});
+		} else if (pc.kind === 'CONFIRM_NINJA_SWAPPED_DEPLOY') {
+			panel.appendChild(
+				el('p', 'muted', '入れ替えたカードの〈配置〉効果を発動するか選べます。')
+			);
+			const detailDefNj = resolveDefByAbilityDeployCode(st.defs, pc.abilityDeployCode, pc.prompt);
+			if (detailDefNj) {
+				const detailNj = el('div', 'muted', null);
+				detailNj.style.whiteSpace = 'pre-wrap';
+				detailNj.style.wordBreak = 'break-word';
+				detailNj.style.overflowWrap = 'anywhere';
+				detailNj.style.lineHeight = '1.55';
+				detailNj.style.marginTop = '0.55rem';
+				detailNj.style.padding = '0.55rem 0.65rem';
+				detailNj.style.borderRadius = '10px';
+				detailNj.style.border = '1px solid rgba(255, 255, 255, 0.12)';
+				detailNj.style.background = 'rgba(0, 0, 0, 0.18)';
+				const rawNj = battleCardAbilityTooltipText(detailDefNj);
+				const linesNj = String(rawNj || '').split('\n');
+				const firstNj = linesNj.length ? String(linesNj[0]).trim() : '';
+				detailNj.textContent =
+					firstNj === '〈配置〉' || firstNj === '〈常時〉' || firstNj === '〈フィールド〉'
+						? linesNj.slice(1).join('\n')
+						: String(rawNj || '—');
+				panel.appendChild(detailNj);
+			}
+			const actionsNj2 = el('div', 'battle-pay-modal__actions');
+			const noBtnNj2 = el('button', 'btn btn--ghost', '使わない');
+			noBtnNj2.type = 'button';
+			const yesBtnNj2 = el('button', 'btn btn--primary', '使う');
+			yesBtnNj2.type = 'button';
+			actionsNj2.appendChild(noBtnNj2);
+			actionsNj2.appendChild(yesBtnNj2);
+			panel.appendChild(actionsNj2);
+			function teardownNj2() {
+				hideBattleCardTooltip();
+				overlay.remove();
+			}
+			closeBtn.hidden = true;
+			noBtnNj2.addEventListener('click', function () {
+				const prev = captureAnimRects();
+				teardownNj2();
+				sendChoice({ confirm: false, pickedInstanceIds: [] }).then(function (next) {
+					render(next);
+					requestAnimationFrame(function () { playFLIP(prev); });
+					return resolvePending();
+				}).then(function (next2) {
+					if (next2) render(next2);
+				}).catch(function () { rerenderWithFreshState(); });
+			});
+			yesBtnNj2.addEventListener('click', function () {
+				const prev = captureAnimRects();
+				teardownNj2();
+				sendChoice({ confirm: true, pickedInstanceIds: [] }).then(function (next) {
+					render(next);
+					requestAnimationFrame(function () { playFLIP(prev); });
+					return resolvePending();
+				}).then(function (next2) {
+					if (next2) render(next2);
+				}).catch(function () { rerenderWithFreshState(); });
+			});
 		} else if (pc.kind === 'CONFIRM_ACCEPT_LOSS') {
 			panel.appendChild(el('p', 'muted', pc.prompt || 'このまま進めますか？'));
 			const actions = el('div', 'battle-pay-modal__actions');
@@ -2899,7 +3248,7 @@
 				pickHand.forEach(function (c) { if (c.instanceId === inst) card = c; });
 				pickRest.forEach(function (c) { if (c.instanceId === inst) card = c; });
 				if (!card) return;
-				const d = defWithBlankEffectsIfNeeded(resolveCardDef(st.defs, card.cardId), card);
+				const d = cardDefForBattleFace(resolveCardDef(st.defs, card.cardId), card, st.defs);
 				const btn = el('button', 'battle-pay-modal__card', null);
 				btn.type = 'button';
 				btn.dataset.instanceId = inst;
@@ -2981,9 +3330,10 @@
 		document.body.appendChild(overlay);
 	}
 
-	function showBattleZoneDetailModal(def, powerContributors) {
+	function showBattleZoneDetailModal(def, powerContributors, battleState, battleCard) {
 		if (!def) return;
 		const contributors = Array.isArray(powerContributors) ? powerContributors : [];
+		const stCost = battleState != null ? battleState : lastStateForHandPower;
 		hideBattleCardTooltip();
 		hideBattleDeckTooltip();
 
@@ -3007,6 +3357,9 @@
 		const face = buildBattleCardFaceShell(def, 'zone');
 		face.classList.add('battle-zone-detail-modal__card');
 		left.appendChild(face);
+		if (stCost && battleCard && !def.fieldCard) {
+			applyCurrentCostDisplay(face, def, stCost, battleCard);
+		}
 
 		right.appendChild(el('h3', 'battle-zone-detail-modal__name', def.name || '—'));
 
@@ -3020,7 +3373,11 @@
 			return wrap;
 		}
 		stats.appendChild(statRow('種族', formatBattleCardAttr(def)));
-		stats.appendChild(statRow('コスト', String(def.cost != null ? def.cost : '—')));
+		let costDisplay = String(def.cost != null ? def.cost : '—');
+		if (stCost && battleCard && !def.fieldCard) {
+			costDisplay = String(Math.max(0, Math.floor(Number(effectiveFighterDeployCostFromState(def, stCost, battleCard)))));
+		}
+		stats.appendChild(statRow('コスト', costDisplay));
 		stats.appendChild(
 			statRow('強さ', def.fieldCard ? '—' : String(def.basePower != null ? def.basePower : '—'))
 		);
@@ -3094,6 +3451,7 @@
 			clearTimeout(ui._resolveTimer);
 			ui._resolveTimer = null;
 		}
+		ui._resolveEffectWaitKey = null;
 		if (ui._effectPopupEl && ui._effectPopupEl.parentNode) {
 			ui._effectPopupEl.remove();
 		}
@@ -3150,7 +3508,9 @@
 
 			const cellRest = el('div', 'battle-cell battle-cell--compact battle-cell--opp-rest');
 			cellRest.appendChild(el('h3', '', 'レスト'));
-			cellRest.appendChild(renderRestStackVisual(st.cpuRest, st.defs, 'レスト', { maxVisual: 4, stackOffsetPx: 2 }));
+			cellRest.appendChild(
+				renderRestStackVisual(st.cpuRest, st.defs, 'レスト', { maxVisual: 4, stackOffsetPx: 2, battleState: st })
+			);
 			inner.appendChild(cellRest);
 
 			oppTop.appendChild(inner);
@@ -3165,7 +3525,7 @@
 			cellZoneOpp.setAttribute('aria-label', '相手のバトルゾーン');
 			const rowOpp = el('div', 'battle-zone-with-field');
 			// 〈フィールド〉は共有だが、常に自分側のバトル列に表示する（相手ターンで上段に出さない）
-			rowOpp.appendChild(renderZone(st.cpuBattle, st.defs, st.cpuBattlePower, { opponentZone: true }));
+			rowOpp.appendChild(renderZone(st.cpuBattle, st.defs, st.cpuBattlePower, { opponentZone: true, battleState: st }));
 			cellZoneOpp.appendChild(rowOpp);
 			zonesStack.appendChild(cellZoneOpp);
 
@@ -3177,7 +3537,7 @@
 				rowYou.classList.add('battle-zone-with-field--has-field');
 				rowYou.appendChild(renderBattleFieldSlot(st.activeField, st.defs, { opponentZone: false }));
 			}
-			rowYou.appendChild(renderZone(st.humanBattle, st.defs, st.humanBattlePower));
+			rowYou.appendChild(renderZone(st.humanBattle, st.defs, st.humanBattlePower, { battleState: st }));
 			cellZoneYou.appendChild(rowYou);
 			zonesStack.appendChild(cellZoneYou);
 
@@ -3202,15 +3562,15 @@
 			const inner = el('div', 'battle-band__inner');
 			const cellRest = el('div', 'battle-cell battle-cell--compact battle-cell--you-rest');
 			cellRest.appendChild(el('h3', '', 'レスト'));
-			cellRest.appendChild(renderRestStackVisual(st.humanRest, st.defs, 'レスト', { maxVisual: 5, stackOffsetPx: 3 }));
+			cellRest.appendChild(
+				renderRestStackVisual(st.humanRest, st.defs, 'レスト', { maxVisual: 5, stackOffsetPx: 3, battleState: st })
+			);
 			inner.appendChild(cellRest);
 
 			const cellHand = el('div', 'battle-cell battle-cell--you-hand');
 			cellHand.setAttribute('aria-label', '自分の手札');
 			const stonesTop = el('div', 'battle-you-hand-stones');
-			const levelUpUsed = ui.levelUpStones | 0;
-			const payUsed = ui.pay && typeof ui.pay.stones === 'number' ? ui.pay.stones | 0 : 0;
-			const displayHumanStones = Math.max(0, st.humanStones - levelUpUsed - payUsed);
+			const displayHumanStones = humanStonesPreviewReserveAdjusted(st);
 			stonesTop.setAttribute('aria-label', 'ストーン所持数 ' + String(displayHumanStones));
 			stonesTop.appendChild(el('span', 'battle-you-hand-stones__label', 'ストーン'));
 			stonesTop.appendChild(el('span', 'battle-you-hand-stones__value', String(displayHumanStones)));
@@ -3282,19 +3642,52 @@
 			ui._pvpPollTimer = null;
 		}
 
-		// Show effect for 3 seconds, then resolve
+		// Show effect for 3 seconds, then resolve（忍者は入れ替えを即 resolve し、任意〈配置〉確認へ）
 		if ((st.phase === 'HUMAN_EFFECT_PENDING' || st.phase === 'CPU_EFFECT_PENDING') && st.pendingEffect && !st.gameOver) {
-			/* 再描画のたびに新パネルだけ作って古い body 上の DOM を消さないと残り続ける */
-			if (ui._resolveTimer != null) {
-				clearTimeout(ui._resolveTimer);
-				ui._resolveTimer = null;
-			}
-			if (ui._effectPopupEl && ui._effectPopupEl.parentNode) {
-				ui._effectPopupEl.remove();
-			}
-			ui._effectPopupEl = null;
-
 			const pe = st.pendingEffect;
+			const isNinjaDeploy = String(pe.abilityDeployCode || '') === 'NINJA';
+			if (isNinjaDeploy) {
+				if (!ui._ninjaAutoResolveInFlight) {
+					if (ui._resolveTimer != null) {
+						clearTimeout(ui._resolveTimer);
+						ui._resolveTimer = null;
+					}
+					removeBattleEffectPopup();
+					ui._resolveEffectWaitKey = null;
+					ui._ninjaAutoResolveInFlight = true;
+					const prevNinja = captureAnimRects();
+					resolvePending()
+						.then(function (next) {
+							ui._ninjaAutoResolveInFlight = false;
+							render(next);
+							requestAnimationFrame(function () {
+								playFLIP(prevNinja);
+							});
+						})
+						.catch(function (e) {
+							ui._ninjaAutoResolveInFlight = false;
+							// eslint-disable-next-line no-console
+							console.error(e);
+							rerenderWithFreshState();
+						});
+				}
+			} else {
+			const effectWaitKey = String(st.phase || '') + '\x1f' + String(pe.mainInstanceId || '') + '\x1f' + String(pe.cardId != null ? pe.cardId : '');
+			const samePendingEffectWait = ui._resolveEffectWaitKey === effectWaitKey && ui._resolveTimer != null;
+			/* 同じ効果待ちの再描画でタイマーを毎回クリアすると 3 秒が永遠に進まず resolve が呼ばれない */
+			if (samePendingEffectWait) {
+				/* ポップアップは既存のまま（body 直下・app の再構築の影響を受けない） */
+			} else {
+				ui._resolveEffectWaitKey = effectWaitKey;
+				if (ui._resolveTimer != null) {
+					clearTimeout(ui._resolveTimer);
+					ui._resolveTimer = null;
+				}
+				if (ui._effectPopupEl && ui._effectPopupEl.parentNode) {
+					ui._effectPopupEl.remove();
+				}
+				ui._effectPopupEl = null;
+
 			const def = resolveCardDef(st.defs, pe.cardId);
 			const side = el('div', 'panel', null);
 			side.id = 'battle-pending-effect-popup';
@@ -3392,9 +3785,12 @@
 					rerenderWithFreshState();
 				});
 			}, 3000);
+			}
+			}
 		} else {
 			/* HUMAN_INPUT 等へ移ったあとにタイマーだけ残る／パネルだけ残るケースを掃除 */
 			removeBattleEffectPopup();
+			ui._ninjaAutoResolveInFlight = false;
 		}
 
 		if (st.phase === 'HUMAN_CHOICE' && st.pendingChoice && !st.gameOver) {
@@ -3529,7 +3925,7 @@
 	async function rerenderWithFreshState() {
 		const st = await fetchState();
 		ui.levelUpStones = clamp(ui.levelUpStones, 0, st.humanStones);
-		ui.levelUpRest = clamp(ui.levelUpRest, 0, st.humanHand.length);
+		ui.levelUpRest = clamp(ui.levelUpRest, 0, maxLevelUpRestDiscard(st.humanHand ? st.humanHand.length : 0));
 		render(st);
 	}
 
@@ -3550,15 +3946,16 @@
 	async function applyLevelUpAdjust(action) {
 		const st = await fetchState();
 		ui.levelUpStones = clamp(ui.levelUpStones, 0, st.humanStones);
-		ui.levelUpRest = clamp(ui.levelUpRest, 0, st.humanHand.length);
 		const handLen = st.humanHand ? st.humanHand.length : 0;
+		const maxRest = maxLevelUpRestDiscard(handLen);
+		ui.levelUpRest = clamp(ui.levelUpRest, 0, maxRest);
 
 		if (action === 'rest_minus') {
 			ui.warnLevelUpRest = null;
-			ui.levelUpRest = clamp(ui.levelUpRest - 1, 0, handLen);
+			ui.levelUpRest = clamp(ui.levelUpRest - 1, 0, maxRest);
 		} else if (action === 'rest_plus') {
-			if (ui.levelUpRest >= handLen) {
-				ui.warnLevelUpRest = 'これ以上、手札にカードがありません';
+			if (ui.levelUpRest >= maxRest) {
+				ui.warnLevelUpRest = '配置するカードを残すため、これ以上捨てられません';
 			} else {
 				ui.warnLevelUpRest = null;
 				ui.levelUpRest += 1;
@@ -3577,6 +3974,64 @@
 			}
 		}
 		render(st);
+	}
+
+	function battleCardFromZoneHandOrRestEl(zoneOrHandEl) {
+		const st = lastStateForHandPower;
+		if (!zoneOrHandEl || !st) return null;
+		const ds = zoneOrHandEl.dataset;
+		const inst = ds && (ds.battleInstanceId || ds.instanceId);
+		if (!inst) return null;
+		const findInZone = function (z) {
+			return z && z.main && String(z.main.instanceId) === String(inst) ? z.main : null;
+		};
+		let bc = findInZone(st.humanBattle) || findInZone(st.cpuBattle);
+		if (bc) return bc;
+		(st.humanHand || []).forEach(function (c) {
+			if (!bc && c && String(c.instanceId) === String(inst)) bc = c;
+		});
+		if (!bc) {
+			(st.cpuHand || []).forEach(function (c) {
+				if (!bc && c && String(c.instanceId) === String(inst)) bc = c;
+			});
+		}
+		if (!bc) {
+			(st.humanRest || []).concat(st.cpuRest || []).forEach(function (c) {
+				if (!bc && c && String(c.instanceId) === String(inst)) bc = c;
+			});
+		}
+		return bc || null;
+	}
+
+	function zoneOrHandDetailDef(zoneOrHandEl, cardIdStr) {
+		const defs = lastDefsForTooltip;
+		const st = lastStateForHandPower;
+		if (!defs || cardIdStr == null) return null;
+		const base = resolveCardDef(defs, cardIdStr);
+		if (!base) return null;
+		const ds = zoneOrHandEl && zoneOrHandEl.dataset;
+		const inst = ds && (ds.battleInstanceId || ds.instanceId);
+		if (!inst || !st) return base;
+		const findInZone = function (z) {
+			return z && z.main && String(z.main.instanceId) === String(inst) ? z.main : null;
+		};
+		const zc = findInZone(st.humanBattle) || findInZone(st.cpuBattle);
+		if (zc) return cardDefForBattleFace(base, zc, defs);
+		let hc = null;
+		(st.humanHand || []).forEach(function (c) {
+			if (c && String(c.instanceId) === String(inst)) hc = c;
+		});
+		if (!hc) {
+			(st.cpuHand || []).forEach(function (c) {
+				if (c && String(c.instanceId) === String(inst)) hc = c;
+			});
+		}
+		if (!hc) {
+			(st.humanRest || []).concat(st.cpuRest || []).forEach(function (c) {
+				if (c && String(c.instanceId) === String(inst)) hc = c;
+			});
+		}
+		return hc ? cardDefForBattleFace(base, hc, defs) : base;
 	}
 
 	function attachHandlers() {
@@ -3605,9 +4060,14 @@
 			const zoneCard = t.closest('.battle-zone-card');
 			if (zoneCard && zoneCard instanceof HTMLElement) {
 				const cid = zoneCard.dataset.battleCardId;
-				const d = cid ? resolveCardDef(lastDefsForTooltip, cid) : null;
+				const d = cid ? zoneOrHandDetailDef(zoneCard, cid) : null;
 				if (d) {
-					showBattleZoneDetailModal(d, parseBattlePowerContributorsFromHost(zoneCard));
+					showBattleZoneDetailModal(
+						d,
+						parseBattlePowerContributorsFromHost(zoneCard),
+						lastStateForHandPower,
+						battleCardFromZoneHandOrRestEl(zoneCard)
+					);
 				}
 				return;
 			}
@@ -3666,24 +4126,18 @@
 			const t = eventTargetElement(e);
 			if (!t) return;
 
-			const restCardHost = t.closest('.rest-stack__card');
-			if (restCardHost && restCardHost instanceof HTMLElement) {
-				const cid = restCardHost.dataset.battleCardId;
-				const d = cid ? resolveCardDef(lastDefsForTooltip, cid) : null;
-				if (d) {
-					e.preventDefault();
-					showBattleZoneDetailModal(d, []);
-				}
-				return;
-			}
-
 			const zoneCard = t.closest('.battle-zone-card');
 			if (zoneCard && zoneCard instanceof HTMLElement) {
 				const cid = zoneCard.dataset.battleCardId;
-				const d = cid ? resolveCardDef(lastDefsForTooltip, cid) : null;
+				const d = cid ? zoneOrHandDetailDef(zoneCard, cid) : null;
 				if (d) {
 					e.preventDefault();
-					showBattleZoneDetailModal(d, parseBattlePowerContributorsFromHost(zoneCard));
+					showBattleZoneDetailModal(
+						d,
+						parseBattlePowerContributorsFromHost(zoneCard),
+						lastStateForHandPower,
+						battleCardFromZoneHandOrRestEl(zoneCard)
+					);
 				}
 				return;
 			}
@@ -3691,10 +4145,10 @@
 			const handBtn = t.closest('button.hand-card.battle-card');
 			if (handBtn && handBtn instanceof HTMLButtonElement) {
 				const cid = handBtn.dataset.cardId;
-				const d = cid ? resolveCardDef(lastDefsForTooltip, cid) : null;
+				const d = cid ? zoneOrHandDetailDef(handBtn, cid) : null;
 				if (d) {
 					e.preventDefault();
-					showBattleZoneDetailModal(d, []);
+					showBattleZoneDetailModal(d, [], lastStateForHandPower, battleCardFromZoneHandOrRestEl(handBtn));
 				}
 			}
 		});

@@ -36,7 +36,7 @@ VALUES
 INSERT INTO card_definition (id, name, cost, base_power, attribute, card_kind, image_file, rarity, pack_initial, ability_deploy_code, ability_passive_code, deploy_help, passive_help)
 VALUES
 	(52, 'マシンガンナー', 3, 6, 'MACHINE', 'FIGHTER', '__missing__.PNG', 'Ep', 'IF', NULL, NULL, '自分のレストゾーンにある「コストが1」のファイター1枚につき、相手はストーンを１つ捨てる。', NULL),
-	(53, 'SPEC-777', 2, 0, 'MACHINE', 'FIGHTER', '__missing__.PNG', 'R', 'IF', NULL, NULL, 'バトル終了まで、このファイターの強さは2～７の間のランダムな値になる。相手よりも強さが低くなった場合、バトルに敗北する。', NULL),
+	(53, 'SPEC-777', 2, 2, 'MACHINE', 'FIGHTER', '__missing__.PNG', 'R', 'IF', NULL, NULL, 'バトル終了まで、このファイターの強さは2～７の間のランダムな値になる。相手よりも強さが低くなった場合、バトルに敗北する。', NULL),
 	(54, 'SPEC-666', 0, 3, 'MACHINE', 'FIGHTER', '__missing__.PNG', 'R', 'IF', NULL, NULL, '次に相手と自分が配置するファイター両方を、バトル終了まで「種族：アンデッド」にする。', NULL),
 	(55, 'SPEC-123', 1, 1, 'MACHINE', 'FIGHTER', '__missing__.PNG', 'Ep', 'IF', NULL, NULL, '1～3の間のランダムな値分、ストーンを得る。', NULL),
 	(56, 'SPEC-0', 1, 2, 'MACHINE', 'FIGHTER', '__missing__.PNG', 'R', 'IF', NULL, NULL, '自分のレストゾーンの「もとの強さが1」のファイターを1枚選んで、デッキの一番上に置く。', NULL),

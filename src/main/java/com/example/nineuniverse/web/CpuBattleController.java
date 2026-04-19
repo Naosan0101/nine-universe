@@ -70,6 +70,7 @@ public class CpuBattleController {
 		}
 		model.addAttribute("humanBattleDef", hb);
 		model.addAttribute("cpuBattleDef", cb);
+		model.addAttribute("myBattleDeckId", st.getHumanSlotDeckId());
 		return "cpu-play";
 	}
 

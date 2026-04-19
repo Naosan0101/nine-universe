@@ -45,6 +45,7 @@ public class CpuBattleService {
 		Map<Short, CardDefinition> defs = cardCatalogService.mapById();
 		Random rnd = new Random();
 		CpuBattleState st = engine.newBattle(ids, level, rnd, defs);
+		st.setHumanSlotDeckId(deckId);
 		st.setCpuBattleUserId(userId);
 		st.setPhase(st.isHumansTurn() ? BattlePhase.HUMAN_INPUT : BattlePhase.CPU_THINKING);
 		if (st.getTurnStartedAtMs() <= 0) {
@@ -184,7 +185,10 @@ public class CpuBattleService {
 						)
 						: null,
 				st.getEventLog(),
-				defDtos
+				defDtos,
+				st.isPvp() ? null : st.getHumanSlotDeckId(),
+				st.isSpec666NextHumanUndead(),
+				st.isSpec666NextCpuUndead()
 		);
 	}
 
@@ -289,7 +293,8 @@ public class CpuBattleService {
 		if (c == null) {
 			return null;
 		}
-		return new BattleCardDto(c.getInstanceId(), c.getCardId(), c.isBlankEffects(), c.getHandDeployCostModifier());
+		return new BattleCardDto(c.getInstanceId(), c.getCardId(), c.isBlankEffects(), c.getHandDeployCostModifier(),
+				c.getBattleTribeOverride());
 	}
 
 	private static ZoneFighterDto toZoneDto(ZoneFighter z, List<BattlePowerModifierDto> powerModifiers) {
@@ -299,7 +304,7 @@ public class CpuBattleService {
 		var main = toBattleCardDto(z.getMain());
 		var under = z.getCostUnder().stream().map(CpuBattleService::toBattleCardDto).toList();
 		List<BattlePowerModifierDto> mods = powerModifiers != null ? powerModifiers : List.of();
-		return new ZoneFighterDto(main, under, z.getTemporaryPowerBonus(), mods);
+		return new ZoneFighterDto(main, under, z.getTemporaryPowerBonus(), mods, z.getSpec777RolledPower());
 	}
 
 	private void maybeNotifyCpuWinMission(CpuBattleState st) {

@@ -38,7 +38,13 @@ public record CpuBattleStateDto(
 		PendingEffectDto pendingEffect,
 		PendingChoiceDto pendingChoice,
 		List<String> eventLog,
-		Map<Short, CardDefDto> defs
+		Map<Short, CardDefDto> defs,
+		/** 現在の視点プレイヤーがこのバトルで使用しているデッキID（デッキ選択の「前回使用」用） */
+		Long myBattleDeckId,
+		/** SPEC-666: 次にホスト側スロットへ出すファイターがアンデッド扱いになる予定 */
+		boolean spec666NextHumanUndead,
+		/** SPEC-666: 次にゲスト/CPU 側スロットへ出すファイターがアンデッド扱いになる予定 */
+		boolean spec666NextCpuUndead
 ) {
 }
 

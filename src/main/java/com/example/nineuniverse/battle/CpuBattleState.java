@@ -32,7 +32,7 @@ public class CpuBattleState implements Serializable {
 	/** エルフの巫女: 次に配置するファイター強さ+1 */
 	private int humanNextDeployBonus;
 	private int cpuNextDeployBonus;
-	/** ウッドエルフ: 次に配置するエルフなら +3 */
+	/** ウッドエルフ・森のハープ弾き: 次に配置するエルフなら加算（ターン終了まで {@link ZoneFighter#getTemporaryPowerBonus()}） */
 	private int humanNextElfOnlyBonus;
 	private int cpuNextElfOnlyBonus;
 	/** 隊長: 次に配置するファイターのコストぶん強化（重ねがけ可） */
@@ -46,8 +46,18 @@ public class CpuBattleState implements Serializable {
 	/** 古竜: 次の相手ターン終了までの一時強化（自分のレストのエルフ枚数ぶん） */
 	private int humanKoryuBonus;
 	private int cpuKoryuBonus;
+	/** クリスタクル: 任意ストーン支払い後、次の配置に加算する強さ（未消費分） */
+	private int humanNextCrystakulDeployBonus;
+	private int cpuNextCrystakulDeployBonus;
+	/** クリスタクル: 場のファイターに加算（次の相手ターン終了まで。beginTurnGainStone で解除） */
+	private int humanCrystakulCombatBonus;
+	private int cpuCrystakulCombatBonus;
 	/** 「能力後も相手以上になれない」場合の確認用スナップショット（キャンセルで巻き戻す） */
 	private CpuBattleState confirmAcceptLossSnapshot;
+	/** SPEC-666: 次にホスト（human スロット）が配置するファイターをアンデッド扱いにする */
+	private boolean spec666NextHumanUndead;
+	/** SPEC-666: 次にゲスト／CPU が配置するファイターをアンデッド扱いにする */
+	private boolean spec666NextCpuUndead;
 
 	private List<BattleCard> humanDeck = new ArrayList<>();
 	private List<BattleCard> humanHand = new ArrayList<>();
@@ -73,6 +83,10 @@ public class CpuBattleState implements Serializable {
 	private boolean cpuWinMissionNotified;
 	/** CPU 戦の人間プレイヤー */
 	private Long cpuBattleUserId;
+	/** CPU戦: プレイヤーのデッキID。対人戦: ホストのデッキ（humanスロット） */
+	private Long humanSlotDeckId;
+	/** 対人戦のみ: ゲストのデッキ（cpuスロット）。CPU戦では null */
+	private Long cpuSlotDeckId;
 	private List<String> eventLog = new ArrayList<>();
 
 	public void addLog(String line) {

@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -32,12 +33,204 @@ public class CpuBattleEngine {
 	private static final short FROSTKRUL_ID = 32;
 	private static final short MISTYINKUL_ID = 33;
 	private static final short NEMURY_ID = 40;
+	/** ネムリィ〈常時〉: 相手ターンの間に加算する強さ */
+	private static final int NEMURY_OPPONENT_TURN_POWER_BONUS = 4;
 	/** フェザリア（レスト回収で自分自身は選べない） */
 	private static final short FEATHERIA_ID = 38;
+	/** ノクスクル（id=37・能力コード STONIA）。所持ストーンを強さに加算（resetTurnBuffs で消えないよう常時計算） */
+	private static final short STONIA_ID = 37;
 	/** 宝石の地 グロリア輝石台地 */
 	private static final short FIELD_GLORIA_ID = 41;
 	/** 探鉱の洞窟 ネビュラ坑道 */
 	private static final short FIELD_NEBULA_ID = 42;
+	/** クリスタクル（id=35） */
+	private static final short CRYSTAKUL_ID = 35;
+	/** ボットバイク（id=57） */
+	private static final short BOT_BIKE_ID = 57;
+	/** レッドアイ（id=58） */
+	private static final short RED_EYE_ID = 58;
+	/** ガラクタレッグ（id=61）: 相手のファイターは〈常時〉が使えない */
+	private static final short GARAKUTA_LEG_ID = 61;
+	/** 忍者（id=47）: 入れ替え後メインの強さペナルティ */
+	private static final short NINJA_ID = 47;
+	private static final int NINJA_SWAP_POWER_PENALTY = 2;
+	/** SPEC-777（id=53） */
+	private static final short SPEC_777_ID = 53;
+	/** SPEC-666（id=54） */
+	private static final short SPEC_666_ID = 54;
+	/** SPEC-123（id=55） */
+	private static final short SPEC_123_ID = 55;
+	/** SPEC-1（id=56・旧名 SPEC-0） */
+	private static final short SPEC_1_ID = 56;
+	/** 森のハープ弾き（id=65） */
+	private static final short HARP_PLAYER_ID = 65;
+	/** 森のハープ弾き: 次のエルフ配置に与える強さ（ターン終了まで） */
+	private static final int HARP_NEXT_ELF_POWER_BONUS = 3;
+	/** 墓守神父（id=67） */
+	private static final short GRAVE_PRIEST_ID = 67;
+	/** 墓守神父: 選択した手札ファイターに付与する配置コスト補正（バトル終了まで） */
+	private static final int GRAVE_PRIEST_HAND_COST_REDUCTION = 2;
+	/** 信奉者（id=50） */
+	private static final short BELIEVER_ID = 50;
+	/** 霊園教会 デスバウンス（id=68・〈フィールド〉） */
+	private static final short DEATHBOUNCE_FIELD_ID = 68;
+	/** ハーフエルフ（id=51） */
+	private static final short HALF_ELF_ID = 51;
+	/** 艦隊 HO-IVI-I3（id=62・〈フィールド〉） */
+	private static final short FLEET_HO_IVI_FIELD_ID = 62;
+	/** 廃棄工場 5C-R4P（id=63・〈フィールド〉） */
+	private static final short SCRAPYARD_FIELD_ID = 63;
+	/** 武器庫 VV-E4-PON（id=64・〈フィールド〉）: 種族：マシンのファイターはコスト1（〈フィールド〉カード自体は対象外） */
+	private static final short WEAPON_DEPOT_FIELD_ID = 64;
+	/** 神秘の大樹 スカイア（id=66・〈フィールド〉）: エルフの「ターン終了まで」の強さ加算が相手ターンでも持続 */
+	private static final short MYSTERIOUS_TREE_SKYAR_FIELD_ID = 66;
+	/** 磁力合体デンジリオン（id=59） */
+	private static final short DENZIRION_ID = 59;
+	/** ガラクタアーム（id=60） */
+	private static final short GARAKUTA_ARM_ID = 60;
+	/** クリスタクル〈配置〉: 任意で支払うストーン数 */
+	private static final int CRYSTAKUL_OPTIONAL_STONE_COST = 3;
+	/** クリスタクル〈配置〉: 次の配置に与える強さ（次の相手ターン終了まで） */
+	private static final int CRYSTAKUL_NEXT_DEPLOY_POWER = 3;
+
+	/**
+	 * レベルアップでレストへ捨てられるカード枚数の上限（配置するファイターを手札に残すため、手札枚数−1）。
+	 */
+	private static int maxLevelUpRestDiscard(int handSize) {
+		return Math.max(0, handSize - 1);
+	}
+
+	/**
+	 * 〈配置〉コードが DB で欠落していても id=35 ならクリスタクルとして扱う（確認モーダル・ミスティンクル例外のため）
+	 */
+	private static boolean isCrystakulCardDefinition(CardDefinition d) {
+		if (d == null) {
+			return false;
+		}
+		if ("CRYSTAKUL".equals(d.getAbilityDeployCode())) {
+			return true;
+		}
+		return d.getId() != null && d.getId() == CRYSTAKUL_ID;
+	}
+
+	private static boolean isBotBikeCardDefinition(CardDefinition d) {
+		if (d == null) {
+			return false;
+		}
+		if ("BOT_BIKE".equals(d.getAbilityDeployCode())) {
+			return true;
+		}
+		return d.getId() != null && d.getId() == BOT_BIKE_ID;
+	}
+
+	private static boolean isHarpPlayerCardDefinition(CardDefinition d) {
+		if (d == null) {
+			return false;
+		}
+		if ("HARP_PLAYER".equals(d.getAbilityDeployCode())) {
+			return true;
+		}
+		return d.getId() != null && d.getId() == HARP_PLAYER_ID;
+	}
+
+	private static boolean isGravePriestCardDefinition(CardDefinition d) {
+		if (d == null) {
+			return false;
+		}
+		if ("GRAVE_PRIEST".equals(d.getAbilityDeployCode())) {
+			return true;
+		}
+		return d.getId() != null && d.getId() == GRAVE_PRIEST_ID;
+	}
+
+	private static boolean isBelieverCardDefinition(CardDefinition d) {
+		if (d == null) {
+			return false;
+		}
+		if ("BELIEVER".equals(d.getAbilityDeployCode())) {
+			return true;
+		}
+		return d.getId() != null && d.getId() == BELIEVER_ID;
+	}
+
+	private static boolean isHalfElfCardDefinition(CardDefinition d) {
+		if (d == null) {
+			return false;
+		}
+		if ("HALF_ELF".equals(d.getAbilityDeployCode())) {
+			return true;
+		}
+		return d.getId() != null && d.getId() == HALF_ELF_ID;
+	}
+
+	/** 墓守神父: 手札から選べる「種族：アンデッド」のファイター（〈フィールド〉除外） */
+	private static boolean isGravePriestEligibleHandFighter(CardDefinition d, BattleCard c) {
+		if (d == null || c == null) {
+			return false;
+		}
+		if (!isNonFieldFighterCardDef(d)) {
+			return false;
+		}
+		return CardAttributes.hasAttribute(d, c, "UNDEAD");
+	}
+
+	private static List<String> gravePriestUndeadHandOptionIds(List<BattleCard> hand,
+			Map<Short, CardDefinition> defs) {
+		List<String> opts = new ArrayList<>();
+		if (hand == null || defs == null) {
+			return opts;
+		}
+		for (BattleCard bc : hand) {
+			CardDefinition cd = defs.get(bc.getCardId());
+			if (isGravePriestEligibleHandFighter(cd, bc)) {
+				opts.add(bc.getInstanceId());
+			}
+		}
+		return opts;
+	}
+
+	/**
+	 * 信奉者: レストの「霊園教会 デスバウンス」（id=68）をすべて手札先頭へ。移動枚数を返す。
+	 */
+	private static int moveAllDeathbounceFromRestToHand(List<BattleCard> rest, List<BattleCard> hand) {
+		if (rest == null || hand == null) {
+			return 0;
+		}
+		int n = 0;
+		for (int i = rest.size() - 1; i >= 0; i--) {
+			BattleCard c = rest.get(i);
+			if (c != null && c.getCardId() == DEATHBOUNCE_FIELD_ID) {
+				rest.remove(i);
+				hand.add(0, c);
+				n++;
+			}
+		}
+		return n;
+	}
+
+	/** {@code costUnder} の先頭 {@code costPayCardCount} 枚にメカニックが含まれるか */
+	private static boolean zoneCostIncludesMechanicFighter(ZoneFighter z, Map<Short, CardDefinition> defs) {
+		if (z == null || defs == null) {
+			return false;
+		}
+		List<BattleCard> under = z.getCostUnder();
+		if (under == null || under.isEmpty()) {
+			return false;
+		}
+		int n = Math.min(z.getCostPayCardCount(), under.size());
+		for (int i = 0; i < n; i++) {
+			BattleCard c = under.get(i);
+			if (c == null) {
+				continue;
+			}
+			CardDefinition cd = defs.get(c.getCardId());
+			if (cd != null && "MECHANIC".equals(cd.getAbilityDeployCode())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/** 決戦の地 カムイ（〈フィールド〉） */
 	private static final short FIELD_KAMUI_ID = 49;
 	private static final short ARTHUR_ID = 43;
@@ -63,7 +256,7 @@ public class CpuBattleEngine {
 
 		st.addLog(st.isHumanGoesFirst() ? "先攻: あなた" : "先攻: CPU");
 		// ターン開始時点でストーン付与（先攻1ターン目のみ獲得なし）
-		beginTurnGainStone(st, st.isHumansTurn());
+		beginTurnGainStone(st, st.isHumansTurn(), defs);
 		st.setLastMessage("バトル開始");
 		return st;
 	}
@@ -90,7 +283,7 @@ public class CpuBattleEngine {
 		}
 
 		st.addLog(st.isHumanGoesFirst() ? "先攻: ホスト" : "先攻: ゲスト");
-		beginTurnGainStone(st, st.isHumansTurn());
+		beginTurnGainStone(st, st.isHumansTurn(), defs);
 		st.setLastMessage("対人戦開始");
 		return st;
 	}
@@ -116,6 +309,41 @@ public class CpuBattleEngine {
 			return false;
 		}
 		return CardAttributes.hasAttribute(d, "HUMAN");
+	}
+
+	/** 〈フィールド〉以外のファイターカードか */
+	private static boolean isNonFieldFighterCardDef(CardDefinition d) {
+		if (d == null || isFieldCard(d)) {
+			return false;
+		}
+		return d.getCardKind() != null && "FIGHTER".equalsIgnoreCase(d.getCardKind().trim());
+	}
+
+	private static boolean isSpec1CardDefinition(CardDefinition d) {
+		if (d == null) {
+			return false;
+		}
+		if ("SPEC1".equals(d.getAbilityDeployCode()) || "SPEC0".equals(d.getAbilityDeployCode())) {
+			return true;
+		}
+		return d.getId() != null && d.getId() == SPEC_1_ID;
+	}
+
+	/** SPEC-1: レストから選べる「もとの強さが1」の自分ファイター */
+	private static boolean isSpec1EligibleRestFighter(BattleCard c, ZoneFighter ownBattle,
+			Map<Short, CardDefinition> defs) {
+		if (c == null || defs == null) {
+			return false;
+		}
+		if (isTuckedUnderOwnFighter(ownBattle, c)) {
+			return false;
+		}
+		CardDefinition d = defs.get(c.getCardId());
+		if (!isNonFieldFighterCardDef(d)) {
+			return false;
+		}
+		Short bp = d.getBasePower();
+		return bp != null && bp.intValue() == 1;
 	}
 
 	/** バトルログ用。対人戦では相手プレイヤー相当を「相手」、CPU戦では「CPU」と表記する。 */
@@ -266,13 +494,146 @@ public class CpuBattleEngine {
 		hand.add(0, deck.remove(0));
 	}
 
-	private void stagePendingDeployEffect(CpuBattleState st, boolean ownerHuman, CardDefinition mainDef, ZoneFighter zone) {
-		if (st == null || mainDef == null || zone == null || zone.getMain() == null) return;
+	private void setPendingDeployEffectOnly(CpuBattleState st, boolean ownerHuman, CardDefinition mainDef, ZoneFighter zone) {
+		if (st == null || mainDef == null || zone == null || zone.getMain() == null) {
+			return;
+		}
 		String code = mainDef.getAbilityDeployCode();
-		// 配置能力が無い（効果なし）場合でも、表示→解決→ノック判定へ進む必要がある
-		st.setPendingEffect(new PendingEffect(ownerHuman, zone.getMain().getInstanceId(), zone.getMain().getCardId(), code, false));
+		PendingEffect pe = new PendingEffect();
+		pe.setOwnerHuman(ownerHuman);
+		pe.setMainInstanceId(zone.getMain().getInstanceId());
+		pe.setCardId(zone.getMain().getCardId());
+		pe.setAbilityDeployCode(code);
+		pe.setApplied(false);
+		pe.setCrystakulOptionalResolved(false);
+		st.setPendingEffect(pe);
+	}
+
+	private void stagePendingDeployEffect(CpuBattleState st, boolean ownerHuman, CardDefinition mainDef, ZoneFighter zone) {
+		setPendingDeployEffectOnly(st, ownerHuman, mainDef, zone);
 		st.setPhase(ownerHuman ? BattlePhase.HUMAN_EFFECT_PENDING : BattlePhase.CPU_EFFECT_PENDING);
 		st.setLastMessage("効果を処理中…");
+	}
+
+	/**
+	 * クリック配置: クリスタクルの任意ストーン確認を「効果テキスト表示」より先に出す（サムライの任意ストーンと同様の順序）。
+	 */
+	private void stageInteractiveDeployEffectWithCrystakulOptionalFirst(CpuBattleState st, boolean ownerHuman,
+			CardDefinition mainDef, ZoneFighter z, Map<Short, CardDefinition> defs) {
+		setPendingDeployEffectOnly(st, ownerHuman, mainDef, z);
+		ensureCrystakulOptionalStonePromptAfterDeployEffect(st, defs, ownerHuman);
+		if (st.getPendingChoice() != null) {
+			st.setPhase(BattlePhase.HUMAN_CHOICE);
+			st.setLastMessage("選択してください");
+			return;
+		}
+		st.setPhase(ownerHuman ? BattlePhase.HUMAN_EFFECT_PENDING : BattlePhase.CPU_EFFECT_PENDING);
+		st.setLastMessage("効果を処理中…");
+	}
+
+	private void markCrystakulOptionalResolvedFromPendingChoice(PendingChoice pc, CpuBattleState st) {
+		if (pc == null || st == null) {
+			return;
+		}
+		if ("CRYSTAKUL".equals(pc.getAbilityDeployCode()) && st.getPendingEffect() != null) {
+			st.getPendingEffect().setCrystakulOptionalResolved(true);
+		}
+	}
+
+	/** pendingEffect の main が今も人間側バトルゾーンにいるか（配置側の実体で判定） */
+	private static boolean pendingDeployEffectOnHumanBattleSlot(CpuBattleState st, PendingEffect pe) {
+		if (st == null || pe == null) {
+			return false;
+		}
+		String mid = pe.getMainInstanceId();
+		if (mid == null) {
+			return false;
+		}
+		ZoneFighter hz = st.getHumanBattle();
+		return hz != null && hz.getMain() != null && mid.equals(hz.getMain().getInstanceId());
+	}
+
+	/** pendingEffect の main が今も CPU 側バトルゾーンにいるか */
+	private static boolean pendingDeployEffectOnCpuBattleSlot(CpuBattleState st, PendingEffect pe) {
+		if (st == null || pe == null) {
+			return false;
+		}
+		String mid = pe.getMainInstanceId();
+		if (mid == null) {
+			return false;
+		}
+		ZoneFighter cz = st.getCpuBattle();
+		return cz != null && cz.getMain() != null && mid.equals(cz.getMain().getInstanceId());
+	}
+
+	/**
+	 * クリスタクル: {@link #applyDeployHuman} / {@link #applyDeployHumanAsCpuSide} 内の早期 return で〈配置〉確認が付かない場合の補完。
+	 * バトルゾーンの実カードが CRYSTAKUL で、ストーンが足りれば必ず任意ストーン確認を出す。
+	 */
+	private void ensureCrystakulOptionalStonePromptAfterDeployEffect(CpuBattleState st, Map<Short, CardDefinition> defs,
+			boolean deployerActsAsHuman) {
+		if (st == null || defs == null || st.getPendingChoice() != null) {
+			return;
+		}
+		if (st.getPendingEffect() != null && st.getPendingEffect().isCrystakulOptionalResolved()) {
+			return;
+		}
+		if (deployerActsAsHuman) {
+			if (st.getHumanBattle() == null || st.getHumanBattle().getMain() == null) {
+				return;
+			}
+			short cid = st.getHumanBattle().getMain().getCardId();
+			CardDefinition md = defs.get(cid);
+			if (md == null && cid == CRYSTAKUL_ID) {
+				md = new CardDefinition();
+				md.setId(CRYSTAKUL_ID);
+				md.setAbilityDeployCode("CRYSTAKUL");
+			}
+			if (md == null || !isCrystakulCardDefinition(md)) {
+				return;
+			}
+			if (deployAbilitySuppressedByOpponentLine(st, true, md)) {
+				return;
+			}
+			if (st.getHumanStones() < CRYSTAKUL_OPTIONAL_STONE_COST) {
+				return;
+			}
+			st.setPendingChoice(new PendingChoice(
+					ChoiceKind.CONFIRM_OPTIONAL_STONE,
+					"クリスタクル（ストーン3・次の配置+3／次の相手ターン終了まで）",
+					true,
+					"CRYSTAKUL",
+					CRYSTAKUL_OPTIONAL_STONE_COST,
+					List.of()));
+		} else {
+			if (st.getCpuBattle() == null || st.getCpuBattle().getMain() == null) {
+				return;
+			}
+			short cid = st.getCpuBattle().getMain().getCardId();
+			CardDefinition md = defs.get(cid);
+			if (md == null && cid == CRYSTAKUL_ID) {
+				md = new CardDefinition();
+				md.setId(CRYSTAKUL_ID);
+				md.setAbilityDeployCode("CRYSTAKUL");
+			}
+			if (md == null || !isCrystakulCardDefinition(md)) {
+				return;
+			}
+			if (deployAbilitySuppressedByOpponentLine(st, false, md)) {
+				return;
+			}
+			if (st.getCpuStones() < CRYSTAKUL_OPTIONAL_STONE_COST) {
+				return;
+			}
+			st.setPendingChoice(new PendingChoice(
+					ChoiceKind.CONFIRM_OPTIONAL_STONE,
+					"クリスタクル（ストーン3・次の配置+3／次の相手ターン終了まで）",
+					false,
+					"CRYSTAKUL",
+					CRYSTAKUL_OPTIONAL_STONE_COST,
+					List.of(),
+					true));
+		}
 	}
 
 	public void resolvePendingEffectAndAdvance(CpuBattleState st, Map<Short, CardDefinition> defs, Random rnd) {
@@ -280,28 +641,88 @@ public class CpuBattleEngine {
 		PendingEffect pe = st.getPendingEffect();
 		if (pe == null) return;
 
+		boolean pendingOnHumanSlot = pendingDeployEffectOnHumanBattleSlot(st, pe);
+		boolean pendingOnCpuSlot = pendingDeployEffectOnCpuBattleSlot(st, pe);
+		// 実際にどちらのバトルゾーンに置かれたかで解決する（ownerHuman フラグだけだと誤って applyDeployCpu になり、クリスタクル等が相手ストーン基準になる）
+		boolean deployerActsAsHuman = pendingOnHumanSlot ? true : (pendingOnCpuSlot ? false : pe.isOwnerHuman());
+
 		// 効果適用（選択待ちの間に二重適用しない）
 		if (!pe.isApplied()) {
-			// 相手の竜王、または相手のミスティンクルがいる場合は〈配置〉が無効（竜王は〈常時〉も無効）
-			boolean deploySuppressed = opponentSuppressesDeployEffects(st, pe.isOwnerHuman());
-			CardDefinition d = defs.get(pe.getCardId());
-			ZoneFighter ownZone = pe.isOwnerHuman() ? st.getHumanBattle() : st.getCpuBattle();
-			BattleCard deployedMain = null;
-			if (ownZone != null && ownZone.getMain() != null && pe.getMainInstanceId() != null
-					&& pe.getMainInstanceId().equals(ownZone.getMain().getInstanceId())) {
-				deployedMain = ownZone.getMain();
-			}
-			if (!deploySuppressed && d != null) {
-				if (pe.isOwnerHuman()) {
-					applyDeployHuman(st, d, defs, deployedMain);
-				} else if (st.isPvp()) {
-					applyDeployHumanAsCpuSide(st, d, defs, deployedMain);
-				} else {
-					applyDeployCpu(st, d, defs, rnd != null ? rnd : new Random(), deployedMain);
+			if (!pe.isNinjaSwapPhaseDone() && pe.getAbilityDeployCode() != null
+					&& "NINJA".equals(pe.getAbilityDeployCode())) {
+				boolean swappedWithCost = applyNinjaPhysicalSwap(st, defs, pendingOnHumanSlot);
+				pe.setNinjaSwapPhaseDone(true);
+				syncPendingEffectMainAfterNinjaSwap(pe, st, defs, pendingOnHumanSlot);
+				st.setPendingEffect(pe);
+				if (swappedWithCost && (pendingOnHumanSlot || (pendingOnCpuSlot && st.isPvp()))) {
+					ZoneFighter zForName = pendingOnHumanSlot ? st.getHumanBattle() : st.getCpuBattle();
+					CardDefinition swDef = zForName != null && zForName.getMain() != null
+							? defs.get(zForName.getMain().getCardId()) : null;
+					String swName = swDef != null && swDef.getName() != null ? swDef.getName() : "？";
+					String ac = swDef != null && swDef.getAbilityDeployCode() != null ? swDef.getAbilityDeployCode() : "";
+					boolean guest = pendingOnCpuSlot && st.isPvp();
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.CONFIRM_NINJA_SWAPPED_DEPLOY,
+							"「" + swName + "」の〈配置〉効果を使用しますか？",
+							!guest,
+							ac,
+							0,
+							List.of(),
+							guest));
+					st.setPhase(BattlePhase.HUMAN_CHOICE);
+					st.setLastMessage("選択してください");
+					return;
 				}
+			}
+
+			CardDefinition d = defs.get(pe.getCardId());
+			BattleCard deployedMain = null;
+			if (pendingOnHumanSlot && st.getHumanBattle() != null) {
+				deployedMain = st.getHumanBattle().getMain();
+			} else if (pendingOnCpuSlot && st.getCpuBattle() != null) {
+				deployedMain = st.getCpuBattle().getMain();
+			}
+			// 〈探鉱の洞窟〉: バトルゾーンへのファイター配置の直後、〈配置〉効果の前にストーン+1（竜王等で〈配置〉が無効でも配置自体は行われるため適用する）
+			// フィールド判定は「実際に置かれたメイン」の定義を優先（pending とゾーンの不整合や忍者入れ替え後も正しく扱う）
+			CardDefinition fighterDefForFieldTriggers = d;
+			if (deployedMain != null) {
+				CardDefinition fromZone = defs.get(deployedMain.getCardId());
+				if (fromZone != null) {
+					fighterDefForFieldTriggers = fromZone;
+				}
+			}
+			if (fighterDefForFieldTriggers != null && !isFieldCard(fighterDefForFieldTriggers)) {
+				applyFieldNebulaWhenCarbuncleFighterDeployed(st, fighterDefForFieldTriggers, deployedMain, deployerActsAsHuman);
+			}
+			// 相手の竜王、または（クリスタクル以外なら）ミスティンクルで〈配置〉が無効
+			boolean deploySuppressed = deployAbilitySuppressedByOpponentLine(st, deployerActsAsHuman, fighterDefForFieldTriggers);
+			// pendingEffect の cardId と defs の不整合でも、ゾーン上の実カードで〈配置〉を解決する
+			CardDefinition abilityDefToResolve = fighterDefForFieldTriggers != null ? fighterDefForFieldTriggers : d;
+			if (!deploySuppressed && abilityDefToResolve != null) {
+				if (pendingOnHumanSlot) {
+					applyDeployHuman(st, abilityDefToResolve, defs, deployedMain);
+				} else if (pendingOnCpuSlot && st.isPvp()) {
+					applyDeployHumanAsCpuSide(st, abilityDefToResolve, defs, deployedMain);
+				} else if (pendingOnCpuSlot) {
+					applyDeployCpu(st, abilityDefToResolve, defs, rnd != null ? rnd : new Random(), deployedMain);
+				} else if (pe.isOwnerHuman()) {
+					applyDeployHuman(st, abilityDefToResolve, defs, deployedMain);
+				} else if (st.isPvp()) {
+					applyDeployHumanAsCpuSide(st, abilityDefToResolve, defs, deployedMain);
+				} else {
+					applyDeployCpu(st, abilityDefToResolve, defs, rnd != null ? rnd : new Random(), deployedMain);
+				}
+			}
+			// deploySuppressed でもゾーン実体がクリスタクルなら補完で確認を付ける（上の分岐で付かなかった場合）
+			if (st.getPendingChoice() == null) {
+				ensureCrystakulOptionalStonePromptAfterDeployEffect(st, defs, deployerActsAsHuman);
 			}
 			pe.setApplied(true);
 			st.setPendingEffect(pe);
+		}
+
+		if (maybeApplySpec777ForcedDefeat(st, defs)) {
+			return;
 		}
 
 		// 選択が必要なら、ここで止める
@@ -313,7 +734,7 @@ public class CpuBattleEngine {
 		}
 
 		// 配置能力の結果を含めて強さ条件を満たす必要がある
-		if (pe.isOwnerHuman()) {
+		if (deployerActsAsHuman) {
 			if (st.getCpuBattle() != null) {
 				int me = effectiveBattlePower(st.getHumanBattle(), true, st, defs);
 				int opp = effectiveBattlePower(st.getCpuBattle(), false, st, defs);
@@ -365,19 +786,19 @@ public class CpuBattleEngine {
 
 		if (st.getPhase() == BattlePhase.HUMAN_EFFECT_PENDING) {
 			resolveKnockAndDraw(st, true, defs);
-			resetTurnBuffs(st);
+			resetTurnBuffs(st, defs);
 			st.setHumansTurn(false);
 			st.setPhase(BattlePhase.CPU_THINKING);
 			// CPUのターン開始：ストーン付与（先攻1ターン目のみ獲得なし）
-			beginTurnGainStone(st, false);
+			beginTurnGainStone(st, false, defs);
 			st.setLastMessage(st.isPvp() ? "ゲストのターン" : "CPUのターン");
 		} else if (st.getPhase() == BattlePhase.CPU_EFFECT_PENDING) {
 			resolveKnockAndDraw(st, false, defs);
-			resetTurnBuffs(st);
+			resetTurnBuffs(st, defs);
 			st.setHumansTurn(true);
 			st.setPhase(BattlePhase.HUMAN_INPUT);
 			// 人間のターン開始：ストーン付与（先攻1ターン目のみ獲得なし）
-			beginTurnGainStone(st, true);
+			beginTurnGainStone(st, true, defs);
 			st.setLastMessage(st.isPvp() ? "ホストのターン" : "あなたのターン");
 		}
 	}
@@ -419,6 +840,12 @@ public class CpuBattleEngine {
 						st.setPowerSwapActive(snap.isPowerSwapActive());
 						st.setHumanKoryuBonus(snap.getHumanKoryuBonus());
 						st.setCpuKoryuBonus(snap.getCpuKoryuBonus());
+						st.setHumanNextCrystakulDeployBonus(snap.getHumanNextCrystakulDeployBonus());
+						st.setCpuNextCrystakulDeployBonus(snap.getCpuNextCrystakulDeployBonus());
+						st.setHumanCrystakulCombatBonus(snap.getHumanCrystakulCombatBonus());
+						st.setCpuCrystakulCombatBonus(snap.getCpuCrystakulCombatBonus());
+						st.setSpec666NextHumanUndead(snap.isSpec666NextHumanUndead());
+						st.setSpec666NextCpuUndead(snap.isSpec666NextCpuUndead());
 
 						st.setHumanDeck(copyCards(snap.getHumanDeck()));
 						st.setHumanHand(copyCards(snap.getHumanHand()));
@@ -431,6 +858,8 @@ public class CpuBattleEngine {
 						st.setCpuRest(copyCards(snap.getCpuRest()));
 						st.setCpuBattle(copyZone(snap.getCpuBattle()));
 						st.setCpuStones(snap.getCpuStones());
+						st.setHumanSlotDeckId(snap.getHumanSlotDeckId());
+						st.setCpuSlotDeckId(snap.getCpuSlotDeckId());
 
 						st.setLastMessage("操作をキャンセルしました");
 					} else {
@@ -445,10 +874,45 @@ public class CpuBattleEngine {
 				st.setConfirmAcceptLossSnapshot(null);
 				return;
 			}
-			case CONFIRM_OPTIONAL_STONE -> {
-				if (confirm && "CRYSTAKUL".equals(pc.getAbilityDeployCode())) {
-					ensureNebulaStoneForCrystakulOptionalPayment(st, true, defs);
+			case CONFIRM_MIRAJUKUL_MIRROR -> {
+				if (confirm) {
+					// 確認用の PendingChoice が残ったままだと直後の null 判定が常に真になり進行不能になる
+					st.setPendingChoice(null);
+					applyMirageMirrorDeploy(st, true, defs, rnd);
+					if (st.getPendingChoice() != null) {
+						return;
+					}
+				} else {
+					st.addLog("ミラージュクル: 効果を使わなかった");
 				}
+			}
+			case CONFIRM_NINJA_SWAPPED_DEPLOY -> {
+				st.setPendingChoice(null);
+				PendingEffect peff = st.getPendingEffect();
+				if (peff == null) {
+					return;
+				}
+				boolean pendHum = pendingDeployEffectOnHumanBattleSlot(st, peff);
+				boolean pendCpu = pendingDeployEffectOnCpuBattleSlot(st, peff);
+				boolean deployerActsAsHuman = pendHum ? true : (pendCpu ? false : peff.isOwnerHuman());
+				if (confirm) {
+					resolveNinjaSwappedDeployEffects(st, defs, rnd, pendHum, pendCpu);
+					if (st.getPendingChoice() != null) {
+						return;
+					}
+					ensureCrystakulOptionalStonePromptAfterDeployEffect(st, defs, deployerActsAsHuman);
+					if (st.getPendingChoice() != null) {
+						return;
+					}
+				} else {
+					st.addLog("忍者: 入れ替え先の〈配置〉を使わなかった");
+				}
+				peff.setApplied(true);
+				st.setPendingEffect(peff);
+				resolvePendingEffectAndAdvance(st, defs, rnd);
+				return;
+			}
+			case CONFIRM_OPTIONAL_STONE -> {
 				if (confirm && pc.getStoneCost() > 0 && st.getHumanStones() >= pc.getStoneCost()) {
 					st.setHumanStones(st.getHumanStones() - pc.getStoneCost());
 					st.addLog("ストーンを" + pc.getStoneCost() + "使用");
@@ -542,9 +1006,6 @@ public class CpuBattleEngine {
 							Collections.shuffle(st.getHumanDeck(), rr);
 							st.addLog("呪われた亡者: レストから1枚をデッキへ戻しシャッフル");
 						}
-					} else if ("CRYSTAKUL".equals(pc.getAbilityDeployCode())) {
-						st.setHumanStones(st.getHumanStones() + 5);
-						st.addLog("クリスタクル: ストーン+5");
 					} else if ("FEZARIA".equals(pc.getAbilityDeployCode())) {
 						List<String> opts = new ArrayList<>();
 						for (BattleCard c : st.getHumanRest()) {
@@ -564,10 +1025,14 @@ public class CpuBattleEngine {
 							return;
 						}
 						st.addLog("フェザリア: レストに回収対象のカードがない");
+					} else if ("CRYSTAKUL".equals(pc.getAbilityDeployCode())) {
+						st.setHumanNextCrystakulDeployBonus(st.getHumanNextCrystakulDeployBonus() + CRYSTAKUL_NEXT_DEPLOY_POWER);
+						st.addLog("クリスタクル: 次の配置+3（次の相手ターン終了まで）");
 					}
 				} else {
 					st.addLog("効果を使用しなかった");
 				}
+				markCrystakulOptionalResolvedFromPendingChoice(pc, st);
 			}
 			case SELECT_ONE_FROM_HAND_TO_REST -> {
 				if (pickedInstanceIds == null || pickedInstanceIds.size() != 1) return;
@@ -576,6 +1041,25 @@ public class CpuBattleEngine {
 					st.getHumanRest().add(c);
 					st.addLog("手札を1枚レストへ");
 				}
+			}
+			case SELECT_ONE_UNDEAD_FIGHTER_FROM_HAND_FOR_COST -> {
+				if (pickedInstanceIds == null || pickedInstanceIds.size() != 1) {
+					return;
+				}
+				String gpPick = pickedInstanceIds.get(0);
+				if (pc.getOptionInstanceIds() == null || !pc.getOptionInstanceIds().contains(gpPick)) {
+					return;
+				}
+				BattleCard gpc = findByInstanceId(st.getHumanHand(), gpPick);
+				if (gpc == null) {
+					return;
+				}
+				CardDefinition gcd = defs.get(gpc.getCardId());
+				if (!isGravePriestEligibleHandFighter(gcd, gpc)) {
+					return;
+				}
+				gpc.setHandDeployCostModifier(gpc.getHandDeployCostModifier() - GRAVE_PRIEST_HAND_COST_REDUCTION);
+				st.addLog("墓守神父: 手札のファイターのコストを-" + GRAVE_PRIEST_HAND_COST_REDUCTION + "（バトル終了まで）");
 			}
 			case SELECT_TWO_FROM_HAND_TO_REST -> {
 				if (pickedInstanceIds == null || pickedInstanceIds.size() != 2) return;
@@ -606,6 +1090,20 @@ public class CpuBattleEngine {
 						st.addLog("レストから手札へ");
 					}
 					st.getHumanHand().add(0, c);
+				}
+			}
+			case SELECT_ONE_FROM_REST_TO_DECK_TOP -> {
+				if (pickedInstanceIds == null || pickedInstanceIds.size() != 1) {
+					return;
+				}
+				String pickId = pickedInstanceIds.get(0);
+				if (pc.getOptionInstanceIds() == null || !pc.getOptionInstanceIds().contains(pickId)) {
+					return;
+				}
+				BattleCard c = removeByInstanceId(st.getHumanRest(), pickId);
+				if (c != null && isSpec1EligibleRestFighter(c, st.getHumanBattle(), defs)) {
+					st.getHumanDeck().add(0, c);
+					st.addLog("SPEC-1: レストのファイターをデッキの上に置いた");
 				}
 			}
 			case SELECT_SWAP_REST_AND_HAND -> {
@@ -694,6 +1192,12 @@ public class CpuBattleEngine {
 						st.setPowerSwapActive(snap.isPowerSwapActive());
 						st.setHumanKoryuBonus(snap.getHumanKoryuBonus());
 						st.setCpuKoryuBonus(snap.getCpuKoryuBonus());
+						st.setHumanNextCrystakulDeployBonus(snap.getHumanNextCrystakulDeployBonus());
+						st.setCpuNextCrystakulDeployBonus(snap.getCpuNextCrystakulDeployBonus());
+						st.setHumanCrystakulCombatBonus(snap.getHumanCrystakulCombatBonus());
+						st.setCpuCrystakulCombatBonus(snap.getCpuCrystakulCombatBonus());
+						st.setSpec666NextHumanUndead(snap.isSpec666NextHumanUndead());
+						st.setSpec666NextCpuUndead(snap.isSpec666NextCpuUndead());
 
 						st.setHumanDeck(copyCards(snap.getHumanDeck()));
 						st.setHumanHand(copyCards(snap.getHumanHand()));
@@ -706,6 +1210,8 @@ public class CpuBattleEngine {
 						st.setCpuRest(copyCards(snap.getCpuRest()));
 						st.setCpuBattle(copyZone(snap.getCpuBattle()));
 						st.setCpuStones(snap.getCpuStones());
+						st.setHumanSlotDeckId(snap.getHumanSlotDeckId());
+						st.setCpuSlotDeckId(snap.getCpuSlotDeckId());
 
 						st.setLastMessage("操作をキャンセルしました");
 					} else {
@@ -720,10 +1226,44 @@ public class CpuBattleEngine {
 				st.setConfirmAcceptLossSnapshot(null);
 				return;
 			}
-			case CONFIRM_OPTIONAL_STONE -> {
-				if (confirm && "CRYSTAKUL".equals(pc.getAbilityDeployCode())) {
-					ensureNebulaStoneForCrystakulOptionalPayment(st, false, defs);
+			case CONFIRM_MIRAJUKUL_MIRROR -> {
+				if (confirm) {
+					st.setPendingChoice(null);
+					applyMirageMirrorDeploy(st, false, defs, rnd);
+					if (st.getPendingChoice() != null) {
+						return;
+					}
+				} else {
+					st.addLog("ミラージュクル: 効果を使わなかった");
 				}
+			}
+			case CONFIRM_NINJA_SWAPPED_DEPLOY -> {
+				st.setPendingChoice(null);
+				PendingEffect peffG = st.getPendingEffect();
+				if (peffG == null) {
+					return;
+				}
+				boolean pendHumG = pendingDeployEffectOnHumanBattleSlot(st, peffG);
+				boolean pendCpuG = pendingDeployEffectOnCpuBattleSlot(st, peffG);
+				boolean deployerActsAsHumanG = pendHumG ? true : (pendCpuG ? false : peffG.isOwnerHuman());
+				if (confirm) {
+					resolveNinjaSwappedDeployEffects(st, defs, rnd, pendHumG, pendCpuG);
+					if (st.getPendingChoice() != null) {
+						return;
+					}
+					ensureCrystakulOptionalStonePromptAfterDeployEffect(st, defs, deployerActsAsHumanG);
+					if (st.getPendingChoice() != null) {
+						return;
+					}
+				} else {
+					st.addLog("忍者: 入れ替え先の〈配置〉を使わなかった");
+				}
+				peffG.setApplied(true);
+				st.setPendingEffect(peffG);
+				resolvePendingEffectAndAdvance(st, defs, rnd);
+				return;
+			}
+			case CONFIRM_OPTIONAL_STONE -> {
 				if (confirm && pc.getStoneCost() > 0 && st.getCpuStones() >= pc.getStoneCost()) {
 					st.setCpuStones(st.getCpuStones() - pc.getStoneCost());
 					st.addLog("ストーンを" + pc.getStoneCost() + "使用");
@@ -814,9 +1354,6 @@ public class CpuBattleEngine {
 							Collections.shuffle(st.getCpuDeck(), rr);
 							st.addLog("呪われた亡者: レストから1枚をデッキへ戻しシャッフル");
 						}
-					} else if ("CRYSTAKUL".equals(pc.getAbilityDeployCode())) {
-						st.setCpuStones(st.getCpuStones() + 5);
-						st.addLog("クリスタクル: ストーン+5");
 					} else if ("FEZARIA".equals(pc.getAbilityDeployCode())) {
 						List<String> opts = new ArrayList<>();
 						for (BattleCard c : st.getCpuRest()) {
@@ -837,10 +1374,14 @@ public class CpuBattleEngine {
 							return;
 						}
 						st.addLog("フェザリア: レストに回収対象のカードがない");
+					} else if ("CRYSTAKUL".equals(pc.getAbilityDeployCode())) {
+						st.setCpuNextCrystakulDeployBonus(st.getCpuNextCrystakulDeployBonus() + CRYSTAKUL_NEXT_DEPLOY_POWER);
+						st.addLog("クリスタクル: 次の配置+3（次の相手ターン終了まで）");
 					}
 				} else {
 					st.addLog("効果を使用しなかった");
 				}
+				markCrystakulOptionalResolvedFromPendingChoice(pc, st);
 			}
 			case SELECT_ONE_FROM_HAND_TO_REST -> {
 				if (pickedInstanceIds == null || pickedInstanceIds.size() != 1) return;
@@ -849,6 +1390,25 @@ public class CpuBattleEngine {
 					st.getCpuRest().add(c);
 					st.addLog("手札を1枚レストへ");
 				}
+			}
+			case SELECT_ONE_UNDEAD_FIGHTER_FROM_HAND_FOR_COST -> {
+				if (pickedInstanceIds == null || pickedInstanceIds.size() != 1) {
+					return;
+				}
+				String gpPickG = pickedInstanceIds.get(0);
+				if (pc.getOptionInstanceIds() == null || !pc.getOptionInstanceIds().contains(gpPickG)) {
+					return;
+				}
+				BattleCard gpcg = findByInstanceId(st.getCpuHand(), gpPickG);
+				if (gpcg == null) {
+					return;
+				}
+				CardDefinition gcdg = defs.get(gpcg.getCardId());
+				if (!isGravePriestEligibleHandFighter(gcdg, gpcg)) {
+					return;
+				}
+				gpcg.setHandDeployCostModifier(gpcg.getHandDeployCostModifier() - GRAVE_PRIEST_HAND_COST_REDUCTION);
+				st.addLog("墓守神父: 手札のファイターのコストを-" + GRAVE_PRIEST_HAND_COST_REDUCTION + "（バトル終了まで）");
 			}
 			case SELECT_TWO_FROM_HAND_TO_REST -> {
 				if (pickedInstanceIds == null || pickedInstanceIds.size() != 2) return;
@@ -879,6 +1439,20 @@ public class CpuBattleEngine {
 						st.addLog("レストから手札へ");
 					}
 					st.getCpuHand().add(0, c);
+				}
+			}
+			case SELECT_ONE_FROM_REST_TO_DECK_TOP -> {
+				if (pickedInstanceIds == null || pickedInstanceIds.size() != 1) {
+					return;
+				}
+				String pickIdG = pickedInstanceIds.get(0);
+				if (pc.getOptionInstanceIds() == null || !pc.getOptionInstanceIds().contains(pickIdG)) {
+					return;
+				}
+				BattleCard c = removeByInstanceId(st.getCpuRest(), pickIdG);
+				if (c != null && isSpec1EligibleRestFighter(c, st.getCpuBattle(), defs)) {
+					st.getCpuDeck().add(0, c);
+					st.addLog("SPEC-1: レストのファイターをデッキの上に置いた");
 				}
 			}
 			case SELECT_SWAP_REST_AND_HAND -> {
@@ -927,7 +1501,7 @@ public class CpuBattleEngine {
 		st.setLastMessage("効果を処理中…");
 	}
 
-	private void beginTurnGainStone(CpuBattleState st, boolean forHuman) {
+	private void beginTurnGainStone(CpuBattleState st, boolean forHuman, Map<Short, CardDefinition> defs) {
 		if (st == null || st.isGameOver()) {
 			return;
 		}
@@ -937,8 +1511,16 @@ public class CpuBattleEngine {
 		// 「次の相手ターン終了まで」系の一時効果は、所有者の次ターン開始時に切れる
 		if (forHuman) {
 			st.setHumanKoryuBonus(0);
+			st.setHumanCrystakulCombatBonus(0);
+			if (st.getHumanBattle() != null) {
+				st.getHumanBattle().setBotBikeMechanicPowerBonus(0);
+			}
 		} else {
 			st.setCpuKoryuBonus(0);
+			st.setCpuCrystakulCombatBonus(0);
+			if (st.getCpuBattle() != null) {
+				st.getCpuBattle().setBotBikeMechanicPowerBonus(0);
+			}
 		}
 
 		boolean isFirstPlayersFirstTurn = forHuman
@@ -963,6 +1545,9 @@ public class CpuBattleEngine {
 		} else {
 			st.setCpuStones(st.getCpuStones() + 1);
 			st.addLog(opponentActorLogLabel(st) + "はストーンを1つ得た");
+		}
+		if (defs != null) {
+			maybeApplySpec777ForcedDefeat(st, defs);
 		}
 	}
 
@@ -1000,6 +1585,12 @@ public class CpuBattleEngine {
 		ns.setPowerSwapActive(st.isPowerSwapActive());
 		ns.setHumanKoryuBonus(st.getHumanKoryuBonus());
 		ns.setCpuKoryuBonus(st.getCpuKoryuBonus());
+		ns.setHumanNextCrystakulDeployBonus(st.getHumanNextCrystakulDeployBonus());
+		ns.setCpuNextCrystakulDeployBonus(st.getCpuNextCrystakulDeployBonus());
+		ns.setHumanCrystakulCombatBonus(st.getHumanCrystakulCombatBonus());
+		ns.setCpuCrystakulCombatBonus(st.getCpuCrystakulCombatBonus());
+		ns.setSpec666NextHumanUndead(st.isSpec666NextHumanUndead());
+		ns.setSpec666NextCpuUndead(st.isSpec666NextCpuUndead());
 		ns.setLastMessage(st.getLastMessage());
 		ns.setGameOver(st.isGameOver());
 		ns.setHumanWon(st.isHumanWon());
@@ -1016,6 +1607,8 @@ public class CpuBattleEngine {
 		ns.setCpuBattle(copyZone(st.getCpuBattle()));
 		ns.setActiveField(copyCard(st.getActiveField()));
 		ns.setActiveFieldOwnerHuman(st.getActiveFieldOwnerHuman());
+		ns.setHumanSlotDeckId(st.getHumanSlotDeckId());
+		ns.setCpuSlotDeckId(st.getCpuSlotDeckId());
 		return ns;
 	}
 
@@ -1066,7 +1659,7 @@ public class CpuBattleEngine {
 			st.setLastMessage("レベルアップ指定が不正です");
 			return;
 		}
-		if (levelUpRest > st.getHumanHand().size()) {
+		if (levelUpRest > maxLevelUpRestDiscard(st.getHumanHand().size())) {
 			st.setLastMessage("手札が足りずレベルアップできません");
 			return;
 		}
@@ -1109,13 +1702,15 @@ public class CpuBattleEngine {
 			}
 			deployBonus = levelUpRest * 2 + levelUpStones * 2;
 			deployBonus += st.getHumanNextDeployBonus();
-			if (st.getHumanNextElfOnlyBonus() > 0 && CardAttributes.hasAttribute(mainDef, "ELF")) {
+			if (st.getHumanNextElfOnlyBonus() > 0
+					&& CardAttributes.hasAttributeForDeployPreview(mainDef, main, st.isSpec666NextHumanUndead(), "ELF")) {
 				deployBonus += st.getHumanNextElfOnlyBonus();
 			}
 			if (st.getHumanNextDeployCostBonusTimes() > 0) {
 				deployBonus += mainDef.getCost() * st.getHumanNextDeployCostBonusTimes();
 			}
 			deployBonus += 3 * st.getHumanNextMechanicStacks();
+			deployBonus += st.getHumanNextCrystakulDeployBonus();
 			if (!canDeployWithHand(simHand, deployHandIndex, defs, deployBonus, st, true)) {
 				st.setLastMessage("配置条件（強さ・コスト）を満たせません");
 				return;
@@ -1142,7 +1737,7 @@ public class CpuBattleEngine {
 		if (deploy) {
 			BattleCard main = st.getHumanHand().remove(deployHandIndex);
 			CardDefinition mainDef = defs.get(main.getCardId());
-			int cost = effectiveDeployCost(mainDef, main, defs, st.getHumanRest(), st.getHumanNextMechanicStacks());
+			int cost = effectiveDeployCost(mainDef, main, defs, st.getHumanRest(), st.getHumanNextMechanicStacks(), st);
 			List<BattleCard> paid = new ArrayList<>();
 			for (int i = 0; i < cost; i++) {
 				paid.add(st.getHumanHand().remove(st.getHumanHand().size() - 1));
@@ -1151,17 +1746,35 @@ public class CpuBattleEngine {
 			z.setMain(main);
 			z.setCostUnder(paid);
 			z.setCostPayCardCount(cost);
-			z.setTemporaryPowerBonus(deployBonus);
+			applyCrystakulBonusesToDeployedZone(st, z, deployBonus, true);
 			// 次回配置ボーナス消費
 			st.setHumanNextDeployBonus(0);
 			st.setHumanNextElfOnlyBonus(0);
 			st.setHumanNextDeployCostBonusTimes(0);
 			st.setHumanNextMechanicStacks(0);
-			retireOwnBattleZoneBeforeNewDeploy(st, true, true);
+			retireOwnBattleZoneBeforeNewDeploy(st, true, true, defs);
 			st.setHumanBattle(z);
-			applyFieldNebulaWhenCarbuncleFighterDeployed(st, mainDef, true);
-			applyDeployHuman(st, mainDef, defs, main);
 			st.addLog("あなたは「" + mainDef.getName() + "」を配置した");
+			applyFieldNebulaWhenCarbuncleFighterDeployed(st, mainDef, main, true);
+			CardDefinition deployAbilityDef = mainDef;
+			if (mainDef.getAbilityDeployCode() != null && "NINJA".equals(mainDef.getAbilityDeployCode())) {
+				applyNinjaPhysicalSwap(st, defs, true);
+				BattleCard zm = st.getHumanBattle() != null ? st.getHumanBattle().getMain() : null;
+				deployAbilityDef = zm != null ? defs.get(zm.getCardId()) : mainDef;
+			}
+			applyDeployHuman(st, deployAbilityDef, defs, main);
+			if (st.getPendingChoice() == null) {
+				ensureCrystakulOptionalStonePromptAfterDeployEffect(st, defs, true);
+			}
+			if (st.getPendingChoice() != null) {
+				st.setPhase(BattlePhase.HUMAN_CHOICE);
+				st.setLastMessage("選択してください");
+				return;
+			}
+
+			if (maybeApplySpec777ForcedDefeat(st, defs)) {
+				return;
+			}
 
 			// 配置効果まで反映した上で、強さ条件を満たせない場合は敗北（配置前の素の強さで弾かない）
 			if (st.getCpuBattle() != null) {
@@ -1185,10 +1798,10 @@ public class CpuBattleEngine {
 		}
 
 		resolveKnockAndDraw(st, true, defs);
-		resetTurnBuffs(st);
+		resetTurnBuffs(st, defs);
 		st.setHumansTurn(false);
 		// CPUのターン開始：ストーン付与（先攻1ターン目のみ獲得なし）
-		beginTurnGainStone(st, false);
+		beginTurnGainStone(st, false, defs);
 		st.setLastMessage(st.isPvp() ? "ゲストのターン" : "CPUのターン");
 	}
 
@@ -1213,7 +1826,7 @@ public class CpuBattleEngine {
 			st.setLastMessage("指定が不正です");
 			return;
 		}
-		if (levelUpRest > st.getHumanHand().size()) {
+		if (levelUpRest > maxLevelUpRestDiscard(st.getHumanHand().size())) {
 			st.setLastMessage("手札が足りずレベルアップできません");
 			return;
 		}
@@ -1278,7 +1891,7 @@ public class CpuBattleEngine {
 				st.setLastMessage("カード定義が見つかりません");
 				return;
 			}
-			cost = effectiveDeployCost(mainDef, simMain, defs, st.getHumanRest(), st.getHumanNextMechanicStacks());
+			cost = effectiveDeployCost(mainDef, simMain, defs, st.getHumanRest(), st.getHumanNextMechanicStacks(), st);
 
 			if (isFieldCard(mainDef)) {
 				if (levelUpRest != 0 || levelUpStones != 0) {
@@ -1298,13 +1911,15 @@ public class CpuBattleEngine {
 			} else {
 				deployBonus = levelUpRest * 2 + levelUpStones * 2;
 				deployBonus += st.getHumanNextDeployBonus();
-				if (st.getHumanNextElfOnlyBonus() > 0 && CardAttributes.hasAttribute(mainDef, "ELF")) {
+				if (st.getHumanNextElfOnlyBonus() > 0
+						&& CardAttributes.hasAttributeForDeployPreview(mainDef, simMain, st.isSpec666NextHumanUndead(), "ELF")) {
 					deployBonus += st.getHumanNextElfOnlyBonus();
 				}
 				if (st.getHumanNextDeployCostBonusTimes() > 0) {
 					deployBonus += (mainDef.getCost() != null ? mainDef.getCost() : 0) * st.getHumanNextDeployCostBonusTimes();
 				}
 				deployBonus += 3 * st.getHumanNextMechanicStacks();
+				deployBonus += st.getHumanNextCrystakulDeployBonus();
 				simHand.remove(simMain);
 
 				// 支払いチェック
@@ -1384,6 +1999,9 @@ public class CpuBattleEngine {
 				st.setHumanStones(st.getHumanStones() - payCostStones);
 				replaceActiveField(st, main, true, defs);
 				st.addLog("あなたは「" + mainDef.getName() + "」を〈場〉に置いた");
+				if (mainDef.getId() != null && mainDef.getId() == FLEET_HO_IVI_FIELD_ID) {
+					applyFleetHoIviFieldDeployBothSides(st, defs, ThreadLocalRandom.current());
+				}
 				st.setLastMessage("《フィールド》を配置しました（ターンは続きます）");
 				return;
 			}
@@ -1415,16 +2033,17 @@ public class CpuBattleEngine {
 			z.setMain(main);
 			z.setCostUnder(paid);
 			z.setCostPayCardCount(payIds.size());
-			z.setTemporaryPowerBonus(deployBonus);
+			applyCrystakulBonusesToDeployedZone(st, z, deployBonus, true);
 			st.setHumanNextDeployBonus(0);
 			st.setHumanNextElfOnlyBonus(0);
 			st.setHumanNextDeployCostBonusTimes(0);
 			st.setHumanNextMechanicStacks(0);
-			retireOwnBattleZoneBeforeNewDeploy(st, true, true);
+			retireOwnBattleZoneBeforeNewDeploy(st, true, true, defs);
 			st.setHumanBattle(z);
-			applyFieldNebulaWhenCarbuncleFighterDeployed(st, mainDef, true);
 			st.addLog("あなたは「" + mainDef.getName() + "」を配置した");
-			stagePendingDeployEffect(st, true, mainDef, z);
+			// 〈探鉱の洞窟〉: 配置確定直後にストーン+1（UI の「決定」直後に数字が増える）。resolve では二重付与防止でスキップ。
+			applyFieldNebulaWhenCarbuncleFighterDeployed(st, mainDef, main, true);
+			stageInteractiveDeployEffectWithCrystakulOptionalFirst(st, true, mainDef, z, defs);
 			return;
 		} else {
 			st.setConfirmAcceptLossSnapshot(null);
@@ -1432,11 +2051,11 @@ public class CpuBattleEngine {
 			// 配置しない場合、レベルアップで使ったカードはレストへ
 			st.getHumanRest().addAll(levelUpCards);
 			resolveKnockAndDraw(st, true, defs);
-			resetTurnBuffs(st);
+			resetTurnBuffs(st, defs);
 			st.setHumansTurn(false);
 			st.setPhase(BattlePhase.CPU_THINKING);
 			// CPUのターン開始：ストーン付与（先攻1ターン目のみ獲得なし）
-			beginTurnGainStone(st, false);
+			beginTurnGainStone(st, false, defs);
 		}
 		st.setLastMessage(st.isPvp() ? "ゲストのターン" : "CPUのターン");
 	}
@@ -1461,7 +2080,7 @@ public class CpuBattleEngine {
 			st.setLastMessage("指定が不正です");
 			return;
 		}
-		if (levelUpRest > st.getCpuHand().size()) {
+		if (levelUpRest > maxLevelUpRestDiscard(st.getCpuHand().size())) {
 			st.setLastMessage("手札が足りずレベルアップできません");
 			return;
 		}
@@ -1532,7 +2151,7 @@ public class CpuBattleEngine {
 				st.setLastMessage("カード定義が見つかりません");
 				return;
 			}
-			cost = effectiveDeployCost(mainDef, simMain, defs, st.getCpuRest(), st.getCpuNextMechanicStacks());
+			cost = effectiveDeployCost(mainDef, simMain, defs, st.getCpuRest(), st.getCpuNextMechanicStacks(), st);
 
 			if (isFieldCard(mainDef)) {
 				if (levelUpRest != 0 || levelUpStones != 0) {
@@ -1552,13 +2171,15 @@ public class CpuBattleEngine {
 			} else {
 				deployBonus = levelUpRest * 2 + levelUpStones * 2;
 				deployBonus += st.getCpuNextDeployBonus();
-				if (st.getCpuNextElfOnlyBonus() > 0 && CardAttributes.hasAttribute(mainDef, "ELF")) {
+				if (st.getCpuNextElfOnlyBonus() > 0
+						&& CardAttributes.hasAttributeForDeployPreview(mainDef, simMain, st.isSpec666NextCpuUndead(), "ELF")) {
 					deployBonus += st.getCpuNextElfOnlyBonus();
 				}
 				if (st.getCpuNextDeployCostBonusTimes() > 0) {
 					deployBonus += (mainDef.getCost() != null ? mainDef.getCost() : 0) * st.getCpuNextDeployCostBonusTimes();
 				}
 				deployBonus += 3 * st.getCpuNextMechanicStacks();
+				deployBonus += st.getCpuNextCrystakulDeployBonus();
 				simHand.remove(simMain);
 
 				List<String> payIds = payCostCardInstanceIds != null ? payCostCardInstanceIds : List.of();
@@ -1630,6 +2251,9 @@ public class CpuBattleEngine {
 				st.setCpuStones(st.getCpuStones() - payCostStones);
 				replaceActiveField(st, main, false, defs);
 				st.addLog("相手は「" + mainDef.getName() + "」を〈場〉に置いた");
+				if (mainDef.getId() != null && mainDef.getId() == FLEET_HO_IVI_FIELD_ID) {
+					applyFleetHoIviFieldDeployBothSides(st, defs, ThreadLocalRandom.current());
+				}
 				st.setLastMessage("《フィールド》を配置しました（ターンは続きます）");
 				return;
 			}
@@ -1657,26 +2281,26 @@ public class CpuBattleEngine {
 			z.setMain(main);
 			z.setCostUnder(paid);
 			z.setCostPayCardCount(payIds.size());
-			z.setTemporaryPowerBonus(deployBonus);
+			applyCrystakulBonusesToDeployedZone(st, z, deployBonus, false);
 			st.setCpuNextDeployBonus(0);
 			st.setCpuNextElfOnlyBonus(0);
 			st.setCpuNextDeployCostBonusTimes(0);
 			st.setCpuNextMechanicStacks(0);
-			retireOwnBattleZoneBeforeNewDeploy(st, false, true);
+			retireOwnBattleZoneBeforeNewDeploy(st, false, true, defs);
 			st.setCpuBattle(z);
-			applyFieldNebulaWhenCarbuncleFighterDeployed(st, mainDef, false);
 			st.addLog("相手は「" + mainDef.getName() + "」を配置した");
-			stagePendingDeployEffect(st, false, mainDef, z);
+			applyFieldNebulaWhenCarbuncleFighterDeployed(st, mainDef, main, false);
+			stageInteractiveDeployEffectWithCrystakulOptionalFirst(st, false, mainDef, z, defs);
 			return;
 		} else {
 			st.setConfirmAcceptLossSnapshot(null);
 			st.addLog("相手は配置をスキップした");
 			st.getCpuRest().addAll(levelUpCards);
 			resolveKnockAndDraw(st, false, defs);
-			resetTurnBuffs(st);
+			resetTurnBuffs(st, defs);
 			st.setHumansTurn(true);
 			st.setPhase(BattlePhase.HUMAN_INPUT);
-			beginTurnGainStone(st, true);
+			beginTurnGainStone(st, true, defs);
 		}
 		st.setLastMessage(st.isPvp() ? "ホストのターン" : "あなたのターン");
 	}
@@ -1688,10 +2312,10 @@ public class CpuBattleEngine {
 		}
 		st.addLog(opponentActorLogLabel(st) + "は時間切れで配置をスキップした");
 		resolveKnockAndDraw(st, false, defs);
-		resetTurnBuffs(st);
+		resetTurnBuffs(st, defs);
 		st.setHumansTurn(true);
 		st.setPhase(BattlePhase.HUMAN_INPUT);
-		beginTurnGainStone(st, true);
+		beginTurnGainStone(st, true, defs);
 		st.setLastMessage(st.isPvp() ? "ホストのターン" : "あなたのターン");
 	}
 
@@ -1705,13 +2329,25 @@ public class CpuBattleEngine {
 		return null;
 	}
 
+	private static BattleCard findByInstanceId(List<BattleCard> list, String instanceId) {
+		if (list == null || instanceId == null) {
+			return null;
+		}
+		for (BattleCard c : list) {
+			if (c != null && instanceId.equals(c.getInstanceId())) {
+				return c;
+			}
+		}
+		return null;
+	}
+
 	private boolean canDeployWithHand(List<BattleCard> hand, int handIndex, Map<Short, CardDefinition> defs,
 			int deployBonus, CpuBattleState st, boolean human) {
 		BattleCard main = hand.get(handIndex);
 		CardDefinition d = defs.get(main.getCardId());
 		List<BattleCard> rest = human ? st.getHumanRest() : st.getCpuRest();
 		int mech = human ? st.getHumanNextMechanicStacks() : st.getCpuNextMechanicStacks();
-		int cost = effectiveDeployCost(d, main, defs, rest, mech);
+		int cost = effectiveDeployCost(d, main, defs, rest, mech, st);
 		if (hand.size() - 1 < cost) {
 			return false;
 		}
@@ -1736,6 +2372,7 @@ public class CpuBattleEngine {
 		if (c == null) return null;
 		BattleCard n = new BattleCard(c.getInstanceId(), c.getCardId(), c.isBlankEffects());
 		n.setHandDeployCostModifier(c.getHandDeployCostModifier());
+		n.setBattleTribeOverride(c.getBattleTribeOverride());
 		return n;
 	}
 
@@ -1760,9 +2397,12 @@ public class CpuBattleEngine {
 		}
 		nz.setCostUnder(under);
 		nz.setTemporaryPowerBonus(z.getTemporaryPowerBonus());
+		nz.setNinjaSwapPowerPenalty(z.getNinjaSwapPowerPenalty());
 		nz.setCostPayCardCount(z.getCostPayCardCount());
 		nz.setReturnToHandOnKnock(z.isReturnToHandOnKnock());
 		nz.setFieldNebulaStoneGrantedForThisDeploy(z.isFieldNebulaStoneGrantedForThisDeploy());
+		nz.setSpec777RolledPower(z.getSpec777RolledPower());
+		nz.setBotBikeMechanicPowerBonus(z.getBotBikeMechanicPowerBonus());
 		return nz;
 	}
 
@@ -1783,6 +2423,14 @@ public class CpuBattleEngine {
 		ns.setCpuNextDeployCostBonusTimes(st.getCpuNextDeployCostBonusTimes());
 		ns.setHumanNextMechanicStacks(st.getHumanNextMechanicStacks());
 		ns.setCpuNextMechanicStacks(st.getCpuNextMechanicStacks());
+		ns.setHumanKoryuBonus(st.getHumanKoryuBonus());
+		ns.setCpuKoryuBonus(st.getCpuKoryuBonus());
+		ns.setHumanNextCrystakulDeployBonus(st.getHumanNextCrystakulDeployBonus());
+		ns.setCpuNextCrystakulDeployBonus(st.getCpuNextCrystakulDeployBonus());
+		ns.setHumanCrystakulCombatBonus(st.getHumanCrystakulCombatBonus());
+		ns.setCpuCrystakulCombatBonus(st.getCpuCrystakulCombatBonus());
+		ns.setSpec666NextHumanUndead(st.isSpec666NextHumanUndead());
+		ns.setSpec666NextCpuUndead(st.isSpec666NextCpuUndead());
 		ns.setLastMessage(st.getLastMessage());
 		ns.setGameOver(st.isGameOver());
 		ns.setHumanWon(st.isHumanWon());
@@ -1799,6 +2447,8 @@ public class CpuBattleEngine {
 		ns.setCpuBattle(copyZone(st.getCpuBattle()));
 		ns.setActiveField(copyCard(st.getActiveField()));
 		ns.setActiveFieldOwnerHuman(st.getActiveFieldOwnerHuman());
+		ns.setHumanSlotDeckId(st.getHumanSlotDeckId());
+		ns.setCpuSlotDeckId(st.getCpuSlotDeckId());
 		return ns;
 	}
 
@@ -1830,7 +2480,7 @@ public class CpuBattleEngine {
 		int bestCpuEff = hasOpp ? Integer.MAX_VALUE : -1;
 		int bestResource = Integer.MAX_VALUE;
 
-		int maxRest = st.getCpuHand().size();
+		int maxRest = maxLevelUpRestDiscard(st.getCpuHand().size());
 		int maxStones = Math.max(0, st.getCpuStones());
 		if (cpuIsFirstTurnAsFirstPlayer) {
 			maxRest = 0;
@@ -1852,13 +2502,15 @@ public class CpuBattleEngine {
 
 						int deployBonus = levelUpRest * 2 + levelUpStones * 2;
 						deployBonus += st.getCpuNextDeployBonus();
-						if (st.getCpuNextElfOnlyBonus() > 0 && CardAttributes.hasAttribute(mainDef, "ELF")) {
+						if (st.getCpuNextElfOnlyBonus() > 0
+								&& CardAttributes.hasAttributeForDeployPreview(mainDef, main, st.isSpec666NextCpuUndead(), "ELF")) {
 							deployBonus += st.getCpuNextElfOnlyBonus();
 						}
 						if (st.getCpuNextDeployCostBonusTimes() > 0) {
 							deployBonus += mainDef.getCost() * st.getCpuNextDeployCostBonusTimes();
 						}
 						deployBonus += 3 * st.getCpuNextMechanicStacks();
+						deployBonus += st.getCpuNextCrystakulDeployBonus();
 
 						// シミュレーション：レベルアップ→配置→配置効果→常時計算（effectiveBattlePower）
 						CpuBattleState simSt = copyStateForCpuSim(st);
@@ -1876,7 +2528,7 @@ public class CpuBattleEngine {
 							}
 						}
 
-						int cost = effectiveDeployCost(mainDef, main, defs, st.getCpuRest(), st.getCpuNextMechanicStacks());
+						int cost = effectiveDeployCost(mainDef, main, defs, st.getCpuRest(), st.getCpuNextMechanicStacks(), st);
 						int payCards = cpuDeployPayCardCount(cost, simSt.getCpuStones(), simSt.getCpuHand().size());
 						if (payCards < 0) {
 							continue;
@@ -1896,8 +2548,8 @@ public class CpuBattleEngine {
 						z.setMain(simMain);
 						z.setCostUnder(paid);
 						z.setCostPayCardCount(payCards);
-						z.setTemporaryPowerBonus(deployBonus);
-						retireOwnBattleZoneBeforeNewDeploy(simSt, false, false);
+						applyCrystakulBonusesToDeployedZone(simSt, z, deployBonus, false);
+						retireOwnBattleZoneBeforeNewDeploy(simSt, false, false, defs);
 						simSt.setCpuBattle(z);
 
 						Random simRnd = new Random(31_337L ^ main.getCardId() ^ (levelUpRest * 31L) ^ (levelUpStones * 131L));
@@ -1987,7 +2639,7 @@ public class CpuBattleEngine {
 				}
 			}
 			if (bestDef != null && deployCard != null) {
-				int cost = effectiveDeployCost(bestDef, deployCard, defs, st.getCpuRest(), st.getCpuNextMechanicStacks());
+				int cost = effectiveDeployCost(bestDef, deployCard, defs, st.getCpuRest(), st.getCpuNextMechanicStacks(), st);
 				int payCards = cpuDeployPayCardCount(cost, st.getCpuStones(), st.getCpuHand().size());
 				if (payCards >= 0) {
 					int payCostStones = cost - payCards;
@@ -2004,14 +2656,14 @@ public class CpuBattleEngine {
 						z.setMain(main);
 						z.setCostUnder(paid);
 						z.setCostPayCardCount(payCards);
-						z.setTemporaryPowerBonus(bestDeployBonus);
+						applyCrystakulBonusesToDeployedZone(st, z, bestDeployBonus, false);
 						st.setCpuNextDeployBonus(0);
 						st.setCpuNextElfOnlyBonus(0);
 						st.setCpuNextDeployCostBonusTimes(0);
 						st.setCpuNextMechanicStacks(0);
-						retireOwnBattleZoneBeforeNewDeploy(st, false, true);
+						retireOwnBattleZoneBeforeNewDeploy(st, false, true, defs);
 						st.setCpuBattle(z);
-						applyFieldNebulaWhenCarbuncleFighterDeployed(st, bestDef, false);
+						// 〈探鉱の洞窟〉は resolve 内で〈配置〉より先に適用する
 						if (payCostStones > 0 && payCards > 0) {
 							st.addLog("CPUは「" + bestDef.getName() + "」を配置（コスト: ストーン" + payCostStones + "＋カード" + payCards + "）");
 						} else if (payCostStones > 0) {
@@ -2045,7 +2697,7 @@ public class CpuBattleEngine {
 		if (humanWasActing) {
 			// 相手ファイターをレストへ（自分が配置している場合のみ）
 			if (st.getHumanBattle() != null && st.getCpuBattle() != null) {
-				boolean returned = moveZoneToRestOrReturnToHand(st.getCpuBattle(), st.getCpuRest(), st.getCpuHand());
+				boolean returned = moveZoneToRestOrReturnToHand(st, st.getCpuBattle(), st.getCpuRest(), st.getCpuHand(), defs);
 				st.setCpuBattle(null);
 				st.addLog(returned ? "相手ファイターは手札へ戻った" : "相手ファイターをレストへ");
 			}
@@ -2054,7 +2706,7 @@ public class CpuBattleEngine {
 			}
 		} else {
 			if (st.getCpuBattle() != null && st.getHumanBattle() != null) {
-				boolean returned = moveZoneToRestOrReturnToHand(st.getHumanBattle(), st.getHumanRest(), st.getHumanHand());
+				boolean returned = moveZoneToRestOrReturnToHand(st, st.getHumanBattle(), st.getHumanRest(), st.getHumanHand(), defs);
 				st.setHumanBattle(null);
 				st.addLog(returned ? "あなたのファイターは手札へ戻った" : "あなたのファイターがレストへ");
 			}
@@ -2064,7 +2716,49 @@ public class CpuBattleEngine {
 		}
 	}
 
-	private boolean moveZoneToRestOrReturnToHand(ZoneFighter z, List<BattleCard> rest, List<BattleCard> hand) {
+	/** 〈フィールド〉廃棄工場: 名前に「ガラクタ」を含むメインはノック時に手札へ（コスト下はレストのまま） */
+	private static boolean scrapyardFieldSendsGarakutaMainToHand(CpuBattleState st, ZoneFighter z,
+			Map<Short, CardDefinition> defs) {
+		if (st == null || z == null || z.getMain() == null || defs == null) {
+			return false;
+		}
+		BattleCard field = st.getActiveField();
+		if (field == null || field.getCardId() != SCRAPYARD_FIELD_ID) {
+			return false;
+		}
+		CardDefinition md = defs.get(z.getMain().getCardId());
+		return md != null && md.getName() != null && md.getName().contains("ガラクタ");
+	}
+
+	/**
+	 * 〈フィールド〉霊園教会 デスバウンス: バトルゾーンのアンデッド・ファイターはレストでなく手札へ戻り、
+	 * {@link BattleCard#getHandDeployCostModifier} に +1（バトル終了まで。再適用のたびに累積）。
+	 */
+	private static boolean deathbounceFieldSendsUndeadMainToHand(CpuBattleState st, ZoneFighter z,
+			Map<Short, CardDefinition> defs) {
+		if (st == null || z == null || z.getMain() == null || defs == null) {
+			return false;
+		}
+		BattleCard field = st.getActiveField();
+		if (field == null || field.getCardId() != DEATHBOUNCE_FIELD_ID) {
+			return false;
+		}
+		CardDefinition md = defs.get(z.getMain().getCardId());
+		if (!isNonFieldFighterCardDef(md)) {
+			return false;
+		}
+		return CardAttributes.hasAttribute(md, z.getMain(), "UNDEAD");
+	}
+
+	private static void applyDeathbounceHandCostIncrease(BattleCard main) {
+		if (main == null) {
+			return;
+		}
+		main.setHandDeployCostModifier(main.getHandDeployCostModifier() + 1);
+	}
+
+	private boolean moveZoneToRestOrReturnToHand(CpuBattleState st, ZoneFighter z, List<BattleCard> rest, List<BattleCard> hand,
+			Map<Short, CardDefinition> defs) {
 		if (z == null || z.getMain() == null) return false;
 		// コストカードは常にレストへ
 		for (BattleCard c : z.getCostUnder()) {
@@ -2073,18 +2767,36 @@ public class CpuBattleEngine {
 		if (z.isReturnToHandOnKnock()) {
 			hand.add(z.getMain());
 			return true;
-		} else {
-			rest.add(z.getMain());
-			return false;
 		}
+		if (scrapyardFieldSendsGarakutaMainToHand(st, z, defs)) {
+			hand.add(z.getMain());
+			return true;
+		}
+		if (deathbounceFieldSendsUndeadMainToHand(st, z, defs)) {
+			applyDeathbounceHandCostIncrease(z.getMain());
+			hand.add(z.getMain());
+			return true;
+		}
+		rest.add(z.getMain());
+		return false;
 	}
 
-	private void moveZoneToRest(ZoneFighter z, List<BattleCard> rest) {
+	private void moveZoneToRest(ZoneFighter z, List<BattleCard> rest, CpuBattleState st, List<BattleCard> mainHand,
+			Map<Short, CardDefinition> defs) {
 		if (z == null || z.getMain() == null) {
 			return;
 		}
 		for (BattleCard c : z.getCostUnder()) {
 			rest.add(c);
+		}
+		if (scrapyardFieldSendsGarakutaMainToHand(st, z, defs)) {
+			mainHand.add(z.getMain());
+			return;
+		}
+		if (deathbounceFieldSendsUndeadMainToHand(st, z, defs)) {
+			applyDeathbounceHandCostIncrease(z.getMain());
+			mainHand.add(z.getMain());
+			return;
 		}
 		rest.add(z.getMain());
 	}
@@ -2094,7 +2806,8 @@ public class CpuBattleEngine {
 	 * 旧ファイター（とコスト下）をレストへ送るか、手札へ戻す設定なら手札へ戻す。
 	 * 置き換えで前のカードが状態から消えると、「レストにカーバンクルがある」系の〈配置〉が誤って不発になる。
 	 */
-	private void retireOwnBattleZoneBeforeNewDeploy(CpuBattleState st, boolean humanHost, boolean addLog) {
+	private void retireOwnBattleZoneBeforeNewDeploy(CpuBattleState st, boolean humanHost, boolean addLog,
+			Map<Short, CardDefinition> defs) {
 		if (st == null) {
 			return;
 		}
@@ -2103,13 +2816,13 @@ public class CpuBattleEngine {
 			return;
 		}
 		if (humanHost) {
-			boolean toHand = moveZoneToRestOrReturnToHand(old, st.getHumanRest(), st.getHumanHand());
+			boolean toHand = moveZoneToRestOrReturnToHand(st, old, st.getHumanRest(), st.getHumanHand(), defs);
 			st.setHumanBattle(null);
 			if (addLog) {
 				st.addLog(toHand ? "あなたのファイターは手札へ戻った" : "あなたのファイターがレストへ");
 			}
 		} else {
-			boolean toHand = moveZoneToRestOrReturnToHand(old, st.getCpuRest(), st.getCpuHand());
+			boolean toHand = moveZoneToRestOrReturnToHand(st, old, st.getCpuRest(), st.getCpuHand(), defs);
 			st.setCpuBattle(null);
 			if (addLog) {
 				st.addLog(toHand
@@ -2119,14 +2832,107 @@ public class CpuBattleEngine {
 		}
 	}
 
-	private void resetTurnBuffs(CpuBattleState st) {
+	/**
+	 * ターン終了時にバトルゾーンの一時加算を消す（{@link ZoneFighter#getTemporaryPowerBonus()} 等）。
+	 * 〈神秘の大樹 スカイア〉が場にある間は、種族がエルフのファイターの一時加算は相手ターンにも持続するため消さない。
+	 */
+	private void resetTurnBuffs(CpuBattleState st, Map<Short, CardDefinition> defs) {
+		boolean skyArbor = defs != null && skyArborFieldPersistsElfTurnBuffs(st);
 		if (st.getHumanBattle() != null) {
-			st.getHumanBattle().setTemporaryPowerBonus(0);
+			if (!skyArbor || !isElfFighterInZone(st.getHumanBattle(), defs)) {
+				st.getHumanBattle().setTemporaryPowerBonus(0);
+			}
+			st.getHumanBattle().setNinjaSwapPowerPenalty(0);
 		}
 		if (st.getCpuBattle() != null) {
-			st.getCpuBattle().setTemporaryPowerBonus(0);
+			if (!skyArbor || !isElfFighterInZone(st.getCpuBattle(), defs)) {
+				st.getCpuBattle().setTemporaryPowerBonus(0);
+			}
+			st.getCpuBattle().setNinjaSwapPowerPenalty(0);
 		}
 		st.setPowerSwapActive(false);
+	}
+
+	private static boolean skyArborFieldPersistsElfTurnBuffs(CpuBattleState st) {
+		if (st == null || st.getActiveField() == null) {
+			return false;
+		}
+		Short fid = st.getActiveField().getCardId();
+		return fid != null && fid.shortValue() == MYSTERIOUS_TREE_SKYAR_FIELD_ID;
+	}
+
+	private static boolean isElfFighterInZone(ZoneFighter zf, Map<Short, CardDefinition> defs) {
+		if (zf == null || zf.getMain() == null || defs == null) {
+			return false;
+		}
+		CardDefinition d = defs.get(zf.getMain().getCardId());
+		if (!isNonFieldFighterCardDef(d)) {
+			return false;
+		}
+		return CardAttributes.hasAttribute(d, zf.getMain(), "ELF");
+	}
+
+	/**
+	 * クリスタクル「次の配置 +N」は {@link ZoneFighter#getTemporaryPowerBonus()} に含めない。
+	 * ターン終了時の {@link #resetTurnBuffs} で消えないよう {@link CpuBattleState} 側の戦闘加算として持つ。
+	 */
+	private void applyCrystakulBonusesToDeployedZone(CpuBattleState st, ZoneFighter z, int deployBonus, boolean forHuman) {
+		int cry = forHuman ? st.getHumanNextCrystakulDeployBonus() : st.getCpuNextCrystakulDeployBonus();
+		z.setTemporaryPowerBonus(deployBonus - cry);
+		if (forHuman) {
+			st.setHumanCrystakulCombatBonus(st.getHumanCrystakulCombatBonus() + cry);
+			st.setHumanNextCrystakulDeployBonus(0);
+		} else {
+			st.setCpuCrystakulCombatBonus(st.getCpuCrystakulCombatBonus() + cry);
+			st.setCpuNextCrystakulDeployBonus(0);
+		}
+	}
+
+	/**
+	 * SPEC-777: 自分の実効強さが相手より未満のとき即敗北（確認なし）。相手に SPEC-777 がいる場合は相手が未満なら相手敗北。
+	 * @return ゲーム終了をセットしたら true
+	 */
+	private boolean maybeApplySpec777ForcedDefeat(CpuBattleState st, Map<Short, CardDefinition> defs) {
+		if (st == null || st.isGameOver() || defs == null) {
+			return false;
+		}
+		ZoneFighter hz = st.getHumanBattle();
+		if (hz != null && hz.getMain() != null && hz.getMain().getCardId() == SPEC_777_ID
+				&& hz.getSpec777RolledPower() > 0 && !hz.getMain().isBlankEffects()) {
+			int me = effectiveBattlePower(hz, true, st, defs);
+			int oppPow = st.getCpuBattle() != null && st.getCpuBattle().getMain() != null
+					? effectiveBattlePower(st.getCpuBattle(), false, st, defs)
+					: 0;
+			if (st.getCpuBattle() != null && st.getCpuBattle().getMain() != null && me < oppPow) {
+				st.setPendingChoice(null);
+				st.setPendingEffect(null);
+				st.setGameOver(true);
+				st.setHumanWon(false);
+				st.setPhase(BattlePhase.GAME_OVER);
+				st.setLastMessage("敗北（SPEC-777）");
+				st.addLog("SPEC-777: 強さが相手未満のため敗北");
+				return true;
+			}
+		}
+		ZoneFighter cz = st.getCpuBattle();
+		if (cz != null && cz.getMain() != null && cz.getMain().getCardId() == SPEC_777_ID
+				&& cz.getSpec777RolledPower() > 0 && !cz.getMain().isBlankEffects()) {
+			int cpuP = effectiveBattlePower(cz, false, st, defs);
+			int humPow = st.getHumanBattle() != null && st.getHumanBattle().getMain() != null
+					? effectiveBattlePower(st.getHumanBattle(), true, st, defs)
+					: 0;
+			if (st.getHumanBattle() != null && st.getHumanBattle().getMain() != null && cpuP < humPow) {
+				st.setPendingChoice(null);
+				st.setPendingEffect(null);
+				st.setGameOver(true);
+				st.setHumanWon(true);
+				st.setPhase(BattlePhase.GAME_OVER);
+				st.setLastMessage(st.isPvp() ? "勝利（相手のSPEC-777）" : "勝利（CPUのSPEC-777）");
+				st.addLog("SPEC-777: 相手の強さがあなた未満のため相手敗北");
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public int effectiveBattlePower(ZoneFighter zf, boolean ownerIsHuman, CpuBattleState st,
@@ -2146,8 +2952,15 @@ public class CpuBattleEngine {
 		}
 		short id = zf.getMain().getCardId();
 		CardDefinition d = defs.get(id);
-		int p = d.getBasePower() + zf.getTemporaryPowerBonus();
-		p += fieldGloriaCarbunclePowerBonus(st, d, defs);
+		int basePower = d != null && d.getBasePower() != null ? d.getBasePower() : 0;
+		if (id == SPEC_777_ID && zf.getSpec777RolledPower() > 0) {
+			basePower = zf.getSpec777RolledPower();
+		}
+		int p = basePower + zf.getTemporaryPowerBonus();
+		if (zf.getNinjaSwapPowerPenalty() > 0) {
+			p -= zf.getNinjaSwapPowerPenalty();
+		}
+		p += fieldGloriaCarbunclePowerBonus(st, d, zf.getMain(), defs);
 
 		boolean suppress = ownerIsHuman
 				? hasRyuoh(st.getCpuBattle())
@@ -2161,15 +2974,23 @@ public class CpuBattleEngine {
 				? hasRyuoh(st.getHumanBattle())
 				: hasRyuoh(st.getCpuBattle());
 
-		// 一時強化（古竜）
+		// ガラクタレッグ（相手前列）: このファイターは〈常時〉による強さ加減を適用しない（配置由来の一時加算・古竜等は対象外）
+		boolean passivesSuppressedByOpponentGarakutaLeg = ownerIsHuman
+				? hasGarakutaLeg(st.getCpuBattle())
+				: hasGarakutaLeg(st.getHumanBattle());
+
+		// 一時強化（古竜・クリスタクル・ボットバイク）
 		if (st != null) {
 			p += ownerIsHuman ? st.getHumanKoryuBonus() : st.getCpuKoryuBonus();
+			p += ownerIsHuman ? st.getHumanCrystakulCombatBonus() : st.getCpuCrystakulCombatBonus();
 		}
+		p += zf.getBotBikeMechanicPowerBonus();
 
-		// 薬売り（常時）: 自分が所持しているストーン1つにつき、相手のファイター強さ-1（薬売りがバトルゾーンにいる間）
+		// 薬売り（常時）: 自分が所持しているストーン1個につき、相手のファイター強さ-1（薬売りがバトルゾーンにいる間）
 		if (!suppressOpponentEffects) {
 			ZoneFighter oppZone = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
-			if (oppZone != null && oppZone.getMain() != null && oppZone.getMain().getCardId() == KUSURI_ID) {
+			if (oppZone != null && oppZone.getMain() != null && oppZone.getMain().getCardId() == KUSURI_ID
+					&& !hasGarakutaLeg(zf)) {
 				int debuff = ownerIsHuman ? st.getCpuStones() : st.getHumanStones();
 				p -= debuff;
 			}
@@ -2179,11 +3000,35 @@ public class CpuBattleEngine {
 			return Math.max(0, p);
 		}
 
+		if (passivesSuppressedByOpponentGarakutaLeg) {
+			return Math.max(0, p);
+		}
+
+		if (id == DENZIRION_ID && st != null) {
+			List<BattleCard> dRest = ownerIsHuman ? st.getHumanRest() : st.getCpuRest();
+			if (dRest != null) {
+				for (BattleCard rc : dRest) {
+					if (isTuckedUnderOwnFighter(zf, rc)) {
+						continue;
+					}
+					CardDefinition rcd = defs.get(rc.getCardId());
+					if (!isMachineFighterRestSourceForDenziron(rcd)) {
+						continue;
+					}
+					if (rc.getCardId() == DENZIRION_ID) {
+						continue;
+					}
+					p += denzirionPassivePowerFromRestCard(rc.getCardId(), zf, ownerIsHuman, st, defs);
+				}
+			}
+		}
+
 		if (id == ARCHER_ID) {
 			ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
-			if (opp != null) {
-				CardDefinition od = defs.get(opp.getMain().getCardId());
-				if (!CardAttributes.hasAttribute(od, "DRAGON")) {
+			if (opp != null && opp.getMain() != null) {
+				BattleCard om = opp.getMain();
+				CardDefinition od = defs.get(om.getCardId());
+				if (!CardAttributes.hasAttribute(od, om, "DRAGON")) {
 					p += 1;
 				}
 			}
@@ -2202,14 +3047,24 @@ public class CpuBattleEngine {
 
 		if (id == GAIKOTSU_ID) {
 			ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
-			if (opp != null && CardAttributes.hasAttribute(defs.get(opp.getMain().getCardId()), "ELF")) {
+			if (opp != null && opp.getMain() != null
+					&& CardAttributes.hasAttribute(defs.get(opp.getMain().getCardId()), opp.getMain(), "ELF")) {
 				p += 2;
+			}
+		}
+
+		if (id == RED_EYE_ID) {
+			ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
+			if (opp != null && opp.getMain() != null
+					&& CardAttributes.hasAttribute(defs.get(opp.getMain().getCardId()), opp.getMain(), "HUMAN")) {
+				p += 1;
 			}
 		}
 
 		if (id == SHIREI_ID) {
 			ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
-			if (opp != null && !CardAttributes.hasAttribute(defs.get(opp.getMain().getCardId()), "HUMAN")) {
+			if (opp != null && opp.getMain() != null
+					&& !CardAttributes.hasAttribute(defs.get(opp.getMain().getCardId()), opp.getMain(), "HUMAN")) {
 				p += 1;
 			}
 		}
@@ -2221,7 +3076,7 @@ public class CpuBattleEngine {
 				if (isTuckedUnderOwnFighter(zf, c)) {
 					continue;
 				}
-				if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "UNDEAD")) {
+				if (CardAttributes.hasAttribute(defs.get(c.getCardId()), c, "UNDEAD")) {
 					undead++;
 				}
 			}
@@ -2245,7 +3100,14 @@ public class CpuBattleEngine {
 		if (id == NEMURY_ID) {
 			boolean oppTurn = ownerIsHuman ? !st.isHumansTurn() : st.isHumansTurn();
 			if (oppTurn) {
-				p += 5;
+				p += NEMURY_OPPONENT_TURN_POWER_BONUS;
+			}
+		}
+
+		if (id == GARAKUTA_ARM_ID) {
+			boolean oppTurn = ownerIsHuman ? !st.isHumansTurn() : st.isHumansTurn();
+			if (oppTurn) {
+				p += 1;
 			}
 		}
 
@@ -2254,6 +3116,10 @@ public class CpuBattleEngine {
 			if (field != null && field.getCardId() == FIELD_KAMUI_ID) {
 				p += 3;
 			}
+		}
+
+		if (id == STONIA_ID && st != null) {
+			p += ownerIsHuman ? st.getHumanStones() : st.getCpuStones();
 		}
 
 		return Math.max(0, p);
@@ -2297,10 +3163,16 @@ public class CpuBattleEngine {
 				? hasRyuoh(st.getCpuBattle())
 				: hasRyuoh(st.getHumanBattle());
 		if (suppress) {
+			if (id == SPEC_777_ID && zf.getSpec777RolledPower() > 0) {
+				out.add(new BattlePowerModifierDto(SPEC_777_ID, "（出目" + zf.getSpec777RolledPower() + "）"));
+			}
 			if (zf.getTemporaryPowerBonus() != 0) {
 				out.add(new BattlePowerModifierDto(null, "レベルアップ（配置）"));
 			}
-			if (fieldGloriaCarbunclePowerBonus(st, d, defs) > 0) {
+			if (zf.getNinjaSwapPowerPenalty() > 0) {
+				out.add(new BattlePowerModifierDto(NINJA_ID, "（忍者・入れ替え−2）"));
+			}
+			if (fieldGloriaCarbunclePowerBonus(st, d, zf.getMain(), defs) > 0) {
 				out.add(new BattlePowerModifierDto(FIELD_GLORIA_ID, "〈宝石の地〉"));
 			}
 			return out;
@@ -2310,12 +3182,24 @@ public class CpuBattleEngine {
 				? hasRyuoh(st.getHumanBattle())
 				: hasRyuoh(st.getCpuBattle());
 
+		boolean passivesSuppressedByOpponentGarakutaLeg = ownerIsHuman
+				? hasGarakutaLeg(st.getCpuBattle())
+				: hasGarakutaLeg(st.getHumanBattle());
+
 		if (zf.getTemporaryPowerBonus() != 0) {
 			out.add(new BattlePowerModifierDto(null, "レベルアップ（配置）"));
 		}
 
-		if (fieldGloriaCarbunclePowerBonus(st, d, defs) > 0) {
+		if (zf.getNinjaSwapPowerPenalty() > 0) {
+			out.add(new BattlePowerModifierDto(NINJA_ID, "（忍者・入れ替え−2）"));
+		}
+
+		if (fieldGloriaCarbunclePowerBonus(st, d, zf.getMain(), defs) > 0) {
 			out.add(new BattlePowerModifierDto(FIELD_GLORIA_ID, "〈宝石の地〉"));
+		}
+
+		if (id == SPEC_777_ID && zf.getSpec777RolledPower() > 0) {
+			out.add(new BattlePowerModifierDto(SPEC_777_ID, "（出目" + zf.getSpec777RolledPower() + "）"));
 		}
 
 		int koryu = ownerIsHuman ? st.getHumanKoryuBonus() : st.getCpuKoryuBonus();
@@ -2323,9 +3207,19 @@ public class CpuBattleEngine {
 			out.add(new BattlePowerModifierDto(KORYU_ID, null));
 		}
 
+		int cryst = ownerIsHuman ? st.getHumanCrystakulCombatBonus() : st.getCpuCrystakulCombatBonus();
+		if (cryst > 0) {
+			out.add(new BattlePowerModifierDto(CRYSTAKUL_ID, "（クリスタクル+" + cryst + "）"));
+		}
+
+		if (zf.getBotBikeMechanicPowerBonus() > 0) {
+			out.add(new BattlePowerModifierDto(BOT_BIKE_ID, "（メカニック・次の相手ターン終了まで+2）"));
+		}
+
 		if (!suppressOpponentEffects) {
 			ZoneFighter oppZone = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
-			if (oppZone != null && oppZone.getMain() != null && oppZone.getMain().getCardId() == KUSURI_ID) {
+			if (oppZone != null && oppZone.getMain() != null && oppZone.getMain().getCardId() == KUSURI_ID
+					&& !hasGarakutaLeg(zf)) {
 				int debuff = ownerIsHuman ? st.getCpuStones() : st.getHumanStones();
 				if (debuff > 0) {
 					out.add(new BattlePowerModifierDto(KUSURI_ID, "（相手の薬売り・ストーン" + debuff + "）"));
@@ -2337,11 +3231,20 @@ public class CpuBattleEngine {
 			return out;
 		}
 
+		if (passivesSuppressedByOpponentGarakutaLeg) {
+			return out;
+		}
+
+		if (id == DENZIRION_ID && st != null) {
+			appendDenzirionPassiveExplain(zf, ownerIsHuman, st, defs, out);
+		}
+
 		if (id == ARCHER_ID) {
 			ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
 			if (opp != null && opp.getMain() != null) {
-				CardDefinition od = defs.get(opp.getMain().getCardId());
-				if (!CardAttributes.hasAttribute(od, "DRAGON")) {
+				BattleCard om = opp.getMain();
+				CardDefinition od = defs.get(om.getCardId());
+				if (!CardAttributes.hasAttribute(od, om, "DRAGON")) {
 					out.add(new BattlePowerModifierDto(ARCHER_ID, null));
 				}
 			}
@@ -2357,15 +3260,23 @@ public class CpuBattleEngine {
 		if (id == GAIKOTSU_ID) {
 			ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
 			if (opp != null && opp.getMain() != null
-					&& CardAttributes.hasAttribute(defs.get(opp.getMain().getCardId()), "ELF")) {
+					&& CardAttributes.hasAttribute(defs.get(opp.getMain().getCardId()), opp.getMain(), "ELF")) {
 				out.add(new BattlePowerModifierDto(opp.getMain().getCardId(), null));
+			}
+		}
+
+		if (id == RED_EYE_ID) {
+			ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
+			if (opp != null && opp.getMain() != null
+					&& CardAttributes.hasAttribute(defs.get(opp.getMain().getCardId()), opp.getMain(), "HUMAN")) {
+				out.add(new BattlePowerModifierDto(RED_EYE_ID, null));
 			}
 		}
 
 		if (id == SHIREI_ID) {
 			ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
 			if (opp != null && opp.getMain() != null
-					&& !CardAttributes.hasAttribute(defs.get(opp.getMain().getCardId()), "HUMAN")) {
+					&& !CardAttributes.hasAttribute(defs.get(opp.getMain().getCardId()), opp.getMain(), "HUMAN")) {
 				out.add(new BattlePowerModifierDto(opp.getMain().getCardId(), null));
 			}
 		}
@@ -2376,7 +3287,7 @@ public class CpuBattleEngine {
 				if (isTuckedUnderOwnFighter(zf, c)) {
 					continue;
 				}
-				if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "UNDEAD")) {
+				if (CardAttributes.hasAttribute(defs.get(c.getCardId()), c, "UNDEAD")) {
 					out.add(new BattlePowerModifierDto(c.getCardId(), null));
 				}
 			}
@@ -2389,7 +3300,7 @@ public class CpuBattleEngine {
 				if (isTuckedUnderOwnFighter(zf, c)) {
 					continue;
 				}
-				if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "CARBUNCLE") && seen.add(c.getCardId())) {
+				if (CardAttributes.hasAttribute(defs.get(c.getCardId()), c, "CARBUNCLE") && seen.add(c.getCardId())) {
 					out.add(new BattlePowerModifierDto(c.getCardId(), "（種類+2）"));
 				}
 			}
@@ -2410,10 +3321,24 @@ public class CpuBattleEngine {
 			}
 		}
 
+		if (id == GARAKUTA_ARM_ID) {
+			boolean oppTurn = ownerIsHuman ? !st.isHumansTurn() : st.isHumansTurn();
+			if (oppTurn) {
+				out.add(new BattlePowerModifierDto(GARAKUTA_ARM_ID, "（相手ターン+1）"));
+			}
+		}
+
 		if (id == ARTHUR_ID) {
 			BattleCard field = st != null ? st.getActiveField() : null;
 			if (field != null && field.getCardId() == FIELD_KAMUI_ID) {
 				out.add(new BattlePowerModifierDto(FIELD_KAMUI_ID, "〈決戦の地 カムイ〉"));
+			}
+		}
+
+		if (id == STONIA_ID && st != null) {
+			int stones = ownerIsHuman ? st.getHumanStones() : st.getCpuStones();
+			if (stones > 0) {
+				out.add(new BattlePowerModifierDto(STONIA_ID, "（所持ストーン" + stones + "）"));
 			}
 		}
 
@@ -2424,20 +3349,33 @@ public class CpuBattleEngine {
 		return z != null && z.getMain() != null && z.getMain().getCardId() == RYUOH_ID;
 	}
 
+	/** ガラクタレッグ（61）: 相手のファイターは〈常時〉が使えない */
+	private static boolean hasGarakutaLeg(ZoneFighter z) {
+		return z != null && z.getMain() != null && z.getMain().getCardId() == GARAKUTA_LEG_ID;
+	}
+
 	/** ミスティンクル（33）: 相手の〈配置〉のみ封じる（〈常時〉は対象外） */
 	private static boolean hasMistyinkle(ZoneFighter z) {
 		return z != null && z.getMain() != null && z.getMain().getCardId() == MISTYINKUL_ID;
 	}
 
 	/**
-	 * 配置した側が {@code deployerIsHuman} のとき、相手バトルゾーンの竜王またはミスティンクルにより〈配置〉が無効になるか。
+	 * 〈配置〉能力1枚分が、相手前列（竜王／ミスティンクル）に封じられるか。
+	 * 〈クリスタクル〉の〈配置〉（任意ストーン）のみミスティンクルでは封じない。ネビュラ坑道で先にストーンが増えたあとに確認を出せるようにする。竜王は従来どおりすべて無効。
 	 */
-	private boolean opponentSuppressesDeployEffects(CpuBattleState st, boolean deployerIsHuman) {
+	private boolean deployAbilitySuppressedByOpponentLine(CpuBattleState st, boolean deployerIsHuman,
+			CardDefinition abilityDef) {
 		if (st == null) {
 			return false;
 		}
 		ZoneFighter opp = deployerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
-		return hasRyuoh(opp) || hasMistyinkle(opp);
+		if (hasRyuoh(opp)) {
+			return true;
+		}
+		if (hasMistyinkle(opp)) {
+			return abilityDef == null || !isCrystakulCardDefinition(abilityDef);
+		}
+		return false;
 	}
 
 	/**
@@ -2454,6 +3392,41 @@ public class CpuBattleEngine {
 		}
 		Short bp = fighterDef.getBasePower();
 		return bp != null && bp == 3;
+	}
+
+	/**
+	 * ミラージュクル: 相手に〈配置〉があれば、コピーするかの確認をキューする。
+	 *
+	 * @return 確認待ちを設定したら true
+	 */
+	private boolean offerMirajukulMirrorConfirmation(CpuBattleState st, boolean mirageOwnerIsHuman, boolean cpuSlotChooses,
+			Map<Short, CardDefinition> defs) {
+		ZoneFighter opp = mirageOwnerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
+		if (opp == null || opp.getMain() == null) {
+			return false;
+		}
+		CardDefinition oppFighter = defs.get(opp.getMain().getCardId());
+		if (oppFighter == null) {
+			return false;
+		}
+		String code = oppFighter.getAbilityDeployCode();
+		if (code == null || code.isBlank()) {
+			return false;
+		}
+		if ("MIRAJUKUL".equals(code)) {
+			st.addLog("ミラージュクル: 相手もミラージュクルのためコピーできない");
+			return false;
+		}
+		String oppName = oppFighter.getName() != null ? oppFighter.getName() : "？";
+		st.setPendingChoice(new PendingChoice(
+				ChoiceKind.CONFIRM_MIRAJUKUL_MIRROR,
+				"ミラージュクル: 相手の「" + oppName + "」と同じ〈配置〉を使いますか？",
+				!cpuSlotChooses,
+				code,
+				0,
+				List.of(),
+				cpuSlotChooses));
+		return true;
 	}
 
 	/**
@@ -2526,133 +3499,80 @@ public class CpuBattleEngine {
 	}
 
 	/**
-	 * 忍者: メインとコスト支払い先頭カードを入れ替え、強さ-2（一時）。入れ替え後の〈配置〉は入れ替え先の能力で処理する。
-	 * @return 入れ替え後のメインに対応する定義（入れ替えなしなら引数 d）
+	 * 忍者: 配置直後にメインとコスト支払い先頭カードを入れ替え、入れ替え後のメインの強さを -2。
+	 *
+	 * @return コストにカードがあり実際に入れ替えた場合 true（入れ替え先の〈配置〉を別途解決）
 	 */
-	private CardDefinition applyNinjaDeployRewrite(CpuBattleState st, Map<Short, CardDefinition> defs, CardDefinition d,
-			boolean humanHost) {
-		if (d == null || d.getAbilityDeployCode() == null || !"NINJA".equals(d.getAbilityDeployCode())) {
-			return d;
-		}
+	private boolean applyNinjaPhysicalSwap(CpuBattleState st, Map<Short, CardDefinition> defs, boolean humanHost) {
 		ZoneFighter z = humanHost ? st.getHumanBattle() : st.getCpuBattle();
 		if (z == null || z.getMain() == null) {
-			return d;
+			return false;
 		}
-		z.setTemporaryPowerBonus(z.getTemporaryPowerBonus() - 2);
+		CardDefinition mainDef = defs.get(z.getMain().getCardId());
+		if (mainDef == null || mainDef.getAbilityDeployCode() == null || !"NINJA".equals(mainDef.getAbilityDeployCode())) {
+			return false;
+		}
 		if (z.getCostPayCardCount() > 0 && !z.getCostUnder().isEmpty()) {
 			BattleCard paidCard = z.getCostUnder().get(0);
 			BattleCard oldMain = z.getMain();
 			z.setMain(paidCard);
 			z.getCostUnder().set(0, oldMain);
+			z.setNinjaSwapPowerPenalty(NINJA_SWAP_POWER_PENALTY);
+			z.setSpec777RolledPower(0);
 			CardDefinition paidDef = defs.get(paidCard.getCardId());
 			String paidName = paidDef != null && paidDef.getName() != null ? paidDef.getName() : "？";
-			st.addLog("忍者: 「" + paidName + "」と入れ替え（強さ-2）");
-			return defs.get(z.getMain().getCardId());
+			st.addLog("忍者: 「" + paidName + "」と入れ替え（強さ−" + NINJA_SWAP_POWER_PENALTY + "）");
+			return true;
 		}
-		st.addLog("忍者: コストにカードがないため入れ替えなし（強さ-2）");
-		return d;
+		st.addLog("忍者: コストにカードがないため入れ替えなし");
+		return false;
+	}
+
+	private void syncPendingEffectMainAfterNinjaSwap(PendingEffect pe, CpuBattleState st, Map<Short, CardDefinition> defs,
+			boolean humanHost) {
+		if (pe == null) {
+			return;
+		}
+		ZoneFighter z = humanHost ? st.getHumanBattle() : st.getCpuBattle();
+		if (z == null || z.getMain() == null) {
+			return;
+		}
+		pe.setMainInstanceId(z.getMain().getInstanceId());
+		pe.setCardId(z.getMain().getCardId());
+		CardDefinition dm = defs.get(z.getMain().getCardId());
+		if (dm != null) {
+			String ac = dm.getAbilityDeployCode();
+			pe.setAbilityDeployCode(ac != null && !ac.isBlank() ? ac : "");
+		}
+	}
+
+	private void resolveNinjaSwappedDeployEffects(CpuBattleState st, Map<Short, CardDefinition> defs, Random rnd,
+			boolean pendingOnHumanSlot, boolean pendingOnCpuSlot) {
+		ZoneFighter z = pendingOnHumanSlot ? st.getHumanBattle() : st.getCpuBattle();
+		if (z == null || z.getMain() == null) {
+			return;
+		}
+		BattleCard dm = z.getMain();
+		CardDefinition d = defs.get(dm.getCardId());
+		if (d == null) {
+			return;
+		}
+		if (pendingOnHumanSlot) {
+			applyDeployHuman(st, d, defs, dm);
+		} else if (pendingOnCpuSlot && st.isPvp()) {
+			applyDeployHumanAsCpuSide(st, d, defs, dm);
+		} else if (pendingOnCpuSlot) {
+			applyDeployCpu(st, d, defs, rnd != null ? rnd : new Random(), dm);
+		}
 	}
 
 	private boolean restContainsAttribute(List<BattleCard> rest, Map<Short, CardDefinition> defs, String attr) {
 		for (BattleCard c : rest) {
-			if (CardAttributes.hasAttribute(defs.get(c.getCardId()), attr)) {
+			if (CardAttributes.hasAttribute(defs.get(c.getCardId()), c, attr)) {
 				return true;
 			}
 		}
 		return false;
-	}
-
-	/**
-	 * クリスタクル〈配置〉の前提判定。レストにカーバンクルがあるか、今配置した自分バトルの
-	 * コスト下（手札からの支払い・レベルアップで本体下に重ねたカード）にカーバンクルがあるか。
-	 * 後者はレストに積まれないため、レストのみを見ると条件を満たしているのに発動しない不具合になる。
-	 */
-	private boolean crystakulCarbuncleSupportPresent(CpuBattleState st, boolean ownerIsHuman,
-			Map<Short, CardDefinition> defs) {
-		if (st == null || defs == null) {
-			return false;
-		}
-		List<BattleCard> rest = ownerIsHuman ? st.getHumanRest() : st.getCpuRest();
-		ZoneFighter z = ownerIsHuman ? st.getHumanBattle() : st.getCpuBattle();
-		// シャイニ等と同様、バトルに重なって表示される分は「レストにいる」とみなさない
-		for (BattleCard c : rest) {
-			if (c == null || isTuckedUnderOwnFighter(z, c)) {
-				continue;
-			}
-			if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "CARBUNCLE")) {
-				return true;
-			}
-		}
-		if (z == null || z.getCostUnder() == null) {
-			return false;
-		}
-		for (BattleCard c : z.getCostUnder()) {
-			if (c != null && CardAttributes.hasAttribute(defs.get(c.getCardId()), "CARBUNCLE")) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * クリスタクル〈配置〉の「ストーン2つ使用」が可能か。
-	 * 通常は deploy 直後に Nebula が加算済みで {@code stones >= 2}。
-	 * 〈配置〉評価時点で Nebula 分が所持に未反映のとき、場がネビュラかつ配置がカーバンクルなら支払可能とみなす。
-	 * 所持1が「ネビュラで 0→1 しただけ」のときはストーン2を払えない（{@link ZoneFighter#fieldNebulaStoneGrantedForThisDeploy} で区別）。
-	 */
-	private boolean crystakulCanAffordOptionalStonePay(CpuBattleState st, boolean deployerUsesHumanStones,
-			Map<Short, CardDefinition> defs, BattleCard deployedMain) {
-		if (st == null || defs == null) {
-			return false;
-		}
-		int s = deployerUsesHumanStones ? st.getHumanStones() : st.getCpuStones();
-		if (s >= 2) {
-			return true;
-		}
-		if (s != 1 || deployedMain == null) {
-			return false;
-		}
-		CardDefinition dm = defs.get(deployedMain.getCardId());
-		if (dm == null || isFieldCard(dm) || !CardAttributes.hasAttribute(dm, "CARBUNCLE")) {
-			return false;
-		}
-		BattleCard field = st.getActiveField();
-		if (field == null || field.getCardId() != FIELD_NEBULA_ID) {
-			return false;
-		}
-		ZoneFighter z = deployerUsesHumanStones ? st.getHumanBattle() : st.getCpuBattle();
-		if (z != null && z.isFieldNebulaStoneGrantedForThisDeploy()) {
-			return false;
-		}
-		return true;
-	}
-
-	/**
-	 * クリスタクルの任意ストーン支払いを確定する直前に呼ぶ。
-	 * Nebula 分が所持に未反映なら {@link #applyFieldNebulaWhenCarbuncleFighterDeployed} で補う。
-	 */
-	private void ensureNebulaStoneForCrystakulOptionalPayment(CpuBattleState st, boolean deployerUsesHumanStones,
-			Map<Short, CardDefinition> defs) {
-		if (st == null || defs == null) {
-			return;
-		}
-		int s = deployerUsesHumanStones ? st.getHumanStones() : st.getCpuStones();
-		if (s >= 2) {
-			return;
-		}
-		ZoneFighter z = deployerUsesHumanStones ? st.getHumanBattle() : st.getCpuBattle();
-		BattleCard main = z != null ? z.getMain() : null;
-		if (!crystakulCanAffordOptionalStonePay(st, deployerUsesHumanStones, defs, main)) {
-			return;
-		}
-		CardDefinition md = main != null ? defs.get(main.getCardId()) : null;
-		if (md == null) {
-			return;
-		}
-		if (z != null && z.isFieldNebulaStoneGrantedForThisDeploy()) {
-			return;
-		}
-		applyFieldNebulaWhenCarbuncleFighterDeployed(st, md, deployerUsesHumanStones);
 	}
 
 	/** フェザリアの回収対象: カーバンクルかつ「フェザリア」カード自身は除く */
@@ -2663,7 +3583,7 @@ public class CpuBattleEngine {
 		if (c.getCardId() == FEATHERIA_ID) {
 			return false;
 		}
-		return CardAttributes.hasAttribute(defs.get(c.getCardId()), "CARBUNCLE");
+		return CardAttributes.hasAttribute(defs.get(c.getCardId()), c, "CARBUNCLE");
 	}
 
 	private boolean restContainsFezariaPickableCarbuncle(List<BattleCard> rest, Map<Short, CardDefinition> defs) {
@@ -2689,20 +3609,176 @@ public class CpuBattleEngine {
 			if (c == null || isTuckedUnderOwnFighter(ownBattle, c)) {
 				continue;
 			}
-			if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "CARBUNCLE")) {
+			if (CardAttributes.hasAttribute(defs.get(c.getCardId()), c, "CARBUNCLE")) {
 				kinds.add(c.getCardId());
 			}
 		}
 		return kinds.size();
 	}
 
-	private void applyDeployHuman(CpuBattleState st, CardDefinition d, Map<Short, CardDefinition> defs,
-			BattleCard deployedMain) {
-		// 相手の竜王、またはミスティンクルがいる間は〈配置〉は発動しない
-		if (st != null && opponentSuppressesDeployEffects(st, true)) {
+	/** デンジリオン継承元: 〈フィールド〉以外のマシン・ファイター */
+	private static boolean isMachineFighterRestSourceForDenziron(CardDefinition d) {
+		if (d == null) {
+			return false;
+		}
+		return isNonFieldFighterCardDef(d) && CardAttributes.hasAttribute(d, "MACHINE");
+	}
+
+	/**
+	 * レストにある sourceCardId の〈常時〉を、前列のデンジリオンが持つとしたときの強さ増減。
+	 * レストに同種が複数ある場合は枚数分だけ加算し、効果が重複する。
+	 */
+	private int denzirionPassivePowerFromRestCard(short sourceCardId, ZoneFighter battleZf, boolean ownerIsHuman,
+			CpuBattleState st, Map<Short, CardDefinition> defs) {
+		if (defs == null || battleZf == null || st == null) {
+			return 0;
+		}
+		return switch (sourceCardId) {
+			case ARCHER_ID -> {
+				ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
+				if (opp != null && opp.getMain() != null) {
+					BattleCard om = opp.getMain();
+					CardDefinition od = defs.get(om.getCardId());
+					yield !CardAttributes.hasAttribute(od, om, "DRAGON") ? 1 : 0;
+				}
+				yield 0;
+			}
+			case DRAGON_RIDER_ID -> {
+				List<BattleCard> rest = ownerIsHuman ? st.getHumanRest() : st.getCpuRest();
+				yield restContainsAttribute(rest, defs, "DRAGON") ? 4 : 0;
+			}
+			case GAIKOTSU_ID -> {
+				ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
+				if (opp != null && opp.getMain() != null
+						&& CardAttributes.hasAttribute(defs.get(opp.getMain().getCardId()), opp.getMain(), "ELF")) {
+					yield 2;
+				}
+				yield 0;
+			}
+			case RED_EYE_ID -> {
+				ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
+				if (opp != null && opp.getMain() != null
+						&& CardAttributes.hasAttribute(defs.get(opp.getMain().getCardId()), opp.getMain(), "HUMAN")) {
+					yield 1;
+				}
+				yield 0;
+			}
+			case SHIREI_ID -> {
+				ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
+				if (opp != null && opp.getMain() != null
+						&& !CardAttributes.hasAttribute(defs.get(opp.getMain().getCardId()), opp.getMain(), "HUMAN")) {
+					yield 1;
+				}
+				yield 0;
+			}
+			case HONE_ID -> {
+				List<BattleCard> rest = ownerIsHuman ? st.getHumanRest() : st.getCpuRest();
+				int undead = 0;
+				for (BattleCard c : rest) {
+					if (isTuckedUnderOwnFighter(battleZf, c)) {
+						continue;
+					}
+					if (CardAttributes.hasAttribute(defs.get(c.getCardId()), c, "UNDEAD")) {
+						undead++;
+					}
+				}
+				yield undead;
+			}
+			case SHINY_ID -> {
+				List<BattleCard> rest = ownerIsHuman ? st.getHumanRest() : st.getCpuRest();
+				int kinds = countDistinctCarbuncleTypesInRest(battleZf, rest, defs);
+				yield kinds * 2;
+			}
+			case FROSTKRUL_ID -> {
+				boolean oppTurn = ownerIsHuman ? !st.isHumansTurn() : st.isHumansTurn();
+				List<BattleCard> rest = ownerIsHuman ? st.getHumanRest() : st.getCpuRest();
+				yield oppTurn && restContainsAttribute(rest, defs, "CARBUNCLE") ? 3 : 0;
+			}
+			case NEMURY_ID -> {
+				boolean oppTurn = ownerIsHuman ? !st.isHumansTurn() : st.isHumansTurn();
+				yield oppTurn ? NEMURY_OPPONENT_TURN_POWER_BONUS : 0;
+			}
+			case ARTHUR_ID -> {
+				BattleCard field = st.getActiveField();
+				yield field != null && field.getCardId() == FIELD_KAMUI_ID ? 3 : 0;
+			}
+			case STONIA_ID -> {
+				yield ownerIsHuman ? st.getHumanStones() : st.getCpuStones();
+			}
+			case GARAKUTA_ARM_ID -> {
+				boolean oppTurn = ownerIsHuman ? !st.isHumansTurn() : st.isHumansTurn();
+				yield oppTurn ? 1 : 0;
+			}
+			default -> 0;
+		};
+	}
+
+	private void appendDenzirionPassiveExplain(ZoneFighter zf, boolean ownerIsHuman, CpuBattleState st,
+			Map<Short, CardDefinition> defs, List<BattlePowerModifierDto> out) {
+		if (zf == null || st == null || defs == null) {
 			return;
 		}
-		d = applyNinjaDeployRewrite(st, defs, d, true);
+		List<BattleCard> rest = ownerIsHuman ? st.getHumanRest() : st.getCpuRest();
+		if (rest == null) {
+			return;
+		}
+		for (BattleCard rc : rest) {
+			if (isTuckedUnderOwnFighter(zf, rc)) {
+				continue;
+			}
+			CardDefinition rcd = defs.get(rc.getCardId());
+			if (!isMachineFighterRestSourceForDenziron(rcd)) {
+				continue;
+			}
+			if (rc.getCardId() == DENZIRION_ID) {
+				continue;
+			}
+			int b = denzirionPassivePowerFromRestCard(rc.getCardId(), zf, ownerIsHuman, st, defs);
+			if (b != 0) {
+				String sign = b > 0 ? "+" : "";
+				out.add(new BattlePowerModifierDto(rc.getCardId(), "（デンジリオン継承" + sign + b + "）"));
+			}
+		}
+	}
+
+	/**
+	 * SPEC-666: 次にそのスロットに出すファイター予定だった場合、配置直後のメインに種族上書きを付与する。
+	 * 〈フィールド〉は対象外（フラグも消費しない）。
+	 */
+	private void applySpec666UndeadToDeployedFighterIfPending(CpuBattleState st, boolean humanSlot,
+			Map<Short, CardDefinition> defs) {
+		if (st == null || defs == null) {
+			return;
+		}
+		ZoneFighter z = humanSlot ? st.getHumanBattle() : st.getCpuBattle();
+		if (z == null || z.getMain() == null) {
+			return;
+		}
+		BattleCard main = z.getMain();
+		CardDefinition mainDef = defs.get(main.getCardId());
+		if (mainDef == null || isFieldCard(mainDef)) {
+			return;
+		}
+		boolean pending = humanSlot ? st.isSpec666NextHumanUndead() : st.isSpec666NextCpuUndead();
+		if (!pending) {
+			return;
+		}
+		main.setBattleTribeOverride("UNDEAD");
+		if (humanSlot) {
+			st.setSpec666NextHumanUndead(false);
+		} else {
+			st.setSpec666NextCpuUndead(false);
+		}
+		st.addLog("SPEC-666: 配置したファイターを種族・アンデッドとして扱う");
+	}
+
+	private void applyDeployHuman(CpuBattleState st, CardDefinition d, Map<Short, CardDefinition> defs,
+			BattleCard deployedMain) {
+		deployedMain = st.getHumanBattle() != null ? st.getHumanBattle().getMain() : null;
+		applySpec666UndeadToDeployedFighterIfPending(st, true, defs);
+		if (st != null && deployAbilitySuppressedByOpponentLine(st, true, d)) {
+			return;
+		}
 		deployedMain = st.getHumanBattle() != null ? st.getHumanBattle().getMain() : null;
 		if (deployedMain != null && deployedMain.isBlankEffects()) {
 			return;
@@ -2712,8 +3788,24 @@ public class CpuBattleEngine {
 			return;
 		}
 		String code = d != null ? d.getAbilityDeployCode() : null;
-		if (code == null) {
-			return;
+		if (code == null || code.isBlank()) {
+			if (d != null && isCrystakulCardDefinition(d)) {
+				code = "CRYSTAKUL";
+			} else if (d != null && isBotBikeCardDefinition(d)) {
+				code = "BOT_BIKE";
+			} else if (d != null && isSpec1CardDefinition(d)) {
+				code = "SPEC1";
+			} else if (d != null && isHarpPlayerCardDefinition(d)) {
+				code = "HARP_PLAYER";
+			} else if (d != null && isGravePriestCardDefinition(d)) {
+				code = "GRAVE_PRIEST";
+			} else if (d != null && isBelieverCardDefinition(d)) {
+				code = "BELIEVER";
+			} else if (d != null && isHalfElfCardDefinition(d)) {
+				code = "HALF_ELF";
+			} else {
+				return;
+			}
 		}
 		switch (code) {
 			case "SAKUSHI" -> {
@@ -2765,6 +3857,42 @@ public class CpuBattleEngine {
 					));
 				}
 			}
+			case "HARP_PLAYER" -> {
+				st.setHumanNextElfOnlyBonus(st.getHumanNextElfOnlyBonus() + HARP_NEXT_ELF_POWER_BONUS);
+				st.addLog("森のハープ弾き: 次に配置するエルフはターン終了まで強さ+" + HARP_NEXT_ELF_POWER_BONUS);
+			}
+			case "GRAVE_PRIEST" -> {
+				List<String> gpOpts = gravePriestUndeadHandOptionIds(st.getHumanHand(), defs);
+				if (!gpOpts.isEmpty()) {
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.SELECT_ONE_UNDEAD_FIGHTER_FROM_HAND_FOR_COST,
+							"墓守神父（手札の「種族：アンデッド」のファイターを1枚）",
+							true,
+							"GRAVE_PRIEST",
+							0,
+							gpOpts));
+				} else {
+					st.addLog("墓守神父: 手札に対象のファイターがいない");
+				}
+			}
+			case "BELIEVER" -> {
+				int dbN = moveAllDeathbounceFromRestToHand(st.getHumanRest(), st.getHumanHand());
+				if (dbN > 0) {
+					st.addLog("信奉者: 霊園教会 デスバウンスを" + dbN + "枚手札へ");
+				} else {
+					st.addLog("信奉者: レストに「霊園教会 デスバウンス」がない");
+				}
+			}
+			case "HALF_ELF" -> {
+				ZoneFighter hzHe = st.getHumanBattle();
+				if (hzHe != null) {
+					int heb = halfElfLineagePowerBonusFromRest(st.getHumanRest(), defs);
+					if (heb > 0) {
+						hzHe.setTemporaryPowerBonus(hzHe.getTemporaryPowerBonus() + heb);
+						st.addLog("ハーフエルフ: 強さ+" + heb);
+					}
+				}
+			}
 			case "SHOKIN" -> {
 				// 隊長: 次の配置はコストぶん強化（重ねがけ可）
 				st.setHumanNextDeployCostBonusTimes(st.getHumanNextDeployCostBonusTimes() + 1);
@@ -2773,6 +3901,14 @@ public class CpuBattleEngine {
 			case "MECHANIC" -> {
 				st.setHumanNextMechanicStacks(st.getHumanNextMechanicStacks() + 1);
 				st.addLog("メカニック: 次の配置はコスト+1、強さ+3");
+			}
+			case "BOT_BIKE" -> {
+				ZoneFighter zb = st.getHumanBattle();
+				if (zb != null && zb.getMain() != null && zb.getMain().getCardId() == BOT_BIKE_ID
+						&& zoneCostIncludesMechanicFighter(zb, defs)) {
+					zb.setBotBikeMechanicPowerBonus(2);
+					st.addLog("ボットバイク: 次の相手ターン終了まで強さ+2");
+				}
 			}
 			case "KINOKO" -> {
 				List<String> pixieOpts = new ArrayList<>();
@@ -2925,8 +4061,10 @@ public class CpuBattleEngine {
 				}
 			}
 			case "KENTOSHI" -> {
-				// 人間は選んで捨てる、CPUは自動で捨てる
-				if (!st.getHumanHand().isEmpty()) {
+				// 配置者（人間スロット）は手札があれば選んで捨てる。相手は手札があれば自動で1枚捨てる。
+				boolean hadHumanHand = !st.getHumanHand().isEmpty();
+				boolean hadCpuHand = !st.getCpuHand().isEmpty();
+				if (hadHumanHand) {
 					List<String> opts = new ArrayList<>();
 					for (BattleCard c : st.getHumanHand()) opts.add(c.getInstanceId());
 					st.setPendingChoice(new PendingChoice(
@@ -2938,9 +4076,16 @@ public class CpuBattleEngine {
 							opts
 					));
 				}
-				// CPU側は自動で1枚捨てる
-				discardRightmost(st.getCpuHand(), st.getCpuRest());
-				st.addLog("剣闘士: お互い手札を1枚レストへ");
+				if (hadCpuHand) {
+					discardRightmost(st.getCpuHand(), st.getCpuRest());
+				}
+				if (hadHumanHand && hadCpuHand) {
+					st.addLog("剣闘士: お互い手札を1枚レストへ");
+				} else if (hadHumanHand) {
+					st.addLog("剣闘士: 自分の手札を1枚レストへ（相手は手札なし）");
+				} else if (hadCpuHand) {
+					st.addLog("剣闘士: 相手の手札を1枚レストへ（自分は手札なし）");
+				}
 			}
 			case "KARYUDO" -> {
 				if (!st.getCpuHand().isEmpty()) {
@@ -2952,7 +4097,7 @@ public class CpuBattleEngine {
 			}
 			case "KAENRYU" -> {
 				if (st.getCpuBattle() != null) {
-					moveZoneToRest(st.getCpuBattle(), st.getCpuRest());
+					moveZoneToRest(st.getCpuBattle(), st.getCpuRest(), st, st.getCpuHand(), defs);
 					st.setCpuBattle(null);
 					st.addLog("火炎竜: 相手ファイターをレストへ");
 				}
@@ -2960,11 +4105,13 @@ public class CpuBattleEngine {
 			case "DAKU_DORAGON" -> {
 				st.setHumanStones(st.getHumanStones() + 2);
 				st.addLog("ダークドラゴン: ストーン+2");
-				if (st.getCpuBattle() != null
-						&& CardAttributes.hasAttribute(defs.get(st.getCpuBattle().getMain().getCardId()), "DRAGON")) {
-					moveZoneToRest(st.getCpuBattle(), st.getCpuRest());
-					st.setCpuBattle(null);
-					st.addLog("ダークドラゴン: 相手ドラゴンをレストへ");
+				if (st.getCpuBattle() != null && st.getCpuBattle().getMain() != null) {
+					BattleCard om = st.getCpuBattle().getMain();
+					if (CardAttributes.hasAttribute(defs.get(om.getCardId()), om, "DRAGON")) {
+						moveZoneToRest(st.getCpuBattle(), st.getCpuRest(), st, st.getCpuHand(), defs);
+						st.setCpuBattle(null);
+						st.addLog("ダークドラゴン: 相手ドラゴンをレストへ");
+					}
 				}
 			}
 			case "GURIFON" -> {
@@ -2979,28 +4126,29 @@ public class CpuBattleEngine {
 			}
 			case "NOXSKUL" -> {
 				st.setHumanStones(st.getHumanStones() + 1);
-				st.addLog("ノクスクル: ストーン+1");
+				st.addLog("ストーニア: ストーン+1");
 			}
 			case "CRYSTAKUL" -> {
-				if (crystakulCanAffordOptionalStonePay(st, true, defs, deployedMain)
-						&& crystakulCarbuncleSupportPresent(st, true, defs)) {
+				PendingEffect cpe = st.getPendingEffect();
+				if (cpe != null && cpe.isCrystakulOptionalResolved()) {
+					break;
+				}
+				if (st.getHumanStones() >= CRYSTAKUL_OPTIONAL_STONE_COST) {
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"クリスタクル（ストーン2使用で5獲得）",
+							"クリスタクル（ストーン3・次の配置+3／次の相手ターン終了まで）",
 							true,
 							"CRYSTAKUL",
-							2,
+							CRYSTAKUL_OPTIONAL_STONE_COST,
 							List.of()
 					));
 				}
 			}
-			case "MIRAJUKUL" -> applyMirageMirrorDeploy(st, true, defs, new Random());
+			case "MIRAJUKUL" -> offerMirajukulMirrorConfirmation(st, true, false, defs);
 			case "STONIA" -> {
 				if (st.getHumanBattle() != null) {
 					int s = st.getHumanStones();
-					ZoneFighter z = st.getHumanBattle();
-					z.setTemporaryPowerBonus(z.getTemporaryPowerBonus() + s);
-					st.addLog("ストーニア: 所持ストーン" + s + "のぶん強さ+" + s);
+					st.addLog("ノクスクル: 所持ストーン" + s + "のぶん強さ+" + s);
 				}
 			}
 			case "LUMINANK" -> {
@@ -3020,6 +4168,49 @@ public class CpuBattleEngine {
 					));
 				}
 			}
+			case "MACHINE_GUNNER" -> machineGunDiscardOpponentStones(st, d, defs, true, false);
+			case "SPEC777" -> {
+				ZoneFighter z777 = st.getHumanBattle();
+				if (z777 != null && z777.getMain() != null && z777.getMain().getCardId() == SPEC_777_ID) {
+					int roll = 2 + ThreadLocalRandom.current().nextInt(6);
+					z777.setSpec777RolledPower(roll);
+					st.addLog("SPEC-777: 出目=" + roll);
+				}
+			}
+			case "SPEC666" -> {
+				st.setSpec666NextHumanUndead(true);
+				st.setSpec666NextCpuUndead(true);
+				st.addLog("SPEC-666: 次に双方が配置するファイターはアンデッド扱い");
+			}
+			case "SPEC123" -> {
+				ZoneFighter z123 = st.getHumanBattle();
+				if (z123 != null && z123.getMain() != null && z123.getMain().getCardId() == SPEC_123_ID) {
+					int gain = 1 + ThreadLocalRandom.current().nextInt(3);
+					st.setHumanStones(st.getHumanStones() + gain);
+					st.addLog("SPEC-123: ストーン+" + gain);
+				}
+			}
+			case "SPEC0", "SPEC1" -> {
+				ZoneFighter z0 = st.getHumanBattle();
+				if (z0 == null || z0.getMain() == null || z0.getMain().getCardId() != SPEC_1_ID) {
+					break;
+				}
+				List<String> spec1Opts = new ArrayList<>();
+				for (BattleCard c : st.getHumanRest()) {
+					if (isSpec1EligibleRestFighter(c, z0, defs)) {
+						spec1Opts.add(c.getInstanceId());
+					}
+				}
+				if (!spec1Opts.isEmpty()) {
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.SELECT_ONE_FROM_REST_TO_DECK_TOP,
+							"SPEC-1（「強さ1」のファイターを1枚、デッキ上へ）",
+							true,
+							"SPEC1",
+							0,
+							spec1Opts));
+				}
+			}
 			default -> {
 			}
 		}
@@ -3030,10 +4221,11 @@ public class CpuBattleEngine {
 	 */
 	private void applyDeployHumanAsCpuSide(CpuBattleState st, CardDefinition d, Map<Short, CardDefinition> defs,
 			BattleCard deployedMain) {
-		if (st != null && opponentSuppressesDeployEffects(st, false)) {
+		deployedMain = st.getCpuBattle() != null ? st.getCpuBattle().getMain() : null;
+		applySpec666UndeadToDeployedFighterIfPending(st, false, defs);
+		if (st != null && deployAbilitySuppressedByOpponentLine(st, false, d)) {
 			return;
 		}
-		d = applyNinjaDeployRewrite(st, defs, d, false);
 		deployedMain = st.getCpuBattle() != null ? st.getCpuBattle().getMain() : null;
 		if (deployedMain != null && deployedMain.isBlankEffects()) {
 			return;
@@ -3043,8 +4235,24 @@ public class CpuBattleEngine {
 			return;
 		}
 		String code = d != null ? d.getAbilityDeployCode() : null;
-		if (code == null) {
-			return;
+		if (code == null || code.isBlank()) {
+			if (d != null && isCrystakulCardDefinition(d)) {
+				code = "CRYSTAKUL";
+			} else if (d != null && isBotBikeCardDefinition(d)) {
+				code = "BOT_BIKE";
+			} else if (d != null && isSpec1CardDefinition(d)) {
+				code = "SPEC1";
+			} else if (d != null && isHarpPlayerCardDefinition(d)) {
+				code = "HARP_PLAYER";
+			} else if (d != null && isGravePriestCardDefinition(d)) {
+				code = "GRAVE_PRIEST";
+			} else if (d != null && isBelieverCardDefinition(d)) {
+				code = "BELIEVER";
+			} else if (d != null && isHalfElfCardDefinition(d)) {
+				code = "HALF_ELF";
+			} else {
+				return;
+			}
 		}
 		switch (code) {
 			case "SAKUSHI" -> {
@@ -3094,6 +4302,43 @@ public class CpuBattleEngine {
 					));
 				}
 			}
+			case "HARP_PLAYER" -> {
+				st.setCpuNextElfOnlyBonus(st.getCpuNextElfOnlyBonus() + HARP_NEXT_ELF_POWER_BONUS);
+				st.addLog("森のハープ弾き: 次に配置するエルフはターン終了まで強さ+" + HARP_NEXT_ELF_POWER_BONUS);
+			}
+			case "GRAVE_PRIEST" -> {
+				List<String> gpGuestOpts = gravePriestUndeadHandOptionIds(st.getCpuHand(), defs);
+				if (!gpGuestOpts.isEmpty()) {
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.SELECT_ONE_UNDEAD_FIGHTER_FROM_HAND_FOR_COST,
+							"墓守神父（手札の「種族：アンデッド」のファイターを1枚）",
+							false,
+							"GRAVE_PRIEST",
+							0,
+							gpGuestOpts,
+							true));
+				} else {
+					st.addLog("墓守神父: 手札に対象のファイターがいない");
+				}
+			}
+			case "BELIEVER" -> {
+				int dbNg = moveAllDeathbounceFromRestToHand(st.getCpuRest(), st.getCpuHand());
+				if (dbNg > 0) {
+					st.addLog("信奉者: 霊園教会 デスバウンスを" + dbNg + "枚手札へ");
+				} else {
+					st.addLog("信奉者: レストに「霊園教会 デスバウンス」がない");
+				}
+			}
+			case "HALF_ELF" -> {
+				ZoneFighter hzHeG = st.getCpuBattle();
+				if (hzHeG != null) {
+					int hebG = halfElfLineagePowerBonusFromRest(st.getCpuRest(), defs);
+					if (hebG > 0) {
+						hzHeG.setTemporaryPowerBonus(hzHeG.getTemporaryPowerBonus() + hebG);
+						st.addLog("ハーフエルフ: 強さ+" + hebG);
+					}
+				}
+			}
 			case "SHOKIN" -> {
 				st.setCpuNextDeployCostBonusTimes(st.getCpuNextDeployCostBonusTimes() + 1);
 				st.addLog("隊長: 次の配置はコストぶん強化");
@@ -3101,6 +4346,14 @@ public class CpuBattleEngine {
 			case "MECHANIC" -> {
 				st.setCpuNextMechanicStacks(st.getCpuNextMechanicStacks() + 1);
 				st.addLog("メカニック: 次の配置はコスト+1、強さ+3");
+			}
+			case "BOT_BIKE" -> {
+				ZoneFighter zb = st.getCpuBattle();
+				if (zb != null && zb.getMain() != null && zb.getMain().getCardId() == BOT_BIKE_ID
+						&& zoneCostIncludesMechanicFighter(zb, defs)) {
+					zb.setBotBikeMechanicPowerBonus(2);
+					st.addLog("ボットバイク: 次の相手ターン終了まで強さ+2");
+				}
 			}
 			case "KINOKO" -> {
 				List<String> pixieGuestOpts = new ArrayList<>();
@@ -3262,21 +4515,32 @@ public class CpuBattleEngine {
 				}
 			}
 			case "KENTOSHI" -> {
-				if (!st.getHumanHand().isEmpty()) {
+				// ゲストが配置: 配置者は cpu 手札から選ぶ（0枚なら選択なし）。ホストは手札があれば自動で1枚捨てる。
+				boolean hadGuestHand = !st.getCpuHand().isEmpty();
+				boolean hadHostHand = !st.getHumanHand().isEmpty();
+				if (hadGuestHand) {
 					List<String> opts = new ArrayList<>();
-					for (BattleCard c : st.getHumanHand()) opts.add(c.getInstanceId());
+					for (BattleCard c : st.getCpuHand()) opts.add(c.getInstanceId());
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
 							"剣闘士（捨てるカードを選択）",
-							true,
+							false,
 							"KENTOSHI",
 							0,
-							opts
+							opts,
+							true
 					));
 				}
-				// CPU側は自動で1枚捨てる
-				discardRightmost(st.getCpuHand(), st.getCpuRest());
-				st.addLog("剣闘士: お互い手札を1枚レストへ");
+				if (hadHostHand) {
+					discardRightmost(st.getHumanHand(), st.getHumanRest());
+				}
+				if (hadGuestHand && hadHostHand) {
+					st.addLog("剣闘士: お互い手札を1枚レストへ");
+				} else if (hadGuestHand) {
+					st.addLog("剣闘士: 自分の手札を1枚レストへ（相手は手札なし）");
+				} else if (hadHostHand) {
+					st.addLog("剣闘士: 相手の手札を1枚レストへ（自分は手札なし）");
+				}
 			}
 			case "KARYUDO" -> {
 				if (!st.getHumanHand().isEmpty()) {
@@ -3288,7 +4552,7 @@ public class CpuBattleEngine {
 			}
 			case "KAENRYU" -> {
 				if (st.getHumanBattle() != null) {
-					moveZoneToRest(st.getHumanBattle(), st.getHumanRest());
+					moveZoneToRest(st.getHumanBattle(), st.getHumanRest(), st, st.getHumanHand(), defs);
 					st.setHumanBattle(null);
 					st.addLog("火炎竜: 相手ファイターをレストへ");
 				}
@@ -3296,11 +4560,13 @@ public class CpuBattleEngine {
 			case "DAKU_DORAGON" -> {
 				st.setCpuStones(st.getCpuStones() + 2);
 				st.addLog("ダークドラゴン: ストーン+2");
-				if (st.getHumanBattle() != null
-						&& CardAttributes.hasAttribute(defs.get(st.getHumanBattle().getMain().getCardId()), "DRAGON")) {
-					moveZoneToRest(st.getHumanBattle(), st.getHumanRest());
-					st.setHumanBattle(null);
-					st.addLog("ダークドラゴン: 相手ドラゴンをレストへ");
+				if (st.getHumanBattle() != null && st.getHumanBattle().getMain() != null) {
+					BattleCard om = st.getHumanBattle().getMain();
+					if (CardAttributes.hasAttribute(defs.get(om.getCardId()), om, "DRAGON")) {
+						moveZoneToRest(st.getHumanBattle(), st.getHumanRest(), st, st.getHumanHand(), defs);
+						st.setHumanBattle(null);
+						st.addLog("ダークドラゴン: 相手ドラゴンをレストへ");
+					}
 				}
 			}
 			case "GURIFON" -> {
@@ -3315,29 +4581,30 @@ public class CpuBattleEngine {
 			}
 			case "NOXSKUL" -> {
 				st.setCpuStones(st.getCpuStones() + 1);
-				st.addLog("ノクスクル: ストーン+1");
+				st.addLog("ストーニア: ストーン+1");
 			}
 			case "CRYSTAKUL" -> {
-				if (crystakulCanAffordOptionalStonePay(st, false, defs, deployedMain)
-						&& crystakulCarbuncleSupportPresent(st, false, defs)) {
+				PendingEffect cpe = st.getPendingEffect();
+				if (cpe != null && cpe.isCrystakulOptionalResolved()) {
+					break;
+				}
+				if (st.getCpuStones() >= CRYSTAKUL_OPTIONAL_STONE_COST) {
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"クリスタクル（ストーン2使用で5獲得）",
+							"クリスタクル（ストーン3・次の配置+3／次の相手ターン終了まで）",
 							false,
 							"CRYSTAKUL",
-							2,
+							CRYSTAKUL_OPTIONAL_STONE_COST,
 							List.of(),
 							true
 					));
 				}
 			}
-			case "MIRAJUKUL" -> applyMirageMirrorDeploy(st, false, defs, new Random());
+			case "MIRAJUKUL" -> offerMirajukulMirrorConfirmation(st, false, true, defs);
 			case "STONIA" -> {
 				if (st.getCpuBattle() != null) {
 					int s = st.getCpuStones();
-					ZoneFighter z = st.getCpuBattle();
-					z.setTemporaryPowerBonus(z.getTemporaryPowerBonus() + s);
-					st.addLog("ストーニア: 所持ストーン" + s + "のぶん強さ+" + s);
+					st.addLog("ノクスクル: 所持ストーン" + s + "のぶん強さ+" + s);
 				}
 			}
 			case "LUMINANK" -> {
@@ -3358,6 +4625,50 @@ public class CpuBattleEngine {
 					));
 				}
 			}
+			case "MACHINE_GUNNER" -> machineGunDiscardOpponentStones(st, d, defs, false, false);
+			case "SPEC777" -> {
+				ZoneFighter z777g = st.getCpuBattle();
+				if (z777g != null && z777g.getMain() != null && z777g.getMain().getCardId() == SPEC_777_ID) {
+					int roll = 2 + ThreadLocalRandom.current().nextInt(6);
+					z777g.setSpec777RolledPower(roll);
+					st.addLog("SPEC-777: 出目=" + roll);
+				}
+			}
+			case "SPEC666" -> {
+				st.setSpec666NextHumanUndead(true);
+				st.setSpec666NextCpuUndead(true);
+				st.addLog("SPEC-666: 次に双方が配置するファイターはアンデッド扱い");
+			}
+			case "SPEC123" -> {
+				ZoneFighter z123g = st.getCpuBattle();
+				if (z123g != null && z123g.getMain() != null && z123g.getMain().getCardId() == SPEC_123_ID) {
+					int gain = 1 + ThreadLocalRandom.current().nextInt(3);
+					st.setCpuStones(st.getCpuStones() + gain);
+					st.addLog("SPEC-123: ストーン+" + gain);
+				}
+			}
+			case "SPEC0", "SPEC1" -> {
+				ZoneFighter z0g = st.getCpuBattle();
+				if (z0g == null || z0g.getMain() == null || z0g.getMain().getCardId() != SPEC_1_ID) {
+					break;
+				}
+				List<String> spec1GuestOpts = new ArrayList<>();
+				for (BattleCard c : st.getCpuRest()) {
+					if (isSpec1EligibleRestFighter(c, z0g, defs)) {
+						spec1GuestOpts.add(c.getInstanceId());
+					}
+				}
+				if (!spec1GuestOpts.isEmpty()) {
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.SELECT_ONE_FROM_REST_TO_DECK_TOP,
+							"SPEC-1（「強さ1」のファイターを1枚、デッキ上へ）",
+							false,
+							"SPEC1",
+							0,
+							spec1GuestOpts,
+							true));
+				}
+			}
 			default -> {
 			}
 		}
@@ -3365,11 +4676,11 @@ public class CpuBattleEngine {
 
 	private void applyDeployCpu(CpuBattleState st, CardDefinition d, Map<Short, CardDefinition> defs, Random rnd,
 			BattleCard deployedMain) {
-		// 相手の竜王、またはミスティンクルがいる間は〈配置〉は発動しない
-		if (st != null && opponentSuppressesDeployEffects(st, false)) {
+		deployedMain = st.getCpuBattle() != null ? st.getCpuBattle().getMain() : null;
+		applySpec666UndeadToDeployedFighterIfPending(st, false, defs);
+		if (st != null && deployAbilitySuppressedByOpponentLine(st, false, d)) {
 			return;
 		}
-		d = applyNinjaDeployRewrite(st, defs, d, false);
 		deployedMain = st.getCpuBattle() != null ? st.getCpuBattle().getMain() : null;
 		if (deployedMain != null && deployedMain.isBlankEffects()) {
 			return;
@@ -3379,8 +4690,24 @@ public class CpuBattleEngine {
 			return;
 		}
 		String code = d != null ? d.getAbilityDeployCode() : null;
-		if (code == null) {
-			return;
+		if (code == null || code.isBlank()) {
+			if (d != null && isCrystakulCardDefinition(d)) {
+				code = "CRYSTAKUL";
+			} else if (d != null && isBotBikeCardDefinition(d)) {
+				code = "BOT_BIKE";
+			} else if (d != null && isSpec1CardDefinition(d)) {
+				code = "SPEC1";
+			} else if (d != null && isHarpPlayerCardDefinition(d)) {
+				code = "HARP_PLAYER";
+			} else if (d != null && isGravePriestCardDefinition(d)) {
+				code = "GRAVE_PRIEST";
+			} else if (d != null && isBelieverCardDefinition(d)) {
+				code = "BELIEVER";
+			} else if (d != null && isHalfElfCardDefinition(d)) {
+				code = "HALF_ELF";
+			} else {
+				return;
+			}
 		}
 		switch (code) {
 			case "SAKUSHI" -> {
@@ -3407,8 +4734,10 @@ public class CpuBattleEngine {
 				}
 			}
 			case "KENTOSHI" -> {
-				// CPUが出した場合：人間は選んで捨てる、CPUは自動で捨てる
-				if (!st.getHumanHand().isEmpty()) {
+				// CPUが出した場合：人間は手札があれば選んで捨てる。CPUは手札があれば自動で1枚捨てる。
+				boolean hadHumanHand = !st.getHumanHand().isEmpty();
+				boolean hadCpuHand = !st.getCpuHand().isEmpty();
+				if (hadHumanHand) {
 					List<String> opts = new ArrayList<>();
 					for (BattleCard c : st.getHumanHand()) opts.add(c.getInstanceId());
 					st.setPendingChoice(new PendingChoice(
@@ -3420,8 +4749,16 @@ public class CpuBattleEngine {
 							opts
 					));
 				}
-				// CPU側は自動で1枚捨てる
-				discardRightmost(st.getCpuHand(), st.getCpuRest());
+				if (hadCpuHand) {
+					discardRightmost(st.getCpuHand(), st.getCpuRest());
+				}
+				if (hadHumanHand && hadCpuHand) {
+					st.addLog("剣闘士: お互い手札を1枚レストへ");
+				} else if (hadHumanHand) {
+					st.addLog("剣闘士: 自分の手札を1枚レストへ（相手は手札なし）");
+				} else if (hadCpuHand) {
+					st.addLog("剣闘士: 相手の手札を1枚レストへ（自分は手札なし）");
+				}
 			}
 			case "KARYUDO" -> {
 				if (!st.getHumanHand().isEmpty()) {
@@ -3432,18 +4769,20 @@ public class CpuBattleEngine {
 			}
 			case "KAENRYU" -> {
 				if (st.getHumanBattle() != null) {
-					moveZoneToRest(st.getHumanBattle(), st.getHumanRest());
+					moveZoneToRest(st.getHumanBattle(), st.getHumanRest(), st, st.getHumanHand(), defs);
 					st.setHumanBattle(null);
 				}
 			}
 			case "DAKU_DORAGON" -> {
 				st.setCpuStones(st.getCpuStones() + 2);
 				st.addLog("CPUダークドラゴン: ストーン+2");
-				if (st.getHumanBattle() != null
-						&& CardAttributes.hasAttribute(defs.get(st.getHumanBattle().getMain().getCardId()), "DRAGON")) {
-					moveZoneToRest(st.getHumanBattle(), st.getHumanRest());
-					st.setHumanBattle(null);
-					st.addLog("CPUダークドラゴン: 相手ドラゴンをレストへ");
+				if (st.getHumanBattle() != null && st.getHumanBattle().getMain() != null) {
+					BattleCard om = st.getHumanBattle().getMain();
+					if (CardAttributes.hasAttribute(defs.get(om.getCardId()), om, "DRAGON")) {
+						moveZoneToRest(st.getHumanBattle(), st.getHumanRest(), st, st.getHumanHand(), defs);
+						st.setHumanBattle(null);
+						st.addLog("CPUダークドラゴン: 相手ドラゴンをレストへ");
+					}
 				}
 			}
 			case "GURIFON" -> {
@@ -3479,12 +4818,69 @@ public class CpuBattleEngine {
 					st.setCpuNextElfOnlyBonus(st.getCpuNextElfOnlyBonus() + 3);
 				}
 			}
+			case "HARP_PLAYER" -> {
+				st.setCpuNextElfOnlyBonus(st.getCpuNextElfOnlyBonus() + HARP_NEXT_ELF_POWER_BONUS);
+				st.addLog("CPU森のハープ弾き: 次に配置するエルフはターン終了まで強さ+" + HARP_NEXT_ELF_POWER_BONUS);
+			}
+			case "GRAVE_PRIEST" -> {
+				List<BattleCard> gpEligible = new ArrayList<>();
+				for (BattleCard c : st.getCpuHand()) {
+					CardDefinition cd = defs.get(c.getCardId());
+					if (isGravePriestEligibleHandFighter(cd, c)) {
+						gpEligible.add(c);
+					}
+				}
+				if (gpEligible.isEmpty()) {
+					st.addLog("CPU墓守神父: 手札に対象のファイターがいない");
+				} else {
+					BattleCard pick = null;
+					int bestEc = -1;
+					for (BattleCard c : gpEligible) {
+						CardDefinition cd = defs.get(c.getCardId());
+						int ec = effectiveDeployCost(cd, c, defs, st.getCpuRest(), 0, st);
+						if (ec > bestEc) {
+							bestEc = ec;
+							pick = c;
+						}
+					}
+					if (pick != null) {
+						pick.setHandDeployCostModifier(pick.getHandDeployCostModifier() - GRAVE_PRIEST_HAND_COST_REDUCTION);
+						st.addLog("CPU墓守神父: 手札のファイターのコストを-" + GRAVE_PRIEST_HAND_COST_REDUCTION + "（バトル終了まで）");
+					}
+				}
+			}
+			case "BELIEVER" -> {
+				int dbCpu = moveAllDeathbounceFromRestToHand(st.getCpuRest(), st.getCpuHand());
+				if (dbCpu > 0) {
+					st.addLog("CPU信奉者: 霊園教会 デスバウンスを" + dbCpu + "枚手札へ");
+				} else {
+					st.addLog("CPU信奉者: レストに「霊園教会 デスバウンス」がない");
+				}
+			}
+			case "HALF_ELF" -> {
+				ZoneFighter hzHeCpu = st.getCpuBattle();
+				if (hzHeCpu != null) {
+					int hebCpu = halfElfLineagePowerBonusFromRest(st.getCpuRest(), defs);
+					if (hebCpu > 0) {
+						hzHeCpu.setTemporaryPowerBonus(hzHeCpu.getTemporaryPowerBonus() + hebCpu);
+						st.addLog("CPUハーフエルフ: 強さ+" + hebCpu);
+					}
+				}
+			}
 			case "SHOKIN" -> {
 				st.setCpuNextDeployCostBonusTimes(st.getCpuNextDeployCostBonusTimes() + 1);
 			}
 			case "MECHANIC" -> {
 				st.setCpuNextMechanicStacks(st.getCpuNextMechanicStacks() + 1);
 				st.addLog("CPUメカニック: 次の配置はコスト+1、強さ+3");
+			}
+			case "BOT_BIKE" -> {
+				ZoneFighter zb = st.getCpuBattle();
+				if (zb != null && zb.getMain() != null && zb.getMain().getCardId() == BOT_BIKE_ID
+						&& zoneCostIncludesMechanicFighter(zb, defs)) {
+					zb.setBotBikeMechanicPowerBonus(2);
+					st.addLog("CPUボットバイク: 次の相手ターン終了まで強さ+2");
+				}
 			}
 			case "KINOKO" -> {
 				for (int i = st.getCpuRest().size() - 1; i >= 0; i--) {
@@ -3595,23 +4991,20 @@ public class CpuBattleEngine {
 			}
 			case "NOXSKUL" -> {
 				st.setCpuStones(st.getCpuStones() + 1);
-				st.addLog("CPUノクスクル: ストーン+1");
+				st.addLog("CPUストーニア: ストーン+1");
 			}
 			case "CRYSTAKUL" -> {
-				if (crystakulCanAffordOptionalStonePay(st, false, defs, deployedMain)
-						&& crystakulCarbuncleSupportPresent(st, false, defs)) {
-					st.setCpuStones(st.getCpuStones() - 2);
-					st.setCpuStones(st.getCpuStones() + 5);
-					st.addLog("CPUクリスタクル: ストーン2使用、5獲得");
+				if (st.getCpuStones() >= CRYSTAKUL_OPTIONAL_STONE_COST) {
+					st.setCpuStones(st.getCpuStones() - CRYSTAKUL_OPTIONAL_STONE_COST);
+					st.setCpuNextCrystakulDeployBonus(st.getCpuNextCrystakulDeployBonus() + CRYSTAKUL_NEXT_DEPLOY_POWER);
+					st.addLog("CPUクリスタクル: 次の配置+3（次の相手ターン終了まで）");
 				}
 			}
 			case "MIRAJUKUL" -> applyMirageMirrorDeploy(st, false, defs, rnd);
 			case "STONIA" -> {
 				if (st.getCpuBattle() != null) {
 					int s = st.getCpuStones();
-					ZoneFighter z = st.getCpuBattle();
-					z.setTemporaryPowerBonus(z.getTemporaryPowerBonus() + s);
-					st.addLog("CPUストーニア: 所持ストーン" + s + "のぶん強さ+" + s);
+					st.addLog("CPUノクスクル: 所持ストーン" + s + "のぶん強さ+" + s);
 				}
 			}
 			case "LUMINANK" -> {
@@ -3632,6 +5025,45 @@ public class CpuBattleEngine {
 						}
 					}
 					st.addLog("CPUフェザリア: ストーン2使用、フェザリア以外のカーバンクル" + picked + "枚回収");
+				}
+			}
+			case "MACHINE_GUNNER" -> machineGunDiscardOpponentStones(st, d, defs, false, true);
+			case "SPEC777" -> {
+				ZoneFighter z777c = st.getCpuBattle();
+				if (z777c != null && z777c.getMain() != null && z777c.getMain().getCardId() == SPEC_777_ID) {
+					Random r = rnd != null ? rnd : new Random();
+					int roll = 2 + r.nextInt(6);
+					z777c.setSpec777RolledPower(roll);
+					st.addLog("CPU SPEC-777: 出目=" + roll);
+				}
+			}
+			case "SPEC666" -> {
+				st.setSpec666NextHumanUndead(true);
+				st.setSpec666NextCpuUndead(true);
+				st.addLog("CPU SPEC-666: 次に双方が配置するファイターはアンデッド扱い");
+			}
+			case "SPEC123" -> {
+				ZoneFighter z123c = st.getCpuBattle();
+				if (z123c != null && z123c.getMain() != null && z123c.getMain().getCardId() == SPEC_123_ID) {
+					Random r = rnd != null ? rnd : new Random();
+					int gain = 1 + r.nextInt(3);
+					st.setCpuStones(st.getCpuStones() + gain);
+					st.addLog("CPU SPEC-123: ストーン+" + gain);
+				}
+			}
+			case "SPEC0", "SPEC1" -> {
+				ZoneFighter z0c = st.getCpuBattle();
+				if (z0c == null || z0c.getMain() == null || z0c.getMain().getCardId() != SPEC_1_ID) {
+					break;
+				}
+				for (int i = st.getCpuRest().size() - 1; i >= 0; i--) {
+					BattleCard c = st.getCpuRest().get(i);
+					if (isSpec1EligibleRestFighter(c, z0c, defs)) {
+						st.getCpuRest().remove(i);
+						st.getCpuDeck().add(0, c);
+						st.addLog("CPU SPEC-1: レストのファイターをデッキの上に置いた");
+						break;
+					}
 				}
 			}
 			default -> {
@@ -3672,18 +5104,118 @@ public class CpuBattleEngine {
 	private int countAttributeInRest(List<BattleCard> rest, Map<Short, CardDefinition> defs, String attr) {
 		int n = 0;
 		for (BattleCard c : rest) {
-			if (CardAttributes.hasAttribute(defs.get(c.getCardId()), attr)) n++;
+			if (CardAttributes.hasAttribute(defs.get(c.getCardId()), c, attr)) n++;
 		}
 		return n;
 	}
 
-	/** ネムリィ: 自分のレストのカーバンクル1枚につきコスト-1（最低0）。炭鉱夫で無効化されたカードは割引なし。研究者アストリア: 手札補正。 */
+	/** レストのカードが「種族：マシン」のファイター（〈フィールド〉除外）か */
+	private static boolean isMachineFighterInRest(BattleCard c, Map<Short, CardDefinition> defs) {
+		if (c == null || defs == null) {
+			return false;
+		}
+		CardDefinition d = defs.get(c.getCardId());
+		if (!isNonFieldFighterCardDef(d)) {
+			return false;
+		}
+		return CardAttributes.hasAttribute(d, c, "MACHINE");
+	}
+
+	/**
+	 * 艦隊 HO-IVI-I3: レストのマシン・ファイターをすべてデッキに加え、デッキ全体をシャッフル。移動枚数を返す。
+	 */
+	private static int sweepMachineFightersFromRestToDeckAndShuffle(List<BattleCard> rest, List<BattleCard> deck,
+			Map<Short, CardDefinition> defs, Random rnd) {
+		if (rest == null || deck == null || defs == null) {
+			return 0;
+		}
+		Random r = rnd != null ? rnd : new Random();
+		int n = 0;
+		for (int i = rest.size() - 1; i >= 0; i--) {
+			BattleCard c = rest.get(i);
+			if (isMachineFighterInRest(c, defs)) {
+				rest.remove(i);
+				deck.add(c);
+				n++;
+			}
+		}
+		if (n > 0) {
+			Collections.shuffle(deck, r);
+		}
+		return n;
+	}
+
+	/**
+	 * 〈フィールド〉艦隊 HO-IVI-I3 配置直後: 両プレイヤーのレストからマシン・ファイターを各デッキへ（持続効果なし）。
+	 */
+	private void applyFleetHoIviFieldDeployBothSides(CpuBattleState st, Map<Short, CardDefinition> defs, Random rnd) {
+		if (st == null || defs == null) {
+			return;
+		}
+		int nh = sweepMachineFightersFromRestToDeckAndShuffle(st.getHumanRest(), st.getHumanDeck(), defs, rnd);
+		int nc = sweepMachineFightersFromRestToDeckAndShuffle(st.getCpuRest(), st.getCpuDeck(), defs, rnd);
+		if (nh + nc > 0) {
+			st.addLog("艦隊 HO-IVI-I3: マシン・ファイターをデッキへ（あなたのレスト" + nh + "枚・" + opponentActorLogLabel(st) + "のレスト"
+					+ nc + "枚）");
+		} else {
+			st.addLog("艦隊 HO-IVI-I3: レストに該当するマシン・ファイターはない");
+		}
+	}
+
+	/**
+	 * ハーフエルフ〈配置〉: レストに「種族：人間」が1枚以上あれば+1、「種族：エルフ」が1枚以上あれば+1（複合種族は両方満たし得る）。
+	 */
+	private static int halfElfLineagePowerBonusFromRest(List<BattleCard> rest, Map<Short, CardDefinition> defs) {
+		if (rest == null || defs == null) {
+			return 0;
+		}
+		boolean seenHuman = false;
+		boolean seenElf = false;
+		for (BattleCard c : rest) {
+			if (c == null) {
+				continue;
+			}
+			CardDefinition d = defs.get(c.getCardId());
+			if (!seenHuman && CardAttributes.hasAttribute(d, c, "HUMAN")) {
+				seenHuman = true;
+			}
+			if (!seenElf && CardAttributes.hasAttribute(d, c, "ELF")) {
+				seenElf = true;
+			}
+			if (seenHuman && seenElf) {
+				break;
+			}
+		}
+		return (seenHuman ? 1 : 0) + (seenElf ? 1 : 0);
+	}
+
+	/** 武器庫 VV-E4-PON: 〈フィールド〉が場にある間、種族：マシンのファイター（〈フィールド〉カード以外）の基礎コストは 1。 */
+	private static boolean weaponDepotFieldActive(CpuBattleState st) {
+		if (st == null || st.getActiveField() == null) {
+			return false;
+		}
+		Short fid = st.getActiveField().getCardId();
+		return fid != null && fid.shortValue() == WEAPON_DEPOT_FIELD_ID;
+	}
+
+	/** 〈フィールド〉以外のマシン・ファイター（種族は {@link CardAttributes#hasAttribute(CardDefinition, BattleCard, String)} と同じ） */
+	private static boolean isMachineFighterForWeaponDepotCost(CardDefinition d, BattleCard c) {
+		if (d == null || !isNonFieldFighterCardDef(d)) {
+			return false;
+		}
+		return CardAttributes.hasAttribute(d, c, "MACHINE");
+	}
+
+	/** ネムリィ: レストのカーバンクル割引。炭鉱夫で無効化は割引なし。研究者アストリア・墓守神父: {@link BattleCard#getHandDeployCostModifier}。 */
 	private int effectiveDeployCost(CardDefinition d, BattleCard deployedMain, Map<Short, CardDefinition> defs,
-			List<BattleCard> ownersRestForDiscount, int mechanicExtraCost) {
+			List<BattleCard> ownersRestForDiscount, int mechanicExtraCost, CpuBattleState st) {
 		if (d == null) {
 			return 0;
 		}
 		int base = d.getCost() != null ? d.getCost() : 0;
+		if (st != null && weaponDepotFieldActive(st) && isMachineFighterForWeaponDepotCost(d, deployedMain)) {
+			base = 1;
+		}
 		int handAdj = deployedMain != null ? deployedMain.getHandDeployCostModifier() : 0;
 		if (deployedMain != null && deployedMain.isBlankEffects()) {
 			return Math.max(0, base + mechanicExtraCost + handAdj);
@@ -3698,8 +5230,67 @@ public class CpuBattleEngine {
 		return Math.max(0, core + mechanicExtraCost + handAdj);
 	}
 
+	/**
+	 * マシンガンナー用: 自分のレストにいるファイターで、{@link #effectiveDeployCost}（メカニックの次回+コストは 0）が 1 になる枚数。
+	 * 「コストが1」はネムリィ割引・研究者アストリアの手札補正・炭鉱夫無効など、配置時と同じ計算に合わせる。
+	 */
+	private int countRestFightersWithEffectiveCostOne(ZoneFighter ownBattle, List<BattleCard> rest,
+			Map<Short, CardDefinition> defs, CpuBattleState st) {
+		if (rest == null || defs == null) {
+			return 0;
+		}
+		int n = 0;
+		for (BattleCard c : rest) {
+			if (c == null || isTuckedUnderOwnFighter(ownBattle, c)) {
+				continue;
+			}
+			CardDefinition cd = defs.get(c.getCardId());
+			if (!isNonFieldFighterCardDef(cd)) {
+				continue;
+			}
+			if (effectiveDeployCost(cd, c, defs, rest, 0, st) == 1) {
+				n++;
+			}
+		}
+		return n;
+	}
+
+	/**
+	 * マシンガンナー: 味方レストの該当ファイター1枚につき相手がストーン1つ捨てる（相手が持つ分のみ）。
+	 */
+	private void machineGunDiscardOpponentStones(CpuBattleState st, CardDefinition d, Map<Short, CardDefinition> defs,
+			boolean deployerUsesHumanRest, boolean cpuAiDeploy) {
+		int eligible = countRestFightersWithEffectiveCostOne(
+				deployerUsesHumanRest ? st.getHumanBattle() : st.getCpuBattle(),
+				deployerUsesHumanRest ? st.getHumanRest() : st.getCpuRest(),
+				defs,
+				st);
+		if (eligible <= 0) {
+			return;
+		}
+		int oppBefore = deployerUsesHumanRest ? st.getCpuStones() : st.getHumanStones();
+		int lose = Math.min(eligible, Math.max(0, oppBefore));
+		if (lose <= 0) {
+			return;
+		}
+		if (deployerUsesHumanRest) {
+			st.setCpuStones(oppBefore - lose);
+		} else {
+			st.setHumanStones(oppBefore - lose);
+		}
+		String name = d != null && d.getName() != null ? d.getName() : "マシンガンナー";
+		if (cpuAiDeploy) {
+			st.addLog("CPU" + name + ": あなたがストーンを" + lose + "つ捨てた");
+		} else if (deployerUsesHumanRest) {
+			st.addLog(name + ": " + opponentActorLogLabel(st) + "がストーンを" + lose + "つ捨てた");
+		} else {
+			st.addLog(name + ": 相手がストーンを" + lose + "つ捨てた");
+		}
+	}
+
 	/** 〈宝石の地〉: 場にいる間、カーバンクル・ファイターは強さ+2（両プレイヤー・竜王の〈常時〉無効化後も適用） */
-	private int fieldGloriaCarbunclePowerBonus(CpuBattleState st, CardDefinition fighterDef, Map<Short, CardDefinition> defs) {
+	private int fieldGloriaCarbunclePowerBonus(CpuBattleState st, CardDefinition fighterDef, BattleCard mainCard,
+			Map<Short, CardDefinition> defs) {
 		if (st == null || fighterDef == null || defs == null) {
 			return 0;
 		}
@@ -3707,7 +5298,7 @@ public class CpuBattleEngine {
 		if (field == null || field.getCardId() != FIELD_GLORIA_ID) {
 			return 0;
 		}
-		if (!CardAttributes.hasAttribute(fighterDef, "CARBUNCLE")) {
+		if (!CardAttributes.hasAttribute(fighterDef, mainCard, "CARBUNCLE")) {
 			return 0;
 		}
 		return 2;
@@ -3716,18 +5307,23 @@ public class CpuBattleEngine {
 	/**
 	 * 〈探鉱の洞窟〉: カーバンクル・ファイターを配置したプレイヤーはストーン+1（両者・配置確定時）。
 	 */
-	private void applyFieldNebulaWhenCarbuncleFighterDeployed(CpuBattleState st, CardDefinition mainDef, boolean deployerIsHuman) {
+	private void applyFieldNebulaWhenCarbuncleFighterDeployed(CpuBattleState st, CardDefinition mainDef,
+			BattleCard deployedMain, boolean deployerIsHuman) {
 		if (st == null || mainDef == null) {
 			return;
 		}
 		if (isFieldCard(mainDef)) {
 			return;
 		}
+		ZoneFighter grantZone = deployerIsHuman ? st.getHumanBattle() : st.getCpuBattle();
+		if (grantZone != null && grantZone.isFieldNebulaStoneGrantedForThisDeploy()) {
+			return;
+		}
 		BattleCard field = st.getActiveField();
 		if (field == null || field.getCardId() != FIELD_NEBULA_ID) {
 			return;
 		}
-		if (!CardAttributes.hasAttribute(mainDef, "CARBUNCLE")) {
+		if (!CardAttributes.hasAttribute(mainDef, deployedMain, "CARBUNCLE")) {
 			return;
 		}
 		if (deployerIsHuman) {
@@ -3835,7 +5431,7 @@ public class CpuBattleEngine {
 						if (mainDef == null) continue;
 						List<BattleCard> discountRest = forHuman ? st.getHumanRest() : st.getCpuRest();
 						int mechStacks = forHuman ? sim.getHumanNextMechanicStacks() : sim.getCpuNextMechanicStacks();
-						int cost = effectiveDeployCost(mainDef, main, defs, discountRest, mechStacks);
+						int cost = effectiveDeployCost(mainDef, main, defs, discountRest, mechStacks, st);
 
 						for (int payStone = 0; payStone <= Math.min(cost, simStones); payStone++) {
 							int needCards = cost - payStone;
@@ -3871,16 +5467,19 @@ public class CpuBattleEngine {
 
 								int deployBonus = (luRest * 2) + (luSt * 2);
 								deployBonus += 3 * mechStacks;
+								deployBonus += forHuman ? sim2.getHumanNextCrystakulDeployBonus() : sim2.getCpuNextCrystakulDeployBonus();
 								if (forHuman) sim2.setHumanNextMechanicStacks(0);
 								else sim2.setCpuNextMechanicStacks(0);
 								ZoneFighter z = new ZoneFighter();
 								z.setMain(pickedMain);
 								z.setCostUnder(paid);
 								z.setCostPayCardCount(needCards);
-								z.setTemporaryPowerBonus(deployBonus);
-								retireOwnBattleZoneBeforeNewDeploy(sim2, forHuman, false);
+								applyCrystakulBonusesToDeployedZone(sim2, z, deployBonus, forHuman);
+								retireOwnBattleZoneBeforeNewDeploy(sim2, forHuman, false, defs);
 								if (forHuman) sim2.setHumanBattle(z);
 								else sim2.setCpuBattle(z);
+
+								applyFieldNebulaWhenCarbuncleFighterDeployed(sim2, mainDef, pickedMain, forHuman);
 
 								// 配置能力反映
 								if (forHuman) applyDeployHuman(sim2, mainDef, defs, pickedMain);

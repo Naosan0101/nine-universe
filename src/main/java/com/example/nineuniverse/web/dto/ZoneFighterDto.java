@@ -6,7 +6,9 @@ public record ZoneFighterDto(
 		BattleCardDto main,
 		List<BattleCardDto> costUnder,
 		int temporaryPowerBonus,
-		List<BattlePowerModifierDto> powerModifiers
+		List<BattlePowerModifierDto> powerModifiers,
+		/** SPEC-777 の出目（2～7）。該当でなければ 0 */
+		int spec777RolledPower
 ) {
 }
 

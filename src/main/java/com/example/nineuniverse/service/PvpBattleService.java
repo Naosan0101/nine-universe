@@ -58,6 +58,8 @@ public class PvpBattleService {
 			List<Short> hostCards = deckService.cardIdsForDeck(m.getHostDeckId());
 			List<Short> guestCards = deckService.cardIdsForDeck(guestDeckId);
 			CpuBattleState st = engine.newPvpBattle(hostCards, guestCards, rnd, defs);
+			st.setHumanSlotDeckId(m.getHostDeckId());
+			st.setCpuSlotDeckId(guestDeckId);
 			st.setPhase(st.isHumansTurn() ? BattlePhase.HUMAN_INPUT : BattlePhase.CPU_THINKING);
 			if (st.getTurnStartedAtMs() <= 0) {
 				st.setTurnStartedAtMs(System.currentTimeMillis());
@@ -253,10 +255,27 @@ public class PvpBattleService {
 		if (!raw.isPvp()) {
 			return base;
 		}
-		if (host) {
-			return withPhaseForHost(base, raw);
-		}
-		return withPhaseForGuest(swapPerspective(base, raw), raw);
+		CpuBattleStateDto adapted = host
+				? withPhaseForHost(base, raw)
+				: withPhaseForGuest(swapPerspective(base, raw), raw);
+		Long myDeck = host ? raw.getHumanSlotDeckId() : raw.getCpuSlotDeckId();
+		return withMyBattleDeckId(adapted, myDeck);
+	}
+
+	private static CpuBattleStateDto withMyBattleDeckId(CpuBattleStateDto b, Long myBattleDeckId) {
+		return new CpuBattleStateDto(
+				b.pvpMatch(), b.cpuLevel(), b.humanGoesFirst(), b.humansTurn(), b.phase(),
+				b.turnStartedAtMs(), b.activeTimeLimitSec(), b.activePenaltyStage(),
+				b.humanStones(), b.cpuStones(), b.humanDeck(), b.humanHand(), b.humanRest(), b.humanBattle(),
+				b.cpuDeck(), b.cpuHand(), b.cpuRest(), b.cpuBattle(), b.activeField(),
+				b.humanBattlePower(), b.cpuBattlePower(),
+				b.humanNextDeployBonus(), b.humanNextElfOnlyBonus(), b.humanNextDeployCostBonusTimes(),
+				b.humanNextMechanicStacks(),
+				b.lastMessage(), b.gameOver(), b.humanWon(), b.noLegalDeploy(),
+				b.pendingEffect(), b.pendingChoice(), b.eventLog(), b.defs(),
+				myBattleDeckId,
+				b.spec666NextHumanUndead(),
+				b.spec666NextCpuUndead());
 	}
 
 	private CpuBattleStateDto withPhaseForHost(CpuBattleStateDto base, CpuBattleState raw) {
@@ -359,7 +378,10 @@ public class PvpBattleService {
 				npe,
 				npc,
 				b.eventLog(),
-				b.defs()
+				b.defs(),
+				b.myBattleDeckId(),
+				raw.isSpec666NextCpuUndead(),
+				raw.isSpec666NextHumanUndead()
 		);
 	}
 
@@ -373,7 +395,8 @@ public class PvpBattleService {
 				b.humanNextDeployBonus(), b.humanNextElfOnlyBonus(), b.humanNextDeployCostBonusTimes(),
 				b.humanNextMechanicStacks(),
 				b.lastMessage(), b.gameOver(), b.humanWon(), b.noLegalDeploy(),
-				b.pendingEffect(), b.pendingChoice(), b.eventLog(), b.defs());
+				b.pendingEffect(), b.pendingChoice(), b.eventLog(), b.defs(), b.myBattleDeckId(),
+				b.spec666NextHumanUndead(), b.spec666NextCpuUndead());
 	}
 
 	private CpuBattleStateDto replacePendingViewer(CpuBattleStateDto b, PendingChoice rawPc, boolean host) {
@@ -396,6 +419,7 @@ public class PvpBattleService {
 				b.humanNextDeployBonus(), b.humanNextElfOnlyBonus(), b.humanNextDeployCostBonusTimes(),
 				b.humanNextMechanicStacks(),
 				b.lastMessage(), b.gameOver(), b.humanWon(), b.noLegalDeploy(),
-				b.pendingEffect(), npc, b.eventLog(), b.defs());
+				b.pendingEffect(), npc, b.eventLog(), b.defs(), b.myBattleDeckId(),
+				b.spec666NextHumanUndead(), b.spec666NextCpuUndead());
 	}
 }

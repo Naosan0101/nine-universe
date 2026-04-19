@@ -3207,6 +3207,11 @@ a:hover {
 .page--battle .battle-control__value { font-size: 1.1rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .page--battle .battle-control__btns { display: flex; gap: 0.35rem; justify-content: flex-end; }
 
+/* 選択ダイアログは .battle-unwinnable-pop(110) より手前（隠れないように） */
+.battle-pay-modal#battle-pending-choice-modal {
+	z-index: 130;
+}
+
 .battle-pay-modal {
 	position: fixed;
 	inset: 0;
@@ -3624,6 +3629,11 @@ a:hover {
 	text-shadow:
 		0 0 16px rgba(255, 110, 110, 0.28),
 		0 0 56px rgba(255, 80, 80, 0.2);
+}
+.battle-surrender-confirm .battle-result-modal__title {
+	text-transform: none;
+	letter-spacing: 0.04em;
+	font-size: clamp(1.35rem, 3.2vw, 1.85rem);
 }
 
 /* showy victory burst (CPU cannot deploy) */

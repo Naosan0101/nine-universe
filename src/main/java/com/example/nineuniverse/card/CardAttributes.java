@@ -1,5 +1,6 @@
 package com.example.nineuniverse.card;
 
+import com.example.nineuniverse.battle.BattleCard;
 import com.example.nineuniverse.domain.CardDefinition;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -50,5 +51,36 @@ public final class CardAttributes {
 			return true;
 		}
 		return segments(attribute).contains(tribe);
+	}
+
+	/**
+	 * バトル中インスタンスの種族上書き（SPEC-666 等）があればそれを優先して判定する。
+	 */
+	public static boolean hasAttribute(CardDefinition def, BattleCard battleCard, String tribe) {
+		if (def == null) {
+			return false;
+		}
+		if (battleCard != null && battleCard.getBattleTribeOverride() != null
+				&& !battleCard.getBattleTribeOverride().isBlank()) {
+			return hasAttribute(battleCard.getBattleTribeOverride(), tribe);
+		}
+		return hasAttribute(def, tribe);
+	}
+
+	/**
+	 * 手札から配置する直前のボーナス計算用: SPEC-666 により次のそのスロットの配置がアンデッド扱いになる場合、
+	 * まだ {@link BattleCard} に上書きが無い段階でも種族はアンデッドのみとして判定する。
+	 */
+	public static boolean hasAttributeForDeployPreview(CardDefinition def, BattleCard battleCard,
+			boolean spec666NextSlotPending, String tribe) {
+		if (def == null || tribe == null) {
+			return false;
+		}
+		if (spec666NextSlotPending
+				&& (battleCard == null || battleCard.getBattleTribeOverride() == null
+						|| battleCard.getBattleTribeOverride().isBlank())) {
+			return hasAttribute("UNDEAD", tribe);
+		}
+		return hasAttribute(def, battleCard, tribe);
 	}
 }

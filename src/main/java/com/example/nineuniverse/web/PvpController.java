@@ -121,6 +121,12 @@ public class PvpController {
 		model.addAttribute("cardBack", GameConstants.cardBackUrl());
 		model.addAttribute("cardPlateUrl", GameConstants.CARD_LAYER_BASE);
 		model.addAttribute("cardDataUrl", GameConstants.CARD_LAYER_DATA);
+		var st = m.getState();
+		Long myBattleDeckId = null;
+		if (st != null) {
+			myBattleDeckId = m.getHostUserId() == uid ? st.getHumanSlotDeckId() : st.getCpuSlotDeckId();
+		}
+		model.addAttribute("myBattleDeckId", myBattleDeckId);
 		return "pvp-play";
 	}
 
