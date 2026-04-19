@@ -17,7 +17,9 @@ public class LibraryCardView {
 	private boolean owned;
 	private short cost;
 	private short basePower;
-	/** ツールチップ「効果」用：・名前/コスト/強さ/省略、配置→〈配置〉・常時→〈常時〉 */
+	/** フィールドカード（強さ表示なし） */
+	private boolean fieldCard;
+	/** ツールチップ「効果」用：・名前/コスト/強さ/省略、フィールド→〈フィールド〉・配置→〈配置〉・常時→〈常時〉 */
 	private String libraryAbilityText;
 	/** モーダル用 data：公式1行そのまま */
 	private String canonicalAbilityLine;

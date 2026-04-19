@@ -4,6 +4,7 @@ import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.repository.UserAnnouncementClaimMapper;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.Set;
@@ -181,6 +182,113 @@ public class AnnouncementRewardService {
 		NOT_YET_STARTED,
 		EXPIRED
 	}
+
+	/**
+	 * 個別の「お知らせ」受け取りと同条件で、ジェム配布のあるお知らせをまとめて受け取る。
+	 * 対象外のお知らせはスキップし、SUCCESS だった件数と合計ジェムのみを返す。
+	 */
+	@Transactional
+	public BulkGemClaimResult claimAllEligibleAnnouncementGems(
+			long userId, LocalDate today, ZoneId zone, LocalDateTime userCreatedAt) {
+		int totalGems = 0;
+		int claimed = 0;
+
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_PERF_LIGHT_START)) {
+			if (claimPerfLightBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_PERF_LIGHT_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_TIME_PACK_START)) {
+			if (claimTimePackAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_TIME_PACK_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_BALANCE_UI_MISSION_START)) {
+			if (claimBalanceUiMissionBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_BALANCE_UI_MISSION_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_PACK_RATES_START)) {
+			if (claimPackRatesAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_PACK_RATES_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_PACK_RESULT_DRAW_AGAIN_START)) {
+			if (claimPackResultDrawAgainAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_PACK_RESULT_DRAW_AGAIN_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_MISSION_FIX_START)) {
+			if (claimMissionFixAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_MISSION_FIX_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_CARD_TEXT_FIX_START)) {
+			if (claimCardTextFixAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_CARD_TEXT_FIX_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_SAMURAI_FIX_START)) {
+			if (claimSamuraiFixAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_SAMURAI_FIX_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_START)) {
+			if (claimPackMissionBonusFixAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_30_USERS_START)) {
+			if (claim30UsersAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_30_USERS_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_CAPTAIN_TEXT_START)) {
+			if (claimCaptainTextAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_CAPTAIN_TEXT_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_KAENRYU_STATUS_START)) {
+			if (claimKaenryuStatusAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_KAENRYU_STATUS_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_START)) {
+			if (claimSamuraiStatusAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_GEMS;
+				claimed++;
+			}
+		}
+
+		return new BulkGemClaimResult(totalGems, claimed);
+	}
+
+	public record BulkGemClaimResult(int totalGems, int claimedCount) {}
 
 	@Transactional
 	public ClaimOutcome claimPerfLightBonus(long userId) {

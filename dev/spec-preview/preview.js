@@ -56,6 +56,10 @@
 				return "アンデッド";
 			case "DRAGON":
 				return "ドラゴン";
+			case "MACHINE":
+				return "マシン";
+			case "CARBUNCLE":
+				return "カーバンクル";
 			default:
 				return code;
 		}
@@ -86,6 +90,14 @@
 				return "ドラゴンバー.PNG";
 			case "ELF_UNDEAD":
 				return "エルフアンデッドバー.PNG";
+			case "HUMAN_UNDEAD":
+				return "人間アンデッドバー.PNG";
+			case "HUMAN_ELF":
+				return "人間エルフバー.PNG";
+			case "MACHINE":
+				return "マシンバー.PNG";
+			case "CARBUNCLE":
+				return "カーバンクルバー.PNG";
 			default:
 				return "人間バー.PNG";
 		}
@@ -120,7 +132,7 @@
 				basePower: parseInt(parts[3], 10) || 0,
 			};
 		}
-		var markers = ["/配置：", "/配置:", "/常時：", "/常時:"];
+		var markers = ["/フィールド：", "/フィールド:", "/配置：", "/配置:", "/常時：", "/常時:"];
 		var idx = -1;
 		var mlen = 0;
 		for (var i = 0; i < markers.length; i++) {
@@ -158,6 +170,8 @@
 			return [{ headline: "", body: "効果なし。" }];
 		}
 		var markers = [
+			{ m: "/フィールド：", h: "〈フィールド〉" },
+			{ m: "/フィールド:", h: "〈フィールド〉" },
 			{ m: "/配置：", h: "〈配置〉" },
 			{ m: "/配置:", h: "〈配置〉" },
 			{ m: "/常時：", h: "〈常時〉" },

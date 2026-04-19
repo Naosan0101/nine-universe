@@ -303,7 +303,18 @@
 		<div th:replace="~{fragments/announcement-samurai-status :: card}"></div>
 		<p th:if="${flashAnnouncementSuccess}" class="announcement-modal__flash ok" th:text="${flashAnnouncementSuccess}">受け取りました。</p>
 		<p th:if="${flashAnnouncementError}" class="announcement-modal__flash err" th:text="${flashAnnouncementError}">エラー</p>
-		<button type="button" class="btn btn--ghost announcement-modal__close" id="announcement-close">閉じる</button>
+		<div class="announcement-modal__footer">
+			<div class="announcement-modal__bulk" th:if="${announcementAnyGemClaimable}">
+				<form th:action="@{/home/announcements/claim-all-gems}" method="post" class="announcement-modal__bulk-form">
+					<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+					<button type="submit" class="btn btn--primary announcement-modal__bulk-btn">ジェムを一括受け取り</button>
+				</form>
+				<p class="announcement-modal__bulk-meta muted">
+					<strong class="announcement-modal__bulk-total" th:text="${announcementBulkClaimableGemTotal}">0</strong> ジェム
+				</p>
+			</div>
+			<button type="button" class="btn btn--ghost announcement-modal__close" id="announcement-close">閉じる</button>
+		</div>
 	</div>
 </div>
 

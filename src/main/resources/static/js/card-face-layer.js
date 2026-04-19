@@ -9,6 +9,42 @@
 		return Math.max(lo, Math.min(hi, n));
 	}
 
+	function resetCardFaceNameFitInline(el) {
+		if (!el) return;
+		try {
+			delete el.dataset.nameFitDone;
+			delete el.dataset.nameFitRetries;
+			el.style.fontSize = '';
+			el.style.textOverflow = '';
+			el.style.letterSpacing = '';
+			el.style.whiteSpace = '';
+			el.style.overflow = '';
+			el.style.display = '';
+		} catch (e) {
+			// noop
+		}
+	}
+
+	/**
+	 * fragments/card-face と同じく card-face--attr-{コード} を付与する（モーダル内の .card-face 用）。
+	 */
+	function syncCardFaceAttrClass(faceRoot, attributeCode) {
+		if (!faceRoot || !faceRoot.classList) return;
+		const toRemove = [];
+		faceRoot.classList.forEach(function (c) {
+			if (c.indexOf('card-face--attr-') === 0) {
+				toRemove.push(c);
+			}
+		});
+		toRemove.forEach(function (c) {
+			faceRoot.classList.remove(c);
+		});
+		const code = (attributeCode != null ? String(attributeCode) : '').trim();
+		if (code) {
+			faceRoot.classList.add('card-face--attr-' + code);
+		}
+	}
+
 	/**
 	 * カード名が長い場合、フォントサイズを落として1行に収める。
 	 * 省略（…）は使わず、必要なら字間も詰めて「全文表示」を優先する。
@@ -24,7 +60,22 @@
 
 		// 既に調整済みならスキップ
 		if (nameEl.dataset && nameEl.dataset.nameFitDone === 'true') return;
-		if (nameEl.dataset) nameEl.dataset.nameFitDone = 'true';
+
+		// レイアウト前だと clientWidth が 0 → 後で再試行（無限ループ防止）
+		if (nameEl.clientWidth <= 0) {
+			const retries = parseInt(nameEl.dataset.nameFitRetries || '0', 10);
+			if (retries < 12) {
+				if (nameEl.dataset) nameEl.dataset.nameFitRetries = String(retries + 1);
+				requestAnimationFrame(function () {
+					fitCardFaceNameToOneLine(faceRoot);
+				});
+			}
+			return;
+		}
+		if (nameEl.dataset) {
+			delete nameEl.dataset.nameFitRetries;
+			nameEl.dataset.nameFitDone = 'true';
+		}
 
 		const cs = window.getComputedStyle ? window.getComputedStyle(nameEl) : null;
 
@@ -65,7 +116,6 @@
 
 		// ここまで来たら、可能な限り縮めた状態で全文表示（省略はしない）
 		nameEl.style.textOverflow = 'clip';
-		}
 	}
 
 	function hideBrokenImg(img) {
@@ -152,7 +202,7 @@
 		const nl = raw.indexOf('\n');
 		const head = nl >= 0 ? raw.slice(0, nl) : raw;
 		const rest = nl >= 0 ? raw.slice(nl + 1) : '';
-		if (head === '〈配置〉' || head === '〈常時〉') {
+		if (head === '〈配置〉' || head === '〈常時〉' || head === '〈フィールド〉') {
 			const hp = document.createElement('p');
 			hp.className = 'card-face__ability-head';
 			hp.textContent = head;
@@ -238,6 +288,7 @@
 		const pow = Number(
 			card.basePower != null ? card.basePower : card.power != null ? card.power : 0
 		);
+		const isField = card.fieldCard === true || card.fieldCard === 'true';
 
 		const datum = document.createElement('div');
 		datum.className = 'card-face__layer card-face__datum';
@@ -246,9 +297,13 @@
 			(cost === 1 ? ' card-face__cost--digit-1' : '') +
 			(cost === 2 ? ' card-face__cost--digit-2' : '');
 		datum.appendChild(elSpan(costCls, String(cost)));
-		datum.appendChild(
-			elSpan('card-face__power' + (pow === 4 ? ' card-face__power--digit-4' : ''), String(pow))
-		);
+		let powCls = 'card-face__power' + (pow === 4 ? ' card-face__power--digit-4' : '');
+		let powText = String(pow);
+		if (isField) {
+			powCls = 'card-face__power card-face__power--hidden';
+			powText = '';
+		}
+		datum.appendChild(elSpan(powCls, powText));
 		const nameEl = elSpan('card-face__name', card.name || '');
 		datum.appendChild(nameEl);
 
@@ -331,6 +386,8 @@
 	global.wireLibraryCardFaceImages = wireLibraryCardFaceImages;
 	global.applyLibraryCardFaceSpark = applyLibraryCardFaceSpark;
 	global.fitCardFaceNameToOneLine = fitCardFaceNameToOneLine;
+	global.syncCardFaceAttrClass = syncCardFaceAttrClass;
+	global.resetCardFaceNameFitInline = resetCardFaceNameFitInline;
 
 	// サーバーレンダリングされたカードも対象（ライブラリ/パック結果など）
 	if (typeof document !== 'undefined') {
@@ -343,28 +400,66 @@
 				}
 			});
 		}
+		function resetAllCardFaceNamesForRemeasure() {
+			document.querySelectorAll('.card-face.card-face--layered .card-face__name').forEach(resetCardFaceNameFitInline);
+		}
+		function refitAllCardFaceNames() {
+			resetAllCardFaceNamesForRemeasure();
+			runFitAll();
+		}
+		function scheduleFitAll() {
+			runFitAll();
+			if (document.fonts && typeof document.fonts.ready !== 'undefined') {
+				document.fonts.ready.then(function () {
+					resetAllCardFaceNamesForRemeasure();
+					runFitAll();
+				});
+			}
+		}
 		if (document.readyState === 'loading') {
-			document.addEventListener('DOMContentLoaded', runFitAll);
+			document.addEventListener('DOMContentLoaded', scheduleFitAll);
 		} else {
-			setTimeout(runFitAll, 0);
+			setTimeout(scheduleFitAll, 0);
 		}
 		// リサイズでレイアウトが変わったときも再調整（軽量なので全件でOK）
 		window.addEventListener('resize', function () {
-			// data フラグを外して再計測できるようにする
-			document.querySelectorAll('.card-face__name[data-name-fit-done="true"]').forEach(function (el) {
-				try {
-					delete el.dataset.nameFitDone;
-					el.style.fontSize = '';
-					el.style.textOverflow = '';
-						el.style.letterSpacing = '';
-					el.style.whiteSpace = '';
-					el.style.overflow = '';
-					el.style.display = '';
-				} catch (e) {
-					// noop
-				}
-			});
+			resetAllCardFaceNamesForRemeasure();
 			runFitAll();
 		});
+		// フィルター等で display が切り替わったカードは初回レイアウト幅0のまま → 表示後に再フィット
+		if (typeof ResizeObserver !== 'undefined') {
+			let roRaf = 0;
+			const ro = new ResizeObserver(function (entries) {
+				let anyVisible = false;
+				for (let i = 0; i < entries.length; i++) {
+					if (entries[i].contentRect.width > 0) {
+						anyVisible = true;
+						break;
+					}
+				}
+				if (!anyVisible) return;
+				cancelAnimationFrame(roRaf);
+				roRaf = requestAnimationFrame(function () {
+					entries.forEach(function (entry) {
+						if (entry.contentRect.width <= 0) return;
+						const face = entry.target.querySelector
+							? entry.target.querySelector('.card-face.card-face--layered')
+							: null;
+						if (!face) return;
+						const nameEl = face.querySelector('.card-face__name');
+						if (nameEl) resetCardFaceNameFitInline(nameEl);
+						try {
+							fitCardFaceNameToOneLine(face);
+						} catch (e) {
+							// noop
+						}
+					});
+				});
+			});
+			document.querySelectorAll('.library-card').forEach(function (card) {
+				ro.observe(card);
+			});
+		}
+		global.refitAllCardFaceNames = refitAllCardFaceNames;
 	}
 })(typeof window !== 'undefined' ? window : globalThis);

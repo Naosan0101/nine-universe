@@ -53,7 +53,9 @@
 		_turnTimer: null,
 		_lastTurnNotifyKey: null,
 		_turnPopupTimer: null,
-		_effectPopupEl: null
+		_effectPopupEl: null,
+		_powerContributorPopupEl: null,
+		_powerContributorPopupHideTimer: null
 	};
 
 	const turnTimer = {
@@ -456,6 +458,14 @@
 		return null;
 	}
 
+	/** 炭鉱夫で手札に戻ったインスタンスはカード面・ツールチップを「効果なし。」に */
+	function defWithBlankEffectsIfNeeded(d, battleCard) {
+		if (!d) return d;
+		const blank = battleCard && (battleCard.blankEffects === true || battleCard.blankEffects === 'true');
+		if (!blank) return d;
+		return Object.assign({}, d, { abilityBlocks: [{ headline: '', body: '効果なし。' }] });
+	}
+
 	const battleTipEl = document.getElementById('battle-card-tooltip');
 	const battleTipName = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__name') : null;
 	const battleTipAttr = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__attr') : null;
@@ -603,6 +613,130 @@
 		}
 	}
 
+	function hideBattlePowerContributorPopup() {
+		if (ui._powerContributorPopupHideTimer != null) {
+			clearTimeout(ui._powerContributorPopupHideTimer);
+			ui._powerContributorPopupHideTimer = null;
+		}
+		if (ui._powerContributorPopupEl && ui._powerContributorPopupEl.parentNode) {
+			ui._powerContributorPopupEl.remove();
+		}
+		ui._powerContributorPopupEl = null;
+	}
+
+	/**
+	 * 強さの変動要因（カード名）ホバー用: 左にカード、右に詳細。メインモーダルより前面（z-index）。
+	 */
+	function buildBattlePowerContributorHoverPanel(srcDef) {
+		const root = el('div', 'battle-power-contributor-popup');
+		const grid = el('div', 'battle-power-contributor-popup__grid');
+		const left = el('div', 'battle-power-contributor-popup__left');
+		const right = el('div', 'battle-power-contributor-popup__right');
+		const face = buildBattleCardFaceShell(srcDef, 'zone');
+		face.classList.add('battle-power-contributor-popup__card');
+		left.appendChild(face);
+		right.appendChild(el('h4', 'battle-power-contributor-popup__name', srcDef.name || '—'));
+		const stats = el('dl', 'battle-power-contributor-popup__stats');
+		function statRow(label, value) {
+			const wrap = el('div', 'battle-power-contributor-popup__stat');
+			wrap.appendChild(el('dt', '', label));
+			const dd = el('dd', '', value);
+			if (label === '収録パック') dd.classList.add('battle-power-contributor-popup__pack');
+			wrap.appendChild(dd);
+			return wrap;
+		}
+		stats.appendChild(statRow('種族', formatBattleCardAttr(srcDef)));
+		stats.appendChild(statRow('コスト', String(srcDef.cost != null ? srcDef.cost : '—')));
+		stats.appendChild(
+			statRow('強さ', srcDef.fieldCard ? '—' : String(srcDef.basePower != null ? srcDef.basePower : '—'))
+		);
+		stats.appendChild(statRow('★', String(srcDef.rarity != null ? srcDef.rarity : '—')));
+		stats.appendChild(statRow('収録パック', packSourcesForInitial(srcDef.packInitial).join('\n')));
+		right.appendChild(stats);
+		right.appendChild(el('p', 'battle-power-contributor-popup__label', '効果'));
+		const ability = el('div', 'battle-power-contributor-popup__ability');
+		const raw = battleCardAbilityTooltipText(srcDef);
+		const lines = String(raw || '').split('\n');
+		const first = lines.length ? String(lines[0]).trim() : '';
+		ability.textContent =
+			first === '〈配置〉' || first === '〈常時〉' || first === '〈フィールド〉'
+				? lines.slice(1).join('\n')
+				: String(raw || '—');
+		right.appendChild(ability);
+		grid.appendChild(left);
+		grid.appendChild(right);
+		root.appendChild(grid);
+		root.setAttribute('role', 'tooltip');
+		return root;
+	}
+
+	function positionBattlePowerContributorPopup(anchorEl, popupEl) {
+		const margin = 8;
+		const gap = 10;
+		const vw = window.innerWidth;
+		const vh = window.innerHeight;
+		popupEl.style.position = 'fixed';
+		popupEl.style.zIndex = '80';
+		popupEl.style.left = '0';
+		popupEl.style.top = '0';
+		popupEl.style.visibility = 'hidden';
+		document.body.appendChild(popupEl);
+		const rect = anchorEl.getBoundingClientRect();
+		const pr = popupEl.getBoundingClientRect();
+		let left = rect.right + gap;
+		let top = rect.top;
+		if (left + pr.width > vw - margin) {
+			left = rect.left - pr.width - gap;
+		}
+		if (left < margin) {
+			left = margin;
+		}
+		if (left + pr.width > vw - margin) {
+			left = Math.max(margin, vw - margin - pr.width);
+		}
+		if (top + pr.height > vh - margin) {
+			top = Math.max(margin, vh - margin - pr.height);
+		}
+		if (top < margin) {
+			top = margin;
+		}
+		popupEl.style.left = left + 'px';
+		popupEl.style.top = top + 'px';
+		popupEl.style.visibility = '';
+	}
+
+	function wireBattlePowerContributorHover(anchorEl, srcDef) {
+		const delay = 160;
+		function scheduleHide() {
+			if (ui._powerContributorPopupHideTimer != null) {
+				clearTimeout(ui._powerContributorPopupHideTimer);
+			}
+			ui._powerContributorPopupHideTimer = setTimeout(function () {
+				ui._powerContributorPopupHideTimer = null;
+				hideBattlePowerContributorPopup();
+			}, delay);
+		}
+		function cancelHide() {
+			if (ui._powerContributorPopupHideTimer != null) {
+				clearTimeout(ui._powerContributorPopupHideTimer);
+				ui._powerContributorPopupHideTimer = null;
+			}
+		}
+		function show() {
+			cancelHide();
+			if (ui._powerContributorPopupEl) {
+				hideBattlePowerContributorPopup();
+			}
+			const panel = buildBattlePowerContributorHoverPanel(srcDef);
+			ui._powerContributorPopupEl = panel;
+			positionBattlePowerContributorPopup(anchorEl, panel);
+			panel.addEventListener('mouseenter', cancelHide);
+			panel.addEventListener('mouseleave', scheduleHide);
+		}
+		anchorEl.addEventListener('mouseenter', show);
+		anchorEl.addEventListener('mouseleave', scheduleHide);
+	}
+
 	function fillBattleTooltipAbility(el, raw) {
 		if (!el) return;
 		el.textContent = '';
@@ -614,7 +748,7 @@
 		const nl = text.indexOf('\n');
 		const head = nl >= 0 ? text.slice(0, nl) : text;
 		const rest = nl >= 0 ? text.slice(nl + 1) : '';
-		if (head === '〈配置〉' || head === '〈常時〉') {
+		if (head === '〈配置〉' || head === '〈常時〉' || head === '〈フィールド〉') {
 			const tag = document.createElement('span');
 			tag.className = 'deck-tooltip__ability-tag';
 			tag.textContent = head;
@@ -629,6 +763,17 @@
 			return;
 		}
 		el.textContent = text;
+	}
+
+	/** battleCardAbilityTooltipText の先頭行が〈配置〉〈常時〉〈フィールド〉ならそのラベル（ポップアップ見出し用） */
+	function battleAbilityHeadlineTagFromDef(def) {
+		const raw = battleCardAbilityTooltipText(def);
+		const lines = String(raw || '').split('\n');
+		const first = lines.length ? String(lines[0]).trim() : '';
+		if (first === '〈配置〉' || first === '〈常時〉' || first === '〈フィールド〉') {
+			return first;
+		}
+		return '〈配置〉';
 	}
 
 	/** ホバー中のカードの右側（はみ出すときは左）にツールチップを置く */
@@ -759,11 +904,265 @@
 		return Math.max(min, Math.min(max, n));
 	}
 
+	/** ボタンラベル等のテキストノードを直接クリックしたとき、closest 用に要素へ正規化する */
+	function eventTargetElement(ev) {
+		const n = ev && ev.target;
+		if (n instanceof Element) return n;
+		if (n && n.nodeType === 3 && n.parentElement) return n.parentElement;
+		return null;
+	}
+
+	function showFieldStonePayModal(st) {
+		const sel = selectedCard(st);
+		if (!sel) return;
+		const def = st.defs[sel.cardId];
+		const raw = def ? Number(def.cost || 0) : 0;
+		const adj = sel.handDeployCostModifier != null ? Number(sel.handDeployCostModifier) : 0;
+		const cost = Math.max(0, raw + adj);
+		ui.pay = { stones: cost, cardInstanceIds: [] };
+
+		const overlay = el('div', 'battle-pay-modal battle-pay-modal--field-only');
+		overlay.setAttribute('role', 'dialog');
+		overlay.setAttribute('aria-modal', 'true');
+
+		const panel = el('div', 'battle-pay-modal__panel');
+		const closeBtn = el('button', 'battle-pay-modal__close', '×');
+		closeBtn.type = 'button';
+		panel.appendChild(closeBtn);
+
+		const mainCol = el('div', 'battle-pay-modal__main');
+		mainCol.appendChild(el('h2', 'battle-pay-modal__title', 'フィールドのコスト'));
+		mainCol.appendChild(
+			el('p', 'muted', '《フィールド》は、左上のコスト（' + String(cost) + '）分をストーンだけで支払います。ターンは終わりません。')
+		);
+		const status = el('p', 'battle-pay-modal__status', '');
+		mainCol.appendChild(status);
+
+		const sectionStone = el('section', 'battle-pay-modal__section');
+		sectionStone.appendChild(el('h3', '', 'ストーンで支払う'));
+		const rowStone = el('div', 'battle-pay-modal__row');
+		const minus = el('button', 'btn btn--ghost', '−');
+		minus.type = 'button';
+		const plus = el('button', 'btn btn--ghost', '+');
+		plus.type = 'button';
+		const stoneVal = el('div', 'battle-pay-modal__value', String(cost));
+		rowStone.appendChild(minus);
+		rowStone.appendChild(stoneVal);
+		rowStone.appendChild(plus);
+		sectionStone.appendChild(rowStone);
+		mainCol.appendChild(sectionStone);
+
+		const actions = el('div', 'battle-pay-modal__actions');
+		const cancel = el('button', 'btn btn--ghost', 'キャンセル');
+		cancel.type = 'button';
+		const decideBtn = el('button', 'btn btn--primary', '決定');
+		decideBtn.type = 'button';
+		actions.appendChild(cancel);
+		actions.appendChild(decideBtn);
+		mainCol.appendChild(actions);
+
+		const deployCol = el('div', 'battle-pay-modal__deploy');
+		deployCol.appendChild(el('h3', 'battle-pay-modal__deploy-label', '配置するカード'));
+		if (def) {
+			const deployWrap = el('div', 'battle-pay-modal__deploy-face');
+			const deployShell = buildBattleCardFaceShell(def, 'modal');
+			deployWrap.appendChild(deployShell);
+			applyBattleCardTipData(deployWrap, def);
+			deployCol.appendChild(deployWrap);
+		}
+
+		const layout = el('div', 'battle-pay-modal__layout');
+		layout.appendChild(mainCol);
+		layout.appendChild(deployCol);
+		panel.appendChild(layout);
+		overlay.appendChild(panel);
+		document.body.appendChild(overlay);
+		wireBattleCardTooltips(overlay);
+
+		function stonesAfterLevelUp() {
+			return Math.max(0, st.humanStones - (ui.levelUpStones | 0));
+		}
+
+		function syncHandStonesPreview() {
+			const val = document.querySelector('.battle-you-hand-stones__value');
+			const wrap = document.querySelector('.battle-you-hand-stones');
+			if (!(val instanceof Element) || !(wrap instanceof Element)) return;
+			const n = Math.max(0, stonesAfterLevelUp() - (ui.pay.stones | 0));
+			val.textContent = String(n);
+			wrap.setAttribute('aria-label', 'ストーン所持数 ' + String(n));
+		}
+
+		function refresh() {
+			const cap = Math.min(cost, stonesAfterLevelUp());
+			if (ui.pay.stones > cap) ui.pay.stones = cap;
+			if (ui.pay.stones < 0) ui.pay.stones = 0;
+			stoneVal.textContent = String(ui.pay.stones);
+			const remain = cost - ui.pay.stones;
+			status.textContent =
+				remain > 0 ? 'ストーンを ' + String(cost) + ' 個支払ってください（残り ' + String(remain) + '）' : 'OK';
+			decideBtn.disabled = remain !== 0 || ui.pay.stones !== cost;
+			plus.disabled = ui.pay.stones >= cap;
+			minus.disabled = ui.pay.stones <= 0;
+			syncHandStonesPreview();
+		}
+
+		function teardown() {
+			hideBattleCardTooltip();
+			hideBattleDeckTooltip();
+			overlay.remove();
+		}
+
+		function stopEv(ev) {
+			ev.preventDefault();
+			ev.stopPropagation();
+		}
+
+		minus.addEventListener(
+			'click',
+			function (ev) {
+				stopEv(ev);
+				ui.pay.stones = Math.max(0, ui.pay.stones - 1);
+				refresh();
+			},
+			true
+		);
+		plus.addEventListener(
+			'click',
+			function (ev) {
+				stopEv(ev);
+				const cap = Math.min(cost, stonesAfterLevelUp());
+				if (ui.pay.stones >= cap) return;
+				ui.pay.stones = Math.min(cap, ui.pay.stones + 1);
+				refresh();
+			},
+			true
+		);
+
+		closeBtn.addEventListener(
+			'click',
+			function (ev) {
+				stopEv(ev);
+				ui.pay = { stones: 0, cardInstanceIds: [] };
+				teardown();
+				rerenderWithFreshState();
+			},
+			true
+		);
+		cancel.addEventListener(
+			'click',
+			function (ev) {
+				stopEv(ev);
+				ui.pay = { stones: 0, cardInstanceIds: [] };
+				teardown();
+				rerenderWithFreshState();
+			},
+			true
+		);
+		overlay.addEventListener(
+			'click',
+			function (e) {
+				if (e.target === overlay) {
+					ui.pay = { stones: 0, cardInstanceIds: [] };
+					teardown();
+					rerenderWithFreshState();
+				}
+			},
+			true
+		);
+
+		decideBtn.addEventListener(
+			'click',
+			function (ev) {
+				stopEv(ev);
+				if (decideBtn.disabled) return;
+				const prev = captureAnimRects();
+				const payload = {
+					levelUpRest: ui.levelUpRest,
+					levelUpDiscardInstanceIds: ui.levelUpDiscardIds,
+					levelUpStones: ui.levelUpStones,
+					deployInstanceId: String(sel.instanceId),
+					payCostStones: cost,
+					payCostCardInstanceIds: []
+				};
+				teardown();
+				ui.pay = { stones: 0, cardInstanceIds: [] };
+				commitAction(payload)
+					.then(function (next) {
+						ui.selectedInstanceId = null;
+						ui.levelUpRest = 0;
+						ui.levelUpStones = 0;
+						ui.levelUpDiscardIds = [];
+						ui.warnLevelUpRest = null;
+						ui.warnLevelUpStone = null;
+						ui._luPrevPowerInstanceId = null;
+						ui._luPrevPower = null;
+						ui.pay = { stones: 0, cardInstanceIds: [] };
+						render(next);
+						requestAnimationFrame(function () {
+							playFLIP(prev);
+						});
+					})
+					.catch(function (e) {
+						// eslint-disable-next-line no-console
+						console.error(e);
+						alert('操作に失敗しました（' + (e && e.message ? e.message : String(e)) + '）');
+						rerenderWithFreshState();
+					});
+			},
+			true
+		);
+
+		refresh();
+	}
+
 	function showPayModal(st) {
 		const sel = selectedCard(st);
 		if (!sel) return;
 		const def = st.defs[sel.cardId];
-		const cost = def ? Number(def.cost || 0) : 0;
+		const cost = def && !def.fieldCard ? effectiveFighterDeployCostFromState(def, st, sel) : def ? Number(def.cost || 0) : 0;
+		if (def && def.fieldCard) {
+			if (cost <= 0) {
+				return;
+			}
+			/* ストーンが足りるときは第2モーダルで止まらないよう、そのままコミット */
+			const available = Math.max(0, st.humanStones - (ui.levelUpStones | 0));
+			if (available >= cost) {
+				const prev = captureAnimRects();
+				const payload = {
+					levelUpRest: ui.levelUpRest,
+					levelUpDiscardInstanceIds: ui.levelUpDiscardIds,
+					levelUpStones: ui.levelUpStones,
+					deployInstanceId: String(sel.instanceId),
+					payCostStones: cost,
+					payCostCardInstanceIds: []
+				};
+				commitAction(payload)
+					.then(function (next) {
+						ui.selectedInstanceId = null;
+						ui.levelUpRest = 0;
+						ui.levelUpStones = 0;
+						ui.levelUpDiscardIds = [];
+						ui.warnLevelUpRest = null;
+						ui.warnLevelUpStone = null;
+						ui._luPrevPowerInstanceId = null;
+						ui._luPrevPower = null;
+						ui.pay = { stones: 0, cardInstanceIds: [] };
+						render(next);
+						requestAnimationFrame(function () {
+							playFLIP(prev);
+						});
+					})
+					.catch(function (e) {
+						// eslint-disable-next-line no-console
+						console.error(e);
+						alert('操作に失敗しました（' + (e && e.message ? e.message : String(e)) + '）');
+						rerenderWithFreshState();
+					});
+				return;
+			}
+			showFieldStonePayModal(st);
+			return;
+		}
 		if (cost <= 0) {
 			// コスト0はモーダル不要（commit側でそのまま進める）
 			return;
@@ -838,11 +1237,11 @@
 		const actions = el('div', 'battle-pay-modal__actions');
 		const cancel = el('button', 'btn btn--ghost', 'キャンセル');
 		cancel.type = 'button';
-		const ok = el('button', 'btn btn--primary', 'OK');
-		ok.type = 'button';
-		ok.disabled = true;
+		const payDecideBtn = el('button', 'btn btn--primary', '決定');
+		payDecideBtn.type = 'button';
+		payDecideBtn.disabled = true;
 		actions.appendChild(cancel);
-		actions.appendChild(ok);
+		actions.appendChild(payDecideBtn);
 		mainCol.appendChild(actions);
 
 		const deployCol = el('div', 'battle-pay-modal__deploy');
@@ -901,7 +1300,7 @@
 			ownedStonesP.textContent = '所持ストーン: ' + String(ownedRemain);
 			status.textContent =
 				remain > 0 ? '残り ' + String(remain) + ' 必要です' : 'OK（支払いが揃いました）';
-			ok.disabled = remain !== 0;
+			payDecideBtn.disabled = remain !== 0;
 			plus.disabled = ui.pay.stones >= maxS;
 			minus.disabled = ui.pay.stones <= 0;
 			syncHandStonesPreview();
@@ -913,24 +1312,39 @@
 			overlay.remove();
 		}
 
-		function clamp(n, min, max) {
+		function clampPay(n, min, max) {
 			return Math.max(min, Math.min(max, n));
 		}
 
-		minus.addEventListener('click', function () {
-			ui.pay.stones = Math.max(0, ui.pay.stones - 1);
-			refresh();
-		});
-		plus.addEventListener('click', function () {
-			const cap = maxStonesForPay();
-			if (ui.pay.stones >= cap) return;
-			ui.pay.stones = clamp(ui.pay.stones + 1, 0, cap);
-			refresh();
-		});
+		function stopPayEv(ev) {
+			ev.preventDefault();
+			ev.stopPropagation();
+		}
+
+		minus.addEventListener(
+			'click',
+			function (ev) {
+				stopPayEv(ev);
+				ui.pay.stones = Math.max(0, ui.pay.stones - 1);
+				refresh();
+			},
+			true
+		);
+		plus.addEventListener(
+			'click',
+			function (ev) {
+				stopPayEv(ev);
+				const cap = maxStonesForPay();
+				if (ui.pay.stones >= cap) return;
+				ui.pay.stones = clampPay(ui.pay.stones + 1, 0, cap);
+				refresh();
+			},
+			true
+		);
 
 		grid.addEventListener('click', function (e) {
-			const t = e.target;
-			if (!(t instanceof Element)) return;
+			const t = eventTargetElement(e);
+			if (!t) return;
 			const btn = t.closest('.battle-pay-modal__card');
 			if (!btn) return;
 			const inst = btn.getAttribute('data-instance-id');
@@ -957,46 +1371,71 @@
 			});
 		}
 
-		closeBtn.addEventListener('click', onClose);
-		cancel.addEventListener('click', onClose);
-		overlay.addEventListener('click', function (e) {
-			if (e.target === overlay) onClose();
-		});
+		closeBtn.addEventListener(
+			'click',
+			function (ev) {
+				stopPayEv(ev);
+				onClose();
+			},
+			true
+		);
+		cancel.addEventListener(
+			'click',
+			function (ev) {
+				stopPayEv(ev);
+				onClose();
+			},
+			true
+		);
+		overlay.addEventListener(
+			'click',
+			function (e) {
+				if (e.target === overlay) onClose();
+			},
+			true
+		);
 
-		ok.addEventListener('click', function () {
-			const prev = captureAnimRects();
-			const payload = {
-				levelUpRest: ui.levelUpRest,
-				levelUpDiscardInstanceIds: ui.levelUpDiscardIds,
-				levelUpStones: ui.levelUpStones,
-				deployInstanceId: sel.instanceId,
-				payCostStones: ui.pay.stones,
-				payCostCardInstanceIds: ui.pay.cardInstanceIds.slice()
-			};
-			teardown();
-			ui.pay = { stones: 0, cardInstanceIds: [] };
-			commitAction(payload).then(function (next) {
-				// 1ターン終了したのでUI入力はリセット
-				ui.selectedInstanceId = null;
-				ui.levelUpRest = 0;
-				ui.levelUpStones = 0;
-				ui.levelUpDiscardIds = [];
-				ui.warnLevelUpRest = null;
-				ui.warnLevelUpStone = null;
-				ui._luPrevPowerInstanceId = null;
-				ui._luPrevPower = null;
+		payDecideBtn.addEventListener(
+			'click',
+			function (ev) {
+				stopPayEv(ev);
+				if (payDecideBtn.disabled) return;
+				const prev = captureAnimRects();
+				const payload = {
+					levelUpRest: ui.levelUpRest,
+					levelUpDiscardInstanceIds: ui.levelUpDiscardIds,
+					levelUpStones: ui.levelUpStones,
+					deployInstanceId: String(sel.instanceId),
+					payCostStones: ui.pay.stones,
+					payCostCardInstanceIds: ui.pay.cardInstanceIds.slice()
+				};
+				teardown();
 				ui.pay = { stones: 0, cardInstanceIds: [] };
-				render(next);
-				requestAnimationFrame(function () {
-					playFLIP(prev);
-				});
-			}).catch(function (e) {
-				// eslint-disable-next-line no-console
-				console.error(e);
-				alert('操作に失敗しました（' + e.message + '）');
-				rerenderWithFreshState();
-			});
-		});
+				commitAction(payload)
+					.then(function (next) {
+						ui.selectedInstanceId = null;
+						ui.levelUpRest = 0;
+						ui.levelUpStones = 0;
+						ui.levelUpDiscardIds = [];
+						ui.warnLevelUpRest = null;
+						ui.warnLevelUpStone = null;
+						ui._luPrevPowerInstanceId = null;
+						ui._luPrevPower = null;
+						ui.pay = { stones: 0, cardInstanceIds: [] };
+						render(next);
+						requestAnimationFrame(function () {
+							playFLIP(prev);
+						});
+					})
+					.catch(function (e) {
+						// eslint-disable-next-line no-console
+						console.error(e);
+						alert('操作に失敗しました（' + (e && e.message ? e.message : String(e)) + '）');
+						rerenderWithFreshState();
+					});
+			},
+			true
+		);
 
 		refresh();
 	}
@@ -1148,7 +1587,9 @@
 			if (e.target === overlay) teardown();
 		});
 
-		ok.addEventListener('click', function () {
+		ok.addEventListener('click', function (ev) {
+			ev.preventDefault();
+			ev.stopPropagation();
 			teardown();
 			ui.levelUpDiscardIds = picked.slice();
 			if (typeof onOk === 'function') onOk();
@@ -1158,8 +1599,8 @@
 			ok.disabled = picked.length !== n;
 		}
 		grid.addEventListener('click', function (e) {
-			const t = e.target;
-			if (!(t instanceof Element)) return;
+			const t = eventTargetElement(e);
+			if (!t) return;
 			const btn = t.closest('.battle-pay-modal__card');
 			if (!btn) return;
 			const inst = btn.getAttribute('data-instance-id');
@@ -1291,8 +1732,9 @@
 
 			if (d) {
 				// 表向き（レスト専用サイズは CSS で）
-				cardHost.appendChild(buildBattleCardFaceShell(d, 'rest'));
-				applyBattleCardTipData(cardHost, d);
+				const disp = defWithBlankEffectsIfNeeded(d, c);
+				cardHost.appendChild(buildBattleCardFaceShell(disp, 'rest'));
+				applyBattleCardTipData(cardHost, disp);
 				cardHost.addEventListener('dblclick', function (e) {
 					e.preventDefault();
 					e.stopPropagation();
@@ -1318,7 +1760,7 @@
 		return wrap;
 	}
 
-	function renderHandCards(hand, defs, { faceDown, selectable, compactOpp, nextDeployBonus, nextElfOnlyBonus, nextDeployCostBonusTimes }) {
+	function renderHandCards(hand, defs, { faceDown, selectable, compactOpp, nextDeployBonus, nextElfOnlyBonus, nextDeployCostBonusTimes, nextMechanicStacks, battleState }) {
 		const wrap = el('div', faceDown ? 'hand backs' : 'hand');
 		if (faceDown && compactOpp) {
 			wrap.classList.add('hand--opp-backs');
@@ -1333,13 +1775,14 @@
 			return wrap;
 		}
 		hand.forEach((c) => {
-			const d = defs[c.cardId];
+			const dRaw = defs[c.cardId] != null ? defs[c.cardId] : resolveCardDef(defs, c.cardId);
+			const d = defWithBlankEffectsIfNeeded(dRaw, c);
 			const cardWrap = el('button', 'hand-card battle-card', null);
 			cardWrap.type = 'button';
 			cardWrap.dataset.instanceId = c.instanceId;
 			cardWrap.dataset.cardId = String(c.cardId);
 			cardWrap.disabled = !selectable;
-			if (ui.selectedInstanceId && ui.selectedInstanceId === c.instanceId) {
+			if (ui.selectedInstanceId != null && String(ui.selectedInstanceId) === String(c.instanceId)) {
 				cardWrap.classList.add('is-selected');
 			}
 			const caret = el('span', 'hand-card__select-caret', '▼');
@@ -1358,11 +1801,15 @@
 					const c = Number(d.cost != null ? d.cost : 0);
 					bonus += c * Number(nextDeployCostBonusTimes || 0);
 				}
+				bonus += 3 * Number(nextMechanicStacks || 0);
 				const curPow = lastStateForHandPower
-					? previewHumanBattlePowerForHand(lastStateForHandPower, defs, d, bonus)
+					? previewHumanBattlePowerForHand(lastStateForHandPower, defs, d, bonus, c)
 					: (basePow + bonus);
 				applyCurrentPowerDisplay(shell, basePow, curPow);
 				maybeSparkPowerIncrease(shell, c.instanceId, curPow);
+				if (battleState && d) {
+					applyCurrentCostDisplay(shell, d, battleState, c);
+				}
 				focusWrap.appendChild(shell);
 				cardWrap.appendChild(focusWrap);
 				applyBattleCardTipData(cardWrap, d);
@@ -1375,8 +1822,11 @@
 	}
 
 	function selectedCard(st) {
-		if (!ui.selectedInstanceId) return null;
-		return st.humanHand.find((c) => c.instanceId === ui.selectedInstanceId) || null;
+		if (ui.selectedInstanceId == null || ui.selectedInstanceId === '') return null;
+		const want = String(ui.selectedInstanceId);
+		const hand = st.humanHand;
+		if (!Array.isArray(hand)) return null;
+		return hand.find((c) => c != null && String(c.instanceId) === want) || null;
 	}
 
 	/** CpuBattleEngine と同じ ID（effectiveBattlePower プレビュー用） */
@@ -1387,8 +1837,39 @@
 		DRAGON_RIDER: 10,
 		GAIKOTSU: 18,
 		SHIREI: 20,
-		HONE: 24
+		HONE: 24,
+		ARTHUR: 43,
+		FIELD_GLORIA: 41,
+		FIELD_KAMUI: 49,
+		/** ネムリィ（CpuBattleEngine.NEMURY_ID） */
+		NEMURY: 40,
+		/** ストーニア（配置：所持ストーン1つにつき強さ+1 / CpuBattleEngine STONIA deploy） */
+		STONIA: 37,
+		/** シャイニ（常時：レストのカーバンクル種類×+2 / CpuBattleEngine.SHINY_ID） */
+		SHINY: 31
 	};
+
+	function activeFieldIsKamui(st) {
+		return st && st.activeField && Number(st.activeField.cardId) === PREVIEW_CARD_IDS.FIELD_KAMUI;
+	}
+
+	/**
+	 * 〈宝石の地 グロリア輝石台地〉: 場にある間、カーバンクルは強さ+2（CpuBattleEngine.fieldGloriaCarbunclePowerBonus と同順・同条件）
+	 */
+	function fieldGloriaCarbunclePowerBonus(st, def) {
+		if (!st || !def || def.fieldCard) return 0;
+		if (!st.activeField || Number(st.activeField.cardId) !== PREVIEW_CARD_IDS.FIELD_GLORIA) return 0;
+		if (!hasCardAttribute(def.attribute, 'CARBUNCLE')) return 0;
+		return 2;
+	}
+
+	/** 画面上のストーン表示と同じ（レベルアップ・支払モーダルで予約した分を除く） */
+	function humanStonesPreviewReserveAdjusted(st) {
+		if (!st) return 0;
+		const levelUpUsed = ui.levelUpStones | 0;
+		const payUsed = ui.pay && typeof ui.pay.stones === 'number' ? ui.pay.stones | 0 : 0;
+		return Math.max(0, Number(st.humanStones || 0) - levelUpUsed - payUsed);
+	}
 
 	function attrSegments(attribute) {
 		if (attribute == null || String(attribute).trim() === '') return [];
@@ -1445,18 +1926,82 @@
 		return false;
 	}
 
-	function countUndeadInRest(rest, defs) {
+	function countAttributeInRest(rest, defs, attr) {
 		let c = 0;
+		if (!Array.isArray(rest)) return 0;
 		for (let i = 0; i < rest.length; i++) {
 			const d = resolveCardDef(defs, rest[i].cardId);
-			if (d && hasCardAttribute(d.attribute, 'UNDEAD')) c++;
+			if (d && hasCardAttribute(d.attribute, attr)) c++;
 		}
 		return c;
+	}
+
+	function countUndeadInRest(rest, defs) {
+		return countAttributeInRest(rest, defs, 'UNDEAD');
+	}
+
+	/** CpuBattleEngine.battleCostUnderInstanceIds 相当（自分バトルのコスト下） */
+	function battleCostUnderInstanceIdSet(zone) {
+		const o = Object.create(null);
+		if (!zone || !Array.isArray(zone.costUnder)) return o;
+		for (let i = 0; i < zone.costUnder.length; i++) {
+			const c = zone.costUnder[i];
+			if (c && c.instanceId != null) o[String(c.instanceId)] = true;
+		}
+		return o;
+	}
+
+	/**
+	 * CpuBattleEngine.countDistinctCarbuncleTypesInRest と同じ（レストの種族カーバンクルの種類数。
+	 * 自分バトルに重なっている instance は除外）
+	 */
+	function countDistinctCarbuncleTypesInRestForPreview(defs, rest, ownBattleZone) {
+		if (!defs || !Array.isArray(rest)) return 0;
+		const under = battleCostUnderInstanceIdSet(ownBattleZone);
+		const seen = Object.create(null);
+		let n = 0;
+		for (let i = 0; i < rest.length; i++) {
+			const c = rest[i];
+			if (!c) continue;
+			if (c.instanceId != null && under[String(c.instanceId)]) continue;
+			const d = resolveCardDef(defs, c.cardId);
+			if (!d || !hasCardAttribute(d.attribute, 'CARBUNCLE')) continue;
+			const cid = Number(c.cardId);
+			if (seen[cid]) continue;
+			seen[cid] = true;
+			n++;
+		}
+		return n;
 	}
 
 	function computeDeployBonus(def, levelUpRest, levelUpStones) {
 		if (!def) return 0;
 		return levelUpRest * 2 + levelUpStones * 2;
+	}
+
+	/**
+	 * ファイター配置の必要コスト（CpuBattleEngine.effectiveDeployCost と同順）
+	 * ・ネムリィ: 自分レストのカーバンクル枚数ぶん基本コストから減算（炭鉱夫無効時は割引なし）
+	 * ・メカニック残機・研究者アストリアの手札補正
+	 */
+	function effectiveFighterDeployCostFromState(def, st, handCard) {
+		if (!def || def.fieldCard) return Number(def.cost != null ? def.cost : 0);
+		const base = Number(def.cost != null ? def.cost : 0);
+		const mechanic = Number(st && st.humanNextMechanicStacks != null ? st.humanNextMechanicStacks : 0);
+		let handAdj = 0;
+		if (handCard && handCard.handDeployCostModifier != null) {
+			handAdj = Number(handCard.handDeployCostModifier);
+		}
+		if (handCard && (handCard.blankEffects === true || handCard.blankEffects === 'true')) {
+			return Math.max(0, base + mechanic + handAdj);
+		}
+		let core = base;
+		if (Number(def.id) === PREVIEW_CARD_IDS.NEMURY) {
+			const defs = st && st.defs ? st.defs : {};
+			const disc = countAttributeInRest(st && st.humanRest ? st.humanRest : [], defs, 'CARBUNCLE');
+			core = Math.max(0, base - disc);
+		}
+		return Math.max(0, core + mechanic + handAdj);
 	}
 
 	function computeHumanNextDeployBonusForDef(st, def) {
@@ -1471,17 +2016,24 @@
 			const c = Number(def.cost != null ? def.cost : 0);
 			bonus += c * costTimes;
 		}
+		bonus += 3 * Number(st.humanNextMechanicStacks || 0);
 		return bonus;
 	}
 
 	/** 手札表示用: 「いま配置したら」の常時効果込み強さ（UIで選んだレベルアップ指定は含めない） */
-	function previewHumanBattlePowerForHand(st, defs, mainDef, deployBonus) {
+	function previewHumanBattlePowerForHand(st, defs, mainDef, deployBonus, handCard) {
 		if (!mainDef) return 0;
 		const id = Number(mainDef.id);
 		const base = Number(mainDef.basePower != null ? mainDef.basePower : 0);
 		let p = base + Number(deployBonus || 0);
+		p += fieldGloriaCarbunclePowerBonus(st, mainDef);
 
-		// 竜王が相手ゾーンにいると常時効果は無効化
+		// ストーニア〈配置〉: 配置時に当時の所持ストーン数ぶん temporaryPowerBonus（engine と同様）
+		if (id === PREVIEW_CARD_IDS.STONIA) {
+			p += humanStonesPreviewReserveAdjusted(st);
+		}
+
+		// 竜王が相手ゾーンにいると〈常時〉等は無効化（〈宝石の地〉の+2は engine と同様に残す）
 		if (hasRyuohInCpuZone(st.cpuBattle, defs)) {
 			return Math.max(0, p);
 		}
@@ -1494,6 +2046,10 @@
 			if (oppDef && Number(oppDef.id) === PREVIEW_CARD_IDS.KUSURI) {
 				p -= Number(st.cpuStones || 0);
 			}
+		}
+
+		if (handCard && (handCard.blankEffects === true || handCard.blankEffects === 'true')) {
+			return Math.max(0, p);
 		}
 
 		if (id === PREVIEW_CARD_IDS.ARCHER) {
@@ -1536,17 +2092,30 @@
 			p += countUndeadInRest(st.humanRest || [], defs);
 		}
 
+		if (id === PREVIEW_CARD_IDS.SHINY) {
+			p += countDistinctCarbuncleTypesInRestForPreview(defs, st.humanRest || [], st.humanBattle) * 2;
+		}
+
+		if (id === PREVIEW_CARD_IDS.ARTHUR && activeFieldIsKamui(st)) {
+			p += 3;
+		}
+
 		return Math.max(0, p);
 	}
 
 	/**
 	 * 選択カードを自分バトルゾーンに置いたときの強さ（CpuBattleEngine.effectiveBattlePower 相当）
 	 */
-	function previewHumanBattlePower(st, defs, mainDef, deployBonus) {
+	function previewHumanBattlePower(st, defs, mainDef, deployBonus, handCard) {
 		if (!mainDef) return 0;
 		const id = Number(mainDef.id);
 		const base = Number(mainDef.basePower != null ? mainDef.basePower : 0);
 		let p = base + deployBonus;
+		p += fieldGloriaCarbunclePowerBonus(st, mainDef);
+
+		if (id === PREVIEW_CARD_IDS.STONIA) {
+			p += humanStonesPreviewReserveAdjusted(st);
+		}
 
 		if (hasRyuohInCpuZone(st.cpuBattle, defs)) {
 			return Math.max(0, p);
@@ -1562,6 +2131,10 @@
 			if (oppDef && Number(oppDef.id) === PREVIEW_CARD_IDS.KUSURI) {
 				p -= Number(st.cpuStones || 0);
 			}
+		}
+
+		if (handCard && (handCard.blankEffects === true || handCard.blankEffects === 'true')) {
+			return Math.max(0, p);
 		}
 
 		if (id === PREVIEW_CARD_IDS.ARCHER) {
@@ -1604,12 +2177,20 @@
 			p += countUndeadInRest(simRest, defs);
 		}
 
+		if (id === PREVIEW_CARD_IDS.SHINY) {
+			p += countDistinctCarbuncleTypesInRestForPreview(defs, simRest, st.humanBattle) * 2;
+		}
+
+		if (id === PREVIEW_CARD_IDS.ARTHUR && activeFieldIsKamui(st)) {
+			p += 3;
+		}
+
 		return Math.max(0, p);
 	}
 
 	function applyLevelUpPreviewPower(shellRoot, basePower, previewPower) {
 		const powEl = shellRoot.querySelector('.card-face__power');
-		if (!powEl) return;
+		if (!powEl || powEl.classList.contains('card-face__power--hidden')) return;
 		const pv = Math.max(0, Math.floor(Number(previewPower)));
 		const baseNum = Math.floor(Number(basePower));
 		powEl.textContent = String(pv);
@@ -1621,7 +2202,7 @@
 
 	function applyCurrentPowerDisplay(shellRoot, basePower, currentPower) {
 		const powEl = shellRoot.querySelector('.card-face__power');
-		if (!powEl) return;
+		if (!powEl || powEl.classList.contains('card-face__power--hidden')) return;
 		const pv = Math.max(0, Math.floor(Number(currentPower)));
 		const baseNum = Math.floor(Number(basePower));
 		powEl.textContent = String(pv);
@@ -1637,8 +2218,32 @@
 		}
 	}
 
+	/** 手札・モーダル：実効コストを表示。カードに印字のコストより下げ＝緑、上げ＝赤 */
+	function applyCurrentCostDisplay(shellRoot, def, st, handCard) {
+		if (!shellRoot || !def || def.fieldCard) return;
+		const costEl = shellRoot.querySelector('.card-face__cost');
+		if (!costEl) return;
+		const baseNum = Math.max(0, Math.floor(Number(def.cost != null ? def.cost : 0)));
+		const pv = Math.max(0, Math.floor(Number(effectiveFighterDeployCostFromState(def, st, handCard))));
+		costEl.textContent = String(pv);
+		costEl.classList.remove('card-face__cost--digit-1', 'card-face__cost--digit-2');
+		if (pv === 1) costEl.classList.add('card-face__cost--digit-1');
+		else if (pv === 2) costEl.classList.add('card-face__cost--digit-2');
+		costEl.classList.remove('battle-deploy-cost--up', 'battle-deploy-cost--down');
+		costEl.style.color = '';
+		if (pv < baseNum) {
+			costEl.classList.add('battle-deploy-cost--down');
+			costEl.style.color = '#22c55e';
+		} else if (pv > baseNum) {
+			costEl.classList.add('battle-deploy-cost--up');
+			costEl.style.color = '#ef4444';
+		}
+	}
+
 	function maybeSparkPowerIncrease(shellRoot, instanceId, currentPower) {
 		if (!shellRoot || !instanceId) return;
+		const powEl0 = shellRoot.querySelector('.card-face__power');
+		if (powEl0 && powEl0.classList.contains('card-face__power--hidden')) return;
 		const pv = Math.max(0, Math.floor(Number(currentPower)));
 		const prev = ui._prevPowerByInstanceId[instanceId];
 		ui._prevPowerByInstanceId[instanceId] = pv;
@@ -1653,7 +2258,14 @@
 
 	function applyCurrentPowerDisplayToBattleCardFace(st, defs, shellRoot, instanceId, def, options) {
 		if (!shellRoot || !def) return;
+		if (def.fieldCard) return;
 		const o = options || {};
+		let handCard = o.handCard;
+		if (!handCard && st && st.humanHand && instanceId) {
+			handCard = st.humanHand.find(function (x) {
+				return x && String(x.instanceId) === String(instanceId);
+			});
+		}
 		const basePow = Number(def.basePower != null ? def.basePower : 0);
 		let bonus = 0;
 		if (o.includeNextDeployBonus) {
@@ -1662,9 +2274,13 @@
 			if (elfOnly > 0 && hasCardAttribute(def.attribute, 'ELF')) bonus += elfOnly;
 			const costTimes = Number(st && st.humanNextDeployCostBonusTimes || 0);
 			if (costTimes > 0) bonus += Number(def.cost != null ? def.cost : 0) * costTimes;
+			bonus += 3 * Number(st && st.humanNextMechanicStacks != null ? st.humanNextMechanicStacks : 0);
 		}
-		const curPow = st ? previewHumanBattlePowerForHand(st, defs, def, bonus) : (basePow + bonus);
+		const curPow = st ? previewHumanBattlePowerForHand(st, defs, def, bonus, handCard) : (basePow + bonus);
 		applyCurrentPowerDisplay(shellRoot, basePow, curPow);
+		if (st) {
+			applyCurrentCostDisplay(shellRoot, def, st, handCard);
+		}
 		if (instanceId) {
 			maybeSparkPowerIncrease(shellRoot, instanceId, curPow);
 		}
@@ -1684,6 +2300,42 @@
 		return host;
 	}
 
+	function renderBattleFieldSlot(dto, defs, opts) {
+		opts = opts || {};
+		const opponentZone = opts.opponentZone === true;
+		const box = el('div', 'battle-field-slot');
+		box.appendChild(el('p', 'battle-field-label', '《フィールド》'));
+		if (!dto || dto.cardId == null) {
+			box.appendChild(el('p', 'muted', '—'));
+			return box;
+		}
+		const d = resolveCardDef(defs, dto.cardId);
+		if (!d) {
+			box.appendChild(el('p', 'muted', '—'));
+			return box;
+		}
+		const wrap = el('div', 'library-card battle-zone-card battle-field-card', null);
+		const shell = buildBattleCardFaceShell(d, opponentZone ? 'hand' : 'zone');
+		if (opponentZone) {
+			const faceMount = el('div', 'hand-card__card-focus battle-zone-card__opp-face', null);
+			faceMount.dataset.animKey = 'field:' + dto.instanceId;
+			faceMount.appendChild(shell);
+			const chrome = wrapLibraryCardOpenChrome(faceMount);
+			chrome.style.position = 'relative';
+			chrome.style.zIndex = '1';
+			wrap.appendChild(chrome);
+		} else {
+			wrap.dataset.animKey = 'field:' + dto.instanceId;
+			const chrome = wrapLibraryCardOpenChrome(shell);
+			chrome.style.position = 'relative';
+			chrome.style.zIndex = '1';
+			wrap.appendChild(chrome);
+		}
+		applyBattleCardTipData(wrap, d);
+		box.appendChild(wrap);
+		return box;
+	}
+
 	function renderZone(zone, defs, power, opts) {
 		opts = opts || {};
 		const opponentZone = opts.opponentZone === true;
@@ -1692,7 +2344,7 @@
 			box.appendChild(el('p', 'muted', 'なし'));
 			return box;
 		}
-		const d = resolveCardDef(defs, zone.main.cardId);
+		const d = defWithBlankEffectsIfNeeded(resolveCardDef(defs, zone.main.cardId), zone.main);
 		if (d) {
 			const wrap = el('div', 'library-card battle-zone-card', null);
 			// Under-cards (cost/levelup): show as a small fanned stack of card backs
@@ -1851,18 +2503,105 @@
 		return wrap;
 	}
 
+	/** レベルアップポップアップの「決定」— 委譲では取りこぼす環境があるため専用リスナーから呼ぶ */
+	function runLevelUpDecideCommitFlow() {
+		fetchState()
+			.then(function (st) {
+				ui.levelUpStones = clamp(ui.levelUpStones, 0, st.humanStones);
+				ui.levelUpRest = clamp(ui.levelUpRest, 0, (st.humanHand && st.humanHand.length) || 0);
+				const sel = selectedCard(st);
+				if (!sel) {
+					showBattleToast('配置するカードが手札に見つかりません。手札からもう一度選んでください。', 'warn');
+					render(st);
+					return;
+				}
+
+				function proceedAfterDiscardConfirm() {
+					const def = resolveCardDef(st.defs, sel.cardId);
+					const cost = def && !def.fieldCard ? effectiveFighterDeployCostFromState(def, st, sel) : def ? Number(def.cost || 0) : 0;
+					if (def && def.fieldCard) {
+						if ((ui.levelUpRest | 0) !== 0 || (ui.levelUpStones | 0) !== 0) {
+							showBattleToast('フィールドはレベルアップできません', 'warn');
+							return;
+						}
+					}
+					if (cost <= 0) {
+						const prev = captureAnimRects();
+						const payload = {
+							levelUpRest: ui.levelUpRest,
+							levelUpDiscardInstanceIds: ui.levelUpDiscardIds,
+							levelUpStones: ui.levelUpStones,
+							deployInstanceId: String(sel.instanceId),
+							payCostStones: 0,
+							payCostCardInstanceIds: []
+						};
+						return commitAction(payload)
+							.then(function (next) {
+								ui.selectedInstanceId = null;
+								ui.levelUpRest = 0;
+								ui.levelUpStones = 0;
+								ui.levelUpDiscardIds = [];
+								ui.warnLevelUpRest = null;
+								ui.warnLevelUpStone = null;
+								ui._luPrevPowerInstanceId = null;
+								ui._luPrevPower = null;
+								ui.pay = { stones: 0, cardInstanceIds: [] };
+								render(next);
+								requestAnimationFrame(function () {
+									playFLIP(prev);
+								});
+							})
+							.catch(function (err) {
+								// eslint-disable-next-line no-console
+								console.error(err);
+								alert('操作に失敗しました（' + (err && err.message ? err.message : String(err)) + '）');
+								rerenderWithFreshState();
+							});
+					}
+					showPayModal(st);
+				}
+
+				if ((ui.levelUpRest | 0) > 0) {
+					showLevelUpDiscardConfirmModal(st, proceedAfterDiscardConfirm);
+					return;
+				}
+
+				proceedAfterDiscardConfirm();
+			})
+			.catch(function (err) {
+				// eslint-disable-next-line no-console
+				console.error(err);
+				alert('状態の取得に失敗しました（' + (err && err.message ? err.message : String(err)) + '）');
+			});
+	}
+
 	function buildHumanControlOverlayCluster(st) {
 		if (!st.humansTurn || st.gameOver) return null;
-		const panel = el('section', 'panel battle-control battle-control--levelup');
-		panel.appendChild(el('h2', '', 'レベルアップ'));
-
 		const sel = selectedCard(st);
 		const selName = sel ? (st.defs[sel.cardId]?.name || '—') : '（未選択）';
 		const selDef = sel ? resolveCardDef(st.defs, sel.cardId) : null;
 
+		const panel = el('section', 'panel battle-control battle-control--levelup');
+		if (selDef && selDef.fieldCard) {
+			panel.classList.add('battle-control--field-deploy');
+			panel.appendChild(el('h2', '', 'フィールドを配置'));
+		} else {
+			panel.appendChild(el('h2', '', 'レベルアップ'));
+		}
+
 		const body = el('div', 'battle-control--levelup__body');
 		const controlsCol = el('div', 'battle-control--levelup__controls');
 		controlsCol.appendChild(el('p', 'muted', '配置するカード: ' + selName));
+
+		if (selDef && selDef.fieldCard) {
+			controlsCol.appendChild(
+				el(
+					'p',
+					'muted battle-control--field-deploy__hint',
+					'フィールドはレベルアップしません。コスト（左上の数字）分のストーンだけを支払います。ターンは終わらず、あとからファイターを配置してください。'
+				)
+			);
+		}
 
 		const row = el('div', 'battle-control__row');
 
@@ -1896,7 +2635,9 @@
 		stoneBox.appendChild(stoneBtns);
 		row.appendChild(stoneBox);
 
-		controlsCol.appendChild(row);
+		if (!(selDef && selDef.fieldCard)) {
+			controlsCol.appendChild(row);
+		}
 		if (ui.warnLevelUpRest) {
 			const wr = el('p', 'battle-control--levelup__warn', ui.warnLevelUpRest);
 			wr.setAttribute('role', 'alert');
@@ -1911,9 +2652,16 @@
 
 		const previewCol = el('div', 'battle-control--levelup__preview');
 		if (selDef) {
+			if (selDef.fieldCard) {
+				const previewWrap = el('div', 'library-card battle-control--levelup__preview-card');
+				const shell = buildBattleCardFaceShell(selDef, 'hand');
+				previewWrap.appendChild(shell);
+				applyBattleCardTipData(previewWrap, selDef);
+				previewCol.appendChild(previewWrap);
+			} else {
 			const deployB = computeDeployBonus(selDef, ui.levelUpRest, ui.levelUpStones)
 				+ computeHumanNextDeployBonusForDef(st, selDef);
-			const previewPow = previewHumanBattlePower(st, st.defs, selDef, deployB);
+			const previewPow = previewHumanBattlePower(st, st.defs, selDef, deployB, sel);
 			const basePow = Number(selDef.basePower != null ? selDef.basePower : 0);
 			const instId = sel.instanceId;
 			let shouldSparkPower = false;
@@ -1928,16 +2676,18 @@
 			ui._luPrevPower = previewPow;
 
 			const previewWrap = el('div', 'library-card battle-control--levelup__preview-card');
-			const shell = buildBattleCardFaceShell(selDef, 'hand');
+			const shell = buildBattleCardFaceShell(defWithBlankEffectsIfNeeded(selDef, sel), 'hand');
 			applyLevelUpPreviewPower(shell, basePow, previewPow);
+			applyCurrentCostDisplay(shell, defWithBlankEffectsIfNeeded(selDef, sel), st, sel);
 			const powEl = shell.querySelector('.card-face__power');
 			const sparkHost = wrapLevelUpPreviewPowerSparkHost(powEl);
 			if (shouldSparkPower && sparkHost) {
 				appendLevelUpValueSparkBurst(sparkHost);
 			}
 			previewWrap.appendChild(shell);
-			applyBattleCardTipData(previewWrap, selDef);
+			applyBattleCardTipData(previewWrap, defWithBlankEffectsIfNeeded(selDef, sel));
 			previewCol.appendChild(previewWrap);
+			}
 		} else {
 			previewCol.appendChild(el('p', 'muted battle-control--levelup__preview-empty', '—'));
 		}
@@ -1947,11 +2697,28 @@
 
 		const cancel = el('button', 'btn btn--ghost battle-control__cancel-external', 'キャンセル');
 		cancel.type = 'button';
-		cancel.dataset.action = 'cancel_levelup';
+		cancel.addEventListener(
+			'click',
+			function (ev) {
+				ev.preventDefault();
+				ev.stopPropagation();
+				cancelLevelUpInProgress();
+				rerenderWithFreshState();
+			},
+			true
+		);
 
 		const decide = el('button', 'btn btn--primary battle-control__decide-external', '決定');
 		decide.type = 'button';
-		decide.dataset.action = 'decide';
+		decide.addEventListener(
+			'click',
+			function (ev) {
+				ev.preventDefault();
+				ev.stopPropagation();
+				runLevelUpDecideCommitFlow();
+			},
+			true
+		);
 
 		const cluster = el('div', 'battle-control-overlay__cluster');
 		const footer = el('div', 'battle-control__footer');
@@ -2036,7 +2803,10 @@
 				const raw = battleCardAbilityTooltipText(detailDef);
 				const lines = String(raw || '').split('\n');
 				const first = lines.length ? String(lines[0]).trim() : '';
-				detail.textContent = (first === '〈配置〉' || first === '〈常時〉') ? lines.slice(1).join('\n') : String(raw || '—');
+				detail.textContent =
+					first === '〈配置〉' || first === '〈常時〉' || first === '〈フィールド〉'
+						? lines.slice(1).join('\n')
+						: String(raw || '—');
 				panel.appendChild(detail);
 			}
 
@@ -2114,22 +2884,22 @@
 				}).catch(function () { rerenderWithFreshState(); });
 			});
 		} else {
-			/* 手札→レストはルール上必須（剣闘士等）。キャンセルや閉じるで先に進めない */
-			const mandatoryHandToRest =
-				pc.kind === 'SELECT_ONE_FROM_HAND_TO_REST' ||
-				pc.kind === 'SELECT_TWO_FROM_HAND_TO_REST';
-			if (mandatoryHandToRest) {
-				closeBtn.hidden = true;
-			}
+			/*
+			 * カード選択系（フェザリアのレストから手札へ等）は、キャンセル・×・背景で閉じると
+			 * sendChoice されずサーバが HUMAN_CHOICE のまま残り操作不能になる。決定までモーダルを固定する。
+			 */
+			closeBtn.hidden = true;
 
 			const grid = el('div', 'battle-pay-modal__cardgrid');
 			const ids = pc.optionInstanceIds || [];
+			const pickHand = pc.cpuSlotChooses ? (st.cpuHand || []) : (st.humanHand || []);
+			const pickRest = pc.cpuSlotChooses ? (st.cpuRest || []) : (st.humanRest || []);
 			ids.forEach(function (inst) {
 				let card = null;
-				(st.humanHand || []).forEach(function (c) { if (c.instanceId === inst) card = c; });
-				(st.humanRest || []).forEach(function (c) { if (c.instanceId === inst) card = c; });
+				pickHand.forEach(function (c) { if (c.instanceId === inst) card = c; });
+				pickRest.forEach(function (c) { if (c.instanceId === inst) card = c; });
 				if (!card) return;
-				const d = resolveCardDef(st.defs, card.cardId);
+				const d = defWithBlankEffectsIfNeeded(resolveCardDef(st.defs, card.cardId), card);
 				const btn = el('button', 'battle-pay-modal__card', null);
 				btn.type = 'button';
 				btn.dataset.instanceId = inst;
@@ -2143,12 +2913,6 @@
 			panel.appendChild(grid);
 
 			const actions = el('div', 'battle-pay-modal__actions');
-			let cancel = null;
-			if (!mandatoryHandToRest) {
-				cancel = el('button', 'btn btn--ghost', 'キャンセル');
-				cancel.type = 'button';
-				actions.appendChild(cancel);
-			}
 			const ok = el('button', 'btn btn--primary', '決定');
 			ok.type = 'button';
 			ok.disabled = true;
@@ -2158,13 +2922,20 @@
 			function needCount() {
 				if (pc.kind === 'SELECT_SWAP_REST_AND_HAND') return 2;
 				if (pc.kind === 'SELECT_TWO_FROM_HAND_TO_REST') return 2;
+				if (pc.kind === 'SELECT_UP_TO_TWO_FROM_REST_TO_HAND') return 2;
 				return 1;
 			}
-			function refresh() { ok.disabled = picked.length !== needCount(); }
+			function refresh() {
+				if (pc.kind === 'SELECT_UP_TO_TWO_FROM_REST_TO_HAND') {
+					ok.disabled = picked.length > 2;
+					return;
+				}
+				ok.disabled = picked.length !== needCount();
+			}
 
 			grid.addEventListener('click', function (e) {
-				const t = e.target;
-				if (!(t instanceof Element)) return;
+				const t = eventTargetElement(e);
+				if (!t) return;
 				const btn = t.closest('.battle-pay-modal__card');
 				if (!btn) return;
 				const inst = btn.getAttribute('data-instance-id');
@@ -2189,11 +2960,6 @@
 			function teardown() {
 				hideBattleCardTooltip();
 				overlay.remove();
-			}
-			if (!mandatoryHandToRest) {
-				closeBtn.addEventListener('click', teardown);
-				if (cancel) cancel.addEventListener('click', teardown);
-				overlay.addEventListener('click', function (e) { if (e.target === overlay) teardown(); });
 			}
 
 			ok.addEventListener('click', function () {
@@ -2255,7 +3021,9 @@
 		}
 		stats.appendChild(statRow('種族', formatBattleCardAttr(def)));
 		stats.appendChild(statRow('コスト', String(def.cost != null ? def.cost : '—')));
-		stats.appendChild(statRow('強さ', String(def.basePower != null ? def.basePower : '—')));
+		stats.appendChild(
+			statRow('強さ', def.fieldCard ? '—' : String(def.basePower != null ? def.basePower : '—'))
+		);
 		stats.appendChild(statRow('★', String(def.rarity != null ? def.rarity : '—')));
 		stats.appendChild(statRow('収録パック', packSourcesForInitial(def.packInitial).join('\n')));
 		right.appendChild(stats);
@@ -2266,7 +3034,10 @@
 		const raw = battleCardAbilityTooltipText(def);
 		const lines = String(raw || '').split('\n');
 		const first = lines.length ? String(lines[0]).trim() : '';
-		ability.textContent = (first === '〈配置〉' || first === '〈常時〉') ? lines.slice(1).join('\n') : String(raw || '—');
+		ability.textContent =
+			first === '〈配置〉' || first === '〈常時〉' || first === '〈フィールド〉'
+				? lines.slice(1).join('\n')
+				: String(raw || '—');
 		right.appendChild(ability);
 
 		if (contributors.length) {
@@ -2279,13 +3050,9 @@
 				const srcDef = id != null && defs ? resolveCardDef(defs, id) : null;
 				const text = formatBattlePowerContributorText(defs, mod);
 				if (srcDef) {
-					const b = el('button', 'battle-zone-detail-modal__source-link', text);
-					b.type = 'button';
-					b.addEventListener('click', function () {
-						teardown();
-						showBattleZoneDetailModal(srcDef, []);
-					});
-					line.appendChild(b);
+					const s = el('span', 'battle-zone-detail-modal__source-hover', text);
+					wireBattlePowerContributorHover(s, srcDef);
+					line.appendChild(s);
 				} else {
 					line.appendChild(el('span', 'muted', text));
 				}
@@ -2301,6 +3068,7 @@
 		document.body.appendChild(overlay);
 
 		function teardown() {
+			hideBattlePowerContributorPopup();
 			overlay.remove();
 			document.removeEventListener('keydown', onKey);
 			if (previouslyFocused) previouslyFocused.focus();
@@ -2395,12 +3163,22 @@
 			const zonesStack = el('div', 'battle-zones-stack');
 			const cellZoneOpp = el('div', 'battle-cell battle-cell--zone battle-cell--zone-cpu');
 			cellZoneOpp.setAttribute('aria-label', '相手のバトルゾーン');
-			cellZoneOpp.appendChild(renderZone(st.cpuBattle, st.defs, st.cpuBattlePower, { opponentZone: true }));
+			const rowOpp = el('div', 'battle-zone-with-field');
+			// 〈フィールド〉は共有だが、常に自分側のバトル列に表示する（相手ターンで上段に出さない）
+			rowOpp.appendChild(renderZone(st.cpuBattle, st.defs, st.cpuBattlePower, { opponentZone: true }));
+			cellZoneOpp.appendChild(rowOpp);
 			zonesStack.appendChild(cellZoneOpp);
 
 			const cellZoneYou = el('div', 'battle-cell battle-cell--zone battle-cell--zone-human');
 			cellZoneYou.setAttribute('aria-label', '自分のバトルゾーン');
-			cellZoneYou.appendChild(renderZone(st.humanBattle, st.defs, st.humanBattlePower));
+			const rowYou = el('div', 'battle-zone-with-field');
+			if (st.activeField) {
+				/* フィールド枠は absolute のため親の高さに寄与しない。min-height は CSS（--has-field）で確保 */
+				rowYou.classList.add('battle-zone-with-field--has-field');
+				rowYou.appendChild(renderBattleFieldSlot(st.activeField, st.defs, { opponentZone: false }));
+			}
+			rowYou.appendChild(renderZone(st.humanBattle, st.defs, st.humanBattlePower));
+			cellZoneYou.appendChild(rowYou);
 			zonesStack.appendChild(cellZoneYou);
 
 			zonesWrap.appendChild(zonesStack);
@@ -2442,7 +3220,9 @@
 				selectable: st.humansTurn && !st.gameOver,
 				nextDeployBonus: st.humanNextDeployBonus || 0,
 				nextElfOnlyBonus: st.humanNextElfOnlyBonus || 0,
-				nextDeployCostBonusTimes: st.humanNextDeployCostBonusTimes || 0
+				nextDeployCostBonusTimes: st.humanNextDeployCostBonusTimes || 0,
+				nextMechanicStacks: st.humanNextMechanicStacks || 0,
+				battleState: st
 			}));
 			inner.appendChild(cellHand);
 
@@ -2536,7 +3316,7 @@
 			head.style.gap = '10px';
 			const title = el('h3', '', '効果');
 			title.style.margin = '0';
-			const tag = el('span', 'deck-tooltip__ability-tag', '〈配置〉');
+			const tag = el('span', 'deck-tooltip__ability-tag', battleAbilityHeadlineTagFromDef(def));
 			tag.style.flex = '0 0 auto';
 			head.appendChild(title);
 			head.appendChild(tag);
@@ -2559,7 +3339,10 @@
 			// 先頭行が「〈配置〉」等の場合は見出しと重複するので落とす
 			const lines = String(raw || '').split('\n');
 			const first = lines.length ? String(lines[0]).trim() : '';
-			body.textContent = (first === '〈配置〉' || first === '〈常時〉') ? lines.slice(1).join('\n') : String(raw || '—');
+			body.textContent =
+				first === '〈配置〉' || first === '〈常時〉' || first === '〈フィールド〉'
+					? lines.slice(1).join('\n')
+					: String(raw || '—');
 			side.appendChild(body);
 
 			ui._effectPopupEl = side;
@@ -2798,31 +3581,10 @@
 
 	function attachHandlers() {
 		app.addEventListener('click', function (e) {
-			const t = e.target;
-			if (!(t instanceof Element)) return;
+			const t = eventTargetElement(e);
+			if (!t) return;
 
-			const zoneCard = t.closest('.battle-zone-card');
-			if (zoneCard && zoneCard instanceof HTMLElement) {
-				const cid = zoneCard.dataset.battleCardId;
-				const d = cid ? resolveCardDef(lastDefsForTooltip, cid) : null;
-				if (d) showBattleZoneDetailModal(d, parseBattlePowerContributorsFromHost(zoneCard));
-				return;
-			}
-
-			const cardBtn = t.closest('.battle-card');
-			if (cardBtn && cardBtn instanceof HTMLButtonElement && !cardBtn.disabled) {
-				const inst = cardBtn.dataset.instanceId || null;
-				ui.selectedInstanceId = ui.selectedInstanceId === inst ? null : inst;
-				if (!ui.selectedInstanceId) {
-					ui._luPrevPowerInstanceId = null;
-					ui._luPrevPower = null;
-				}
-				ui.warnLevelUpRest = null;
-				ui.warnLevelUpStone = null;
-				rerenderWithFreshState();
-				return;
-			}
-
+			/* オーバーレイ内の決定/± 等を、バトルゾーン詳細（.battle-zone-card）より先に処理する */
 			const actBtn = t.closest('button[data-action]');
 			if (actBtn) {
 				const action = actBtn.getAttribute('data-action');
@@ -2836,62 +3598,30 @@
 						applyLevelUpAdjust(action);
 						return;
 					}
-
-					if (action === 'decide') {
-						rerenderWithFreshState().then(function () {
-							return fetchState();
-						}).then(function (st) {
-							const sel = selectedCard(st);
-							if (!sel) return;
-
-							function proceedAfterDiscardConfirm() {
-								const def = resolveCardDef(st.defs, sel.cardId);
-								const cost = def ? Number(def.cost || 0) : 0;
-								if (cost <= 0) {
-									const prev = captureAnimRects();
-									const payload = {
-										levelUpRest: ui.levelUpRest,
-										levelUpDiscardInstanceIds: ui.levelUpDiscardIds,
-										levelUpStones: ui.levelUpStones,
-										deployInstanceId: sel.instanceId,
-										payCostStones: 0,
-										payCostCardInstanceIds: []
-									};
-									return commitAction(payload).then(function (next) {
-										ui.selectedInstanceId = null;
-										ui.levelUpRest = 0;
-										ui.levelUpStones = 0;
-										ui.levelUpDiscardIds = [];
-										ui.warnLevelUpRest = null;
-										ui.warnLevelUpStone = null;
-										ui._luPrevPowerInstanceId = null;
-										ui._luPrevPower = null;
-										ui.pay = { stones: 0, cardInstanceIds: [] };
-										render(next);
-										requestAnimationFrame(function () {
-											playFLIP(prev);
-										});
-									});
-								}
-								showPayModal(st);
-							}
-
-							if ((ui.levelUpRest | 0) > 0) {
-								showLevelUpDiscardConfirmModal(st, proceedAfterDiscardConfirm);
-								return;
-							}
-
-							proceedAfterDiscardConfirm();
-						});
-						return;
-					}
-
-					if (action === 'cancel_levelup') {
-						cancelLevelUpInProgress();
-						rerenderWithFreshState();
-						return;
-					}
 				}
+				return;
+			}
+
+			const zoneCard = t.closest('.battle-zone-card');
+			if (zoneCard && zoneCard instanceof HTMLElement) {
+				const cid = zoneCard.dataset.battleCardId;
+				const d = cid ? resolveCardDef(lastDefsForTooltip, cid) : null;
+				if (d) {
+					showBattleZoneDetailModal(d, parseBattlePowerContributorsFromHost(zoneCard));
+				}
+				return;
+			}
+
+			const cardBtn = t.closest('.battle-card');
+			if (cardBtn && cardBtn instanceof HTMLButtonElement && !cardBtn.disabled) {
+				const inst = cardBtn.dataset.instanceId || null;
+				ui.selectedInstanceId = ui.selectedInstanceId === inst ? null : inst;
+				if (!ui.selectedInstanceId) {
+					ui._luPrevPowerInstanceId = null;
+					ui._luPrevPower = null;
+				}
+				ui.warnLevelUpRest = null;
+				ui.warnLevelUpStone = null;
 				rerenderWithFreshState();
 				return;
 			}
@@ -2910,8 +3640,8 @@
 		document.addEventListener(
 			'click',
 			function (e) {
-				const t = e.target;
-				if (!(t instanceof Element)) return;
+				const t = eventTargetElement(e);
+				if (!t) return;
 				if (!ui.selectedInstanceId) return;
 				if (!app.querySelector('.battle-control-overlay--levelup-popup')) return;
 				if (
@@ -2933,8 +3663,8 @@
 		);
 
 		app.addEventListener('contextmenu', function (e) {
-			const t = e.target;
-			if (!(t instanceof Element)) return;
+			const t = eventTargetElement(e);
+			if (!t) return;
 
 			const restCardHost = t.closest('.rest-stack__card');
 			if (restCardHost && restCardHost instanceof HTMLElement) {

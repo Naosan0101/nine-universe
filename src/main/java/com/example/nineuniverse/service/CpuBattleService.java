@@ -1,6 +1,7 @@
 package com.example.nineuniverse.service;
 
 import com.example.nineuniverse.GameConstants;
+import com.example.nineuniverse.battle.BattleCard;
 import com.example.nineuniverse.battle.CpuBattleEngine;
 import com.example.nineuniverse.battle.BattlePhase;
 import com.example.nineuniverse.battle.CpuBattleState;
@@ -85,7 +86,8 @@ public class CpuBattleService {
 		}
 		enforceTimeoutIfNeeded(st, defs());
 		engine.humanTurnInteractive(st, levelUpRest, levelUpDiscardInstanceIds, levelUpStones, deployInstanceId, payCostStones, payCostCardInstanceIds, defs());
-		return stateDto(session, false);
+		// クライアントがバトルゾーン描画に defs を必須とするため、コミット応答でも常に含める
+		return stateDto(session, true);
 	}
 
 	public CpuBattleStateDto stateDto(HttpSession session) {
@@ -140,19 +142,23 @@ public class CpuBattleService {
 				activeStage,
 				st.getHumanStones(),
 				st.getCpuStones(),
-				st.getHumanDeck().stream().map(c -> new BattleCardDto(c.getInstanceId(), c.getCardId())).toList(),
-				st.getHumanHand().stream().map(c -> new BattleCardDto(c.getInstanceId(), c.getCardId())).toList(),
-				st.getHumanRest().stream().map(c -> new BattleCardDto(c.getInstanceId(), c.getCardId())).toList(),
+				st.getHumanDeck().stream().map(CpuBattleService::toBattleCardDto).toList(),
+				st.getHumanHand().stream().map(CpuBattleService::toBattleCardDto).toList(),
+				st.getHumanRest().stream().map(CpuBattleService::toBattleCardDto).toList(),
 				toZoneDto(st.getHumanBattle(), engine.explainDisplayedPowerContributors(true, st, defs)),
-				st.getCpuDeck().stream().map(c -> new BattleCardDto(c.getInstanceId(), c.getCardId())).toList(),
-				st.getCpuHand().stream().map(c -> new BattleCardDto(c.getInstanceId(), c.getCardId())).toList(),
-				st.getCpuRest().stream().map(c -> new BattleCardDto(c.getInstanceId(), c.getCardId())).toList(),
+				st.getCpuDeck().stream().map(CpuBattleService::toBattleCardDto).toList(),
+				st.getCpuHand().stream().map(CpuBattleService::toBattleCardDto).toList(),
+				st.getCpuRest().stream().map(CpuBattleService::toBattleCardDto).toList(),
 				toZoneDto(st.getCpuBattle(), engine.explainDisplayedPowerContributors(false, st, defs)),
+				st.getActiveField() != null
+						? toBattleCardDto(st.getActiveField())
+						: null,
 				hbPow,
 				cbPow,
 				st.getHumanNextDeployBonus(),
 				st.getHumanNextElfOnlyBonus(),
 				st.getHumanNextDeployCostBonusTimes(),
+				st.getHumanNextMechanicStacks(),
 				st.getLastMessage(),
 				st.isGameOver(),
 				st.isHumanWon(),
@@ -217,6 +223,7 @@ public class CpuBattleService {
 									GameConstants.cardLayerBarPath(d.getAttribute()),
 									isField ? GameConstants.CARD_LAYER_DATA_FIELD : GameConstants.CARD_LAYER_DATA,
 									GameConstants.namedTribePortraitLayerPath(d.getAttribute(), d.getName()),
+									isField,
 									CardFaceAbilityFormatter.blocksForCardId(d.getId()).stream()
 											.map(b -> new AbilityBlockDto(b.getHeadline(), b.getBody()))
 											.toList()
@@ -278,12 +285,19 @@ public class CpuBattleService {
 		}
 	}
 
+	private static BattleCardDto toBattleCardDto(BattleCard c) {
+		if (c == null) {
+			return null;
+		}
+		return new BattleCardDto(c.getInstanceId(), c.getCardId(), c.isBlankEffects(), c.getHandDeployCostModifier());
+	}
+
 	private static ZoneFighterDto toZoneDto(ZoneFighter z, List<BattlePowerModifierDto> powerModifiers) {
 		if (z == null) {
 			return null;
 		}
-		var main = z.getMain() != null ? new BattleCardDto(z.getMain().getInstanceId(), z.getMain().getCardId()) : null;
-		var under = z.getCostUnder().stream().map(c -> new BattleCardDto(c.getInstanceId(), c.getCardId())).toList();
+		var main = toBattleCardDto(z.getMain());
+		var under = z.getCostUnder().stream().map(CpuBattleService::toBattleCardDto).toList();
 		List<BattlePowerModifierDto> mods = powerModifiers != null ? powerModifiers : List.of();
 		return new ZoneFighterDto(main, under, z.getTemporaryPowerBonus(), mods);
 	}

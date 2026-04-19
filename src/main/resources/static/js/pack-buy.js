@@ -1,11 +1,46 @@
 (function () {
 	const bar = document.getElementById('pack-buy-confirm-bar');
 	const title = document.getElementById('pack-buy-confirm-title');
+	const paymentEl = document.getElementById('pack-buy-confirm-payment');
 	const typeInput = document.getElementById('pack-buy-type');
 	const confirmBtn = document.getElementById('pack-buy-confirm');
 	const cancelBtn = document.getElementById('pack-buy-cancel');
 
 	let selected = null;
+
+	function getUserGems() {
+		const raw = document.body.getAttribute('data-user-gems');
+		const n = parseInt(raw, 10);
+		return Number.isFinite(n) ? n : 0;
+	}
+
+	function updatePaymentSummary(costStr) {
+		if (!paymentEl) return;
+		if (!costStr) {
+			paymentEl.hidden = true;
+			paymentEl.textContent = '';
+			paymentEl.classList.remove('pack-buy-confirm__payment--insufficient');
+			return;
+		}
+		const cost = parseInt(costStr, 10) || 0;
+		const now = getUserGems();
+		const after = now - cost;
+		paymentEl.hidden = false;
+		paymentEl.classList.toggle('pack-buy-confirm__payment--insufficient', after < 0);
+		if (after >= 0) {
+			paymentEl.textContent =
+				'支払い ' + cost + 'ジェム（購入後の所持 ' + after + 'ジェム）';
+		} else {
+			paymentEl.textContent =
+				'支払い ' +
+				cost +
+				'ジェム（所持 ' +
+				now +
+				'ジェムのため、あと ' +
+				(-after) +
+				'ジェム不足）';
+		}
+	}
 
 	function anyDetailOpen() {
 		return Array.from(document.querySelectorAll('.pack-detail-modal')).some(function (m) {
@@ -39,17 +74,28 @@
 		document.querySelectorAll('.pack-buy__item.is-selected').forEach(function (el) {
 			el.classList.remove('is-selected');
 		});
-		if (selected) {
-			selected.classList.add('is-selected');
+		if (!selected) {
+			if (typeInput) typeInput.value = '';
+			if (title) title.textContent = 'パックを選択してください';
+			updatePaymentSummary('');
+			if (confirmBtn) {
+				confirmBtn.disabled = true;
+				confirmBtn.textContent = '購入';
+			}
+			if (cancelBtn) cancelBtn.disabled = true;
+			if (bar) bar.hidden = true;
+			return;
 		}
-		const packType = selected?.dataset?.packType || '';
-		const packName = selected?.dataset?.packName || 'パック';
-		const packCost = selected?.dataset?.packCost || '';
+		selected.classList.add('is-selected');
+		const packType = selected.dataset.packType || '';
+		const packName = selected.dataset.packName || 'パック';
+		const packCost = selected.dataset.packCost || '';
 		if (typeInput) typeInput.value = packType;
-		if (title) title.textContent = packName + '（' + packCost + 'ジェム）を購入しますか？';
+		if (title) title.textContent = packName + 'を購入しますか？';
+		updatePaymentSummary(packCost);
 		if (confirmBtn) {
 			confirmBtn.disabled = !packType;
-			confirmBtn.textContent = '購入';
+			confirmBtn.textContent = packCost ? packCost + 'ジェムで購入' : '購入';
 		}
 		if (cancelBtn) cancelBtn.disabled = !packType;
 		if (bar) bar.hidden = !packType;
@@ -57,11 +103,6 @@
 
 	function clearSelection() {
 		setSelected(null);
-		if (bar) bar.hidden = true;
-		if (title) title.textContent = 'パックを選択してください';
-		if (typeInput) typeInput.value = '';
-		if (confirmBtn) confirmBtn.disabled = true;
-		if (cancelBtn) cancelBtn.disabled = true;
 	}
 
 	document.querySelectorAll('.pack-buy__item[data-pack-type]').forEach(function (btn) {

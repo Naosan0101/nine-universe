@@ -5,8 +5,17 @@
 	const cards = Array.from(document.querySelectorAll('.pack-opening-card[data-pack-index]'));
 	if (cards.length === 0) return;
 
+	const revealAllBtn = document.getElementById('pack-opening-reveal-all');
+
 	let active = 0;
 	let revealed = 0;
+
+	function updateRevealAllEnabled() {
+		if (!revealAllBtn) return;
+		revealAllBtn.disabled = cards.every(function (c) {
+			return c.classList.contains('is-revealed');
+		});
+	}
 
 	function setActive(i) {
 		active = i;
@@ -23,7 +32,10 @@
 	}
 
 	function revealCard(btn) {
-		if (!btn || btn.classList.contains('is-revealed')) return;
+		if (!btn || btn.classList.contains('is-revealed')) {
+			updateRevealAllEnabled();
+			return;
+		}
 		btn.classList.add('is-revealed');
 
 		const face = btn.querySelector('.pack-opening-card__face');
@@ -52,6 +64,7 @@
 		}
 
 		revealed++;
+		updateRevealAllEnabled();
 		if (revealed >= cards.length) {
 			setTimeout(function () {
 				window.location.href = '/pack/result';
@@ -66,6 +79,7 @@
 	}, 50);
 
 	setActive(0);
+	updateRevealAllEnabled();
 	cards.forEach(function (btn) {
 		btn.addEventListener('click', function () {
 			const idx = parseInt(btn.dataset.packIndex, 10);
@@ -73,4 +87,11 @@
 			revealCard(btn);
 		});
 	});
+	if (revealAllBtn) {
+		revealAllBtn.addEventListener('click', function () {
+			cards.forEach(function (card) {
+				revealCard(card);
+			});
+		});
+	}
 })();

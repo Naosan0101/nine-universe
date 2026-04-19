@@ -90,6 +90,7 @@ public class LibraryService {
 		v.setBarImagePath(GameConstants.cardLayerBarPath(c.getAttribute()));
 		v.setLayerBasePath(GameConstants.CARD_LAYER_BASE);
 		boolean isField = c.getCardKind() != null && c.getCardKind().trim().equalsIgnoreCase("FIELD");
+		v.setFieldCard(isField);
 		v.setLayerFramePath(isField ? GameConstants.CARD_LAYER_DATA_FIELD : GameConstants.CARD_LAYER_DATA);
 		String dep = c.getDeployHelp();
 		String pas = c.getPassiveHelp();

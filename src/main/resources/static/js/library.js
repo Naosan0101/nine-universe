@@ -42,22 +42,27 @@
 		HUMAN: '人間',
 		ELF: 'エルフ',
 		UNDEAD: 'アンデッド',
-		DRAGON: 'ドラゴン'
+		DRAGON: 'ドラゴン',
+		MACHINE: 'マシン',
+		CARBUNCLE: 'カーバンクル'
 	};
 
 	const PACK_JA = {
 		STD: 'スタンダードパック1',
 		WH: '風吹く丘パック',
-		ET: '邪悪なる脅威パック'
+		ET: '邪悪なる脅威パック',
+		JU: '宝石の秘境パック',
+		IF: '鉄面の艦隊パック'
 	};
 
-	// 「スタンダードパック1」は WH/ET の全収録カードも排出対象
+	// WH/ET はスタンダードからも排出。JU/IF は専用パック表記。
 	function packSourcesForInitial(piRaw) {
 		const pi = (piRaw || 'STD').trim().toUpperCase() || 'STD';
 		if (pi === 'WH') return ['風吹く丘パック', 'スタンダードパック1'];
 		if (pi === 'ET') return ['邪悪なる脅威パック', 'スタンダードパック1'];
-		// STD（その他の未定義値も一旦ここ）
-		return ['スタンダードパック1'];
+		if (pi === 'JU') return [PACK_JA.JU];
+		if (pi === 'IF') return [PACK_JA.IF];
+		return [PACK_JA.STD];
 	}
 
 	function hideBrokenImg(img) {
@@ -117,7 +122,7 @@
 		const nl = text.indexOf('\n');
 		const head = nl >= 0 ? text.slice(0, nl) : text;
 		const rest = nl >= 0 ? text.slice(nl + 1) : '';
-		if (head === '〈配置〉' || head === '〈常時〉') {
+		if (head === '〈配置〉' || head === '〈常時〉' || head === '〈フィールド〉') {
 			const tag = document.createElement('span');
 			tag.className = 'deck-tooltip__ability-tag';
 			tag.textContent = head;
@@ -186,7 +191,11 @@
 			tooltipAttr.classList.toggle('deck-tooltip__attr--oneline', compound);
 		}
 		if (tooltipCost) tooltipCost.textContent = owned && d.cost != null && d.cost !== '' ? String(d.cost) : '—';
-		if (tooltipPower) tooltipPower.textContent = owned && d.basePower != null && d.basePower !== '' ? String(d.basePower) : '—';
+		const fieldCard = d.fieldCard === 'true';
+		if (tooltipPower) {
+			tooltipPower.textContent =
+				owned && !fieldCard && d.basePower != null && d.basePower !== '' ? String(d.basePower) : '—';
+		}
 		if (tooltipRarity) tooltipRarity.textContent = owned ? (d.rarityLabel || d.rarity || 'C') : '—';
 		if (tooltipPack) {
 			const sources = packSourcesForInitial(d.packInitial);
@@ -222,7 +231,15 @@
 		if (s.indexOf('/効果なし。') !== -1 || s.indexOf('/能力なし。') !== -1) {
 			return [{ h: '', b: '効果なし。' }];
 		}
-		let idx = s.indexOf('/配置：');
+		let idx = s.indexOf('/フィールド：');
+		if (idx >= 0) {
+			return [{ h: '〈フィールド〉', b: s.slice(idx + '/フィールド：'.length) }];
+		}
+		idx = s.indexOf('/フィールド:');
+		if (idx >= 0) {
+			return [{ h: '〈フィールド〉', b: s.slice(idx + '/フィールド:'.length) }];
+		}
+		idx = s.indexOf('/配置：');
 		if (idx >= 0) {
 			return [{ h: '〈配置〉', b: s.slice(idx + '/配置：'.length) }];
 		}
@@ -281,6 +298,9 @@
 		if (modalFaceRoot) {
 			modalFaceRoot.classList.remove('card-face--rarity-C', 'card-face--rarity-R', 'card-face--rarity-Ep', 'card-face--rarity-Reg');
 			modalFaceRoot.classList.add('card-face--rarity-' + rarity);
+			if (typeof window.syncCardFaceAttrClass === 'function') {
+				window.syncCardFaceAttrClass(modalFaceRoot, d.attribute);
+			}
 		}
 		if (modalRarity) {
 			// カード面の表示はコード（Reg/Ep/R/C）
@@ -310,16 +330,33 @@
 			if (cn === 1) modalCost.classList.add('card-face__cost--digit-1');
 			if (cn === 2) modalCost.classList.add('card-face__cost--digit-2');
 		}
+		const fieldCard = d.fieldCard === 'true';
 		if (modalPower) {
-			modalPower.textContent = d.basePower != null && d.basePower !== '' ? String(d.basePower) : '';
-			const pn = parseInt(d.basePower, 10);
-			modalPower.className = 'card-face__power';
-			if (pn === 4) modalPower.classList.add('card-face__power--digit-4');
+			if (fieldCard) {
+				modalPower.textContent = '';
+				modalPower.className = 'card-face__power card-face__power--hidden';
+			} else {
+				modalPower.textContent = d.basePower != null && d.basePower !== '' ? String(d.basePower) : '';
+				const pn = parseInt(d.basePower, 10);
+				modalPower.className = 'card-face__power';
+				if (pn === 4) modalPower.classList.add('card-face__power--digit-4');
+			}
 		}
-		if (modalName) modalName.textContent = d.name || '';
+		if (modalName) {
+			modalName.textContent = d.name || '';
+			if (typeof window.resetCardFaceNameFitInline === 'function') {
+				window.resetCardFaceNameFitInline(modalName);
+			}
+		}
 		if (sideTitle) sideTitle.textContent = d.name || '';
 		if (sideCost) sideCost.textContent = d.cost != null && d.cost !== '' ? String(d.cost) : '—';
-		if (sidePower) sidePower.textContent = d.basePower != null && d.basePower !== '' ? String(d.basePower) : '—';
+		if (sidePower) {
+			sidePower.textContent = fieldCard
+				? '—'
+				: d.basePower != null && d.basePower !== ''
+					? String(d.basePower)
+					: '—';
+		}
 		if (modalAttr) {
 			const pipe = (d.attrPipe || '').trim();
 			let lines = pipe ? pipe.split('|').filter(Boolean) : [];
@@ -497,10 +534,18 @@
 	const filterCost = document.getElementById('library-filter-cost');
 	const filterPower = document.getElementById('library-filter-power');
 	const filterRarity = document.getElementById('library-filter-rarity');
+	const filterPack = document.getElementById('library-filter-pack');
 	const emptyMsg = document.getElementById('library-empty-msg');
 
-	if (grid && searchInput && filterAttr && filterCost && filterPower && filterRarity) {
-		const ATTR_ORDER = { HUMAN: 0, ELF: 1, UNDEAD: 2, DRAGON: 3 };
+	if (grid && searchInput && filterAttr && filterCost && filterPower && filterRarity && filterPack) {
+		const ATTR_ORDER = {
+			HUMAN: 0,
+			ELF: 1,
+			UNDEAD: 2,
+			DRAGON: 3,
+			MACHINE: 4,
+			CARBUNCLE: 5
+		};
 		const cards = Array.from(grid.children).filter(function (el) {
 			return el.classList && el.classList.contains('library-card');
 		});
@@ -516,6 +561,23 @@
 			if (!cardAttr) return false;
 			if (cardAttr === filterVal) return true;
 			return cardAttr.split('_').indexOf(filterVal) !== -1;
+		}
+
+		function normalizePackInitial(pi) {
+			const s = (pi || 'STD').trim().toUpperCase();
+			return s || 'STD';
+		}
+
+		// PackService.filterCardsForPack（STANDARD / STANDARD_2）と同じ収録イニシャル
+		var PACK_IDS_STANDARD_1 = ['STD', 'WH', 'ET'];
+		var PACK_IDS_STANDARD_2 = ['JU', 'IF'];
+
+		function matchesPackFilter(pi, filterVal) {
+			if (!filterVal) return true;
+			var n = normalizePackInitial(pi);
+			if (filterVal === 'STANDARD_1') return PACK_IDS_STANDARD_1.indexOf(n) !== -1;
+			if (filterVal === 'STANDARD_2') return PACK_IDS_STANDARD_2.indexOf(n) !== -1;
+			return n === filterVal;
 		}
 
 		function cmpAttr(a, b) {
@@ -551,6 +613,7 @@
 			const costSel = filterCost.value;
 			const powerSel = filterPower.value;
 			const raritySel = filterRarity.value;
+			const packSel = filterPack.value;
 			let items = cards.map(function (card) {
 				const btn = card.querySelector('.library-card__open');
 				const ds = btn ? btn.dataset : {};
@@ -561,6 +624,7 @@
 					name: ds.name || '',
 					owned: ds.owned === 'true',
 					attribute: ds.attribute || '',
+					packInitial: normalizePackInitial(ds.packInitial),
 					power: isNaN(p) ? 0 : p,
 					cost: isNaN(c) ? 0 : c,
 					rarity: (ds.rarity || 'C').trim(),
@@ -578,6 +642,7 @@
 				if (q && !it.owned) return false;
 				if (!matchesCardTextSearch(q, it.searchParts)) return false;
 				if (attrSel && !matchesTribeFilter(it.attribute, attrSel)) return false;
+				if (packSel && !matchesPackFilter(it.packInitial, packSel)) return false;
 				if (costSel && String(it.cost) !== String(costSel)) return false;
 				if (powerSel && String(it.power) !== String(powerSel)) return false;
 				if (raritySel && it.rarity !== raritySel) return false;
@@ -604,6 +669,11 @@
 			if (emptyMsg) {
 				emptyMsg.hidden = items.length > 0;
 			}
+			if (typeof window.refitAllCardFaceNames === 'function') {
+				requestAnimationFrame(function () {
+					window.refitAllCardFaceNames();
+				});
+			}
 		}
 
 		searchInput.addEventListener('input', applyBrowser);
@@ -611,6 +681,7 @@
 		filterCost.addEventListener('change', applyBrowser);
 		filterPower.addEventListener('change', applyBrowser);
 		filterRarity.addEventListener('change', applyBrowser);
+		filterPack.addEventListener('change', applyBrowser);
 		applyBrowser();
 	}
 })();

@@ -38,6 +38,9 @@ public class CpuBattleState implements Serializable {
 	/** 隊長: 次に配置するファイターのコストぶん強化（重ねがけ可） */
 	private int humanNextDeployCostBonusTimes;
 	private int cpuNextDeployCostBonusTimes;
+	/** メカニック: 次に配置するファイターはコスト+1・強さ+3（ターン終わりまで）／重ねがけ可 */
+	private int humanNextMechanicStacks;
+	private int cpuNextMechanicStacks;
 	/** 科学者: 強さ入れ替え（次のターン終了まで） */
 	private boolean powerSwapActive;
 	/** 古竜: 次の相手ターン終了までの一時強化（自分のレストのエルフ枚数ぶん） */
@@ -51,6 +54,11 @@ public class CpuBattleState implements Serializable {
 	private List<BattleCard> humanRest = new ArrayList<>();
 	private ZoneFighter humanBattle;
 	private int humanStones;
+
+	/** 場に出ている〈フィールド〉（全プレイヤーで1枚のみ。上書きで入れ替わる） */
+	private BattleCard activeField;
+	/** 現在の〈フィールド〉を配置した側。true=ホスト（human スロット）、false=ゲスト（cpu スロット）。場に無いときは null */
+	private Boolean activeFieldOwnerHuman;
 
 	private List<BattleCard> cpuDeck = new ArrayList<>();
 	private List<BattleCard> cpuHand = new ArrayList<>();

@@ -40,6 +40,7 @@
 	const libFilterPower = document.getElementById('lib-filter-power');
 	const libFilterCost = document.getElementById('lib-filter-cost');
 	const libFilterRarity = document.getElementById('lib-filter-rarity');
+	const libFilterPack = document.getElementById('lib-filter-pack');
 	const tooltipEl = document.getElementById('deck-tooltip');
 	const tooltipName = tooltipEl.querySelector('.deck-tooltip__name');
 	const tooltipAttr = tooltipEl.querySelector('.deck-tooltip__attr');
@@ -47,15 +48,30 @@
 	const tooltipPower = tooltipEl.querySelector('.deck-tooltip__power');
 	const tooltipAbility = tooltipEl.querySelector('.deck-tooltip__ability');
 
-	const ATTR_LABEL = { HUMAN: '人間', ELF: 'エルフ', UNDEAD: 'アンデッド', DRAGON: 'ドラゴン' };
+	const ATTR_LABEL = {
+		HUMAN: '人間',
+		ELF: 'エルフ',
+		UNDEAD: 'アンデッド',
+		DRAGON: 'ドラゴン',
+		MACHINE: 'マシン',
+		CARBUNCLE: 'カーバンクル'
+	};
 	const RARITY_LABEL = { Reg: 'レジェンダリー', Ep: 'エピック', R: 'レア', C: 'コモン' };
-	const PACK_JA = { STD: 'スタンダードパック1', WH: '風吹く丘パック', ET: '邪悪なる脅威パック' };
+	const PACK_JA = {
+		STD: 'スタンダードパック1',
+		WH: '風吹く丘パック',
+		ET: '邪悪なる脅威パック',
+		JU: '宝石の秘境パック',
+		IF: '鉄面の艦隊パック'
+	};
 
 	function packSourcesForInitial(piRaw) {
 		const pi = (piRaw || 'STD').trim().toUpperCase() || 'STD';
 		if (pi === 'WH') return ['風吹く丘パック', 'スタンダードパック1'];
 		if (pi === 'ET') return ['邪悪なる脅威パック', 'スタンダードパック1'];
-		return [PACK_JA[pi] || 'スタンダードパック1'];
+		if (pi === 'JU') return [PACK_JA.JU];
+		if (pi === 'IF') return [PACK_JA.IF];
+		return [PACK_JA.STD];
 	}
 
 	function hideBrokenImg(img) {
@@ -99,7 +115,15 @@
 		if (s.indexOf('/効果なし。') !== -1 || s.indexOf('/能力なし。') !== -1) {
 			return [{ h: '', b: '効果なし。' }];
 		}
-		let idx = s.indexOf('/配置：');
+		let idx = s.indexOf('/フィールド：');
+		if (idx >= 0) {
+			return [{ h: '〈フィールド〉', b: s.slice(idx + '/フィールド：'.length) }];
+		}
+		idx = s.indexOf('/フィールド:');
+		if (idx >= 0) {
+			return [{ h: '〈フィールド〉', b: s.slice(idx + '/フィールド:'.length) }];
+		}
+		idx = s.indexOf('/配置：');
 		if (idx >= 0) {
 			return [{ h: '〈配置〉', b: s.slice(idx + '/配置：'.length) }];
 		}
@@ -163,6 +187,9 @@
 		if (modalFaceRoot) {
 			modalFaceRoot.classList.remove('card-face--rarity-C', 'card-face--rarity-R', 'card-face--rarity-Ep', 'card-face--rarity-Reg');
 			modalFaceRoot.classList.add('card-face--rarity-' + rarity);
+			if (typeof window.syncCardFaceAttrClass === 'function') {
+				window.syncCardFaceAttrClass(modalFaceRoot, c.attribute);
+			}
 		}
 		if (modalRarity) {
 			// カード面の表示はコード（Reg/Ep/R/C）
@@ -183,15 +210,31 @@
 			if (cn === 2) modalCost.classList.add('card-face__cost--digit-2');
 		}
 		if (modalPower) {
-			modalPower.textContent = c.power != null && c.power !== '' ? String(c.power) : '';
-			const pn = parseInt(c.power, 10);
-			modalPower.className = 'card-face__power';
-			if (pn === 4) modalPower.classList.add('card-face__power--digit-4');
+			if (c.fieldCard) {
+				modalPower.textContent = '';
+				modalPower.className = 'card-face__power card-face__power--hidden';
+			} else {
+				modalPower.textContent = c.power != null && c.power !== '' ? String(c.power) : '';
+				const pn = parseInt(c.power, 10);
+				modalPower.className = 'card-face__power';
+				if (pn === 4) modalPower.classList.add('card-face__power--digit-4');
+			}
 		}
-		if (modalName) modalName.textContent = c.name || '';
+		if (modalName) {
+			modalName.textContent = c.name || '';
+			if (typeof window.resetCardFaceNameFitInline === 'function') {
+				window.resetCardFaceNameFitInline(modalName);
+			}
+		}
 		if (sideTitle) sideTitle.textContent = c.name || '';
 		if (sideCost) sideCost.textContent = c.cost != null && c.cost !== '' ? String(c.cost) : '—';
-		if (sidePower) sidePower.textContent = c.power != null && c.power !== '' ? String(c.power) : '—';
+		if (sidePower) {
+			sidePower.textContent = c.fieldCard
+				? '—'
+				: c.power != null && c.power !== ''
+					? String(c.power)
+					: '—';
+		}
 
 		if (modalAttr) {
 			const pipe = (c.attrPipe || '').trim();
@@ -282,7 +325,6 @@
 		document.body.style.overflow = 'hidden';
 
 		// モーダルのカード名が2行になる場合は1行に収める
-		const modalFaceRoot = document.getElementById('library-modal-card-face');
 		if (modalFaceRoot && typeof window.fitCardFaceNameToOneLine === 'function') {
 			setTimeout(function () {
 				try {
@@ -322,6 +364,18 @@
 		if (!cardAttr) return false;
 		if (cardAttr === filterVal) return true;
 		return cardAttr.split('_').indexOf(filterVal) !== -1;
+	}
+
+	// PackService.filterCardsForPack と同じ収録イニシャル
+	var PACK_IDS_STANDARD_1 = ['STD', 'WH', 'ET'];
+	var PACK_IDS_STANDARD_2 = ['JU', 'IF'];
+
+	function matchesPackFilter(pi, filterVal) {
+		if (!filterVal) return true;
+		var n = (pi || 'STD').trim().toUpperCase() || 'STD';
+		if (filterVal === 'STANDARD_1') return PACK_IDS_STANDARD_1.indexOf(n) !== -1;
+		if (filterVal === 'STANDARD_2') return PACK_IDS_STANDARD_2.indexOf(n) !== -1;
+		return n === filterVal;
 	}
 
 	function attributeLabelJa(code, preset) {
@@ -406,12 +460,18 @@
 				return p ? p.split('|').filter(Boolean) : [];
 			})(),
 			power: isNaN(p) ? 0 : p,
+			fieldCard: el.dataset.fieldCard === 'true',
 			cost: isNaN(cost) ? 0 : cost,
 			ability: el.dataset.ability || '',
 			canonicalLine: el.dataset.canonicalLine || '',
 			deployHelp: el.dataset.deployHelp || '',
 			passiveHelp: el.dataset.passiveHelp || '',
-			attrPipe: el.dataset.attrPipe || ''
+			attrPipe: el.dataset.attrPipe || '',
+			packInitial: (function () {
+				const v = (el.dataset.packInitial || 'STD').trim();
+				const u = v.toUpperCase();
+				return u || 'STD';
+			})()
 		};
 	}).filter(function (c) { return c.qty > 0 && !isNaN(c.id); });
 
@@ -463,6 +523,7 @@
 		const powF = libFilterPower ? libFilterPower.value : '';
 		const costF = libFilterCost ? libFilterCost.value : '';
 		const rarF = libFilterRarity ? libFilterRarity.value : '';
+		const packF = libFilterPack ? libFilterPack.value : '';
 		let list = seeds.filter(function (c) {
 			if (
 				!matchesCardTextSearch(q, [
@@ -476,6 +537,7 @@
 				return false;
 			}
 			if (attrF && !matchesTribeFilter(c.attribute, attrF)) return false;
+			if (packF && !matchesPackFilter(c.packInitial, packF)) return false;
 			if (powF !== '' && c.power !== parseInt(powF, 10)) return false;
 			if (costF !== '' && c.cost !== parseInt(costF, 10)) return false;
 			if (rarF && c.rarity !== rarF) return false;
@@ -516,6 +578,7 @@
 				rarityLabel: c.rarityLabel || c.rarity || 'C',
 				cost: c.cost,
 				power: c.power,
+				fieldCard: c.fieldCard,
 				name: c.name,
 				attrLines: c.attrLines,
 				attributeLabelJa: c.attributeLabelJa,
@@ -596,7 +659,7 @@
 		const nl = text.indexOf('\n');
 		const head = nl >= 0 ? text.slice(0, nl) : text;
 		const rest = nl >= 0 ? text.slice(nl + 1) : '';
-		if (head === '〈配置〉' || head === '〈常時〉') {
+		if (head === '〈配置〉' || head === '〈常時〉' || head === '〈フィールド〉') {
 			const tag = document.createElement('span');
 			tag.className = 'deck-tooltip__ability-tag';
 			tag.textContent = head;
@@ -636,7 +699,7 @@
 		tooltipAttr.textContent = deckEditTooltipAttribute(c);
 		tooltipAttr.classList.toggle('deck-tooltip__attr--oneline', compound);
 		tooltipCost.textContent = String(c.cost);
-		tooltipPower.textContent = String(c.power);
+		tooltipPower.textContent = c.fieldCard ? '—' : String(c.power);
 		fillDeckTooltipAbility(tooltipAbility, c.ability);
 		tooltipEl.hidden = false;
 		positionTooltip(clientX, clientY);
@@ -680,9 +743,7 @@
 			el.setAttribute(
 				'aria-label',
 				c.name +
-					'（強さ' +
-					c.power +
-					'・×' +
+					(c.fieldCard ? '（×' : '（強さ' + c.power + '・×') +
 					c.qty +
 					inDeckHint +
 					'）。クリックで詳細、ダブルクリックまたは右クリックでデッキへ'
@@ -725,10 +786,11 @@
 		if (added === 0 && list.length === 0 && seeds.length > 0) {
 			const hasSearch = libSearch && libSearch.value.trim();
 			const hasAttr = libFilterAttr && libFilterAttr.value;
+			const hasPack = libFilterPack && libFilterPack.value;
 			const hasPow = libFilterPower && libFilterPower.value !== '';
 			const hasCost = libFilterCost && libFilterCost.value !== '';
 			const hasRar = libFilterRarity && libFilterRarity.value;
-			if (hasSearch || hasAttr || hasPow || hasCost || hasRar) {
+			if (hasSearch || hasAttr || hasPack || hasPow || hasCost || hasRar) {
 				const p = document.createElement('p');
 				p.className = 'muted deck-lib-empty-msg';
 				p.textContent = '表示条件に一致するカードがありません。';
@@ -816,6 +878,9 @@
 	}
 	if (libFilterRarity) {
 		libFilterRarity.addEventListener('change', onFilterChange);
+	}
+	if (libFilterPack) {
+		libFilterPack.addEventListener('change', onFilterChange);
 	}
 
 	document.addEventListener('scroll', hideTooltip, true);

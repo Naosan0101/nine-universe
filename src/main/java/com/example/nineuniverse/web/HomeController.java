@@ -3,6 +3,7 @@ package com.example.nineuniverse.web;
 import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.service.AnnouncementRewardService;
+import com.example.nineuniverse.service.AnnouncementRewardService.BulkGemClaimResult;
 import com.example.nineuniverse.service.AnnouncementRewardService.ClaimOutcome;
 import com.example.nineuniverse.service.MissionService;
 import com.example.nineuniverse.service.TimePackGaugeService;
@@ -229,6 +230,49 @@ public class HomeController {
 		model.addAttribute("samuraiStatusAnnouncementFutureUnclaimed",
 				!samuraiStatusAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_START));
 		model.addAttribute("samuraiStatusAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_GEMS);
+
+		int announcementBulkClaimableGemTotal = 0;
+		if (listPerfLight && perfInWindow && !perfClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PERF_LIGHT_GEMS;
+		}
+		if (listTimePack && timeAnnInWindow && !timeAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_TIME_PACK_GEMS;
+		}
+		if (listBalanceUi && balanceAnnInWindow && !balanceAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_BALANCE_UI_MISSION_GEMS;
+		}
+		if (listPackRates && packRatesAnnInWindow && !packRatesAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PACK_RATES_GEMS;
+		}
+		if (listPackResultDrawAgain && packResultDrawAgainAnnInWindow && !packResultDrawAgainAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PACK_RESULT_DRAW_AGAIN_GEMS;
+		}
+		if (listCaptainText && captainTextAnnInWindow && !captainTextAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_CAPTAIN_TEXT_GEMS;
+		}
+		if (listMissionFix && missionFixAnnInWindow && !missionFixAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_MISSION_FIX_GEMS;
+		}
+		if (listCardTextFix && cardTextFixAnnInWindow && !cardTextFixAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_CARD_TEXT_FIX_GEMS;
+		}
+		if (listSamuraiFix && samuraiFixAnnInWindow && !samuraiFixAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_SAMURAI_FIX_GEMS;
+		}
+		if (listPackMissionBonusFix && packMissionBonusFixAnnInWindow && !packMissionBonusFixAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_GEMS;
+		}
+		if (list30Users && celebrate30InWindow && !celebrate30Claimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_30_USERS_GEMS;
+		}
+		if (listKaenryuStatus && kaenryuStatusAnnInWindow && !kaenryuStatusAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_KAENRYU_STATUS_GEMS;
+		}
+		if (listSamuraiStatus && samuraiStatusAnnInWindow && !samuraiStatusAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_GEMS;
+		}
+		model.addAttribute("announcementBulkClaimableGemTotal", announcementBulkClaimableGemTotal);
+		model.addAttribute("announcementAnyGemClaimable", announcementBulkClaimableGemTotal > 0);
 
 		LocalDateTime now = LocalDateTime.now(zone);
 		LocalDateTime operatorPopupEnd = LocalDateTime.of(2026, 4, 19, 23, 59);
@@ -524,6 +568,23 @@ public class HomeController {
 					GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_GEMS + "ジェムを受け取りました。");
 			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
 			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/claim-all-gems")
+	public String claimAllAnnouncementGems(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		BulkGemClaimResult result = announcementRewardService.claimAllEligibleAnnouncementGems(
+				uid, today, zone, u != null ? u.getCreatedAt() : null);
+		if (result.claimedCount() > 0) {
+			ra.addFlashAttribute("flashAnnouncementSuccess",
+					"お知らせのジェムを一括で受け取りました（合計 " + result.totalGems() + "ジェム、" + result.claimedCount() + "件）。");
+		} else {
+			ra.addFlashAttribute("flashAnnouncementSuccess", "いま受け取れるジェムのお知らせはありませんでした。");
 		}
 		return "redirect:/home";
 	}

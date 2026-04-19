@@ -345,11 +345,13 @@ public class PvpBattleService {
 				b.humanHand(),
 				b.humanRest(),
 				b.humanBattle(),
+				b.activeField(),
 				b.cpuBattlePower(),
 				b.humanBattlePower(),
 				raw.getCpuNextDeployBonus(),
 				raw.getCpuNextElfOnlyBonus(),
 				raw.getCpuNextDeployCostBonusTimes(),
+				raw.getCpuNextMechanicStacks(),
 				b.lastMessage(),
 				b.gameOver(),
 				!b.humanWon(),
@@ -366,9 +368,10 @@ public class PvpBattleService {
 				b.pvpMatch(), b.cpuLevel(), b.humanGoesFirst(), b.humansTurn(), phase,
 				b.turnStartedAtMs(), b.activeTimeLimitSec(), b.activePenaltyStage(),
 				b.humanStones(), b.cpuStones(), b.humanDeck(), b.humanHand(), b.humanRest(), b.humanBattle(),
-				b.cpuDeck(), b.cpuHand(), b.cpuRest(), b.cpuBattle(),
+				b.cpuDeck(), b.cpuHand(), b.cpuRest(), b.cpuBattle(), b.activeField(),
 				b.humanBattlePower(), b.cpuBattlePower(),
 				b.humanNextDeployBonus(), b.humanNextElfOnlyBonus(), b.humanNextDeployCostBonusTimes(),
+				b.humanNextMechanicStacks(),
 				b.lastMessage(), b.gameOver(), b.humanWon(), b.noLegalDeploy(),
 				b.pendingEffect(), b.pendingChoice(), b.eventLog(), b.defs());
 	}
@@ -388,9 +391,10 @@ public class PvpBattleService {
 				b.pvpMatch(), b.cpuLevel(), b.humanGoesFirst(), b.humansTurn(), b.phase(),
 				b.turnStartedAtMs(), b.activeTimeLimitSec(), b.activePenaltyStage(),
 				b.humanStones(), b.cpuStones(), b.humanDeck(), b.humanHand(), b.humanRest(), b.humanBattle(),
-				b.cpuDeck(), b.cpuHand(), b.cpuRest(), b.cpuBattle(),
+				b.cpuDeck(), b.cpuHand(), b.cpuRest(), b.cpuBattle(), b.activeField(),
 				b.humanBattlePower(), b.cpuBattlePower(),
 				b.humanNextDeployBonus(), b.humanNextElfOnlyBonus(), b.humanNextDeployCostBonusTimes(),
+				b.humanNextMechanicStacks(),
 				b.lastMessage(), b.gameOver(), b.humanWon(), b.noLegalDeploy(),
 				b.pendingEffect(), npc, b.eventLog(), b.defs());
 	}

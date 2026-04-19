@@ -64,6 +64,19 @@
 							<option value="ELF">エルフ</option>
 							<option value="UNDEAD">アンデッド</option>
 							<option value="DRAGON">ドラゴン</option>
+							<option value="MACHINE">マシン</option>
+							<option value="CARBUNCLE">カーバンクル</option>
+						</select>
+					</label>
+					<label class="deck-lib-field">パック
+						<select id="lib-filter-pack" class="deck-lib-select">
+							<option value="" selected>すべて</option>
+							<option value="STANDARD_1">スタンダードパック1（WH/ET）</option>
+							<option value="STANDARD_2">スタンダードパック2（JU/IF）</option>
+							<option value="WH">風吹く丘パック（WH）</option>
+							<option value="ET">邪悪なる脅威パック（ET）</option>
+							<option value="JU">宝石の秘境パック（JU）</option>
+							<option value="IF">鉄面の艦隊パック（IF）</option>
 						</select>
 					</label>
 					<label class="deck-lib-field">強さ
@@ -126,12 +139,14 @@
 	     th:data-attribute="${c.attribute}"
 	     th:data-attribute-label="${c.attributeLabelJa}"
 	     th:data-power="${c.basePower}"
+	     th:data-field-card="${c.fieldCard}"
 	     th:data-cost="${c.cost}"
 	     th:data-ability="${c.libraryAbilityText != null ? c.libraryAbilityText : ''}"
 	     th:data-canonical-line="${c.canonicalAbilityLine != null ? c.canonicalAbilityLine : ''}"
 	     th:data-deploy-help="${c.deployHelp != null ? c.deployHelp : ''}"
 	     th:data-passive-help="${c.passiveHelp != null ? c.passiveHelp : ''}"
-	     th:data-attr-pipe="${c.attributeLabelPipe != null ? c.attributeLabelPipe : ''}"></div>
+	     th:data-attr-pipe="${c.attributeLabelPipe != null ? c.attributeLabelPipe : ''}"
+	     th:data-pack-initial="${c.packInitial}"></div>
 </div>
 <div id="selected-seed" style="display:none">
 	<span th:each="sid : ${selectedIds}" th:text="${sid}"></span>

@@ -32,7 +32,7 @@
 	</div>
 	<div class="card-face__layer card-face__datum">
 		<span th:class="${c.costFaceCssClass}" th:text="${c.cost}">0</span>
-		<span th:class="${c.powerFaceCssClass}" th:text="${c.basePower}">0</span>
+		<span th:class="${c.powerFaceCssClass}" th:text="${c.fieldCard ? '' : c.basePower}">0</span>
 		<span class="card-face__name" th:text="${c.name}">名前</span>
 		<span class="card-face__attr-label"
 		      th:classappend="${c.attributeLabelLines != null && c.attributeLabelLines.size() > 1} ? ' card-face__attr-label--compound'">

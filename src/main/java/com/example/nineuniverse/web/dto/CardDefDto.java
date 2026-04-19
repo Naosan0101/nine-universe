@@ -21,6 +21,7 @@ public record CardDefDto(
 		String layerBarPath,
 		String layerFramePath,
 		String layerPortraitPath,
+		boolean fieldCard,
 		List<AbilityBlockDto> abilityBlocks
 ) {
 }

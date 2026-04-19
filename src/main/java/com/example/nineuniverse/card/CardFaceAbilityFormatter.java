@@ -6,7 +6,8 @@ import java.util.List;
 
 /**
  * カード面の効果表示。本文は {@link CanonicalLibraryCardText} の1行原本から取り出し、
- * 見出しだけ「配置：」「配置:」→〈配置〉、「常時：」「常時:」→〈常時〉にし、それ以外の文字は改変しない。
+ * 見出しだけ「フィールド：」「フィールド:」→〈フィールド〉、「配置：」「配置:」→〈配置〉、
+ * 「常時：」「常時:」→〈常時〉にし、それ以外の文字は改変しない。
  */
 public final class CardFaceAbilityFormatter {
 
@@ -23,7 +24,8 @@ public final class CardFaceAbilityFormatter {
 
 	/**
 	 * ライブラリのマウスオーバー用。「・名前/レア度/コスト/強さ/」部分は除き、
-	 * 「配置：」「配置:」は行頭の {@code 〈配置〉} に、「常時：」「常時:」は {@code 〈常時〉} に置き換えたテキスト。
+	 * 「フィールド：」「フィールド:」は {@code 〈フィールド〉}、「配置：」「配置:」は {@code 〈配置〉}、
+	 * 「常時：」「常時:」は {@code 〈常時〉} に置き換えたテキスト。
 	 */
 	public static String tooltipAbilityTextForCardId(short cardId) {
 		StringBuilder sb = new StringBuilder();
