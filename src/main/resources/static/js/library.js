@@ -183,7 +183,7 @@
 		if (!tooltipEl || !tooltipName) return;
 		const d = btn.dataset;
 		const owned = d.owned === 'true';
-		tooltipName.textContent = d.name || '';
+		tooltipName.textContent = owned ? (d.name || '') : '？？？？';
 		const compound = tooltipAttributeIsCompound(d);
 		if (tooltipEl.classList) tooltipEl.classList.toggle('deck-tooltip--wide-attr', compound);
 		if (tooltipAttr) {

@@ -75,6 +75,15 @@ public class HomeController {
 		boolean listMajorUpdate = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_START);
+		boolean listDenzirionFix = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_DENZIRION_FIX_START);
+		boolean listNinjaDarkDragonFix = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_START);
+		boolean listWeaponDepotDenzirionFix = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -89,6 +98,9 @@ public class HomeController {
 		model.addAttribute("announcementListKaenryuStatus", listKaenryuStatus);
 		model.addAttribute("announcementListSamuraiStatus", listSamuraiStatus);
 		model.addAttribute("announcementListMajorUpdate", listMajorUpdate);
+		model.addAttribute("announcementListDenzirionFix", listDenzirionFix);
+		model.addAttribute("announcementListNinjaDarkDragonFix", listNinjaDarkDragonFix);
+		model.addAttribute("announcementListWeaponDepotDenzirionFix", listWeaponDepotDenzirionFix);
 
 		Set<String> claimedKeys = announcementRewardService.findClaimedKeys(uid);
 
@@ -243,6 +255,38 @@ public class HomeController {
 		model.addAttribute("majorUpdateLoginPopupShow",
 				listMajorUpdate && majorUpdateAnnInWindow && !majorUpdatePopupSuppress);
 
+		boolean denzirionFixAnnClaimed = claimedKeys.contains(GameConstants.ANNOUNCEMENT_DENZIRION_FIX_KEY);
+		boolean denzirionFixAnnInWindow = announcementRewardService.isWithinDenzirionFixAnnouncementWindow(today);
+		model.addAttribute("denzirionFixAnnouncementClaimed", denzirionFixAnnClaimed);
+		model.addAttribute("denzirionFixAnnouncementClaimable", denzirionFixAnnInWindow && !denzirionFixAnnClaimed);
+		model.addAttribute("denzirionFixAnnouncementExpiredUnclaimed",
+				!denzirionFixAnnClaimed && today.isAfter(GameConstants.ANNOUNCEMENT_DENZIRION_FIX_LAST_DAY));
+		model.addAttribute("denzirionFixAnnouncementFutureUnclaimed",
+				!denzirionFixAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_DENZIRION_FIX_START));
+		model.addAttribute("denzirionFixAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_DENZIRION_FIX_GEMS);
+
+		boolean ninjaDarkDragonFixAnnClaimed = claimedKeys.contains(GameConstants.ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_KEY);
+		boolean ninjaDarkDragonFixAnnInWindow = announcementRewardService.isWithinNinjaDarkDragonFixAnnouncementWindow(today);
+		model.addAttribute("ninjaDarkDragonFixAnnouncementClaimed", ninjaDarkDragonFixAnnClaimed);
+		model.addAttribute("ninjaDarkDragonFixAnnouncementClaimable", ninjaDarkDragonFixAnnInWindow && !ninjaDarkDragonFixAnnClaimed);
+		model.addAttribute("ninjaDarkDragonFixAnnouncementExpiredUnclaimed",
+				!ninjaDarkDragonFixAnnClaimed && today.isAfter(GameConstants.ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_LAST_DAY));
+		model.addAttribute("ninjaDarkDragonFixAnnouncementFutureUnclaimed",
+				!ninjaDarkDragonFixAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_START));
+		model.addAttribute("ninjaDarkDragonFixAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_GEMS);
+
+		boolean weaponDepotDenzirionFixAnnClaimed = claimedKeys.contains(GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_KEY);
+		boolean weaponDepotDenzirionFixAnnInWindow =
+				announcementRewardService.isWithinWeaponDepotDenzirionFixAnnouncementWindow(today);
+		model.addAttribute("weaponDepotDenzirionFixAnnouncementClaimed", weaponDepotDenzirionFixAnnClaimed);
+		model.addAttribute("weaponDepotDenzirionFixAnnouncementClaimable",
+				weaponDepotDenzirionFixAnnInWindow && !weaponDepotDenzirionFixAnnClaimed);
+		model.addAttribute("weaponDepotDenzirionFixAnnouncementExpiredUnclaimed",
+				!weaponDepotDenzirionFixAnnClaimed && today.isAfter(GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_LAST_DAY));
+		model.addAttribute("weaponDepotDenzirionFixAnnouncementFutureUnclaimed",
+				!weaponDepotDenzirionFixAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_START));
+		model.addAttribute("weaponDepotDenzirionFixAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_GEMS);
+
 		int announcementBulkClaimableGemTotal = 0;
 		if (listPerfLight && perfInWindow && !perfClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PERF_LIGHT_GEMS;
@@ -285,6 +329,15 @@ public class HomeController {
 		}
 		if (listMajorUpdate && majorUpdateAnnInWindow && !majorUpdateAnnClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_GEMS;
+		}
+		if (listDenzirionFix && denzirionFixAnnInWindow && !denzirionFixAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_DENZIRION_FIX_GEMS;
+		}
+		if (listNinjaDarkDragonFix && ninjaDarkDragonFixAnnInWindow && !ninjaDarkDragonFixAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_GEMS;
+		}
+		if (listWeaponDepotDenzirionFix && weaponDepotDenzirionFixAnnInWindow && !weaponDepotDenzirionFixAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_GEMS;
 		}
 		model.addAttribute("announcementBulkClaimableGemTotal", announcementBulkClaimableGemTotal);
 		model.addAttribute("announcementAnyGemClaimable", announcementBulkClaimableGemTotal > 0);
@@ -577,6 +630,69 @@ public class HomeController {
 		switch (outcome) {
 			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
 					GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/denzirion-fix/claim")
+	public String claimDenzirionFixAnnouncement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_DENZIRION_FIX_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimDenzirionFixAnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_DENZIRION_FIX_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/ninja-dark-dragon-fix/claim")
+	public String claimNinjaDarkDragonFixAnnouncement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimNinjaDarkDragonFixAnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/weapon-depot-denzirion-fix/claim")
+	public String claimWeaponDepotDenzirionFixAnnouncement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimWeaponDepotDenzirionFixAnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_GEMS + "ジェムを受け取りました。");
 			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
 			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
 		}

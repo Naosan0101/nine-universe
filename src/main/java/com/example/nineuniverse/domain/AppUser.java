@@ -20,4 +20,9 @@ public class AppUser {
 
 	/** 無料スタンダードパック用ゲージのサイクル開始（この時刻から12時間でMAX） */
 	private Instant timePackCycleStart;
+
+	/**
+	 * 新規登録プレゼントの「スタンダードパック1」未開封数（0 なら表示・開封不可）。
+	 */
+	private Integer starterGiftStandard1Remaining;
 }

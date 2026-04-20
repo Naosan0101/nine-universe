@@ -26,6 +26,8 @@ public record CpuBattleStateDto(
 		ZoneFighterDto cpuBattle,
 		/** 共有の〈フィールド〉（両者視点で同一。クライアントは自分側のバトル列に表示） */
 		BattleCardDto activeField,
+		/** 廃棄工場 5C-R4P の残りターン（4…1）。該当フィールドでないときは 0 */
+		int scrapyardFieldTurnsRemaining,
 		int humanBattlePower,
 		int cpuBattlePower,
 		int humanNextDeployBonus,

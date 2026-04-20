@@ -33,4 +33,9 @@ public interface AppUserMapper {
 	int updateLastAccessAt(@Param("id") long id, @Param("at") LocalDateTime at);
 
 	int updateTimePackCycleStart(@Param("id") long id, @Param("at") Instant at);
+
+	/** プレゼントのスタンダードパック1を1つ消費（残数が正のときのみ 1 行更新）。 */
+	int decrementStarterGiftStandard1IfPositive(@Param("id") long id);
+
+	int setStarterGiftStandard1Remaining(@Param("id") long id, @Param("remaining") int remaining);
 }

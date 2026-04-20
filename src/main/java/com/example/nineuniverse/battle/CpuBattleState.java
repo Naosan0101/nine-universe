@@ -71,6 +71,11 @@ public class CpuBattleState implements Serializable {
 	private BattleCard activeField;
 	/** 現在の〈フィールド〉を配置した側。true=ホスト（human スロット）、false=ゲスト（cpu スロット）。場に無いときは null */
 	private Boolean activeFieldOwnerHuman;
+	/**
+	 * 廃棄工場 5C-R4P が場にあるときの残りターン表示用（4→1）。場に無い・廃棄工場でないときは 0。
+	 * ターン開始ごとに減り、1 の相手ターン終了時に場から使用者レストへ移る。
+	 */
+	private int scrapyardFieldTurnsRemaining;
 
 	private List<BattleCard> cpuDeck = new ArrayList<>();
 	private List<BattleCard> cpuHand = new ArrayList<>();

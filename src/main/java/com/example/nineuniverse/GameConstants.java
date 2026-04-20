@@ -182,6 +182,9 @@ public final class GameConstants {
 	/** 新規登録直後の所持ジェム（初回ホームでウェルカムボーナス） */
 	public static final int STARTING_COINS = 0;
 
+	/** 新規登録時に付与する「スタンダードパック1」のストック数（1パックずつ開封） */
+	public static final int STARTER_GIFT_STANDARD1_PACK_COUNT = 10;
+
 	/** 初めてホームを開いたときに一度だけ付与 */
 	public static final int WELCOME_HOME_BONUS_GEMS = 30;
 	public static final int PACK_COST = 3;
@@ -335,6 +338,36 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_MAJOR_UPDATE_LAST_DAY =
 			ANNOUNCEMENT_MAJOR_UPDATE_START.plusDays(30 - 1);
 
+	/** お知らせ配布（「磁力合体デンジリオン」効果不具合の修正） */
+	public static final String ANNOUNCEMENT_DENZIRION_FIX_KEY = "denzirion_fix_2026_04";
+
+	public static final int ANNOUNCEMENT_DENZIRION_FIX_GEMS = 3;
+
+	public static final LocalDate ANNOUNCEMENT_DENZIRION_FIX_START = LocalDate.of(2026, 4, 20);
+
+	public static final LocalDate ANNOUNCEMENT_DENZIRION_FIX_LAST_DAY =
+			ANNOUNCEMENT_DENZIRION_FIX_START.plusDays(30 - 1);
+
+	/** お知らせ配布（「忍者」で「ダークドラゴン」と入れ替わったときの進行不能の修正） */
+	public static final String ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_KEY = "ninja_dark_dragon_fix_2026_04";
+
+	public static final int ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_GEMS = 3;
+
+	public static final LocalDate ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_START = LocalDate.of(2026, 4, 20);
+
+	public static final LocalDate ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_LAST_DAY =
+			ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_START.plusDays(30 - 1);
+
+	/** お知らせ配布（「武器庫 VV-E4-PON」と「磁力合体デンジリオン」のコスト表示・隊長連動の修正） */
+	public static final String ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_KEY = "weapon_depot_denzirion_fix_2026_04";
+
+	public static final int ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_GEMS = 3;
+
+	public static final LocalDate ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_START = LocalDate.of(2026, 4, 20);
+
+	public static final LocalDate ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_LAST_DAY =
+			ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_START.plusDays(30 - 1);
+
 	/**
 	 * ログイン時ポップアップ「もう表示しない」用（ジェム受け取りとは別行）。
 	 */
@@ -386,7 +419,7 @@ public final class GameConstants {
 	/**
 	 * お知らせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
 	 */
-	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-20-1";
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-20-4";
 
 	private GameConstants() {
 	}

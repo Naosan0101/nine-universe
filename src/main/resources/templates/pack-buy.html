@@ -23,6 +23,18 @@
 		<p class="error pack-buy-head__error" th:if="${error}" th:text="${error}"></p>
 	</section>
 
+	<section class="panel pack-starter-gift"
+	         th:if="${starterGiftStandard1Remaining != null and starterGiftStandard1Remaining > 0}">
+		<h2 class="pack-starter-gift__title">新規登録プレゼント</h2>
+		<p class="pack-starter-gift__text">
+			「スタンダードパック1」を <strong th:text="${starterGiftStandard1Remaining}">10</strong> パックお渡ししています。通常の開封と同じく、1パックずつ開けられます。
+		</p>
+		<form th:action="@{/pack/open-starter-gift}" method="post" class="pack-starter-gift__form">
+			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+			<button type="submit" class="btn btn--primary">スタンダードパック1 を1パック開ける（0ジェム）</button>
+		</form>
+	</section>
+
 	<section class="pack-buy">
 		<div class="pack-buy__grid">
 			<div class="pack-buy__cell">

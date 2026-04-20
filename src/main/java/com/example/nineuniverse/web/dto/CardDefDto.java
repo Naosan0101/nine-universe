@@ -22,6 +22,8 @@ public record CardDefDto(
 		String layerFramePath,
 		String layerPortraitPath,
 		boolean fieldCard,
+		/** FIGHTER / FIELD（バトルUIの〈フィールド〉コスト計算などに使用） */
+		String cardKind,
 		List<AbilityBlockDto> abilityBlocks
 ) {
 }

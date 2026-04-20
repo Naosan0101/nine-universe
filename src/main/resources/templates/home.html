@@ -22,6 +22,9 @@
                data-kaenryu-status-claimable=${kaenryuStatusAnnouncementClaimable and announcementListKaenryuStatus},
                data-samurai-status-claimable=${samuraiStatusAnnouncementClaimable and announcementListSamuraiStatus},
                data-major-update-claimable=${majorUpdateAnnouncementClaimable and announcementListMajorUpdate},
+               data-denzirion-fix-claimable=${denzirionFixAnnouncementClaimable and announcementListDenzirionFix},
+               data-ninja-dark-dragon-fix-claimable=${ninjaDarkDragonFixAnnouncementClaimable and announcementListNinjaDarkDragonFix},
+               data-weapon-depot-denzirion-fix-claimable=${weaponDepotDenzirionFixAnnouncementClaimable and announcementListWeaponDepotDenzirionFix},
                data-major-update-login-popup=${majorUpdateLoginPopupShow},
                data-user-id=${user.id}">
 <header class="topbar">
@@ -29,7 +32,7 @@
 	<div class="topbar__meta">
 		<button type="button"
 		        class="btn btn--ghost topbar__announce"
-		        th:classappend="${(perfLightAnnouncementClaimable and announcementListPerfLight) or (timePackAnnouncementClaimable and announcementListTimePack) or (balanceUiMissionAnnouncementClaimable and announcementListBalanceUiMission) or (packRatesAnnouncementClaimable and announcementListPackRates) or (packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain) or (captainTextAnnouncementClaimable and announcementListCaptainText) or (missionFixAnnouncementClaimable and announcementListMissionFix) or (cardTextFixAnnouncementClaimable and announcementListCardTextFix) or (samuraiFixAnnouncementClaimable and announcementListSamuraiFix) or (packMissionBonusFixAnnouncementClaimable and announcementListPackMissionBonusFix) or (celebrate30UsersAnnouncementClaimable and announcementList30Users) or (kaenryuStatusAnnouncementClaimable and announcementListKaenryuStatus) or (samuraiStatusAnnouncementClaimable and announcementListSamuraiStatus) or (majorUpdateAnnouncementClaimable and announcementListMajorUpdate) or (timePackAvailablePacks != null and timePackAvailablePacks > 0)} ? ' topbar__announce--highlight' : ''"
+		        th:classappend="${(perfLightAnnouncementClaimable and announcementListPerfLight) or (timePackAnnouncementClaimable and announcementListTimePack) or (balanceUiMissionAnnouncementClaimable and announcementListBalanceUiMission) or (packRatesAnnouncementClaimable and announcementListPackRates) or (packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain) or (captainTextAnnouncementClaimable and announcementListCaptainText) or (missionFixAnnouncementClaimable and announcementListMissionFix) or (cardTextFixAnnouncementClaimable and announcementListCardTextFix) or (samuraiFixAnnouncementClaimable and announcementListSamuraiFix) or (packMissionBonusFixAnnouncementClaimable and announcementListPackMissionBonusFix) or (celebrate30UsersAnnouncementClaimable and announcementList30Users) or (kaenryuStatusAnnouncementClaimable and announcementListKaenryuStatus) or (samuraiStatusAnnouncementClaimable and announcementListSamuraiStatus) or (majorUpdateAnnouncementClaimable and announcementListMajorUpdate) or (denzirionFixAnnouncementClaimable and announcementListDenzirionFix) or (ninjaDarkDragonFixAnnouncementClaimable and announcementListNinjaDarkDragonFix) or (weaponDepotDenzirionFixAnnouncementClaimable and announcementListWeaponDepotDenzirionFix) or (timePackAvailablePacks != null and timePackAvailablePacks > 0)} ? ' topbar__announce--highlight' : ''"
 		        id="announcement-open"
 		        aria-haspopup="dialog"
 		        aria-controls="announcement-modal">
@@ -315,6 +318,75 @@
 			</div>
 		</article>
 
+		<article class="announcement-modal__card"
+		         th:if="${announcementListDenzirionFix and (denzirionFixAnnouncementClaimable or denzirionFixAnnouncementClaimed or denzirionFixAnnouncementExpiredUnclaimed or denzirionFixAnnouncementFutureUnclaimed)}">
+			<div class="announcement-modal__mailbox">
+				<div class="announcement-modal__mailbox-body">
+					<p class="announcement-modal__card-text">・「磁力合体デンジリオン」の効果が正しく動作しないのを修正しました。</p>
+				</div>
+				<aside class="announcement-modal__mailbox-aside">
+					<span th:if="${denzirionFixAnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
+					<form th:if="${denzirionFixAnnouncementClaimable}"
+					      th:action="@{/home/announcements/denzirion-fix/claim}"
+					      method="post"
+					      class="announcement-modal__gem-form">
+						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+						<button type="submit" class="btn btn--primary announcement-modal__gem-btn"
+						        th:text="|${denzirionFixAnnouncementGemAmount}ジェム|">3ジェム</button>
+					</form>
+					<p th:if="${denzirionFixAnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
+					<p th:if="${denzirionFixAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
+					<p th:if="${denzirionFixAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
+				</aside>
+			</div>
+		</article>
+
+		<article class="announcement-modal__card"
+		         th:if="${announcementListNinjaDarkDragonFix and (ninjaDarkDragonFixAnnouncementClaimable or ninjaDarkDragonFixAnnouncementClaimed or ninjaDarkDragonFixAnnouncementExpiredUnclaimed or ninjaDarkDragonFixAnnouncementFutureUnclaimed)}">
+			<div class="announcement-modal__mailbox">
+				<div class="announcement-modal__mailbox-body">
+					<p class="announcement-modal__card-text">・「忍者」で「ダークドラゴン」と入れ替わったときに進行不能になるバグを修正しました。</p>
+				</div>
+				<aside class="announcement-modal__mailbox-aside">
+					<span th:if="${ninjaDarkDragonFixAnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
+					<form th:if="${ninjaDarkDragonFixAnnouncementClaimable}"
+					      th:action="@{/home/announcements/ninja-dark-dragon-fix/claim}"
+					      method="post"
+					      class="announcement-modal__gem-form">
+						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+						<button type="submit" class="btn btn--primary announcement-modal__gem-btn"
+						        th:text="|${ninjaDarkDragonFixAnnouncementGemAmount}ジェム|">3ジェム</button>
+					</form>
+					<p th:if="${ninjaDarkDragonFixAnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
+					<p th:if="${ninjaDarkDragonFixAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
+					<p th:if="${ninjaDarkDragonFixAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
+				</aside>
+			</div>
+		</article>
+
+		<article class="announcement-modal__card"
+		         th:if="${announcementListWeaponDepotDenzirionFix and (weaponDepotDenzirionFixAnnouncementClaimable or weaponDepotDenzirionFixAnnouncementClaimed or weaponDepotDenzirionFixAnnouncementExpiredUnclaimed or weaponDepotDenzirionFixAnnouncementFutureUnclaimed)}">
+			<div class="announcement-modal__mailbox">
+				<div class="announcement-modal__mailbox-body">
+					<p class="announcement-modal__card-text">・「武器庫 VV-E4-PON」の効果が「磁力合体デンジリオン」に対して正しく動作していなかったバグを修正しました。</p>
+				</div>
+				<aside class="announcement-modal__mailbox-aside">
+					<span th:if="${weaponDepotDenzirionFixAnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
+					<form th:if="${weaponDepotDenzirionFixAnnouncementClaimable}"
+					      th:action="@{/home/announcements/weapon-depot-denzirion-fix/claim}"
+					      method="post"
+					      class="announcement-modal__gem-form">
+						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+						<button type="submit" class="btn btn--primary announcement-modal__gem-btn"
+						        th:text="|${weaponDepotDenzirionFixAnnouncementGemAmount}ジェム|">3ジェム</button>
+					</form>
+					<p th:if="${weaponDepotDenzirionFixAnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
+					<p th:if="${weaponDepotDenzirionFixAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
+					<p th:if="${weaponDepotDenzirionFixAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
+				</aside>
+			</div>
+		</article>
+
 		<div th:replace="~{fragments/announcement-captain-text :: card}"></div>
 		<div th:replace="~{fragments/announcement-kaenryu-status :: card}"></div>
 		<div th:replace="~{fragments/announcement-samurai-status :: card}"></div>
@@ -552,6 +624,9 @@
 		var kaenryuStatus = document.body.getAttribute('data-kaenryu-status-claimable') === 'true';
 		var samuraiStatus = document.body.getAttribute('data-samurai-status-claimable') === 'true';
 		var majorUpdate = document.body.getAttribute('data-major-update-claimable') === 'true';
+		var denzirionFix = document.body.getAttribute('data-denzirion-fix-claimable') === 'true';
+		var ninjaDarkDragonFix = document.body.getAttribute('data-ninja-dark-dragon-fix-claimable') === 'true';
+		var weaponDepotDenzirionFix = document.body.getAttribute('data-weapon-depot-denzirion-fix-claimable') === 'true';
 		var ack = '';
 		try {
 			ack = localStorage.getItem('nu_ann_ack') || '';
@@ -559,7 +634,7 @@
 			ack = '';
 		}
 		var unseen = epoch !== '' && ack !== epoch;
-		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || cardTextFix || samuraiFix || packMissionBonusFix || celebrate30 || kaenryuStatus || samuraiStatus || majorUpdate || unseen;
+		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || cardTextFix || samuraiFix || packMissionBonusFix || celebrate30 || kaenryuStatus || samuraiStatus || majorUpdate || denzirionFix || ninjaDarkDragonFix || weaponDepotDenzirionFix || unseen;
 		dot.hidden = !show;
 		dot.setAttribute('aria-hidden', show ? 'false' : 'true');
 	}

@@ -162,6 +162,7 @@ public class CpuBattleService {
 				st.getActiveField() != null
 						? toBattleCardDto(st.getActiveField())
 						: null,
+				st.getScrapyardFieldTurnsRemaining(),
 				hbPow,
 				cbPow,
 				st.getHumanNextDeployBonus(),
@@ -236,6 +237,7 @@ public class CpuBattleService {
 									isField ? GameConstants.CARD_LAYER_DATA_FIELD : GameConstants.CARD_LAYER_DATA,
 									GameConstants.cardFacePortraitLayerPath(d.getAttribute(), d.getName(), d.getImageFile(), d.getId()),
 									isField,
+									d.getCardKind(),
 									CardFaceAbilityFormatter.blocksForCardId(d.getId()).stream()
 											.map(b -> new AbilityBlockDto(b.getHeadline(), b.getBody()))
 											.toList()

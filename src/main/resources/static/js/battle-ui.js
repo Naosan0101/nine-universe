@@ -2263,8 +2263,54 @@
 		/** ノクスクル（id=37 / STONIA：所持ストーン1つにつき強さ+1 / CpuBattleEngine） */
 		STONIA: 37,
 		/** シャイニ（常時：レストのカーバンクル種類×+2 / CpuBattleEngine.SHINY_ID） */
-		SHINY: 31
+		SHINY: 31,
+		/** 磁力合体デンジリオン / CpuBattleEngine.DENZIRION_ID */
+		DENZIRION: 59,
+		/** ガラクタレッグ / CpuBattleEngine.GARAKUTA_LEG_ID */
+		GARAKUTA_LEG: 61,
+		/** 廃棄工場 5C-R4P / CpuBattleEngine.SCRAPYARD_FIELD_ID */
+		FIELD_SCRAPYARD: 63
 	};
+
+	/** 廃棄工場: 効果文の「◯ターンの間」を残りターン N に合わせる（DB は 4 固定のまま） */
+	function adjustScrapyardFieldAbilityTextForRemaining(text, remaining) {
+		const r = remaining != null ? Math.max(0, Math.floor(Number(remaining))) : 0;
+		if (r < 1 || text == null) return String(text || '');
+		return String(text).replace(/\d+ターンの間/g, function () {
+			return r + 'ターンの間';
+		});
+	}
+
+	function defWithScrapyardFieldTurnOverlay(d, remaining) {
+		if (!d || Number(d.id) !== PREVIEW_CARD_IDS.FIELD_SCRAPYARD) return d;
+		const r = remaining != null ? Math.max(0, Math.floor(Number(remaining))) : 0;
+		if (r < 1 || !Array.isArray(d.abilityBlocks)) return d;
+		const blocks = d.abilityBlocks.map(function (b) {
+			const body = b.body != null ? String(b.body) : '';
+			return Object.assign({}, b, { body: adjustScrapyardFieldAbilityTextForRemaining(body, r) });
+		});
+		return Object.assign({}, d, { abilityBlocks: blocks });
+	}
+
+	/**
+	 * 薬売りデバフが自分ファイターにかかるか（CpuBattleEngine.fighterIgnoresKusuriDebuffDueToGarakutaLeg の否定）
+	 */
+	function kusuriDebuffAppliesToCardPreview(defs, mainDef, rest) {
+		if (!mainDef) return true;
+		const id = Number(mainDef.id);
+		if (id === PREVIEW_CARD_IDS.GARAKUTA_LEG) return false;
+		if (id !== PREVIEW_CARD_IDS.DENZIRION) return true;
+		const r = Array.isArray(rest) ? rest : [];
+		for (let i = 0; i < r.length; i++) {
+			const rc = r[i];
+			if (!rc) continue;
+			const rcd = resolveCardDef(defs, rc.cardId);
+			if (!weaponDepotMachineFighterForCost(rcd, null)) continue;
+			if (Number(rc.cardId) === PREVIEW_CARD_IDS.DENZIRION) continue;
+			if (Number(rc.cardId) === PREVIEW_CARD_IDS.GARAKUTA_LEG) return false;
+		}
+		return true;
+	}
 
 	function activeFieldIsKamui(st) {
 		return st && st.activeField && Number(st.activeField.cardId) === PREVIEW_CARD_IDS.FIELD_KAMUI;
@@ -2278,8 +2324,27 @@
 	function weaponDepotMachineFighterForCost(def, handCard) {
 		if (!def || def.fieldCard) return false;
 		const ck = String(def.cardKind || '').trim().toUpperCase();
-		if (ck !== 'FIGHTER') return false;
+		/* CardDefDto に cardKind が無い古い応答でも、フィールドでないマシンはファイター扱い */
+		if (ck !== '' && ck !== 'FIGHTER') return false;
 		return hasCardAttributeResolved(def, handCard, 'MACHINE');
+	}
+
+	/** 隊長「コストぶん強化」用: 武器庫・ネムリィを反映（メカニック/手札コスト補正は含めない） */
+	function characteristicDeployCostForCaptainBonus(def, handCard, st) {
+		if (!def) return 0;
+		let base = Number(def.cost != null ? def.cost : 0);
+		if (weaponDepotFieldActive(st) && weaponDepotMachineFighterForCost(def, handCard)) {
+			base = 1;
+		}
+		if (handCard && (handCard.blankEffects === true || handCard.blankEffects === 'true')) {
+			return Math.max(0, base);
+		}
+		if (Number(def.id) === PREVIEW_CARD_IDS.NEMURY) {
+			const defs = st && st.defs ? st.defs : {};
+			const disc = countAttributeInRest(st && st.humanRest ? st.humanRest : [], defs, 'CARBUNCLE');
+			return Math.max(0, base - disc);
+		}
+		return base;
 	}
 
 	/**
@@ -2448,8 +2513,7 @@
 		}
 		const costTimes = Number(st.humanNextDeployCostBonusTimes || 0);
 		if (costTimes > 0) {
-			const c = Number(def.cost != null ? def.cost : 0);
-			bonus += c * costTimes;
+			bonus += characteristicDeployCostForCaptainBonus(def, handCard, st) * costTimes;
 		}
 		bonus += 3 * Number(st.humanNextMechanicStacks || 0);
 		return bonus;
@@ -2463,8 +2527,8 @@
 		let p = base + Number(deployBonus || 0);
 		p += fieldGloriaCarbunclePowerBonus(st, mainDef, handCard);
 
-		// ノクスクル(id=37/STONIA): CpuBattleEngine は所持ストーン数を effectiveBattlePower で常時加算
-		if (id === PREVIEW_CARD_IDS.STONIA) {
+		// ノクスクル(id=37/STONIA): 自分のターンの終わりまで所持ストーン数を加算（CpuBattleEngine と同様）
+		if (id === PREVIEW_CARD_IDS.STONIA && st.humansTurn) {
 			p += humanStonesPreviewReserveAdjusted(st);
 		}
 
@@ -2478,7 +2542,7 @@
 		// ただし自分が竜王を配置している場合、相手の常時は無効
 		if (!hasRyuohInHumanZone(st.humanBattle) && st.cpuBattle && st.cpuBattle.main) {
 			const oppDef = resolveCardDef(defs, st.cpuBattle.main.cardId);
-			if (oppDef && Number(oppDef.id) === PREVIEW_CARD_IDS.KUSURI) {
+			if (oppDef && Number(oppDef.id) === PREVIEW_CARD_IDS.KUSURI && kusuriDebuffAppliesToCardPreview(defs, mainDef, st.humanRest)) {
 				p -= Number(st.cpuStones || 0);
 			}
 		}
@@ -2551,7 +2615,7 @@
 		let p = base + deployBonus;
 		p += fieldGloriaCarbunclePowerBonus(st, mainDef, handCard);
 
-		if (id === PREVIEW_CARD_IDS.STONIA) {
+		if (id === PREVIEW_CARD_IDS.STONIA && st.humansTurn) {
 			p += humanStonesPreviewReserveAdjusted(st);
 		}
 
@@ -2566,7 +2630,7 @@
 		// ただし自分が竜王を配置している場合、相手の常時は無効
 		if (!hasRyuohInHumanZone(st.humanBattle) && st.cpuBattle && st.cpuBattle.main) {
 			const oppDef = resolveCardDef(defs, st.cpuBattle.main.cardId);
-			if (oppDef && Number(oppDef.id) === PREVIEW_CARD_IDS.KUSURI) {
+			if (oppDef && Number(oppDef.id) === PREVIEW_CARD_IDS.KUSURI && kusuriDebuffAppliesToCardPreview(defs, mainDef, simRest)) {
 				p -= Number(st.cpuStones || 0);
 			}
 		}
@@ -2714,7 +2778,7 @@
 			const elfOnly = Number(st && st.humanNextElfOnlyBonus || 0);
 			if (elfOnly > 0 && hasCardAttribute(def.attribute, 'ELF')) bonus += elfOnly;
 			const costTimes = Number(st && st.humanNextDeployCostBonusTimes || 0);
-			if (costTimes > 0) bonus += Number(def.cost != null ? def.cost : 0) * costTimes;
+			if (costTimes > 0) bonus += characteristicDeployCostForCaptainBonus(def, handCard, st) * costTimes;
 			bonus += 3 * Number(st && st.humanNextMechanicStacks != null ? st.humanNextMechanicStacks : 0);
 		}
 		const curPow = st ? previewHumanBattlePowerForHand(st, defs, def, bonus, handCard) : (basePow + bonus);
@@ -2755,8 +2819,14 @@
 			box.appendChild(el('p', 'muted', '—'));
 			return box;
 		}
+		const st = opts.battleState;
+		const rem =
+			st && Number(d.id) === PREVIEW_CARD_IDS.FIELD_SCRAPYARD && st.scrapyardFieldTurnsRemaining != null
+				? Math.max(0, Math.floor(Number(st.scrapyardFieldTurnsRemaining)))
+				: 0;
+		const dForFace = rem > 0 ? defWithScrapyardFieldTurnOverlay(d, rem) : d;
 		const wrap = el('div', 'library-card battle-zone-card battle-field-card', null);
-		const shell = buildBattleCardFaceShell(d, opponentZone ? 'hand' : 'zone');
+		const shell = buildBattleCardFaceShell(dForFace, opponentZone ? 'hand' : 'zone');
 		if (opponentZone) {
 			const faceMount = el('div', 'hand-card__card-focus battle-zone-card__opp-face', null);
 			faceMount.dataset.animKey = 'field:' + dto.instanceId;
@@ -2772,7 +2842,12 @@
 			chrome.style.zIndex = '1';
 			wrap.appendChild(chrome);
 		}
-		applyBattleCardTipData(wrap, d);
+		applyBattleCardTipData(wrap, dForFace);
+		if (rem > 0) {
+			const badge = el('span', 'battle-field-turn-badge', String(rem));
+			badge.setAttribute('aria-label', '残りターン ' + String(rem));
+			wrap.appendChild(badge);
+		}
 		box.appendChild(wrap);
 		return box;
 	}
@@ -3207,7 +3282,20 @@
 	function showChoiceModal(st) {
 		const pc = st.pendingChoice;
 		if (!pc) return;
-		const may = pc.viewerMayRespond !== undefined && pc.viewerMayRespond !== null ? pc.viewerMayRespond : pc.forHuman;
+		/*
+		 * viewerMayRespond / forHuman が JSON で欠落すると undefined になり、
+		 * 「選択してください」だけが出てモーダルが開かないことがある（忍者入れ替え〈配置〉確認など）。
+		 * cpuSlotChooses が明示されていればそれを優先する。
+		 */
+		const guestChooses = !!pc.cpuSlotChooses;
+		let may = false;
+		if (pc.viewerMayRespond !== undefined && pc.viewerMayRespond !== null) {
+			may = !!pc.viewerMayRespond;
+		} else if (pc.forHuman !== undefined && pc.forHuman !== null) {
+			may = !!pc.forHuman && !guestChooses;
+		} else {
+			may = !guestChooses;
+		}
 		if (!may) return;
 
 		/* 「この手番では勝てません」(z-index 110) の上に選択 UI を出す前提で、残っていれば掃除 */
@@ -3612,7 +3700,18 @@
 		right.appendChild(el('p', 'battle-zone-detail-modal__label', '効果'));
 		const ability = el('div', 'battle-zone-detail-modal__ability');
 		ability.textContent = '';
-		const raw = battleCardAbilityTooltipText(def);
+		let raw = battleCardAbilityTooltipText(def);
+		if (
+			def.fieldCard &&
+			Number(def.id) === PREVIEW_CARD_IDS.FIELD_SCRAPYARD &&
+			stCost &&
+			stCost.scrapyardFieldTurnsRemaining != null
+		) {
+			const rr = Math.max(0, Math.floor(Number(stCost.scrapyardFieldTurnsRemaining)));
+			if (rr > 0) {
+				raw = adjustScrapyardFieldAbilityTextForRemaining(raw, rr);
+			}
+		}
 		const lines = String(raw || '').split('\n');
 		const first = lines.length ? String(lines[0]).trim() : '';
 		ability.textContent =
@@ -3759,7 +3858,7 @@
 			if (st.activeField) {
 				/* フィールド枠は absolute のため親の高さに寄与しない。min-height は CSS（--has-field）で確保 */
 				rowYou.classList.add('battle-zone-with-field--has-field');
-				rowYou.appendChild(renderBattleFieldSlot(st.activeField, st.defs, { opponentZone: false }));
+				rowYou.appendChild(renderBattleFieldSlot(st.activeField, st.defs, { opponentZone: false, battleState: st }));
 			}
 			rowYou.appendChild(renderZone(st.humanBattle, st.defs, st.humanBattlePower, { battleState: st }));
 			cellZoneYou.appendChild(rowYou);

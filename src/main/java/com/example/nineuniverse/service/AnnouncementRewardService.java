@@ -191,6 +191,27 @@ public class AnnouncementRewardService {
 		return !today.isAfter(GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_LAST_DAY);
 	}
 
+	public boolean isWithinDenzirionFixAnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_DENZIRION_FIX_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_DENZIRION_FIX_LAST_DAY);
+	}
+
+	public boolean isWithinNinjaDarkDragonFixAnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_LAST_DAY);
+	}
+
+	public boolean isWithinWeaponDepotDenzirionFixAnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_LAST_DAY);
+	}
+
 	public enum ClaimOutcome {
 		SUCCESS,
 		ALREADY_CLAIMED,
@@ -303,6 +324,27 @@ public class AnnouncementRewardService {
 				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_START)) {
 			if (claimMajorUpdateAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
 				totalGems += GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_DENZIRION_FIX_START)) {
+			if (claimDenzirionFixAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_DENZIRION_FIX_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_START)) {
+			if (claimNinjaDarkDragonFixAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_START)) {
+			if (claimWeaponDepotDenzirionFixAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_GEMS;
 				claimed++;
 			}
 		}
@@ -548,6 +590,57 @@ public class AnnouncementRewardService {
 			return ClaimOutcome.ALREADY_CLAIMED;
 		}
 		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimDenzirionFixAnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_DENZIRION_FIX_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_DENZIRION_FIX_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_DENZIRION_FIX_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_DENZIRION_FIX_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimNinjaDarkDragonFixAnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimWeaponDepotDenzirionFixAnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_GEMS);
 		return ClaimOutcome.SUCCESS;
 	}
 

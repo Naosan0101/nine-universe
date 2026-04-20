@@ -28,6 +28,7 @@ public class RegistrationService {
 		u.setPasswordHash(passwordEncoder.encode(rawPassword));
 		u.setCoins(GameConstants.STARTING_COINS);
 		u.setLastMissionDate(null);
+		u.setStarterGiftStandard1Remaining(GameConstants.STARTER_GIFT_STANDARD1_PACK_COUNT);
 		appUserMapper.insert(u);
 	}
 }

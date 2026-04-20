@@ -64,6 +64,18 @@ public class PackService {
 		return pullPackIntoCollection(userId, PackType.STANDARD, false);
 	}
 
+	/**
+	 * 新規登録プレゼントの「スタンダードパック1」を1パック開封（残数を1減らしてから、ジェム消費なしで {@link PackType#STANDARD} と同じ排出）。
+	 */
+	@Transactional
+	public List<CardDefinition> openStarterGiftStandard1Pack(long userId) {
+		int n = appUserMapper.decrementStarterGiftStandard1IfPositive(userId);
+		if (n == 0) {
+			throw new IllegalArgumentException("開封できるプレゼントのスタンダードパック1がありません");
+		}
+		return openStandardPackWithoutGemCost(userId);
+	}
+
 	private List<CardDefinition> pullPackIntoCollection(long userId, PackType t, boolean paidWithGems) {
 		Random rnd = new Random();
 		List<CardDefinition> pulled = new ArrayList<>();

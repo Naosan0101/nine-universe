@@ -38,7 +38,7 @@ public class CpuBattleEngine {
 	private static final int NEMURY_OPPONENT_TURN_POWER_BONUS = 4;
 	/** フェザリア（レスト回収で自分自身は選べない） */
 	private static final short FEATHERIA_ID = 38;
-	/** ノクスクル（id=37・能力コード STONIA）。所持ストーンを強さに加算（resetTurnBuffs で消えないよう常時計算） */
+	/** ノクスクル（id=37・能力コード STONIA）。自分のターンの終わりまで、所持ストーンを強さに加算 */
 	private static final short STONIA_ID = 37;
 	/** 宝石の地 グロリア輝石台地 */
 	private static final short FIELD_GLORIA_ID = 41;
@@ -91,6 +91,8 @@ public class CpuBattleEngine {
 	private static final short GARAKUTA_ARM_ID = 60;
 	/** クリスタクル〈配置〉: 任意で支払うストーン数 */
 	private static final int CRYSTAKUL_OPTIONAL_STONE_COST = 3;
+	/** フェザリア〈配置〉: 任意で支払うストーン数 */
+	private static final int FEZARIA_OPTIONAL_STONE_COST = 3;
 	/** クリスタクル〈配置〉: 次の配置に与える強さ（次の相手ターン終了まで） */
 	private static final int CRYSTAKUL_NEXT_DEPLOY_POWER = 3;
 
@@ -897,6 +899,26 @@ public class CpuBattleEngine {
 	}
 
 	/**
+	 * 忍者入れ替え後の〈配置〉確認など、効果解決中に {@link BattlePhase#HUMAN_CHOICE} へ一旦移す処理から戻す。
+	 * {@link #resolvePendingEffectAndAdvance} はフェーズが EFFECT_PENDING のときだけ knock/ドローでターンを進めるため必須。
+	 */
+	private static void restoreEffectPendingPhaseAfterEmbeddedHumanChoice(CpuBattleState st, PendingEffect pe,
+			boolean pendingOnHumanSlot, boolean pendingOnCpuSlot) {
+		if (st == null) {
+			return;
+		}
+		BattlePhase ph;
+		if (pendingOnHumanSlot) {
+			ph = BattlePhase.HUMAN_EFFECT_PENDING;
+		} else if (pendingOnCpuSlot) {
+			ph = BattlePhase.CPU_EFFECT_PENDING;
+		} else {
+			ph = pe != null && pe.isOwnerHuman() ? BattlePhase.HUMAN_EFFECT_PENDING : BattlePhase.CPU_EFFECT_PENDING;
+		}
+		st.setPhase(ph);
+	}
+
+	/**
 	 * クリスタクル: {@link #applyDeployHuman} / {@link #applyDeployHumanAsCpuSide} 内の早期 return で〈配置〉確認が付かない場合の補完。
 	 * バトルゾーンの実カードが CRYSTAKUL で、ストーンが足りれば必ず任意ストーン確認を出す。
 	 */
@@ -991,16 +1013,17 @@ public class CpuBattleEngine {
 					String swName = swDef != null && swDef.getName() != null ? swDef.getName() : "？";
 					String ac = swDef != null && swDef.getAbilityDeployCode() != null ? swDef.getAbilityDeployCode() : "";
 					boolean guest = pendingOnCpuSlot && st.isPvp();
+					String ninjaDeployConfirmPrompt = "「" + swName + "」の〈配置〉効果を使用しますか？";
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.CONFIRM_NINJA_SWAPPED_DEPLOY,
-							"「" + swName + "」の〈配置〉効果を使用しますか？",
+							ninjaDeployConfirmPrompt,
 							!guest,
 							ac,
 							0,
 							List.of(),
 							guest));
 					st.setPhase(BattlePhase.HUMAN_CHOICE);
-					st.setLastMessage("選択してください");
+					st.setLastMessage(ninjaDeployConfirmPrompt);
 					return;
 				}
 			}
@@ -1239,6 +1262,7 @@ public class CpuBattleEngine {
 				}
 				peff.setApplied(true);
 				st.setPendingEffect(peff);
+				restoreEffectPendingPhaseAfterEmbeddedHumanChoice(st, peff, pendHum, pendCpu);
 				resolvePendingEffectAndAdvance(st, defs, rnd);
 				return;
 			}
@@ -1339,7 +1363,7 @@ public class CpuBattleEngine {
 					} else if ("FEZARIA".equals(pc.getAbilityDeployCode())) {
 						List<String> opts = new ArrayList<>();
 						for (BattleCard c : st.getHumanRest()) {
-							if (isFezariaPickableCarbuncleInRest(c, defs)) {
+							if (isFezariaPickableCarbuncleInRest(c, st.getHumanBattle(), defs)) {
 								opts.add(c.getInstanceId());
 							}
 						}
@@ -1469,7 +1493,7 @@ public class CpuBattleEngine {
 				int n = 0;
 				for (String id : pickedInstanceIds) {
 					BattleCard c = removeByInstanceId(st.getHumanRest(), id);
-					if (c != null && isFezariaPickableCarbuncleInRest(c, defs)) {
+					if (c != null && isFezariaPickableCarbuncleInRest(c, st.getHumanBattle(), defs)) {
 						st.getHumanHand().add(0, c);
 						n++;
 					}
@@ -1590,6 +1614,7 @@ public class CpuBattleEngine {
 				}
 				peffG.setApplied(true);
 				st.setPendingEffect(peffG);
+				restoreEffectPendingPhaseAfterEmbeddedHumanChoice(st, peffG, pendHumG, pendCpuG);
 				resolvePendingEffectAndAdvance(st, defs, rnd);
 				return;
 			}
@@ -1687,7 +1712,7 @@ public class CpuBattleEngine {
 					} else if ("FEZARIA".equals(pc.getAbilityDeployCode())) {
 						List<String> opts = new ArrayList<>();
 						for (BattleCard c : st.getCpuRest()) {
-							if (isFezariaPickableCarbuncleInRest(c, defs)) {
+							if (isFezariaPickableCarbuncleInRest(c, st.getCpuBattle(), defs)) {
 								opts.add(c.getInstanceId());
 							}
 						}
@@ -1817,7 +1842,7 @@ public class CpuBattleEngine {
 				int ng = 0;
 				for (String id : pickedInstanceIds) {
 					BattleCard c = removeByInstanceId(st.getCpuRest(), id);
-					if (c != null && isFezariaPickableCarbuncleInRest(c, defs)) {
+					if (c != null && isFezariaPickableCarbuncleInRest(c, st.getCpuBattle(), defs)) {
 						st.getCpuHand().add(0, c);
 						ng++;
 					}
@@ -1862,6 +1887,8 @@ public class CpuBattleEngine {
 		} else {
 			st.setCpuTurnStarts(st.getCpuTurnStarts() + 1);
 		}
+
+		tickScrapyardFieldAtTurnStart(st);
 
 		if (isFirstPlayersFirstTurn) {
 			st.addLog(forHuman ? "あなたの先攻1ターン目: ストーン獲得なし"
@@ -1935,6 +1962,7 @@ public class CpuBattleEngine {
 		ns.setCpuBattle(copyZone(st.getCpuBattle()));
 		ns.setActiveField(copyCard(st.getActiveField()));
 		ns.setActiveFieldOwnerHuman(st.getActiveFieldOwnerHuman());
+		ns.setScrapyardFieldTurnsRemaining(st.getScrapyardFieldTurnsRemaining());
 		ns.setHumanSlotDeckId(st.getHumanSlotDeckId());
 		ns.setCpuSlotDeckId(st.getCpuSlotDeckId());
 		return ns;
@@ -1969,6 +1997,11 @@ public class CpuBattleEngine {
 		}
 		st.setActiveField(newField);
 		st.setActiveFieldOwnerHuman(newField == null ? null : Boolean.valueOf(newFieldPlacedByHost));
+		if (newField != null && newField.getCardId() == SCRAPYARD_FIELD_ID) {
+			st.setScrapyardFieldTurnsRemaining(4);
+		} else {
+			st.setScrapyardFieldTurnsRemaining(0);
+		}
 	}
 
 	public void humanTurn(CpuBattleState st, int levelUpRest, List<String> levelUpDiscardInstanceIds, int levelUpStones, boolean deploy, int deployHandIndex,
@@ -2035,7 +2068,8 @@ public class CpuBattleEngine {
 				deployBonus += st.getHumanNextElfOnlyBonus();
 			}
 			if (st.getHumanNextDeployCostBonusTimes() > 0) {
-				deployBonus += mainDef.getCost() * st.getHumanNextDeployCostBonusTimes();
+				deployBonus += deployCharacteristicCostForPowerBonuses(mainDef, main, defs, st.getHumanRest(), st)
+						* st.getHumanNextDeployCostBonusTimes();
 			}
 			deployBonus += 3 * st.getHumanNextMechanicStacks();
 			deployBonus += st.getHumanNextCrystakulDeployBonus();
@@ -2240,7 +2274,8 @@ public class CpuBattleEngine {
 					deployBonus += st.getHumanNextElfOnlyBonus();
 				}
 				if (st.getHumanNextDeployCostBonusTimes() > 0) {
-					deployBonus += (mainDef.getCost() != null ? mainDef.getCost() : 0) * st.getHumanNextDeployCostBonusTimes();
+					deployBonus += deployCharacteristicCostForPowerBonuses(mainDef, simMain, defs, st.getHumanRest(), st)
+							* st.getHumanNextDeployCostBonusTimes();
 				}
 				deployBonus += 3 * st.getHumanNextMechanicStacks();
 				deployBonus += st.getHumanNextCrystakulDeployBonus();
@@ -2500,7 +2535,8 @@ public class CpuBattleEngine {
 					deployBonus += st.getCpuNextElfOnlyBonus();
 				}
 				if (st.getCpuNextDeployCostBonusTimes() > 0) {
-					deployBonus += (mainDef.getCost() != null ? mainDef.getCost() : 0) * st.getCpuNextDeployCostBonusTimes();
+					deployBonus += deployCharacteristicCostForPowerBonuses(mainDef, simMain, defs, st.getCpuRest(), st)
+							* st.getCpuNextDeployCostBonusTimes();
 				}
 				deployBonus += 3 * st.getCpuNextMechanicStacks();
 				deployBonus += st.getCpuNextCrystakulDeployBonus();
@@ -2772,6 +2808,7 @@ public class CpuBattleEngine {
 		ns.setCpuBattle(copyZone(st.getCpuBattle()));
 		ns.setActiveField(copyCard(st.getActiveField()));
 		ns.setActiveFieldOwnerHuman(st.getActiveFieldOwnerHuman());
+		ns.setScrapyardFieldTurnsRemaining(st.getScrapyardFieldTurnsRemaining());
 		ns.setHumanSlotDeckId(st.getHumanSlotDeckId());
 		ns.setCpuSlotDeckId(st.getCpuSlotDeckId());
 		return ns;
@@ -2917,7 +2954,8 @@ public class CpuBattleEngine {
 							deployBonus += st.getCpuNextElfOnlyBonus();
 						}
 						if (st.getCpuNextDeployCostBonusTimes() > 0) {
-							deployBonus += mainDef.getCost() * st.getCpuNextDeployCostBonusTimes();
+							deployBonus += deployCharacteristicCostForPowerBonuses(mainDef, main, defs, st.getCpuRest(), st)
+									* st.getCpuNextDeployCostBonusTimes();
 						}
 						deployBonus += 3 * st.getCpuNextMechanicStacks();
 						deployBonus += st.getCpuNextCrystakulDeployBonus();
@@ -3258,7 +3296,8 @@ public class CpuBattleEngine {
 							deployBonus += st.getCpuNextElfOnlyBonus();
 						}
 						if (st.getCpuNextDeployCostBonusTimes() > 0) {
-							deployBonus += mainDef.getCost() * st.getCpuNextDeployCostBonusTimes();
+							deployBonus += deployCharacteristicCostForPowerBonuses(mainDef, main, defs, st.getCpuRest(), st)
+									* st.getCpuNextDeployCostBonusTimes();
 						}
 						deployBonus += 3 * st.getCpuNextMechanicStacks();
 						deployBonus += st.getCpuNextCrystakulDeployBonus();
@@ -3465,9 +3504,10 @@ public class CpuBattleEngine {
 				drawOne(st.getCpuDeck(), st.getCpuHand());
 			}
 		}
+		maybeExpireScrapyardFieldAfterKnock(st, humanWasActing, defs);
 	}
 
-	/** 〈フィールド〉廃棄工場: 名前に「ガラクタ」を含むメインはノック時に手札へ（コスト下はレストのまま） */
+	/** 〈フィールド〉廃棄工場: 効果残存中のみ。名前に「ガラクタ」を含むメインはノック時に手札へ（コスト下はレストのまま） */
 	private static boolean scrapyardFieldSendsGarakutaMainToHand(CpuBattleState st, ZoneFighter z,
 			Map<Short, CardDefinition> defs) {
 		if (st == null || z == null || z.getMain() == null || defs == null) {
@@ -3477,8 +3517,69 @@ public class CpuBattleEngine {
 		if (field == null || field.getCardId() != SCRAPYARD_FIELD_ID) {
 			return false;
 		}
+		if (st.getScrapyardFieldTurnsRemaining() <= 0) {
+			return false;
+		}
 		CardDefinition md = defs.get(z.getMain().getCardId());
 		return md != null && md.getName() != null && md.getName().contains("ガラクタ");
+	}
+
+	/** 廃棄工場: ターン開始時に 4→3→2→1（1 の間は減らさない） */
+	private static void tickScrapyardFieldAtTurnStart(CpuBattleState st) {
+		if (st == null) {
+			return;
+		}
+		BattleCard f = st.getActiveField();
+		if (f == null || f.getCardId() != SCRAPYARD_FIELD_ID) {
+			return;
+		}
+		int n = st.getScrapyardFieldTurnsRemaining();
+		if (n <= 0) {
+			return;
+		}
+		if (n > 1) {
+			st.setScrapyardFieldTurnsRemaining(n - 1);
+		}
+	}
+
+	/**
+	 * 廃棄工場: 残り「1」の相手ターンの終了時（ノック・ドロー処理の直後）に場から使用者のレストへ。
+	 *
+	 * @param humanWasActing いま終わった手番がホスト（human スロット）か
+	 */
+	private void maybeExpireScrapyardFieldAfterKnock(CpuBattleState st, boolean humanWasActing,
+			Map<Short, CardDefinition> defs) {
+		if (st == null) {
+			return;
+		}
+		BattleCard field = st.getActiveField();
+		if (field == null || field.getCardId() != SCRAPYARD_FIELD_ID) {
+			return;
+		}
+		if (st.getScrapyardFieldTurnsRemaining() != 1) {
+			return;
+		}
+		Boolean ownerHuman = st.getActiveFieldOwnerHuman();
+		if (ownerHuman == null) {
+			return;
+		}
+		if (humanWasActing == ownerHuman.booleanValue()) {
+			return;
+		}
+		CardDefinition fd = defs != null ? defs.get(field.getCardId()) : null;
+		String nm = fd != null && fd.getName() != null ? fd.getName() : "廃棄工場 5C-R4P";
+		if (ownerHuman) {
+			st.getHumanRest().add(field);
+			st.addLog("〈フィールド〉「" + nm + "」の効果が切れ、あなたのレストに置かれた");
+		} else {
+			st.getCpuRest().add(field);
+			st.addLog(st.isPvp()
+					? "〈フィールド〉「" + nm + "」の効果が切れ、ゲストのレストに置かれた"
+					: "〈フィールド〉「" + nm + "」の効果が切れ、相手のレストに置かれた");
+		}
+		st.setActiveField(null);
+		st.setActiveFieldOwnerHuman(null);
+		st.setScrapyardFieldTurnsRemaining(0);
 	}
 
 	/**
@@ -3732,7 +3833,7 @@ public class CpuBattleEngine {
 		if (!suppressOpponentEffects) {
 			ZoneFighter oppZone = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
 			if (oppZone != null && oppZone.getMain() != null && oppZone.getMain().getCardId() == KUSURI_ID
-					&& !hasGarakutaLeg(zf)) {
+					&& !fighterIgnoresKusuriDebuffDueToGarakutaLeg(zf, st, ownerIsHuman, defs)) {
 				int debuff = ownerIsHuman ? st.getCpuStones() : st.getHumanStones();
 				p -= debuff;
 			}
@@ -3861,7 +3962,10 @@ public class CpuBattleEngine {
 		}
 
 		if (id == STONIA_ID && st != null) {
-			p += ownerIsHuman ? st.getHumanStones() : st.getCpuStones();
+			boolean ownTurn = ownerIsHuman ? st.isHumansTurn() : !st.isHumansTurn();
+			if (ownTurn) {
+				p += ownerIsHuman ? st.getHumanStones() : st.getCpuStones();
+			}
 		}
 
 		return Math.max(0, p);
@@ -3961,7 +4065,7 @@ public class CpuBattleEngine {
 		if (!suppressOpponentEffects) {
 			ZoneFighter oppZone = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
 			if (oppZone != null && oppZone.getMain() != null && oppZone.getMain().getCardId() == KUSURI_ID
-					&& !hasGarakutaLeg(zf)) {
+					&& !fighterIgnoresKusuriDebuffDueToGarakutaLeg(zf, st, ownerIsHuman, defs)) {
 				int debuff = ownerIsHuman ? st.getCpuStones() : st.getHumanStones();
 				if (debuff > 0) {
 					out.add(new BattlePowerModifierDto(KUSURI_ID, "（相手の薬売り・ストーン" + debuff + "）"));
@@ -4078,9 +4182,10 @@ public class CpuBattleEngine {
 		}
 
 		if (id == STONIA_ID && st != null) {
+			boolean ownTurn = ownerIsHuman ? st.isHumansTurn() : !st.isHumansTurn();
 			int stones = ownerIsHuman ? st.getHumanStones() : st.getCpuStones();
-			if (stones > 0) {
-				out.add(new BattlePowerModifierDto(STONIA_ID, "（所持ストーン" + stones + "）"));
+			if (ownTurn && stones > 0) {
+				out.add(new BattlePowerModifierDto(STONIA_ID, "（自分のターン・所持ストーン" + stones + "）"));
 			}
 		}
 
@@ -4094,6 +4199,43 @@ public class CpuBattleEngine {
 	/** ガラクタレッグ（61）: 相手のファイターは〈常時〉が使えない */
 	private static boolean hasGarakutaLeg(ZoneFighter z) {
 		return z != null && z.getMain() != null && z.getMain().getCardId() == GARAKUTA_LEG_ID;
+	}
+
+	/**
+	 * 薬売りの「相手ファイター強さ−1／ストーン」は、ガラクタレッグの〈常時〉対象外。
+	 * 前列がガラクタレッグのほか、磁力合体デンジリオンがレストのガラクタレッグの〈常時〉を継承している場合も同様。
+	 */
+	private static boolean fighterIgnoresKusuriDebuffDueToGarakutaLeg(ZoneFighter zf, CpuBattleState st,
+			boolean ownerIsHuman, Map<Short, CardDefinition> defs) {
+		if (hasGarakutaLeg(zf)) {
+			return true;
+		}
+		if (zf == null || zf.getMain() == null || st == null || defs == null) {
+			return false;
+		}
+		if (zf.getMain().getCardId() != DENZIRION_ID) {
+			return false;
+		}
+		List<BattleCard> rest = ownerIsHuman ? st.getHumanRest() : st.getCpuRest();
+		if (rest == null) {
+			return false;
+		}
+		for (BattleCard rc : rest) {
+			if (isTuckedUnderOwnFighter(zf, rc)) {
+				continue;
+			}
+			CardDefinition rcd = defs.get(rc.getCardId());
+			if (!isMachineFighterRestSourceForDenziron(rcd)) {
+				continue;
+			}
+			if (rc.getCardId() == DENZIRION_ID) {
+				continue;
+			}
+			if (rc.getCardId() == GARAKUTA_LEG_ID) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** ミスティンクル（33）: 相手の〈配置〉のみ封じる（〈常時〉は対象外） */
@@ -4152,7 +4294,7 @@ public class CpuBattleEngine {
 			case "YOSEI", "NOROWARETA", "FUWAFUWA", "NIDONEBI", "KORYU" -> stones >= 1;
 			case "RYUNOTAMAGO" -> stones >= 2;
 			case "CRYSTAKUL" -> stones >= CRYSTAKUL_OPTIONAL_STONE_COST;
-			case "FEZARIA" -> stones >= 2;
+			case "FEZARIA" -> stones >= FEZARIA_OPTIONAL_STONE_COST;
 			default -> true;
 		};
 	}
@@ -4342,23 +4484,35 @@ public class CpuBattleEngine {
 		return false;
 	}
 
-	/** フェザリアの回収対象: カーバンクルかつ「フェザリア」カード自身は除く */
-	private static boolean isFezariaPickableCarbuncleInRest(BattleCard c, Map<Short, CardDefinition> defs) {
+	/**
+	 * フェザリアの回収対象: 〈フィールド〉を除く自分のファイターで「種族：カーバンクル」、かつ「フェザリア」カード自身は除く。
+	 * バトルゾーンのコスト下に重なっているインスタンスはレスト一覧に残っていてもレスト扱いにしない（シャイニ等と同じ）。
+	 */
+	private static boolean isFezariaPickableCarbuncleInRest(BattleCard c, ZoneFighter ownBattle,
+			Map<Short, CardDefinition> defs) {
 		if (c == null || defs == null) {
+			return false;
+		}
+		if (ownBattle != null && isTuckedUnderOwnFighter(ownBattle, c)) {
 			return false;
 		}
 		if (c.getCardId() == FEATHERIA_ID) {
 			return false;
 		}
-		return CardAttributes.hasAttribute(defs.get(c.getCardId()), c, "CARBUNCLE");
+		CardDefinition d = defs.get(c.getCardId());
+		if (!isNonFieldFighterCardDef(d)) {
+			return false;
+		}
+		return CardAttributes.hasAttribute(d, c, "CARBUNCLE");
 	}
 
-	private boolean restContainsFezariaPickableCarbuncle(List<BattleCard> rest, Map<Short, CardDefinition> defs) {
+	private boolean restContainsFezariaPickableCarbuncle(List<BattleCard> rest, ZoneFighter ownBattle,
+			Map<Short, CardDefinition> defs) {
 		if (rest == null) {
 			return false;
 		}
 		for (BattleCard c : rest) {
-			if (isFezariaPickableCarbuncleInRest(c, defs)) {
+			if (isFezariaPickableCarbuncleInRest(c, ownBattle, defs)) {
 				return true;
 			}
 		}
@@ -4470,7 +4624,8 @@ public class CpuBattleEngine {
 				yield field != null && field.getCardId() == FIELD_KAMUI_ID ? 3 : 0;
 			}
 			case STONIA_ID -> {
-				yield ownerIsHuman ? st.getHumanStones() : st.getCpuStones();
+				boolean ownTurn = ownerIsHuman ? st.isHumansTurn() : !st.isHumansTurn();
+				yield ownTurn ? (ownerIsHuman ? st.getHumanStones() : st.getCpuStones()) : 0;
 			}
 			case GARAKUTA_ARM_ID -> {
 				boolean oppTurn = ownerIsHuman ? !st.isHumansTurn() : st.isHumansTurn();
@@ -4915,7 +5070,7 @@ public class CpuBattleEngine {
 			case "STONIA" -> {
 				if (st.getHumanBattle() != null) {
 					int s = st.getHumanStones();
-					st.addLog("ノクスクル: 所持ストーン" + s + "のぶん強さ+" + s);
+					st.addLog("ノクスクル: 自分のターンの終わりまで、所持ストーン" + s + "のぶん強さ+" + s);
 				}
 			}
 			case "LUMINANK" -> {
@@ -4924,13 +5079,14 @@ public class CpuBattleEngine {
 				st.addLog("ルミナンク: ストーンを" + n + "から" + (n * 2) + "に");
 			}
 			case "FEZARIA" -> {
-				if (st.getHumanStones() >= 2 && restContainsFezariaPickableCarbuncle(st.getHumanRest(), defs)) {
+				if (st.getHumanStones() >= FEZARIA_OPTIONAL_STONE_COST
+						&& restContainsFezariaPickableCarbuncle(st.getHumanRest(), st.getHumanBattle(), defs)) {
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"フェザリア（ストーン2・フェザリア以外のカーバンクルを回収）",
+							"フェザリア（ストーン3・フェザリア以外のカーバンクルを回収）",
 							true,
 							"FEZARIA",
-							2,
+							FEZARIA_OPTIONAL_STONE_COST,
 							List.of()
 					));
 				}
@@ -5372,7 +5528,7 @@ public class CpuBattleEngine {
 			case "STONIA" -> {
 				if (st.getCpuBattle() != null) {
 					int s = st.getCpuStones();
-					st.addLog("ノクスクル: 所持ストーン" + s + "のぶん強さ+" + s);
+					st.addLog("ノクスクル: 自分のターンの終わりまで、所持ストーン" + s + "のぶん強さ+" + s);
 				}
 			}
 			case "LUMINANK" -> {
@@ -5381,13 +5537,14 @@ public class CpuBattleEngine {
 				st.addLog("ルミナンク: ストーンを" + n + "から" + (n * 2) + "に");
 			}
 			case "FEZARIA" -> {
-				if (st.getCpuStones() >= 2 && restContainsFezariaPickableCarbuncle(st.getCpuRest(), defs)) {
+				if (st.getCpuStones() >= FEZARIA_OPTIONAL_STONE_COST
+						&& restContainsFezariaPickableCarbuncle(st.getCpuRest(), st.getCpuBattle(), defs)) {
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"フェザリア（ストーン2・フェザリア以外のカーバンクルを回収）",
+							"フェザリア（ストーン3・フェザリア以外のカーバンクルを回収）",
 							false,
 							"FEZARIA",
-							2,
+							FEZARIA_OPTIONAL_STONE_COST,
 							List.of(),
 							true
 					));
@@ -5773,7 +5930,7 @@ public class CpuBattleEngine {
 			case "STONIA" -> {
 				if (st.getCpuBattle() != null) {
 					int s = st.getCpuStones();
-					st.addLog("CPUノクスクル: 所持ストーン" + s + "のぶん強さ+" + s);
+					st.addLog("CPUノクスクル: 自分のターンの終わりまで、所持ストーン" + s + "のぶん強さ+" + s);
 				}
 			}
 			case "LUMINANK" -> {
@@ -5782,18 +5939,19 @@ public class CpuBattleEngine {
 				st.addLog("CPUルミナンク: ストーンを" + n + "から" + (n * 2) + "に");
 			}
 			case "FEZARIA" -> {
-				if (st.getCpuStones() >= 2 && restContainsFezariaPickableCarbuncle(st.getCpuRest(), defs)) {
-					st.setCpuStones(st.getCpuStones() - 2);
+				if (st.getCpuStones() >= FEZARIA_OPTIONAL_STONE_COST
+						&& restContainsFezariaPickableCarbuncle(st.getCpuRest(), st.getCpuBattle(), defs)) {
+					st.setCpuStones(st.getCpuStones() - FEZARIA_OPTIONAL_STONE_COST);
 					int picked = 0;
 					for (int i = st.getCpuRest().size() - 1; i >= 0 && picked < 2; i--) {
 						BattleCard c = st.getCpuRest().get(i);
-						if (isFezariaPickableCarbuncleInRest(c, defs)) {
+						if (isFezariaPickableCarbuncleInRest(c, st.getCpuBattle(), defs)) {
 							st.getCpuRest().remove(i);
 							st.getCpuHand().add(0, c);
 							picked++;
 						}
 					}
-					st.addLog("CPUフェザリア: ストーン2使用、フェザリア以外のカーバンクル" + picked + "枚回収");
+					st.addLog("CPUフェザリア: ストーン3使用、フェザリア以外のカーバンクル" + picked + "枚回収");
 				}
 			}
 			case "MACHINE_GUNNER" -> machineGunDiscardOpponentStones(st, d, defs, false, true);
@@ -5998,6 +6156,29 @@ public class CpuBattleEngine {
 			core = Math.max(0, base - disc);
 		}
 		return Math.max(0, core + mechanicExtraCost + handAdj);
+	}
+
+	/**
+	 * 隊長「コストぶん強化」など、印字コストではなく《武器庫》・ネムリィ割引を反映した「そのカードのコスト」相当。
+	 * メカニックの+コストや手札のコスト補正は含めない（{@link #effectiveDeployCost} の mechanic / handAdj とは別扱い）。
+	 */
+	private int deployCharacteristicCostForPowerBonuses(CardDefinition d, BattleCard deployedMain,
+			Map<Short, CardDefinition> defs, List<BattleCard> discountRest, CpuBattleState st) {
+		if (d == null) {
+			return 0;
+		}
+		int base = d.getCost() != null ? d.getCost() : 0;
+		if (st != null && weaponDepotFieldActive(st) && isMachineFighterForWeaponDepotCost(d, deployedMain)) {
+			base = 1;
+		}
+		if (deployedMain != null && deployedMain.isBlankEffects()) {
+			return Math.max(0, base);
+		}
+		if (d.getId() != null && d.getId() == NEMURY_ID) {
+			int disc = countAttributeInRest(discountRest, defs, "CARBUNCLE");
+			return Math.max(0, base - disc);
+		}
+		return base;
 	}
 
 	/**

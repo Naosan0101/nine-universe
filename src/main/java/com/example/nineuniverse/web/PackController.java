@@ -71,6 +71,10 @@ public class PackController {
 		model.addAttribute("jewelUtopiaPackImage", GameConstants.packArtImageUrl("宝石の秘境パック.PNG"));
 		model.addAttribute("ironFleetPackImage", GameConstants.packArtImageUrl("鉄面の艦隊パック.PNG"));
 		model.addAttribute("gems", fresh != null && fresh.getCoins() != null ? fresh.getCoins() : 0);
+		int starterGift = fresh != null && fresh.getStarterGiftStandard1Remaining() != null
+				? fresh.getStarterGiftStandard1Remaining()
+				: 0;
+		model.addAttribute("starterGiftStandard1Remaining", starterGift);
 		model.addAttribute("packRarityRates", PACK_RARITY_RATES);
 		model.addAttribute("standardPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.STANDARD)));
 		model.addAttribute("windyHillPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.WINDY_HILL)));
@@ -147,6 +151,21 @@ public class PackController {
 			case "C" -> "コモン";
 			default -> code;
 		};
+	}
+
+	@PostMapping("/open-starter-gift")
+	public String openStarterGift(HttpSession session, RedirectAttributes ra) {
+		try {
+			long uid = CurrentUser.require().getId();
+			var pulled = packService.openStarterGiftStandard1Pack(uid);
+			List<Short> ids = pulled.stream().map(c -> c.getId()).toList();
+			session.setAttribute("pack_last_pulled_ids", ids);
+			session.setAttribute("pack_last_type", PackType.STANDARD.name());
+		} catch (IllegalArgumentException e) {
+			ra.addFlashAttribute("error", e.getMessage());
+			return "redirect:/pack";
+		}
+		return "redirect:/pack/opening";
 	}
 
 	@PostMapping("/buy")
