@@ -535,9 +535,10 @@
 	const filterPower = document.getElementById('library-filter-power');
 	const filterRarity = document.getElementById('library-filter-rarity');
 	const filterPack = document.getElementById('library-filter-pack');
+	const filterCardKind = document.getElementById('library-filter-card-kind');
 	const emptyMsg = document.getElementById('library-empty-msg');
 
-	if (grid && searchInput && filterAttr && filterCost && filterPower && filterRarity && filterPack) {
+	if (grid && searchInput && filterAttr && filterCost && filterPower && filterRarity && filterPack && filterCardKind) {
 		const ATTR_ORDER = {
 			HUMAN: 0,
 			ELF: 1,
@@ -580,6 +581,13 @@
 			return n === filterVal;
 		}
 
+		function matchesCardKindFilter(fieldCard, filterVal) {
+			if (!filterVal) return true;
+			if (filterVal === 'field') return fieldCard === true;
+			if (filterVal === 'fighter') return fieldCard !== true;
+			return true;
+		}
+
 		function cmpAttr(a, b) {
 			const ao = ATTR_ORDER[primaryAttrSeg(a.attribute)] !== undefined ? ATTR_ORDER[primaryAttrSeg(a.attribute)] : 99;
 			const bo = ATTR_ORDER[primaryAttrSeg(b.attribute)] !== undefined ? ATTR_ORDER[primaryAttrSeg(b.attribute)] : 99;
@@ -614,6 +622,7 @@
 			const powerSel = filterPower.value;
 			const raritySel = filterRarity.value;
 			const packSel = filterPack.value;
+			const kindSel = filterCardKind.value;
 			let items = cards.map(function (card) {
 				const btn = card.querySelector('.library-card__open');
 				const ds = btn ? btn.dataset : {};
@@ -623,6 +632,7 @@
 					card: card,
 					name: ds.name || '',
 					owned: ds.owned === 'true',
+					fieldCard: ds.fieldCard === 'true',
 					attribute: ds.attribute || '',
 					packInitial: normalizePackInitial(ds.packInitial),
 					power: isNaN(p) ? 0 : p,
@@ -642,6 +652,7 @@
 				if (q && !it.owned) return false;
 				if (!matchesCardTextSearch(q, it.searchParts)) return false;
 				if (attrSel && !matchesTribeFilter(it.attribute, attrSel)) return false;
+				if (!matchesCardKindFilter(it.fieldCard, kindSel)) return false;
 				if (packSel && !matchesPackFilter(it.packInitial, packSel)) return false;
 				if (costSel && String(it.cost) !== String(costSel)) return false;
 				if (powerSel && String(it.power) !== String(powerSel)) return false;
@@ -682,6 +693,7 @@
 		filterPower.addEventListener('change', applyBrowser);
 		filterRarity.addEventListener('change', applyBrowser);
 		filterPack.addEventListener('change', applyBrowser);
+		filterCardKind.addEventListener('change', applyBrowser);
 		applyBrowser();
 	}
 })();

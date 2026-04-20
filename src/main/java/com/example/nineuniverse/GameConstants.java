@@ -172,10 +172,11 @@ public final class GameConstants {
 	}
 
 	/**
-	 * 購入一覧など、{@code /images/cards/} 配下のパックアート用。{@link #encCardFileNfc} と同じく NFC で URL を組む。
+	 * 購入一覧など、{@code /images/cards/} 配下のパックアート用。
+	 * リポジトリ上のファイル名（Git 由来は NFD になりやすい）と一致させるため {@link #encCardFile} を使う。
 	 */
 	public static String packArtImageUrl(String filename) {
-		return encCardFileNfc(filename);
+		return encCardFile(filename);
 	}
 
 	/** 新規登録直後の所持ジェム（初回ホームでウェルカムボーナス） */
@@ -324,8 +325,20 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_SAMURAI_STATUS_LAST_DAY =
 			ANNOUNCEMENT_SAMURAI_STATUS_START.plusDays(30 - 1);
 
-	/** 運営より、皆様へ（ポップアップ表示＆お知らせから再閲覧） */
-	public static final LocalDate ANNOUNCEMENT_OPERATOR_MESSAGE_START = LocalDate.of(2026, 4, 16);
+	/** お知らせ配布（大型アップデート記念・30ジェム） */
+	public static final String ANNOUNCEMENT_MAJOR_UPDATE_KEY = "major_update_2026_04";
+
+	public static final int ANNOUNCEMENT_MAJOR_UPDATE_GEMS = 30;
+
+	public static final LocalDate ANNOUNCEMENT_MAJOR_UPDATE_START = LocalDate.of(2026, 4, 20);
+
+	public static final LocalDate ANNOUNCEMENT_MAJOR_UPDATE_LAST_DAY =
+			ANNOUNCEMENT_MAJOR_UPDATE_START.plusDays(30 - 1);
+
+	/**
+	 * ログイン時ポップアップ「もう表示しない」用（ジェム受け取りとは別行）。
+	 */
+	public static final String ANNOUNCEMENT_MAJOR_UPDATE_POPUP_SUPPRESS_KEY = "major_update_popup_suppress_2026_04";
 
 	/**
 	 * お知らせモーダルで「新規ユーザー」に古い項目を出さないための判定。
@@ -373,7 +386,7 @@ public final class GameConstants {
 	/**
 	 * お知らせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
 	 */
-	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-17-2";
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-20-1";
 
 	private GameConstants() {
 	}

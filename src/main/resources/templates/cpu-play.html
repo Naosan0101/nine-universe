@@ -10,6 +10,9 @@
 	<meta name="card_back" th:content="${cardBack}"/>
 	<meta name="nine_universe_context_path" th:content="${contextPath != null ? contextPath : ''}"/>
 	<meta name="my_battle_deck_id" th:content="${myBattleDeckId != null ? myBattleDeckId : ''}"/>
+	<meta name="battle_intro_my_name" th:content="${battleIntroMyName}"/>
+	<meta name="battle_intro_opp_name" th:content="${battleIntroOppName}"/>
+	<meta name="battle_intro_i_am_first" th:content="${battleIntroIAmFirst}"/>
 	<meta name="card_plate_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|"/>
 	<meta name="card_data_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardDataUrl}|"/>
 </head>

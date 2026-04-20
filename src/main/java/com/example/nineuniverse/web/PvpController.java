@@ -2,6 +2,8 @@ package com.example.nineuniverse.web;
 
 import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.service.DeckService;
+import com.example.nineuniverse.domain.AppUser;
+import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.service.PvpBattleService;
 import com.example.nineuniverse.web.dto.CpuBattleChoiceRequest;
 import com.example.nineuniverse.web.dto.CpuBattleCommitRequest;
@@ -27,6 +29,7 @@ public class PvpController {
 
 	private final PvpBattleService pvpBattleService;
 	private final DeckService deckService;
+	private final AppUserMapper appUserMapper;
 
 	@GetMapping
 	public String menu(Model model) {
@@ -127,6 +130,27 @@ public class PvpController {
 			myBattleDeckId = m.getHostUserId() == uid ? st.getHumanSlotDeckId() : st.getCpuSlotDeckId();
 		}
 		model.addAttribute("myBattleDeckId", myBattleDeckId);
+		boolean iAmHost = m.getHostUserId() == uid;
+		String hostName = "ホスト";
+		String guestName = "ゲスト";
+		if (m.getGuestUserId() != null) {
+			AppUser hu = appUserMapper.findById(m.getHostUserId());
+			AppUser gu = appUserMapper.findById(m.getGuestUserId());
+			if (hu != null && hu.getUsername() != null && !hu.getUsername().isBlank()) {
+				hostName = hu.getUsername();
+			}
+			if (gu != null && gu.getUsername() != null && !gu.getUsername().isBlank()) {
+				guestName = gu.getUsername();
+			}
+		}
+		model.addAttribute("battleIntroMyName", iAmHost ? hostName : guestName);
+		model.addAttribute("battleIntroOppName", iAmHost ? guestName : hostName);
+		boolean iAmFirst = false;
+		if (st != null) {
+			boolean humanFirst = st.isHumanGoesFirst();
+			iAmFirst = iAmHost ? humanFirst : !humanFirst;
+		}
+		model.addAttribute("battleIntroIAmFirst", iAmFirst);
 		return "pvp-play";
 	}
 

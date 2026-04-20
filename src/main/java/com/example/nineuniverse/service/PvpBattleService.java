@@ -264,7 +264,7 @@ public class PvpBattleService {
 
 	private static CpuBattleStateDto withMyBattleDeckId(CpuBattleStateDto b, Long myBattleDeckId) {
 		return new CpuBattleStateDto(
-				b.pvpMatch(), b.cpuLevel(), b.humanGoesFirst(), b.humansTurn(), b.phase(),
+				b.pvpMatch(), b.cpuBattleMode(), b.cpuLevel(), b.humanGoesFirst(), b.humansTurn(), b.phase(),
 				b.turnStartedAtMs(), b.activeTimeLimitSec(), b.activePenaltyStage(),
 				b.humanStones(), b.cpuStones(), b.humanDeck(), b.humanHand(), b.humanRest(), b.humanBattle(),
 				b.cpuDeck(), b.cpuHand(), b.cpuRest(), b.cpuBattle(), b.activeField(),
@@ -347,6 +347,7 @@ public class PvpBattleService {
 		}
 		return new CpuBattleStateDto(
 				b.pvpMatch(),
+				b.cpuBattleMode(),
 				b.cpuLevel(),
 				b.humanGoesFirst(),
 				!b.humansTurn(),
@@ -387,7 +388,7 @@ public class PvpBattleService {
 
 	private CpuBattleStateDto replacePhase(CpuBattleStateDto b, String phase) {
 		return new CpuBattleStateDto(
-				b.pvpMatch(), b.cpuLevel(), b.humanGoesFirst(), b.humansTurn(), phase,
+				b.pvpMatch(), b.cpuBattleMode(), b.cpuLevel(), b.humanGoesFirst(), b.humansTurn(), phase,
 				b.turnStartedAtMs(), b.activeTimeLimitSec(), b.activePenaltyStage(),
 				b.humanStones(), b.cpuStones(), b.humanDeck(), b.humanHand(), b.humanRest(), b.humanBattle(),
 				b.cpuDeck(), b.cpuHand(), b.cpuRest(), b.cpuBattle(), b.activeField(),
@@ -411,7 +412,7 @@ public class PvpBattleService {
 				pc.kind(), pc.prompt(), pc.forHuman(), pc.cpuSlotChooses(),
 				pc.abilityDeployCode(), pc.stoneCost(), pc.optionInstanceIds(), may);
 		return new CpuBattleStateDto(
-				b.pvpMatch(), b.cpuLevel(), b.humanGoesFirst(), b.humansTurn(), b.phase(),
+				b.pvpMatch(), b.cpuBattleMode(), b.cpuLevel(), b.humanGoesFirst(), b.humansTurn(), b.phase(),
 				b.turnStartedAtMs(), b.activeTimeLimitSec(), b.activePenaltyStage(),
 				b.humanStones(), b.cpuStones(), b.humanDeck(), b.humanHand(), b.humanRest(), b.humanBattle(),
 				b.cpuDeck(), b.cpuHand(), b.cpuRest(), b.cpuBattle(), b.activeField(),

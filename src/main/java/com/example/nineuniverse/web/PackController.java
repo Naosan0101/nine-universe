@@ -9,6 +9,7 @@ import com.example.nineuniverse.service.PackService.PackType;
 import com.example.nineuniverse.web.dto.PackPreviewLine;
 import com.example.nineuniverse.web.dto.PackRarityRateRow;
 import java.io.IOException;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
 import jakarta.servlet.http.HttpSession;
@@ -37,13 +38,18 @@ public class PackController {
 	private final AppUserMapper appUserMapper;
 	private final LibraryService libraryService;
 
+	/** クラスパス走査用。実ファイルは NFD のため {@link Normalizer#normalize} で揃える。 */
+	private static String packArtClasspathRel(String logicalNfcFileName) {
+		return "static/images/cards/" + Normalizer.normalize(logicalNfcFileName, Normalizer.Form.NFD);
+	}
+
 	private static final List<String> PACK_ART_CLASSPATH_FILES = List.of(
-			"static/images/cards/スタンダードパック.PNG",
-			"static/images/cards/風吹く丘パック.PNG",
-			"static/images/cards/邪悪なる脅威パック.PNG",
-			"static/images/cards/スタンダードパック2.PNG",
-			"static/images/cards/宝石の秘境パック.PNG",
-			"static/images/cards/鉄面の艦隊パック.PNG");
+			packArtClasspathRel("スタンダードパック1.PNG"),
+			packArtClasspathRel("風吹く丘パック.PNG"),
+			packArtClasspathRel("邪悪なる脅威パック.PNG"),
+			packArtClasspathRel("スタンダードパック2.PNG"),
+			packArtClasspathRel("宝石の秘境パック.PNG"),
+			packArtClasspathRel("鉄面の艦隊パック.PNG"));
 
 	private static final String CARD_BACK_CLASSPATH = "static/images/cards/card-back.PNG";
 
@@ -57,7 +63,7 @@ public class PackController {
 		long uid = CurrentUser.require().getId();
 		var fresh = appUserMapper.findById(uid);
 		model.addAttribute("packArtCacheKey", PACK_ART_CACHE_KEY);
-		model.addAttribute("standardPackImage", GameConstants.packArtImageUrl("スタンダードパック.PNG"));
+		model.addAttribute("standardPackImage", GameConstants.packArtImageUrl("スタンダードパック1.PNG"));
 		model.addAttribute("windyHillPackImage", GameConstants.packArtImageUrl("風吹く丘パック.PNG"));
 		model.addAttribute("evilThreatPackImage", GameConstants.packArtImageUrl("邪悪なる脅威パック.PNG"));
 		// 新パック（画像が未実装でも購入画面が崩れないよう、存在しない場合は onerror で非表示）

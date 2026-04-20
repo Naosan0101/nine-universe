@@ -9,6 +9,8 @@ import lombok.Data;
 public class CpuBattleState implements Serializable {
 	/** 対人戦（ゲストは状態上の cpu 側だが人間が操作する） */
 	private boolean pvp;
+	/** CPU戦のみ。デッキ構成と AI の挙動 */
+	private CpuBattleMode cpuBattleMode = CpuBattleMode.ORIGIN;
 	private int cpuLevel;
 	private boolean humanGoesFirst;
 	private boolean humansTurn;

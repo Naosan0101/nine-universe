@@ -41,6 +41,7 @@
 	const libFilterCost = document.getElementById('lib-filter-cost');
 	const libFilterRarity = document.getElementById('lib-filter-rarity');
 	const libFilterPack = document.getElementById('lib-filter-pack');
+	const libFilterCardKind = document.getElementById('lib-filter-card-kind');
 	const tooltipEl = document.getElementById('deck-tooltip');
 	const tooltipName = tooltipEl.querySelector('.deck-tooltip__name');
 	const tooltipAttr = tooltipEl.querySelector('.deck-tooltip__attr');
@@ -524,6 +525,7 @@
 		const costF = libFilterCost ? libFilterCost.value : '';
 		const rarF = libFilterRarity ? libFilterRarity.value : '';
 		const packF = libFilterPack ? libFilterPack.value : '';
+		const kindF = libFilterCardKind ? libFilterCardKind.value : '';
 		let list = seeds.filter(function (c) {
 			if (
 				!matchesCardTextSearch(q, [
@@ -537,6 +539,8 @@
 				return false;
 			}
 			if (attrF && !matchesTribeFilter(c.attribute, attrF)) return false;
+			if (kindF === 'fighter' && c.fieldCard) return false;
+			if (kindF === 'field' && !c.fieldCard) return false;
 			if (packF && !matchesPackFilter(c.packInitial, packF)) return false;
 			if (powF !== '' && c.power !== parseInt(powF, 10)) return false;
 			if (costF !== '' && c.cost !== parseInt(costF, 10)) return false;
@@ -790,7 +794,8 @@
 			const hasPow = libFilterPower && libFilterPower.value !== '';
 			const hasCost = libFilterCost && libFilterCost.value !== '';
 			const hasRar = libFilterRarity && libFilterRarity.value;
-			if (hasSearch || hasAttr || hasPack || hasPow || hasCost || hasRar) {
+			const hasKind = libFilterCardKind && libFilterCardKind.value;
+			if (hasSearch || hasAttr || hasPack || hasPow || hasCost || hasRar || hasKind) {
 				const p = document.createElement('p');
 				p.className = 'muted deck-lib-empty-msg';
 				p.textContent = '表示条件に一致するカードがありません。';
@@ -881,6 +886,9 @@
 	}
 	if (libFilterPack) {
 		libFilterPack.addEventListener('change', onFilterChange);
+	}
+	if (libFilterCardKind) {
+		libFilterCardKind.addEventListener('change', onFilterChange);
 	}
 
 	document.addEventListener('scroll', hideTooltip, true);

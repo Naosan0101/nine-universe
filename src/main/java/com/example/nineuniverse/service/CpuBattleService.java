@@ -4,6 +4,7 @@ import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.battle.BattleCard;
 import com.example.nineuniverse.battle.CpuBattleEngine;
 import com.example.nineuniverse.battle.BattlePhase;
+import com.example.nineuniverse.battle.CpuBattleMode;
 import com.example.nineuniverse.battle.CpuBattleState;
 import com.example.nineuniverse.battle.ZoneFighter;
 import com.example.nineuniverse.domain.CardDefinition;
@@ -39,12 +40,17 @@ public class CpuBattleService {
 	private volatile Map<Short, CardDefDto> cachedDefDtos;
 
 	@Transactional
-	public CpuBattleState start(long userId, long deckId, int level, HttpSession session) {
+	public CpuBattleState start(long userId, long deckId, int level, CpuBattleMode cpuBattleMode, HttpSession session) {
 		deckService.requireDeck(userId, deckId);
 		List<Short> ids = deckService.cardIdsForDeck(deckId);
 		Map<Short, CardDefinition> defs = cardCatalogService.mapById();
 		Random rnd = new Random();
-		CpuBattleState st = engine.newBattle(ids, level, rnd, defs);
+		CpuBattleMode mode = cpuBattleMode != null ? cpuBattleMode : CpuBattleMode.ORIGIN;
+		int clampedLevel = switch (mode) {
+			case ADVANCED -> Math.min(5, Math.max(1, level));
+			case ORIGIN -> Math.min(3, Math.max(1, level));
+		};
+		CpuBattleState st = engine.newBattle(ids, clampedLevel, mode, rnd, defs);
 		st.setHumanSlotDeckId(deckId);
 		st.setCpuBattleUserId(userId);
 		st.setPhase(st.isHumansTurn() ? BattlePhase.HUMAN_INPUT : BattlePhase.CPU_THINKING);
@@ -132,8 +138,10 @@ public class CpuBattleService {
 			}
 		}
 
+		CpuBattleMode mode = st.getCpuBattleMode() != null ? st.getCpuBattleMode() : CpuBattleMode.ORIGIN;
 		return new CpuBattleStateDto(
 				st.isPvp(),
+				mode.name(),
 				st.getCpuLevel(),
 				st.isHumanGoesFirst(),
 				st.isHumansTurn(),
@@ -318,6 +326,8 @@ public class CpuBattleService {
 			return;
 		}
 		st.setCpuWinMissionNotified(true);
-		missionService.onCpuBattleWon(st.getCpuBattleUserId(), st.getCpuLevel());
+		// ミッションは従来どおり L1〜L3 相当（アドバンスド L4・L5 は L3 相当）
+		int missionTier = Math.min(Math.max(st.getCpuLevel(), 1), 3);
+		missionService.onCpuBattleWon(st.getCpuBattleUserId(), missionTier);
 	}
 }

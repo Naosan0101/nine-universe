@@ -9,7 +9,6 @@ import com.example.nineuniverse.service.MissionService;
 import com.example.nineuniverse.service.TimePackGaugeService;
 import jakarta.servlet.http.HttpSession;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -73,9 +72,9 @@ public class HomeController {
 		boolean listSamuraiStatus = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_START);
-		boolean listOperatorMessage = GameConstants.shouldListAnnouncementForUser(
+		boolean listMajorUpdate = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
-				GameConstants.ANNOUNCEMENT_OPERATOR_MESSAGE_START);
+				GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -89,7 +88,7 @@ public class HomeController {
 		model.addAttribute("announcementList30Users", list30Users);
 		model.addAttribute("announcementListKaenryuStatus", listKaenryuStatus);
 		model.addAttribute("announcementListSamuraiStatus", listSamuraiStatus);
-		model.addAttribute("announcementListOperatorMessage", listOperatorMessage);
+		model.addAttribute("announcementListMajorUpdate", listMajorUpdate);
 
 		Set<String> claimedKeys = announcementRewardService.findClaimedKeys(uid);
 
@@ -231,6 +230,19 @@ public class HomeController {
 				!samuraiStatusAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_START));
 		model.addAttribute("samuraiStatusAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_GEMS);
 
+		boolean majorUpdateAnnClaimed = claimedKeys.contains(GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_KEY);
+		boolean majorUpdateAnnInWindow = announcementRewardService.isWithinMajorUpdateAnnouncementWindow(today);
+		boolean majorUpdatePopupSuppress = announcementRewardService.hasSuppressedMajorUpdatePopup(uid);
+		model.addAttribute("majorUpdateAnnouncementClaimed", majorUpdateAnnClaimed);
+		model.addAttribute("majorUpdateAnnouncementClaimable", majorUpdateAnnInWindow && !majorUpdateAnnClaimed);
+		model.addAttribute("majorUpdateAnnouncementExpiredUnclaimed",
+				!majorUpdateAnnClaimed && today.isAfter(GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_LAST_DAY));
+		model.addAttribute("majorUpdateAnnouncementFutureUnclaimed",
+				!majorUpdateAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_START));
+		model.addAttribute("majorUpdateAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_GEMS);
+		model.addAttribute("majorUpdateLoginPopupShow",
+				listMajorUpdate && majorUpdateAnnInWindow && !majorUpdatePopupSuppress);
+
 		int announcementBulkClaimableGemTotal = 0;
 		if (listPerfLight && perfInWindow && !perfClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PERF_LIGHT_GEMS;
@@ -271,12 +283,11 @@ public class HomeController {
 		if (listSamuraiStatus && samuraiStatusAnnInWindow && !samuraiStatusAnnClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_GEMS;
 		}
+		if (listMajorUpdate && majorUpdateAnnInWindow && !majorUpdateAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_GEMS;
+		}
 		model.addAttribute("announcementBulkClaimableGemTotal", announcementBulkClaimableGemTotal);
 		model.addAttribute("announcementAnyGemClaimable", announcementBulkClaimableGemTotal > 0);
-
-		LocalDateTime now = LocalDateTime.now(zone);
-		LocalDateTime operatorPopupEnd = LocalDateTime.of(2026, 4, 19, 23, 59);
-		model.addAttribute("operatorMessagePopupEnabled", !now.isAfter(operatorPopupEnd));
 
 		var gauge = timePackGaugeService.snapshotForUser(uid);
 		model.addAttribute("timePackFillPercent", gauge.fillPercent());
@@ -569,6 +580,34 @@ public class HomeController {
 			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
 			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
 		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/major-update/claim")
+	public String claimMajorUpdateAnnouncement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimMajorUpdateAnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/major-update/suppress-popup")
+	public String suppressMajorUpdateLoginPopup(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		announcementRewardService.suppressMajorUpdateLoginPopup(uid);
 		return "redirect:/home";
 	}
 

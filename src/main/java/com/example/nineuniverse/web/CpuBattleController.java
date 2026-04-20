@@ -2,6 +2,7 @@ package com.example.nineuniverse.web;
 
 import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.domain.CardDefinition;
+import com.example.nineuniverse.battle.CpuBattleMode;
 import com.example.nineuniverse.service.CpuBattleService;
 import com.example.nineuniverse.service.DeckService;
 import com.example.nineuniverse.web.dto.CpuBattleCommitRequest;
@@ -29,6 +30,17 @@ public class CpuBattleController {
 	private final CpuBattleService cpuBattleService;
 	private final DeckService deckService;
 
+	private static CpuBattleMode parseCpuBattleMode(String raw) {
+		if (raw == null || raw.isBlank()) {
+			return CpuBattleMode.ORIGIN;
+		}
+		try {
+			return CpuBattleMode.valueOf(raw.trim().toUpperCase());
+		} catch (IllegalArgumentException e) {
+			return CpuBattleMode.ORIGIN;
+		}
+	}
+
 	@GetMapping
 	public String menu(Model model) {
 		long uid = CurrentUser.require().getId();
@@ -37,10 +49,13 @@ public class CpuBattleController {
 	}
 
 	@PostMapping("/start")
-	public String start(@RequestParam long deckId, @RequestParam int level, HttpSession session, RedirectAttributes ra) {
+	public String start(@RequestParam long deckId, @RequestParam int level,
+			@RequestParam(defaultValue = "ORIGIN") String cpuMode,
+			HttpSession session, RedirectAttributes ra) {
 		try {
 			long uid = CurrentUser.require().getId();
-			cpuBattleService.start(uid, deckId, level, session);
+			CpuBattleMode mode = parseCpuBattleMode(cpuMode);
+			cpuBattleService.start(uid, deckId, level, mode, session);
 			return "redirect:/battle/cpu/play";
 		} catch (Exception e) {
 			ra.addFlashAttribute("error", e.getMessage());
@@ -71,6 +86,9 @@ public class CpuBattleController {
 		model.addAttribute("humanBattleDef", hb);
 		model.addAttribute("cpuBattleDef", cb);
 		model.addAttribute("myBattleDeckId", st.getHumanSlotDeckId());
+		model.addAttribute("battleIntroMyName", CurrentUser.require().getUsername());
+		model.addAttribute("battleIntroOppName", "CPU（レベル" + st.getCpuLevel() + "）");
+		model.addAttribute("battleIntroIAmFirst", st.isHumanGoesFirst());
 		return "cpu-play";
 	}
 

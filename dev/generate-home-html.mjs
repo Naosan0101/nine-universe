@@ -198,11 +198,7 @@ const html = `<!DOCTYPE html>
 		<div class="home-time-pack__head">
 			<h2 class="home-time-pack__title">\u30dc\u30fc\u30ca\u30b9\u30d1\u30c3\u30af</h2>
 			<div class="home-time-pack__lead">
-				<p class="home-time-pack__lead-line">\u6642\u9593\u306e\u7d4c\u904e\u3067\u30b2\u30fc\u30b8\u304c\u6e9c\u307e\u308a\u307e\u3059\uff081\u5468<strong>12\u6642\u9593</strong>\uff09\u3002</p>
-				<ul class="home-time-pack__bullets">
-					<li><span class="home-time-pack__tier">50%</span> \u2026 \u30b9\u30bf\u30f3\u30c0\u30fc\u30c9\u30d1\u30c3\u30af\u3092 <strong>1\u30d1\u30c3\u30af</strong> \u958b\u5c01\u3067\u304d\u307e\u3059\u3002</li>
-					<li><span class="home-time-pack__tier">MAX</span> \u2026 <strong>2\u30d1\u30c3\u30af</strong> \u307e\u3068\u3081\u3066\u958b\u5c01\u3067\u304d\u307e\u3059\uff08\u958b\u5c01\u3067\u30b2\u30fc\u30b8\u30ea\u30bb\u30c3\u30c8\uff09\u3002</li>
-				</ul>
+				<p class="home-time-pack__lead-line">\u6642\u9593\u306e\u7d4c\u904e\u3067\u30b2\u30fc\u30b8\u304c\u6e9c\u307e\u308a\u307e\u3059\u3002</p>
 			</div>
 		</div>
 		<div class="home-time-pack__bar-wrap" aria-hidden="true">
@@ -228,10 +224,6 @@ const html = `<!DOCTYPE html>
 				</div>
 			</div>
 		</div>
-		<p class="home-time-pack__status" id="time-pack-status">
-			<span th:if="\${timePackAvailablePacks == 1}">\u30b9\u30bf\u30f3\u30c0\u30fc\u30c9\u30d1\u30c3\u30af\u3092 <strong>1\u30d1\u30c3\u30af</strong> \u958b\u5c01\u3067\u304d\u307e\u3059\u3002</span>
-			<span th:if="\${timePackAvailablePacks == 2}">\u30b9\u30bf\u30f3\u30c0\u30fc\u30c9\u30d1\u30c3\u30af\u3092 <strong>2\u30d1\u30c3\u30af</strong> \u307e\u3068\u3081\u3066\u958b\u5c01\u3067\u304d\u307e\u3059\u3002</span>
-		</p>
 		<form th:action="@{/home/time-pack/open}" method="post" class="home-time-pack__form">
 			<input type="hidden" th:name="\${_csrf.parameterName}" th:value="\${_csrf.token}"/>
 			<button type="submit"
@@ -386,10 +378,9 @@ const html = `<!DOCTYPE html>
 	var root = document.querySelector('.home-time-pack');
 	var fill = document.getElementById('time-pack-fill');
 	var btn = document.getElementById('time-pack-open-btn');
-	var statusEl = document.getElementById('time-pack-status');
 	var cdHalf = document.getElementById('time-pack-cd-half');
 	var cdMax = document.getElementById('time-pack-cd-max');
-	if (!root || !fill || !btn || !statusEl || !cdHalf || !cdMax) return;
+	if (!root || !fill || !btn || !cdHalf || !cdMax) return;
 	var dur = parseInt(root.getAttribute('data-duration-ms'), 10);
 	var start = parseInt(root.getAttribute('data-start-ms'), 10);
 	if (!dur || isNaN(start)) return;
@@ -425,13 +416,10 @@ const html = `<!DOCTYPE html>
 		}
 		if (packs === 2) {
 			btn.textContent = '\u30b9\u30bf\u30f3\u30c0\u30fc\u30c9\u30922\u30d1\u30c3\u30af\u958b\u5c01';
-			statusEl.innerHTML = '\u30b9\u30bf\u30f3\u30c0\u30fc\u30c9\u30d1\u30c3\u30af\u3092 <strong>2\u30d1\u30c3\u30af</strong> \u307e\u3068\u3081\u3066\u958b\u5c01\u3067\u304d\u307e\u3059\u3002';
 		} else if (packs === 1) {
 			btn.textContent = '\u30b9\u30bf\u30f3\u30c0\u30fc\u30c9\u30921\u30d1\u30c3\u30af\u958b\u5c01';
-			statusEl.innerHTML = '\u30b9\u30bf\u30f3\u30c0\u30fc\u30c9\u30d1\u30c3\u30af\u3092 <strong>1\u30d1\u30c3\u30af</strong> \u958b\u5c01\u3067\u304d\u307e\u3059\u3002';
 		} else {
 			btn.textContent = '\u958b\u5c01\u3067\u304d\u308b\u307e\u3067\u5f85\u6a5f\u4e2d';
-			statusEl.textContent = '';
 		}
 	}
 	tick();

@@ -5,6 +5,8 @@ import java.util.Map;
 
 public record CpuBattleStateDto(
 		boolean pvpMatch,
+		/** CPU戦のみ: ORIGIN / ADVANCED */
+		String cpuBattleMode,
 		int cpuLevel,
 		boolean humanGoesFirst,
 		boolean humansTurn,

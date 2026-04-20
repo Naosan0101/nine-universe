@@ -25,22 +25,61 @@
 		デッキがありません。先にデッキを8枚作成してください。
 	</p>
 
-	<form th:if="${decks != null && !decks.isEmpty()}" th:action="@{/battle/cpu/start}" method="post" class="stack panel panel--narrow">
-		<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-		<label>デッキ
-			<select name="deckId" required>
-				<option th:each="d : ${decks}" th:value="${d.id}" th:text="${d.name}">デッキ</option>
-			</select>
-		</label>
-		<label>CPUレベル
-			<select name="level" required>
-				<option value="1">レベル1（やさしい）</option>
-				<option value="2">レベル2</option>
-				<option value="3">レベル3（強い）</option>
-			</select>
-		</label>
-		<button type="submit" class="btn btn--primary">バトル開始</button>
-	</form>
+	<th:block th:if="${decks != null && !decks.isEmpty()}">
+		<div class="cpu-menu-modes">
+		<section class="panel panel--narrow stack">
+			<h2 style="margin-top:0;">CPU（オリジン）</h2>
+			<p class="muted" style="margin:0 0 0.75rem;">
+				〈フィールド〉を使わない古来の戦い方をするCPU。<br/>
+				はじめての方におすすめ。
+			</p>
+			<form th:action="@{/battle/cpu/start}" method="post" class="stack">
+				<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+				<input type="hidden" name="cpuMode" value="ORIGIN"/>
+				<label>デッキ
+					<select name="deckId" class="js-cpu-battle-deck" required>
+						<option th:each="d : ${decks}" th:value="${d.id}" th:text="${d.name}">デッキ</option>
+					</select>
+				</label>
+				<label>強さ
+					<select name="level" required>
+						<option value="1">レベル1（やさしい）</option>
+						<option value="2">レベル2</option>
+						<option value="3">レベル3（強い）</option>
+					</select>
+				</label>
+				<button type="submit" class="btn btn--primary">バトル開始</button>
+			</form>
+		</section>
+
+		<section class="panel panel--narrow stack">
+			<h2 style="margin-top:0;">CPU（アドバンスド）</h2>
+			<p class="muted" style="margin:0 0 0.75rem;">
+				すべてのカードと〈フィールド〉を使うCPU。<br/>
+				実践に近い。
+			</p>
+			<form th:action="@{/battle/cpu/start}" method="post" class="stack">
+				<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+				<input type="hidden" name="cpuMode" value="ADVANCED"/>
+				<label>デッキ
+					<select name="deckId" class="js-cpu-battle-deck" required>
+						<option th:each="d : ${decks}" th:value="${d.id}" th:text="${d.name}">デッキ</option>
+					</select>
+				</label>
+				<label>強さ
+					<select name="level" required>
+						<option value="1">レベル1（やさしい）</option>
+						<option value="2">レベル2</option>
+						<option value="3">レベル3</option>
+						<option value="4">レベル4</option>
+						<option value="5">レベル5（最強）</option>
+					</select>
+				</label>
+				<button type="submit" class="btn btn--primary">バトル開始</button>
+			</form>
+		</section>
+		</div>
+	</th:block>
 </div>
 <script th:src="@{/js/battle-deck-select.js(v=${assetVersion})}"></script>
 </body>

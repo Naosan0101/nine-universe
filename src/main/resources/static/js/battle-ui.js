@@ -18,7 +18,7 @@
 	const battleIsPvp = pvpMatchId.length > 0;
 	const battleApiBase = battleIsPvp ? (contextPath + '/battle/pvp/api/' + encodeURIComponent(pvpMatchId)) : null;
 	/** {@code battle-deck-select.js} と同じキー（降参後もデッキ選択の先頭に使う） */
-	const LAST_BATTLE_DECK_STORAGE_KEY = 'nu.lastBattleDeckId';
+	const LAST_BATTLE_DECK_STORAGE_KEY = battleIsPvp ? 'nu.lastBattleDeckId' : 'nu.lastCpuBattleDeckId';
 
 	function persistLastBattleDeckIdForMenu() {
 		var meta = document.querySelector('meta[name="my_battle_deck_id"]');
@@ -44,6 +44,113 @@
 		const p = String(path);
 		if (p.startsWith('http://') || p.startsWith('https://')) return p;
 		return contextPath + p;
+	}
+
+	function cssEscapeForBgUrl(u) {
+		return String(u).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+	}
+
+	function fieldBackdropKeyFromState(activeField) {
+		if (!activeField || activeField.cardId == null) return '';
+		return String(activeField.cardId) + '\x1f' + String(activeField.instanceId != null ? activeField.instanceId : '');
+	}
+
+	function fieldBackdropBackgroundFromDef(d) {
+		if (!d) return { image: '', n: 0 };
+		const portrait = d.layerPortraitPath || d.layerPortrait || '';
+		const base = d.layerBasePath || d.layerBase || '';
+		const parts = [];
+		if (portrait) parts.push('url("' + cssEscapeForBgUrl(absUrl(portrait)) + '")');
+		if (base) parts.push('url("' + cssEscapeForBgUrl(absUrl(base)) + '")');
+		return { image: parts.join(', '), n: parts.length };
+	}
+
+	function ensureBattleFieldBackdropLayer() {
+		const page = document.querySelector('.page--battle');
+		if (!page) return null;
+		let layer = document.getElementById('battle-field-backdrop');
+		if (!layer) {
+			layer = document.createElement('div');
+			layer.id = 'battle-field-backdrop';
+			layer.className = 'battle-field-backdrop';
+			layer.setAttribute('aria-hidden', 'true');
+			page.insertBefore(layer, page.firstChild);
+		}
+		return layer;
+	}
+
+	function updateBattleFieldBackdrop(activeField, defs) {
+		const page = document.querySelector('.page--battle');
+		const layer = ensureBattleFieldBackdropLayer();
+		if (!page || !layer) return;
+
+		const key = fieldBackdropKeyFromState(activeField);
+		const prevKey = ui._fieldBackdropKey != null ? ui._fieldBackdropKey : '';
+
+		if (!activeField || activeField.cardId == null) {
+			if (ui._fieldBackdropBurnEnd) {
+				layer.removeEventListener('animationend', ui._fieldBackdropBurnEnd);
+				ui._fieldBackdropBurnEnd = null;
+			}
+			page.classList.remove('page--battle-field-active');
+			layer.classList.remove('battle-field-backdrop--burn');
+			layer.style.backgroundImage = '';
+			layer.style.backgroundSize = '';
+			layer.style.backgroundPosition = '';
+			layer.style.backgroundRepeat = '';
+			ui._fieldBackdropKey = '';
+			return;
+		}
+
+		const d = resolveCardDef(defs, activeField.cardId);
+		const bg = fieldBackdropBackgroundFromDef(d);
+		if (!bg.image) {
+			if (ui._fieldBackdropBurnEnd) {
+				layer.removeEventListener('animationend', ui._fieldBackdropBurnEnd);
+				ui._fieldBackdropBurnEnd = null;
+			}
+			page.classList.remove('page--battle-field-active');
+			layer.classList.remove('battle-field-backdrop--burn');
+			layer.style.backgroundImage = '';
+			layer.style.backgroundSize = '';
+			layer.style.backgroundPosition = '';
+			layer.style.backgroundRepeat = '';
+			ui._fieldBackdropKey = '';
+			return;
+		}
+
+		layer.style.backgroundImage = bg.image;
+		if (bg.n > 1) {
+			layer.style.backgroundSize = 'cover, cover';
+			layer.style.backgroundPosition = 'center, center';
+		} else {
+			layer.style.backgroundSize = 'cover';
+			layer.style.backgroundPosition = 'center';
+		}
+		layer.style.backgroundRepeat = 'no-repeat';
+
+		page.classList.add('page--battle-field-active');
+		ui._fieldBackdropKey = key;
+
+		if (key !== prevKey) {
+			if (ui._fieldBackdropBurnEnd) {
+				layer.removeEventListener('animationend', ui._fieldBackdropBurnEnd);
+				ui._fieldBackdropBurnEnd = null;
+			}
+			layer.classList.remove('battle-field-backdrop--burn');
+			void layer.offsetWidth;
+			layer.classList.add('battle-field-backdrop--burn');
+			const onEnd = function (e) {
+				if (!e || e.target !== layer) return;
+				const nm = String(e.animationName || '');
+				if (nm.indexOf('battle-field-burn-in') < 0) return;
+				layer.removeEventListener('animationend', onEnd);
+				ui._fieldBackdropBurnEnd = null;
+				layer.classList.remove('battle-field-backdrop--burn');
+			};
+			ui._fieldBackdropBurnEnd = onEnd;
+			layer.addEventListener('animationend', onEnd);
+		}
 	}
 
 	// UI state (server state is fetched separately)
@@ -74,7 +181,10 @@
 		_powerContributorPopupEl: null,
 		_powerContributorPopupHideTimer: null,
 		/** 忍者配置: 入れ替え resolve を 3 秒待ちせず一度だけ起動する */
-		_ninjaAutoResolveInFlight: false
+		_ninjaAutoResolveInFlight: false,
+		/** 直前描画の共有〈フィールド〉（背景アニメ用キー） */
+		_fieldBackdropKey: null,
+		_fieldBackdropBurnEnd: null
 	};
 
 	const turnTimer = {
@@ -195,6 +305,38 @@
 		popEl: null
 	};
 
+	/** 敗北モーダル閉鎖後の「画面右・降参」案内（{@link #showUnwinnableDeployPop} と同レイアウト） */
+	const postDefeatSurrenderAside = { el: null };
+
+	function hidePostDefeatSurrenderAside() {
+		if (postDefeatSurrenderAside.el && postDefeatSurrenderAside.el.parentNode) {
+			postDefeatSurrenderAside.el.remove();
+		}
+		postDefeatSurrenderAside.el = null;
+	}
+
+	function showPostDefeatSurrenderAside() {
+		hidePostDefeatSurrenderAside();
+		const panel = el('aside', 'battle-unwinnable-pop');
+		panel.setAttribute('role', 'status');
+		panel.setAttribute('aria-live', 'polite');
+		panel.appendChild(el('p', 'battle-unwinnable-pop__title', 'バトルは終了しました'));
+		panel.appendChild(el(
+			'p',
+			'battle-unwinnable-pop__body',
+			'メニューへ戻るには降参してください。'
+		));
+		const btn = el('button', 'btn btn--danger', '降参');
+		btn.type = 'button';
+		btn.addEventListener('click', function () {
+			hidePostDefeatSurrenderAside();
+			submitSurrenderWithoutConfirm();
+		});
+		panel.appendChild(btn);
+		document.body.appendChild(panel);
+		postDefeatSurrenderAside.el = panel;
+	}
+
 	function hideUnwinnableDeployPop() {
 		if (unwinnableDeployNotice.popEl && unwinnableDeployNotice.popEl.parentNode) {
 			unwinnableDeployNotice.popEl.remove();
@@ -217,13 +359,7 @@
 		btn.type = 'button';
 		btn.addEventListener('click', function () {
 			hideUnwinnableDeployPop();
-			const form = document.querySelector('.topbar--battle form[action*="surrender"]');
-			if (form instanceof HTMLFormElement) {
-				const sub = form.querySelector('button[type="submit"]');
-				if (sub instanceof HTMLElement) {
-					sub.click();
-				}
-			}
+			submitSurrenderWithoutConfirm();
 		});
 		panel.appendChild(btn);
 		document.body.appendChild(panel);
@@ -307,6 +443,7 @@
 			ui._surrenderConfirmEl.remove();
 		}
 		ui._surrenderConfirmEl = null;
+		hidePostDefeatSurrenderAside();
 	}
 
 	function showResultModal(kind, title, detail, options) {
@@ -425,6 +562,25 @@
 		return /\/battle\/pvp\/api\/[^/]+\/surrender$/.test(action);
 	}
 
+	/**
+	 * 右上の降参ボタン以外（「この手番では勝てません」等）からの即時降参。確認モーダルは出さない。
+	 * {@link #installSurrenderIntercept} は submit ボタンのクリック／submit イベントのみ対象のため、
+	 * {@code HTMLFormElement#submit()} はそのまま POST される。
+	 */
+	function submitSurrenderWithoutConfirm() {
+		const form = document.querySelector('.topbar--battle form[action*="surrender"]');
+		if (!(form instanceof HTMLFormElement) || !isSurrenderForm(form)) {
+			return;
+		}
+		surrenderGuard.submitting = true;
+		persistLastBattleDeckIdForMenu();
+		try {
+			form.submit();
+		} catch (_) {
+			/* ignore */
+		}
+	}
+
 	function installSurrenderIntercept() {
 		if (surrenderGuard.installed) return;
 		surrenderGuard.installed = true;
@@ -500,7 +656,11 @@
 				}
 			});
 		} else {
-			showResultModal('defeat', '敗北', msg || '敗北しました。');
+			showResultModal('defeat', '敗北', msg || '敗北しました。', {
+				onClose: function () {
+					showPostDefeatSurrenderAside();
+				}
+			});
 		}
 	}
 
@@ -1055,6 +1215,70 @@
 		return n;
 	}
 
+	function sleep(ms) {
+		return new Promise(resolve => setTimeout(resolve, ms));
+	}
+
+	/** メタタグからバトル開始イントロ（名前衝突 → 先攻/後攻）を実行。メタが無い場合は何もしない。 */
+	async function runBattleIntroFromMeta() {
+		const myMeta = document.querySelector('meta[name="battle_intro_my_name"]');
+		const oppMeta = document.querySelector('meta[name="battle_intro_opp_name"]');
+		const firstMeta = document.querySelector('meta[name="battle_intro_i_am_first"]');
+		const myName = myMeta && myMeta.content != null ? String(myMeta.content).trim() : '';
+		const oppName = oppMeta && oppMeta.content != null ? String(oppMeta.content).trim() : '';
+		if (!myName || !oppName) return;
+
+		const iAmFirst = firstMeta && String(firstMeta.content).toLowerCase() === 'true';
+
+		document.body.classList.add('battle-intro-is-running');
+
+		const overlay = el('div', 'battle-intro-overlay');
+		const arena = el('div', 'battle-intro-overlay__arena');
+
+		const plateMe = el('div', 'battle-intro-overlay__plate battle-intro-overlay__plate--me');
+		plateMe.appendChild(el('div', 'battle-intro-overlay__name', myName));
+		const orderMe = el(
+			'div',
+			'battle-intro-overlay__order ' + (iAmFirst ? 'battle-intro-overlay__order--first' : 'battle-intro-overlay__order--second')
+		);
+		plateMe.appendChild(orderMe);
+
+		const sparkHost = el('div', 'battle-intro-overlay__spark-host');
+		sparkHost.appendChild(el('div', 'battle-intro-overlay__spark'));
+
+		const plateOpp = el('div', 'battle-intro-overlay__plate battle-intro-overlay__plate--opp');
+		plateOpp.appendChild(el('div', 'battle-intro-overlay__name', oppName));
+		const orderOpp = el(
+			'div',
+			'battle-intro-overlay__order ' + (!iAmFirst ? 'battle-intro-overlay__order--first' : 'battle-intro-overlay__order--second')
+		);
+		plateOpp.appendChild(orderOpp);
+
+		arena.appendChild(plateMe);
+		arena.appendChild(sparkHost);
+		arena.appendChild(plateOpp);
+		overlay.appendChild(arena);
+		document.body.appendChild(overlay);
+
+		// ユーザー名のみを合計 3 秒表示（スライド終端で衝突 → 火花、その後も名前を表示し続ける）
+		const BATTLE_INTRO_NAME_PHASE_MS = 3000;
+		const impactAtMs = 720;
+		await sleep(impactAtMs);
+		overlay.classList.add('battle-intro-overlay--impact');
+		await sleep(Math.max(0, BATTLE_INTRO_NAME_PHASE_MS - impactAtMs));
+
+		orderMe.textContent = iAmFirst ? '先攻' : '後攻';
+		orderOpp.textContent = iAmFirst ? '後攻' : '先攻';
+		overlay.classList.add('battle-intro-overlay--show-order');
+
+		await sleep(3000);
+
+		overlay.classList.add('battle-intro-overlay--exit');
+		await sleep(400);
+		overlay.remove();
+		document.body.classList.remove('battle-intro-is-running');
+	}
+
 	function clamp(n, min, max) {
 		return Math.max(min, Math.min(max, n));
 	}
@@ -1160,7 +1384,7 @@
 			stoneVal.textContent = String(ui.pay.stones);
 			const remain = cost - ui.pay.stones;
 			status.textContent =
-				remain > 0 ? 'ストーンを ' + String(cost) + ' 個支払ってください（残り ' + String(remain) + '）' : 'OK';
+				remain > 0 ? 'ストーンを ' + String(cost) + ' つ支払ってください（残り ' + String(remain) + '）' : 'OK';
 			decideBtn.disabled = remain !== 0 || ui.pay.stones !== cost;
 			plus.disabled = ui.pay.stones >= cap;
 			minus.disabled = ui.pay.stones <= 0;
@@ -3014,7 +3238,7 @@
 		const picked = [];
 
 		if (pc.kind === 'CONFIRM_OPTIONAL_STONE') {
-			panel.appendChild(el('p', 'muted', 'ストーンを' + String(pc.stoneCost || 0) + '個使用しますか？'));
+			panel.appendChild(el('p', 'muted', 'ストーンを' + String(pc.stoneCost || 0) + 'つ使用しますか？'));
 
 			// Show ability details for the card that triggered this choice (best-effort via abilityDeployCode).
 			const detailDef = resolveDefByAbilityDeployCode(st.defs, pc.abilityDeployCode, pc.prompt);
@@ -3593,6 +3817,8 @@
 			you.appendChild(inner);
 		}
 		app.appendChild(you);
+
+		updateBattleFieldBackdrop(st.activeField, st.defs);
 
 		lastEventLog = st.eventLog && st.eventLog.length ? st.eventLog.slice() : [];
 		if (battleLogModal && !battleLogModal.hidden) {
@@ -4173,6 +4399,8 @@
 			applyBattleZoom();
 			ensureBattleTurnPopupHost();
 			const st = await fetchState();
+			/* 先攻/後攻・名前のイントロが終わるまで描画しない（描画内で CPU_THINKING タイマーが走るのを防ぐ） */
+			await runBattleIntroFromMeta();
 			render(st);
 			attachHandlers();
 		} catch (e) {

@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
@@ -237,7 +238,14 @@ public class CpuBattleEngine {
 
 	public CpuBattleState newBattle(List<Short> humanDeckCardIds, int cpuLevel, Random rnd,
 			Map<Short, CardDefinition> defs) {
+		return newBattle(humanDeckCardIds, cpuLevel, CpuBattleMode.ORIGIN, rnd, defs);
+	}
+
+	public CpuBattleState newBattle(List<Short> humanDeckCardIds, int cpuLevel, CpuBattleMode cpuBattleMode, Random rnd,
+			Map<Short, CardDefinition> defs) {
 		var st = new CpuBattleState();
+		CpuBattleMode mode = cpuBattleMode != null ? cpuBattleMode : CpuBattleMode.ORIGIN;
+		st.setCpuBattleMode(mode);
 		st.setCpuLevel(cpuLevel);
 		st.setHumanGoesFirst(rnd.nextBoolean());
 		st.setHumansTurn(st.isHumanGoesFirst());
@@ -247,7 +255,9 @@ public class CpuBattleEngine {
 		st.setCpuTurnStarts(0);
 
 		st.setHumanDeck(buildShuffledInstances(humanDeckCardIds, rnd));
-		st.setCpuDeck(buildShuffledInstances(buildCpuDeckIds(cpuLevel, rnd, defs), rnd));
+		st.setCpuDeck(buildShuffledInstances(
+				mode == CpuBattleMode.ADVANCED ? buildCpuDeckIdsAdvanced(cpuLevel, rnd, defs) : buildCpuDeckIds(cpuLevel, rnd, defs),
+				rnd));
 
 		for (int i = 0; i < 4; i++) {
 			drawOne(st.getHumanDeck(), st.getHumanHand());
@@ -362,7 +372,7 @@ public class CpuBattleEngine {
 	}
 
 	private List<Short> buildCpuDeckIds(int cpuLevel, Random rnd, Map<Short, CardDefinition> defs) {
-		final int lvl = clampInt(cpuLevel, 1, 10);
+		final int lvl = clampInt(cpuLevel, 1, 3);
 		final String[] coreTribes = new String[] {"HUMAN", "ELF", "UNDEAD", "DRAGON"};
 
 		List<Short> picked = new ArrayList<>();
@@ -476,6 +486,326 @@ public class CpuBattleEngine {
 				}
 			}
 		}
+		return picked;
+	}
+
+	/** アドバンスド CPU: 同レベル帯でもオリジンより種族が揃いやすいよう、種族収束だけ強める */
+	private static final double ADVANCED_TRIBE_CONVERGENCE_FACTOR = 1.42;
+	/** アドバンスド CPU デッキに含められる〈フィールド〉カードの最大枚数（最小は 1 枚を別途保証） */
+	private static final int ADVANCED_CPU_DECK_MAX_FIELD_CARDS = 2;
+
+	private static boolean isFieldCardKind(CardDefinition d) {
+		if (d == null || d.getCardKind() == null) {
+			return false;
+		}
+		return "FIELD".equalsIgnoreCase(d.getCardKind().trim());
+	}
+
+	private static void adjustCount(Map<Short, Integer> cnt, Short id, int delta) {
+		if (id == null || cnt == null) {
+			return;
+		}
+		int n = cnt.getOrDefault(id, 0) + delta;
+		if (n <= 0) {
+			cnt.remove(id);
+		} else {
+			cnt.put(id, n);
+		}
+	}
+
+	private static Short pickAdvancedReplacementFighter(List<Short> candidateIds, Map<Short, Integer> cnt,
+			Map<Short, CardDefinition> defs, Random rnd) {
+		if (candidateIds == null || rnd == null || defs == null) {
+			return null;
+		}
+		List<Short> ok = new ArrayList<>();
+		for (Short id : candidateIds) {
+			if (cnt.getOrDefault(id, 0) >= 2) {
+				continue;
+			}
+			CardDefinition d = defs.get(id);
+			if (d == null || isFieldCardKind(d)) {
+				continue;
+			}
+			ok.add(id);
+		}
+		if (ok.isEmpty()) {
+			return null;
+		}
+		return ok.get(rnd.nextInt(ok.size()));
+	}
+
+	private static Short pickAdvancedReplacementField(List<Short> fieldCandidateIds, Map<Short, Integer> cnt, Random rnd) {
+		if (fieldCandidateIds == null || rnd == null) {
+			return null;
+		}
+		List<Short> ok = new ArrayList<>();
+		for (Short id : fieldCandidateIds) {
+			if (cnt.getOrDefault(id, 0) < 2) {
+				ok.add(id);
+			}
+		}
+		if (ok.isEmpty()) {
+			return null;
+		}
+		return ok.get(rnd.nextInt(ok.size()));
+	}
+
+	/**
+	 * 〈フィールド〉が 1〜2 枚になるよう入れ替える（重み抽選の端数で 0 枚や 3 枚以上になりうるため）。
+	 */
+	private static void enforceAdvancedCpuDeckFieldBounds(List<Short> picked, List<Short> candidateIds,
+			List<Short> fieldCandidateIds, Random rnd, Map<Short, CardDefinition> defs) {
+		if (picked == null || picked.size() != 8 || defs == null) {
+			return;
+		}
+		Map<Short, Integer> cnt = new HashMap<>();
+		for (Short id : picked) {
+			cnt.put(id, cnt.getOrDefault(id, 0) + 1);
+		}
+		for (int guard = 0; guard < 16; guard++) {
+			int fieldN = 0;
+			for (Short id : picked) {
+				if (isFieldCardKind(defs.get(id))) {
+					fieldN++;
+				}
+			}
+			if (fieldN <= ADVANCED_CPU_DECK_MAX_FIELD_CARDS) {
+				break;
+			}
+			List<Integer> fieldIdx = new ArrayList<>();
+			for (int i = 0; i < picked.size(); i++) {
+				if (isFieldCardKind(defs.get(picked.get(i)))) {
+					fieldIdx.add(i);
+				}
+			}
+			if (fieldIdx.isEmpty()) {
+				break;
+			}
+			int i = fieldIdx.get(rnd.nextInt(fieldIdx.size()));
+			Short oldId = picked.get(i);
+			Short nid = pickAdvancedReplacementFighter(candidateIds, cnt, defs, rnd);
+			if (nid == null) {
+				break;
+			}
+			adjustCount(cnt, oldId, -1);
+			picked.set(i, nid);
+			adjustCount(cnt, nid, 1);
+		}
+		for (int guard = 0; guard < 16; guard++) {
+			int fieldN = 0;
+			for (Short id : picked) {
+				if (isFieldCardKind(defs.get(id))) {
+					fieldN++;
+				}
+			}
+			if (fieldN >= 1 || fieldCandidateIds == null || fieldCandidateIds.isEmpty()) {
+				break;
+			}
+			List<Integer> fighterIdx = new ArrayList<>();
+			for (int i = 0; i < picked.size(); i++) {
+				if (!isFieldCardKind(defs.get(picked.get(i)))) {
+					fighterIdx.add(i);
+				}
+			}
+			if (fighterIdx.isEmpty()) {
+				break;
+			}
+			int i = fighterIdx.get(rnd.nextInt(fighterIdx.size()));
+			Short oldId = picked.get(i);
+			Short nid = pickAdvancedReplacementField(fieldCandidateIds, cnt, rnd);
+			if (nid == null) {
+				break;
+			}
+			adjustCount(cnt, oldId, -1);
+			picked.set(i, nid);
+			adjustCount(cnt, nid, 1);
+		}
+	}
+
+	/**
+	 * 〈フィールド〉を含む全ファイター定義から CPU デッキを構築。
+	 * 強さは 1〜5 段階（レベルが上がるほど種族収束・レアリティが上がりやすい。種族は {@link #ADVANCED_TRIBE_CONVERGENCE_FACTOR} でオリジンより寄せる）。
+	 * 〈フィールド〉は必ず 1 枚以上、多くても 2 枚まで。
+	 */
+	private List<Short> buildCpuDeckIdsAdvanced(int cpuLevel, Random rnd, Map<Short, CardDefinition> defs) {
+		if (defs == null || defs.isEmpty()) {
+			return buildCpuDeckIds(Math.min(cpuLevel, 3), rnd, defs);
+		}
+		List<Short> candidateIds = new ArrayList<>();
+		for (CardDefinition d : defs.values()) {
+			if (d == null || d.getId() == null) {
+				continue;
+			}
+			String kind = d.getCardKind();
+			if (kind == null) {
+				continue;
+			}
+			String k = kind.trim();
+			if ("FIGHTER".equalsIgnoreCase(k) || "FIELD".equalsIgnoreCase(k)) {
+				candidateIds.add(d.getId());
+			}
+		}
+		if (candidateIds.isEmpty()) {
+			return buildCpuDeckIds(Math.min(cpuLevel, 3), rnd, defs);
+		}
+		Collections.sort(candidateIds);
+
+		List<Short> fieldCandidateIds = new ArrayList<>();
+		for (short id : candidateIds) {
+			CardDefinition fd = defs.get(id);
+			if (fd != null && isFieldCardKind(fd)) {
+				fieldCandidateIds.add(id);
+			}
+		}
+
+		final int lvl = clampInt(cpuLevel, 1, 5);
+		final String[] coreTribes = new String[] {"HUMAN", "ELF", "UNDEAD", "DRAGON"};
+
+		List<Short> picked = new ArrayList<>();
+		Map<Short, Integer> cnt = new HashMap<>();
+		Map<String, Integer> tribeCount = new HashMap<>();
+		int fieldInDeck = 0;
+
+		final String theme = coreTribes[rnd.nextInt(coreTribes.length)];
+		final double convergeBase = 0.55 + 0.40 * (lvl - 1);
+		final double convergeBoost = clampDouble(convergeBase * ADVANCED_TRIBE_CONVERGENCE_FACTOR, 0.55, 7.0);
+		final double rarityFactor = clampDouble(0.22 + 0.12 * (lvl - 1), 0.22, 1.45);
+
+		while (picked.size() < 8) {
+			String dominant = theme;
+			int best = -1;
+			for (String t : coreTribes) {
+				int c = tribeCount.getOrDefault(t, 0);
+				if (c > best) {
+					best = c;
+					dominant = t;
+				}
+			}
+
+			double totalW = 0.0;
+			Map<Short, Double> w = new HashMap<>();
+			for (short id : candidateIds) {
+				if (cnt.getOrDefault(id, 0) >= 2) {
+					continue;
+				}
+				CardDefinition d = defs.get(id);
+				if (d == null) {
+					continue;
+				}
+				if (isFieldCardKind(d) && fieldInDeck >= ADVANCED_CPU_DECK_MAX_FIELD_CARDS) {
+					continue;
+				}
+				double ww = 1.0;
+
+				boolean hasTheme = CardAttributes.hasAttribute(d, theme);
+				boolean hasDom = CardAttributes.hasAttribute(d, dominant);
+				double themeMul = theme != null && theme.equals("DRAGON") ? 0.45 : 1.0;
+				double domMul = dominant != null && dominant.equals("DRAGON") ? 0.55 : 1.0;
+				if (hasTheme) ww *= (1.0 + convergeBoost * 0.70 * themeMul);
+				if (hasDom) ww *= (1.0 + convergeBoost * 1.15 * domMul);
+
+				int rr = rarityRank(d.getRarity());
+				ww *= (1.0 + rr * rarityFactor);
+				if (lvl <= 2 && d.getRarity() != null) {
+					String tr = d.getRarity().trim();
+					if ("Reg".equalsIgnoreCase(tr)) {
+						ww *= lvl == 1 ? 0.012 : 0.06;
+					} else if ("Ep".equalsIgnoreCase(tr)) {
+						ww *= lvl == 1 ? 0.18 : 0.35;
+					} else if ("R".equalsIgnoreCase(tr)) {
+						ww *= lvl == 1 ? 0.58 : 0.72;
+					}
+				}
+				if (lvl > 2) {
+					if (rr >= 2) ww *= (1.0 + 0.35 * rarityFactor);
+					if (rr >= 3) ww *= (1.0 + 0.55 * rarityFactor);
+				}
+
+				int already = cnt.getOrDefault(id, 0);
+				if (already == 1) ww *= 0.72;
+
+				w.put(id, ww);
+				totalW += ww;
+			}
+
+			if (totalW <= 0) {
+				List<Short> valid = new ArrayList<>();
+				for (short id : candidateIds) {
+					if (cnt.getOrDefault(id, 0) >= 2) {
+						continue;
+					}
+					CardDefinition d = defs.get(id);
+					if (d == null) {
+						continue;
+					}
+					if (isFieldCardKind(d) && fieldInDeck >= ADVANCED_CPU_DECK_MAX_FIELD_CARDS) {
+						continue;
+					}
+					valid.add(id);
+				}
+				if (valid.isEmpty()) {
+					for (short id : candidateIds) {
+						if (cnt.getOrDefault(id, 0) >= 2) {
+							continue;
+						}
+						CardDefinition d = defs.get(id);
+						if (d == null) {
+							continue;
+						}
+						valid.add(id);
+					}
+				}
+				if (valid.isEmpty()) {
+					break;
+				}
+				short id = valid.get(rnd.nextInt(valid.size()));
+				picked.add(id);
+				cnt.put(id, cnt.getOrDefault(id, 0) + 1);
+				CardDefinition addDef = defs.get(id);
+				if (addDef != null && isFieldCardKind(addDef)) {
+					fieldInDeck++;
+				}
+				if (addDef != null) {
+					for (String t : coreTribes) {
+						if (CardAttributes.hasAttribute(addDef, t)) {
+							tribeCount.put(t, tribeCount.getOrDefault(t, 0) + 1);
+						}
+					}
+				}
+				continue;
+			}
+
+			double r = rnd.nextDouble() * totalW;
+			short chosen = candidateIds.get(0);
+			for (short id : candidateIds) {
+				Double ww = w.get(id);
+				if (ww == null || ww <= 0) {
+					continue;
+				}
+				r -= ww;
+				if (r <= 0) {
+					chosen = id;
+					break;
+				}
+			}
+
+			picked.add(chosen);
+			cnt.put(chosen, cnt.getOrDefault(chosen, 0) + 1);
+
+			CardDefinition cd = defs.get(chosen);
+			if (cd != null) {
+				if (isFieldCardKind(cd)) {
+					fieldInDeck++;
+				}
+				for (String t : coreTribes) {
+					if (CardAttributes.hasAttribute(cd, t)) {
+						tribeCount.put(t, tribeCount.getOrDefault(t, 0) + 1);
+					}
+				}
+			}
+		}
+		enforceAdvancedCpuDeckFieldBounds(picked, candidateIds, fieldCandidateIds, rnd, defs);
 		return picked;
 	}
 
@@ -721,7 +1051,7 @@ public class CpuBattleEngine {
 			st.setPendingEffect(pe);
 		}
 
-		if (maybeApplySpec777ForcedDefeat(st, defs)) {
+		if (st.isGameOver()) {
 			return;
 		}
 
@@ -1546,9 +1876,6 @@ public class CpuBattleEngine {
 			st.setCpuStones(st.getCpuStones() + 1);
 			st.addLog(opponentActorLogLabel(st) + "はストーンを1つ得た");
 		}
-		if (defs != null) {
-			maybeApplySpec777ForcedDefeat(st, defs);
-		}
 	}
 
 	public static int timeLimitSecForStage(int stage) {
@@ -1564,6 +1891,7 @@ public class CpuBattleEngine {
 	private CpuBattleState copyState(CpuBattleState st) {
 		CpuBattleState ns = new CpuBattleState();
 		ns.setPvp(st.isPvp());
+		ns.setCpuBattleMode(st.getCpuBattleMode() != null ? st.getCpuBattleMode() : CpuBattleMode.ORIGIN);
 		ns.setCpuLevel(st.getCpuLevel());
 		ns.setHumanGoesFirst(st.isHumanGoesFirst());
 		ns.setHumansTurn(st.isHumansTurn());
@@ -1722,7 +2050,7 @@ public class CpuBattleEngine {
 			StringBuilder b = new StringBuilder("レベルアップ: ");
 			if (levelUpRest > 0) b.append("カード").append(levelUpRest).append("枚");
 			if (levelUpRest > 0 && levelUpStones > 0) b.append(" + ");
-			if (levelUpStones > 0) b.append("ストーン").append(levelUpStones).append("個");
+			if (levelUpStones > 0) b.append("ストーン").append(levelUpStones).append("つ");
 			st.addLog(b.toString());
 		}
 		for (String did : discIds) {
@@ -1769,10 +2097,6 @@ public class CpuBattleEngine {
 			if (st.getPendingChoice() != null) {
 				st.setPhase(BattlePhase.HUMAN_CHOICE);
 				st.setLastMessage("選択してください");
-				return;
-			}
-
-			if (maybeApplySpec777ForcedDefeat(st, defs)) {
 				return;
 			}
 
@@ -1985,7 +2309,7 @@ public class CpuBattleEngine {
 			StringBuilder b = new StringBuilder("レベルアップ: ");
 			if (!levelUpCards.isEmpty()) b.append("カード").append(levelUpCards.size()).append("枚");
 			if (!levelUpCards.isEmpty() && levelUpStones > 0) b.append(" + ");
-			if (levelUpStones > 0) b.append("ストーン").append(levelUpStones).append("個");
+			if (levelUpStones > 0) b.append("ストーン").append(levelUpStones).append("つ");
 			st.addLog(b.toString());
 		}
 
@@ -2237,7 +2561,7 @@ public class CpuBattleEngine {
 			StringBuilder b = new StringBuilder("レベルアップ: ");
 			if (!levelUpCards.isEmpty()) b.append("カード").append(levelUpCards.size()).append("枚");
 			if (!levelUpCards.isEmpty() && levelUpStones > 0) b.append(" + ");
-			if (levelUpStones > 0) b.append("ストーン").append(levelUpStones).append("個");
+			if (levelUpStones > 0) b.append("ストーン").append(levelUpStones).append("つ");
 			st.addLog(b.toString());
 		}
 
@@ -2409,6 +2733,7 @@ public class CpuBattleEngine {
 	private CpuBattleState copyStateForCpuSim(CpuBattleState st) {
 		CpuBattleState ns = new CpuBattleState();
 		ns.setPvp(st.isPvp());
+		ns.setCpuBattleMode(st.getCpuBattleMode() != null ? st.getCpuBattleMode() : CpuBattleMode.ORIGIN);
 		ns.setCpuLevel(st.getCpuLevel());
 		ns.setHumanGoesFirst(st.isHumanGoesFirst());
 		ns.setHumansTurn(st.isHumansTurn());
@@ -2452,6 +2777,430 @@ public class CpuBattleEngine {
 		return ns;
 	}
 
+	/** CPU がファイター配置を確定するときの候補（シミュレーションと実適用で共用） */
+	private record CpuFighterPick(
+			String mainInstanceId,
+			int levelUpRest,
+			int levelUpStones,
+			List<String> levelUpDiscardIds,
+			int deployBonus,
+			int cpuEff) {
+	}
+
+	private int countFieldCardsAmongDiscards(List<String> discIds, List<BattleCard> hand,
+			Map<Short, CardDefinition> defs) {
+		if (discIds == null || discIds.isEmpty() || hand == null) {
+			return 0;
+		}
+		int n = 0;
+		for (BattleCard c : hand) {
+			if (c == null || !discIds.contains(c.getInstanceId())) {
+				continue;
+			}
+			CardDefinition d = defs.get(c.getCardId());
+			if (isFieldCard(d)) {
+				n++;
+			}
+		}
+		return n;
+	}
+
+	/**
+	 * 相手が〈フィールド〉を所有しているとき、書き換え後の盤面で「レベルアップなし」勝利が改善するなら、
+	 * そのフィールドを返す（まだ配置していない前提）。
+	 */
+	private Optional<String> pickAdvancedCpuFieldBeforeFighterIfImprove(CpuBattleState st,
+			Map<Short, CardDefinition> defs, Random rnd) {
+		if (!Boolean.TRUE.equals(st.getActiveFieldOwnerHuman()) || st.getActiveField() == null) {
+			return Optional.empty();
+		}
+		Optional<CpuFighterPick> curWin = findBestWinningNoLevelUpCpuFighterPick(st, defs, rnd);
+		int bestEffCur = curWin.map(CpuFighterPick::cpuEff).orElse(Integer.MAX_VALUE);
+
+		String bestFieldInst = null;
+		int bestEffAfter = Integer.MAX_VALUE;
+		for (BattleCard fc : st.getCpuHand()) {
+			CardDefinition fd = defs.get(fc.getCardId());
+			if (!isFieldCard(fd)) {
+				continue;
+			}
+			int fcost = effectiveDeployCost(fd, fc, defs, st.getCpuRest(), st.getCpuNextMechanicStacks(), st);
+			if (fcost > st.getCpuStones()) {
+				continue;
+			}
+			CpuBattleState s1 = copyStateForCpuSim(st);
+			s1.setCpuStones(s1.getCpuStones() - fcost);
+			BattleCard removed = removeByInstanceId(s1.getCpuHand(), fc.getInstanceId());
+			if (removed == null) {
+				continue;
+			}
+			replaceActiveField(s1, removed, false, defs);
+			if (fd.getId() != null && fd.getId() == FLEET_HO_IVI_FIELD_ID) {
+				applyFleetHoIviFieldDeployBothSides(s1, defs, rnd);
+			}
+			Optional<CpuFighterPick> after = findBestWinningNoLevelUpCpuFighterPick(s1, defs, rnd);
+			if (after.isEmpty()) {
+				continue;
+			}
+			int eff = after.get().cpuEff;
+			if (eff < bestEffAfter) {
+				bestEffAfter = eff;
+				bestFieldInst = fc.getInstanceId();
+			}
+		}
+		if (bestFieldInst == null) {
+			return Optional.empty();
+		}
+		if (curWin.isEmpty()) {
+			return Optional.of(bestFieldInst);
+		}
+		return bestEffAfter < bestEffCur ? Optional.of(bestFieldInst) : Optional.empty();
+	}
+
+	private Optional<CpuFighterPick> findBestWinningNoLevelUpCpuFighterPick(CpuBattleState st,
+			Map<Short, CardDefinition> defs, Random rnd) {
+		return findBestCpuFighterPick(st, defs, rnd, true);
+	}
+
+	/**
+	 * @param noLevelUpOnly true のときレベルアップ 0 のみ探索
+	 */
+	private Optional<CpuFighterPick> findBestCpuFighterPick(CpuBattleState st, Map<Short, CardDefinition> defs,
+			Random rnd, boolean noLevelUpOnly) {
+		final boolean cpuIsFirstPlayer = !st.isHumanGoesFirst();
+		final boolean cpuIsFirstTurnAsFirstPlayer = cpuIsFirstPlayer && st.getCpuTurnStarts() == 1;
+		boolean hasOpp = st.getHumanBattle() != null;
+
+		String bestInstanceId = null;
+		int bestLevelUpRest = 0;
+		int bestLevelUpStones = 0;
+		int bestDeployBonus = 0;
+		List<String> bestLevelUpDiscardIds = List.of();
+		int bestScore = Integer.MIN_VALUE;
+		int bestCpuEff = hasOpp ? Integer.MAX_VALUE : -1;
+		int bestResource = Integer.MAX_VALUE;
+		int bestFieldDiscards = -1;
+
+		int maxRest = maxLevelUpRestDiscard(st.getCpuHand().size());
+		int maxStones = Math.max(0, st.getCpuStones());
+		if (cpuIsFirstTurnAsFirstPlayer) {
+			maxRest = 0;
+			maxStones = 0;
+		}
+
+		int restEnd = maxRest;
+		if (noLevelUpOnly) {
+			restEnd = 0;
+		}
+
+		for (int levelUpRest = 0; levelUpRest <= restEnd; levelUpRest++) {
+			List<List<String>> discardPlans = cpuDiscardPlans(st.getCpuHand(), levelUpRest);
+			for (int levelUpStones = 0; levelUpStones <= maxStones; levelUpStones++) {
+				for (BattleCard main : st.getCpuHand()) {
+					CardDefinition mainDef = defs.get(main.getCardId());
+					if (mainDef == null) {
+						continue;
+					}
+					if (isFieldCard(mainDef)) {
+						continue;
+					}
+
+					for (List<String> discIds : discardPlans) {
+						if (discIds.contains(main.getInstanceId())) {
+							continue;
+						}
+
+						int deployBonus = levelUpRest * 2 + levelUpStones * 2;
+						deployBonus += st.getCpuNextDeployBonus();
+						if (st.getCpuNextElfOnlyBonus() > 0
+								&& CardAttributes.hasAttributeForDeployPreview(mainDef, main, st.isSpec666NextCpuUndead(), "ELF")) {
+							deployBonus += st.getCpuNextElfOnlyBonus();
+						}
+						if (st.getCpuNextDeployCostBonusTimes() > 0) {
+							deployBonus += mainDef.getCost() * st.getCpuNextDeployCostBonusTimes();
+						}
+						deployBonus += 3 * st.getCpuNextMechanicStacks();
+						deployBonus += st.getCpuNextCrystakulDeployBonus();
+
+						CpuBattleState simSt = copyStateForCpuSim(st);
+						simSt.setHumansTurn(false);
+						simSt.setGameOver(false);
+
+						if (levelUpStones > simSt.getCpuStones()) {
+							continue;
+						}
+						simSt.setCpuStones(simSt.getCpuStones() - levelUpStones);
+
+						for (String did : discIds) {
+							BattleCard dc = removeByInstanceId(simSt.getCpuHand(), did);
+							if (dc != null) {
+								simSt.getCpuRest().add(dc);
+							}
+						}
+
+						int cost = effectiveDeployCost(mainDef, main, defs, st.getCpuRest(), st.getCpuNextMechanicStacks(), st);
+						int payCards = cpuDeployPayCardCount(cost, simSt.getCpuStones(), simSt.getCpuHand().size());
+						if (payCards < 0) {
+							continue;
+						}
+						int payStones = cost - payCards;
+						simSt.setCpuStones(simSt.getCpuStones() - payStones);
+
+						BattleCard simMain = removeByInstanceId(simSt.getCpuHand(), main.getInstanceId());
+						if (simMain == null) {
+							continue;
+						}
+						List<BattleCard> paid = new ArrayList<>();
+						for (int i = 0; i < payCards; i++) {
+							if (simSt.getCpuHand().isEmpty()) {
+								break;
+							}
+							paid.add(simSt.getCpuHand().remove(simSt.getCpuHand().size() - 1));
+						}
+						ZoneFighter z = new ZoneFighter();
+						z.setMain(simMain);
+						z.setCostUnder(paid);
+						z.setCostPayCardCount(payCards);
+						applyCrystakulBonusesToDeployedZone(simSt, z, deployBonus, false);
+						retireOwnBattleZoneBeforeNewDeploy(simSt, false, false, defs);
+						simSt.setCpuBattle(z);
+
+						Random simRnd = new Random(31_337L ^ main.getCardId() ^ (levelUpRest * 31L) ^ (levelUpStones * 131L));
+						applyDeployCpu(simSt, mainDef, defs, simRnd, simMain);
+
+						int cpuEff = effectiveBattlePower(simSt.getCpuBattle(), false, simSt, defs);
+						int oppEff = effectiveBattlePower(simSt.getHumanBattle(), true, simSt, defs);
+						if (simSt.getHumanBattle() != null && cpuEff < oppEff) {
+							continue;
+						}
+
+						int fieldDisc = countFieldCardsAmongDiscards(discIds, st.getCpuHand(), defs);
+						int resource = levelUpRest + levelUpStones;
+
+						if (hasOpp) {
+							boolean better;
+							if (st.getCpuBattleMode() == CpuBattleMode.ADVANCED && !noLevelUpOnly) {
+								better = isBetterAdvancedCpuFighterPick(resource, levelUpStones, levelUpRest, fieldDisc, cpuEff,
+										bestResource, bestLevelUpStones, bestLevelUpRest, bestFieldDiscards, bestCpuEff);
+							} else {
+								better = resource < bestResource
+										|| (resource == bestResource && (
+												(levelUpStones > bestLevelUpStones)
+												|| (levelUpStones == bestLevelUpStones && levelUpRest < bestLevelUpRest)
+												|| (levelUpStones == bestLevelUpStones && levelUpRest == bestLevelUpRest && cpuEff < bestCpuEff)
+										));
+							}
+							if (better) {
+								bestCpuEff = cpuEff;
+								bestResource = resource;
+								bestFieldDiscards = fieldDisc;
+								bestInstanceId = main.getInstanceId();
+								bestLevelUpRest = levelUpRest;
+								bestLevelUpStones = levelUpStones;
+								bestDeployBonus = deployBonus;
+								bestLevelUpDiscardIds = discIds;
+							}
+						} else {
+							int score = cpuEff - oppEff;
+							if (resource < bestResource
+									|| (resource == bestResource && (
+											score > bestScore
+											|| (score == bestScore && cpuEff > bestCpuEff)
+											|| (score == bestScore && cpuEff == bestCpuEff && levelUpStones > bestLevelUpStones)
+											|| (score == bestScore && cpuEff == bestCpuEff && levelUpStones == bestLevelUpStones && levelUpRest < bestLevelUpRest)
+									))) {
+								bestResource = resource;
+								bestScore = score;
+								bestCpuEff = cpuEff;
+								bestFieldDiscards = fieldDisc;
+								bestInstanceId = main.getInstanceId();
+								bestLevelUpRest = levelUpRest;
+								bestLevelUpStones = levelUpStones;
+								bestDeployBonus = deployBonus;
+								bestLevelUpDiscardIds = discIds;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if (bestInstanceId == null) {
+			return Optional.empty();
+		}
+		return Optional.of(new CpuFighterPick(
+				bestInstanceId, bestLevelUpRest, bestLevelUpStones, bestLevelUpDiscardIds, bestDeployBonus, bestCpuEff));
+	}
+
+	/**
+	 * アドバンスド CPU: レベルアップの比較は ①総コスト ②ストーン優先 ③捨て札枚数 ④〈フィールド〉カードを捨てる枚数（多いほど良い＝ストーン・フィールド・ファイター順の支払い）⑤最小の場の強さ
+	 */
+	private static boolean isBetterAdvancedCpuFighterPick(int resource, int levelUpStones, int levelUpRest, int fieldDiscards,
+			int cpuEff, int bestResource, int bestLevelUpStones, int bestLevelUpRest, int bestFieldDiscards, int bestCpuEff) {
+		if (resource < bestResource) {
+			return true;
+		}
+		if (resource > bestResource) {
+			return false;
+		}
+		if (levelUpStones > bestLevelUpStones) {
+			return true;
+		}
+		if (levelUpStones < bestLevelUpStones) {
+			return false;
+		}
+		if (levelUpRest < bestLevelUpRest) {
+			return true;
+		}
+		if (levelUpRest > bestLevelUpRest) {
+			return false;
+		}
+		if (fieldDiscards > bestFieldDiscards) {
+			return true;
+		}
+		if (fieldDiscards < bestFieldDiscards) {
+			return false;
+		}
+		return cpuEff < bestCpuEff;
+	}
+
+	private boolean tryAdvancedCpuFieldOnly(CpuBattleState st, Map<Short, CardDefinition> defs, Random rnd) {
+		Optional<String> fid = pickAdvancedCpuFieldBeforeFighterIfImprove(st, defs, rnd);
+		if (fid.isEmpty()) {
+			return false;
+		}
+		BattleCard main = removeByInstanceId(st.getCpuHand(), fid.get());
+		if (main == null) {
+			return false;
+		}
+		CardDefinition mainDef = defs.get(main.getCardId());
+		if (mainDef == null || !isFieldCard(mainDef)) {
+			return false;
+		}
+		int cost = effectiveDeployCost(mainDef, main, defs, st.getCpuRest(), st.getCpuNextMechanicStacks(), st);
+		if (cost > st.getCpuStones()) {
+			return false;
+		}
+		st.setCpuStones(st.getCpuStones() - cost);
+		replaceActiveField(st, main, false, defs);
+		st.addLog("相手は「" + mainDef.getName() + "」を〈場〉に置いた");
+		if (mainDef.getId() != null && mainDef.getId() == FLEET_HO_IVI_FIELD_ID) {
+			applyFleetHoIviFieldDeployBothSides(st, defs, rnd);
+		}
+		st.setLastMessage("《フィールド》を配置しました（ターンは続きます）");
+		return true;
+	}
+
+	private boolean commitCpuFighterPick(CpuBattleState st, CpuFighterPick pick, Map<Short, CardDefinition> defs) {
+		if (pick == null || pick.mainInstanceId == null) {
+			return false;
+		}
+		if (pick.levelUpStones <= st.getCpuStones()) {
+			st.setCpuStones(st.getCpuStones() - pick.levelUpStones);
+		}
+		List<BattleCard> levelUpCards = new ArrayList<>();
+		for (String did : pick.levelUpDiscardIds) {
+			BattleCard dc = removeByInstanceId(st.getCpuHand(), did);
+			if (dc != null) {
+				levelUpCards.add(dc);
+			}
+		}
+		if (!levelUpCards.isEmpty() || pick.levelUpStones > 0) {
+			StringBuilder b = new StringBuilder("CPUレベルアップ: ");
+			if (!levelUpCards.isEmpty()) {
+				b.append("カード").append(levelUpCards.size()).append("枚");
+			}
+			if (!levelUpCards.isEmpty() && pick.levelUpStones > 0) {
+				b.append(" + ");
+			}
+			if (pick.levelUpStones > 0) {
+				b.append("ストーン").append(pick.levelUpStones).append("つ");
+			}
+			st.addLog(b.toString());
+		}
+
+		BattleCard deployCard = findByInstanceId(st.getCpuHand(), pick.mainInstanceId);
+		CardDefinition bestDef = deployCard != null ? defs.get(deployCard.getCardId()) : null;
+		if (bestDef == null) {
+			st.getCpuRest().addAll(levelUpCards);
+			return false;
+		}
+		int cost = effectiveDeployCost(bestDef, deployCard, defs, st.getCpuRest(), st.getCpuNextMechanicStacks(), st);
+		int payCards = cpuDeployPayCardCount(cost, st.getCpuStones(), st.getCpuHand().size());
+		if (payCards < 0) {
+			st.getCpuRest().addAll(levelUpCards);
+			return false;
+		}
+		int payCostStones = cost - payCards;
+		BattleCard main = removeByInstanceId(st.getCpuHand(), pick.mainInstanceId);
+		if (main == null) {
+			st.getCpuRest().addAll(levelUpCards);
+			return false;
+		}
+		st.setCpuStones(st.getCpuStones() - payCostStones);
+		List<BattleCard> paid = new ArrayList<>();
+		for (int i = 0; i < payCards; i++) {
+			if (st.getCpuHand().isEmpty()) {
+				break;
+			}
+			paid.add(st.getCpuHand().remove(st.getCpuHand().size() - 1));
+		}
+		paid.addAll(levelUpCards);
+		ZoneFighter z = new ZoneFighter();
+		z.setMain(main);
+		z.setCostUnder(paid);
+		z.setCostPayCardCount(payCards);
+		applyCrystakulBonusesToDeployedZone(st, z, pick.deployBonus, false);
+		st.setCpuNextDeployBonus(0);
+		st.setCpuNextElfOnlyBonus(0);
+		st.setCpuNextDeployCostBonusTimes(0);
+		st.setCpuNextMechanicStacks(0);
+		retireOwnBattleZoneBeforeNewDeploy(st, false, true, defs);
+		st.setCpuBattle(z);
+		if (payCostStones > 0 && payCards > 0) {
+			st.addLog("CPUは「" + bestDef.getName() + "」を配置（コスト: ストーン" + payCostStones + "＋カード" + payCards + "）");
+		} else if (payCostStones > 0) {
+			st.addLog("CPUは「" + bestDef.getName() + "」を配置（コスト: ストーン" + payCostStones + "）");
+		} else {
+			st.addLog("CPUは「" + bestDef.getName() + "」を配置した");
+		}
+		stagePendingDeployEffect(st, false, bestDef, z);
+		return true;
+	}
+
+	private void cpuTurnGameOverCpuCannotDeploy(CpuBattleState st) {
+		st.setGameOver(true);
+		st.setHumanWon(true);
+		st.setLastMessage("勝利（CPUが相手以上のファイターを出せません）");
+		st.addLog("勝利: CPUが相手以上のファイターを出せない");
+	}
+
+	private void cpuTurnGameOverCpuSkipped(CpuBattleState st) {
+		st.addLog("CPUは配置しなかった");
+		st.setGameOver(true);
+		st.setHumanWon(true);
+		st.setPhase(BattlePhase.GAME_OVER);
+		st.setLastMessage("勝利（CPUが配置しませんでした）");
+	}
+
+	/** アドバンスド: フィールド→（同一ターン続行）ファイター、または従来探索 */
+	private void cpuTurnAdvanced(CpuBattleState st, Map<Short, CardDefinition> defs, Random rnd) {
+		if (tryAdvancedCpuFieldOnly(st, defs, rnd)) {
+			return;
+		}
+		Optional<CpuFighterPick> noLu = findBestWinningNoLevelUpCpuFighterPick(st, defs, rnd);
+		if (noLu.isPresent()) {
+			if (commitCpuFighterPick(st, noLu.get(), defs)) {
+				return;
+			}
+		}
+		Optional<CpuFighterPick> any = findBestCpuFighterPick(st, defs, rnd, false);
+		if (any.isPresent() && commitCpuFighterPick(st, any.get(), defs)) {
+			return;
+		}
+		cpuTurnGameOverCpuSkipped(st);
+	}
+
 	public void cpuTurn(CpuBattleState st, Map<Short, CardDefinition> defs, Random rnd) {
 		if (st.isGameOver() || st.isHumansTurn() || st.getPhase() != BattlePhase.CPU_THINKING) {
 			return;
@@ -2461,10 +3210,12 @@ public class CpuBattleEngine {
 		final boolean cpuIsFirstPlayer = !st.isHumanGoesFirst();
 		final boolean cpuIsFirstTurnAsFirstPlayer = cpuIsFirstPlayer && st.getCpuTurnStarts() == 1;
 		if (st.getHumanBattle() != null && !canMakeLegalDeploy(st, false, defs)) {
-			st.setGameOver(true);
-			st.setHumanWon(true);
-			st.setLastMessage("勝利（CPUが相手以上のファイターを出せません）");
-			st.addLog("勝利: CPUが相手以上のファイターを出せない");
+			cpuTurnGameOverCpuCannotDeploy(st);
+			return;
+		}
+
+		if (st.getCpuBattleMode() == CpuBattleMode.ADVANCED) {
+			cpuTurnAdvanced(st, defs, rnd);
 			return;
 		}
 
@@ -2625,7 +3376,7 @@ public class CpuBattleEngine {
 				StringBuilder b = new StringBuilder("CPUレベルアップ: ");
 				if (!levelUpCards.isEmpty()) b.append("カード").append(levelUpCards.size()).append("枚");
 				if (!levelUpCards.isEmpty() && bestLevelUpStones > 0) b.append(" + ");
-				if (bestLevelUpStones > 0) b.append("ストーン").append(bestLevelUpStones).append("個");
+				if (bestLevelUpStones > 0) b.append("ストーン").append(bestLevelUpStones).append("つ");
 				st.addLog(b.toString());
 			}
 
@@ -2889,48 +3640,39 @@ public class CpuBattleEngine {
 	}
 
 	/**
-	 * SPEC-777: 自分の実効強さが相手より未満のとき即敗北（確認なし）。相手に SPEC-777 がいる場合は相手が未満なら相手敗北。
+	 * SPEC-777: 〈配置〉で出目が確定した直後、その時点の相手バトルゾーンの強さ未満なら即敗北（確認なし）。
+	 * 以降は出目が固定のため、相手の強さが後から変わっても再判定しない。
+	 *
+	 * @param spec777OnHumanZone 配置した SPEC-777 が人間側（ホスト）バトルゾーンにあるか
 	 * @return ゲーム終了をセットしたら true
 	 */
-	private boolean maybeApplySpec777ForcedDefeat(CpuBattleState st, Map<Short, CardDefinition> defs) {
+	private boolean applySpec777DeployLossIfRollBelowOpponentAtDeploy(CpuBattleState st, Map<Short, CardDefinition> defs,
+			boolean spec777OnHumanZone) {
 		if (st == null || st.isGameOver() || defs == null) {
 			return false;
 		}
-		ZoneFighter hz = st.getHumanBattle();
-		if (hz != null && hz.getMain() != null && hz.getMain().getCardId() == SPEC_777_ID
-				&& hz.getSpec777RolledPower() > 0 && !hz.getMain().isBlankEffects()) {
-			int me = effectiveBattlePower(hz, true, st, defs);
-			int oppPow = st.getCpuBattle() != null && st.getCpuBattle().getMain() != null
-					? effectiveBattlePower(st.getCpuBattle(), false, st, defs)
-					: 0;
-			if (st.getCpuBattle() != null && st.getCpuBattle().getMain() != null && me < oppPow) {
-				st.setPendingChoice(null);
-				st.setPendingEffect(null);
-				st.setGameOver(true);
-				st.setHumanWon(false);
-				st.setPhase(BattlePhase.GAME_OVER);
-				st.setLastMessage("敗北（SPEC-777）");
-				st.addLog("SPEC-777: 強さが相手未満のため敗北");
-				return true;
-			}
+		ZoneFighter specZ = spec777OnHumanZone ? st.getHumanBattle() : st.getCpuBattle();
+		ZoneFighter oppZ = spec777OnHumanZone ? st.getCpuBattle() : st.getHumanBattle();
+		if (specZ == null || specZ.getMain() == null || specZ.getMain().getCardId() != SPEC_777_ID
+				|| specZ.getSpec777RolledPower() <= 0 || specZ.getMain().isBlankEffects()) {
+			return false;
 		}
-		ZoneFighter cz = st.getCpuBattle();
-		if (cz != null && cz.getMain() != null && cz.getMain().getCardId() == SPEC_777_ID
-				&& cz.getSpec777RolledPower() > 0 && !cz.getMain().isBlankEffects()) {
-			int cpuP = effectiveBattlePower(cz, false, st, defs);
-			int humPow = st.getHumanBattle() != null && st.getHumanBattle().getMain() != null
-					? effectiveBattlePower(st.getHumanBattle(), true, st, defs)
-					: 0;
-			if (st.getHumanBattle() != null && st.getHumanBattle().getMain() != null && cpuP < humPow) {
-				st.setPendingChoice(null);
-				st.setPendingEffect(null);
-				st.setGameOver(true);
-				st.setHumanWon(true);
-				st.setPhase(BattlePhase.GAME_OVER);
-				st.setLastMessage(st.isPvp() ? "勝利（相手のSPEC-777）" : "勝利（CPUのSPEC-777）");
-				st.addLog("SPEC-777: 相手の強さがあなた未満のため相手敗北");
-				return true;
-			}
+		int roll = specZ.getSpec777RolledPower();
+		int oppPow = oppZ != null && oppZ.getMain() != null
+				? effectiveBattlePower(oppZ, !spec777OnHumanZone, st, defs)
+				: 0;
+		if (oppZ != null && oppZ.getMain() != null && roll < oppPow) {
+			st.setPendingChoice(null);
+			st.setPendingEffect(null);
+			st.setGameOver(true);
+			st.setHumanWon(!spec777OnHumanZone);
+			st.setPhase(BattlePhase.GAME_OVER);
+			st.setLastMessage(spec777OnHumanZone ? "敗北（SPEC-777）"
+					: (st.isPvp() ? "勝利（相手のSPEC-777）" : "勝利（CPUのSPEC-777）"));
+			st.addLog(spec777OnHumanZone
+					? "SPEC-777: 出目がその時点の相手未満のため敗北"
+					: "SPEC-777: 相手の出目がその時点のあなた未満のため相手敗北");
+			return true;
 		}
 		return false;
 	}
@@ -2986,7 +3728,7 @@ public class CpuBattleEngine {
 		}
 		p += zf.getBotBikeMechanicPowerBonus();
 
-		// 薬売り（常時）: 自分が所持しているストーン1個につき、相手のファイター強さ-1（薬売りがバトルゾーンにいる間）
+		// 薬売り（常時）: 自分が所持しているストーン1つにつき、相手のファイター強さ-1（薬売りがバトルゾーンにいる間）
 		if (!suppressOpponentEffects) {
 			ZoneFighter oppZone = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
 			if (oppZone != null && oppZone.getMain() != null && oppZone.getMain().getCardId() == KUSURI_ID
@@ -3395,6 +4137,27 @@ public class CpuBattleEngine {
 	}
 
 	/**
+	 * ミラージュクル: 相手の〈配置〉をコピーする際、ストーン支払いが必要な効果で不足なら確認ダイアログを出さない。
+	 * {@link #applyDeployHuman} / {@link #applyDeployHumanAsCpuSide} の任意ストーン系分岐と整合させる。
+	 */
+	private static boolean mirajukulMirrorHasStonesForOpponentDeploy(CpuBattleState st, String abilityDeployCode,
+			boolean mirageOwnerIsHuman) {
+		if (st == null || abilityDeployCode == null) {
+			return true;
+		}
+		String code = abilityDeployCode.trim();
+		int stones = mirageOwnerIsHuman ? st.getHumanStones() : st.getCpuStones();
+		return switch (code) {
+			case "SAMURAI" -> stones >= 3;
+			case "YOSEI", "NOROWARETA", "FUWAFUWA", "NIDONEBI", "KORYU" -> stones >= 1;
+			case "RYUNOTAMAGO" -> stones >= 2;
+			case "CRYSTAKUL" -> stones >= CRYSTAKUL_OPTIONAL_STONE_COST;
+			case "FEZARIA" -> stones >= 2;
+			default -> true;
+		};
+	}
+
+	/**
 	 * ミラージュクル: 相手に〈配置〉があれば、コピーするかの確認をキューする。
 	 *
 	 * @return 確認待ちを設定したら true
@@ -3415,6 +4178,10 @@ public class CpuBattleEngine {
 		}
 		if ("MIRAJUKUL".equals(code)) {
 			st.addLog("ミラージュクル: 相手もミラージュクルのためコピーできない");
+			return false;
+		}
+		if (!mirajukulMirrorHasStonesForOpponentDeploy(st, code, mirageOwnerIsHuman)) {
+			st.addLog("ミラージュクル: 必要なストーンが足りないため、相手の〈配置〉確認を出さない");
 			return false;
 		}
 		String oppName = oppFighter.getName() != null ? oppFighter.getName() : "？";
@@ -4175,6 +4942,7 @@ public class CpuBattleEngine {
 					int roll = 2 + ThreadLocalRandom.current().nextInt(6);
 					z777.setSpec777RolledPower(roll);
 					st.addLog("SPEC-777: 出目=" + roll);
+					applySpec777DeployLossIfRollBelowOpponentAtDeploy(st, defs, true);
 				}
 			}
 			case "SPEC666" -> {
@@ -4632,6 +5400,7 @@ public class CpuBattleEngine {
 					int roll = 2 + ThreadLocalRandom.current().nextInt(6);
 					z777g.setSpec777RolledPower(roll);
 					st.addLog("SPEC-777: 出目=" + roll);
+					applySpec777DeployLossIfRollBelowOpponentAtDeploy(st, defs, false);
 				}
 			}
 			case "SPEC666" -> {
@@ -5035,6 +5804,7 @@ public class CpuBattleEngine {
 					int roll = 2 + r.nextInt(6);
 					z777c.setSpec777RolledPower(roll);
 					st.addLog("CPU SPEC-777: 出目=" + roll);
+					applySpec777DeployLossIfRollBelowOpponentAtDeploy(st, defs, false);
 				}
 			}
 			case "SPEC666" -> {
@@ -5392,6 +6162,36 @@ public class CpuBattleEngine {
 			if (cpuIsFirstTurnAsFirstPlayer) {
 				maxLuRest = 0;
 				maxLuSt = 0;
+			}
+		}
+
+		// アドバンスド CPU: 〈フィールド〉差し替え後に合法配置が可能なら true（1 段だけ再帰）
+		if (!forHuman && st.getCpuBattleMode() == CpuBattleMode.ADVANCED
+				&& Boolean.TRUE.equals(st.getActiveFieldOwnerHuman()) && st.getActiveField() != null) {
+			Random probe = new Random(31_337L);
+			for (BattleCard fc : new ArrayList<>(hand)) {
+				CardDefinition fd = defs.get(fc.getCardId());
+				if (!isFieldCard(fd)) {
+					continue;
+				}
+				int fcost = effectiveDeployCost(fd, fc, defs,
+						st.getCpuRest(), st.getCpuNextMechanicStacks(), st);
+				if (fcost > stones) {
+					continue;
+				}
+				CpuBattleState s1 = copyStateForCpuSim(st);
+				s1.setCpuStones(s1.getCpuStones() - fcost);
+				BattleCard removed = removeByInstanceId(s1.getCpuHand(), fc.getInstanceId());
+				if (removed == null) {
+					continue;
+				}
+				replaceActiveField(s1, removed, false, defs);
+				if (fd.getId() != null && fd.getId() == FLEET_HO_IVI_FIELD_ID) {
+					applyFleetHoIviFieldDeployBothSides(s1, defs, probe);
+				}
+				if (canMakeLegalDeploy(s1, false, defs)) {
+					return true;
+				}
 			}
 		}
 

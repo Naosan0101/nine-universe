@@ -79,6 +79,14 @@ public class AnnouncementRewardService {
 		return userAnnouncementClaimMapper.exists(userId, GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_KEY);
 	}
 
+	public boolean hasClaimedMajorUpdateAnnouncement(long userId) {
+		return userAnnouncementClaimMapper.exists(userId, GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_KEY);
+	}
+
+	public boolean hasSuppressedMajorUpdatePopup(long userId) {
+		return userAnnouncementClaimMapper.exists(userId, GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_POPUP_SUPPRESS_KEY);
+	}
+
 	/** 受け取り可能期間内（開始日〜終了日を含む）か。 */
 	public boolean isWithinPerfLightWindow(LocalDate today) {
 		if (today.isBefore(GameConstants.ANNOUNCEMENT_PERF_LIGHT_START)) {
@@ -174,6 +182,13 @@ public class AnnouncementRewardService {
 			return false;
 		}
 		return !today.isAfter(GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_LAST_DAY);
+	}
+
+	public boolean isWithinMajorUpdateAnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_LAST_DAY);
 	}
 
 	public enum ClaimOutcome {
@@ -281,6 +296,13 @@ public class AnnouncementRewardService {
 				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_START)) {
 			if (claimSamuraiStatusAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
 				totalGems += GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_START)) {
+			if (claimMajorUpdateAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_GEMS;
 				claimed++;
 			}
 		}
@@ -510,5 +532,28 @@ public class AnnouncementRewardService {
 		}
 		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_GEMS);
 		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimMajorUpdateAnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	/** 「もう表示しない」: ポップアップ抑止のみ（ジェムは別途受け取り）。 */
+	@Transactional
+	public void suppressMajorUpdateLoginPopup(long userId) {
+		userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_POPUP_SUPPRESS_KEY);
 	}
 }
