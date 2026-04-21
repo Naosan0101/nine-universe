@@ -6,6 +6,14 @@
 		SELECT deck_id AS deckId, slot, card_id AS cardId FROM deck_entry WHERE deck_id = #{deckId} ORDER BY slot
 	</select>
 
+	<select id="countCardsInUserDecks" resultType="com.example.nineuniverse.domain.CardIdCount">
+		SELECT de.card_id AS cardId, CAST(COUNT(*) AS INTEGER) AS copies
+		FROM deck_entry de
+		INNER JOIN deck d ON d.id = de.deck_id
+		WHERE d.user_id = #{userId}
+		GROUP BY de.card_id
+	</select>
+
 	<delete id="deleteByDeckId">
 		DELETE FROM deck_entry WHERE deck_id = #{deckId}
 	</delete>

@@ -3,6 +3,7 @@ package com.example.nineuniverse.web;
 import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.service.DeckService;
 import com.example.nineuniverse.domain.AppUser;
+import com.example.nineuniverse.domain.UserDisplayNames;
 import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.service.PvpBattleService;
 import com.example.nineuniverse.web.dto.CpuBattleChoiceRequest;
@@ -136,11 +137,11 @@ public class PvpController {
 		if (m.getGuestUserId() != null) {
 			AppUser hu = appUserMapper.findById(m.getHostUserId());
 			AppUser gu = appUserMapper.findById(m.getGuestUserId());
-			if (hu != null && hu.getUsername() != null && !hu.getUsername().isBlank()) {
-				hostName = hu.getUsername();
+			if (hu != null) {
+				hostName = UserDisplayNames.effectiveDisplayName(hu);
 			}
-			if (gu != null && gu.getUsername() != null && !gu.getUsername().isBlank()) {
-				guestName = gu.getUsername();
+			if (gu != null) {
+				guestName = UserDisplayNames.effectiveDisplayName(gu);
 			}
 		}
 		model.addAttribute("battleIntroMyName", iAmHost ? hostName : guestName);

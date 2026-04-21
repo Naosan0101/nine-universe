@@ -38,4 +38,14 @@ public interface AppUserMapper {
 	int decrementStarterGiftStandard1IfPositive(@Param("id") long id);
 
 	int setStarterGiftStandard1Remaining(@Param("id") long id, @Param("remaining") int remaining);
+
+	int updateProfileSettings(@Param("id") long id, @Param("displayName") String displayName,
+			@Param("cpuThinkSpeed") String cpuThinkSpeed);
+
+	int addRecycleCrystalDelta(@Param("id") long id, @Param("delta") int delta);
+
+	/** クリスタルが足りるときだけ減算。更新行数 1 で成功。 */
+	int subtractRecycleCrystalIfEnough(@Param("id") long id, @Param("amount") int amount);
+
+	int setRecycleCrystal(@Param("id") long id, @Param("crystal") int crystal);
 }

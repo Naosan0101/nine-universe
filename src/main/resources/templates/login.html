@@ -23,6 +23,23 @@
 		<button type="submit" class="btn btn--primary">ログイン</button>
 	</form>
 	<p><a th:href="@{/register}">新規登録</a></p>
+	<div class="auth-quit-app-wrap" id="auth-quit-app-wrap" hidden>
+		<button type="button" class="btn btn--ghost auth-quit-app-btn" id="auth-quit-app-btn">ゲームを終了する</button>
+	</div>
 </div>
+<script th:replace="~{fragments/tab-fullscreen :: script}"></script>
+<script>
+(function () {
+	var wrap = document.getElementById('auth-quit-app-wrap');
+	var btn = document.getElementById('auth-quit-app-btn');
+	if (!wrap || !btn) return;
+	if (typeof window.nuElectron !== 'undefined' && window.nuElectron && typeof window.nuElectron.quitApp === 'function') {
+		wrap.hidden = false;
+		btn.addEventListener('click', function () {
+			window.nuElectron.quitApp();
+		});
+	}
+})();
+</script>
 </body>
 </html>

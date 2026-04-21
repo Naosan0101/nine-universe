@@ -25,6 +25,8 @@ public class RegistrationService {
 		}
 		AppUser u = new AppUser();
 		u.setUsername(username.trim());
+		u.setDisplayName(username.trim());
+		u.setCpuThinkSpeed("NORMAL");
 		u.setPasswordHash(passwordEncoder.encode(rawPassword));
 		u.setCoins(GameConstants.STARTING_COINS);
 		u.setLastMissionDate(null);

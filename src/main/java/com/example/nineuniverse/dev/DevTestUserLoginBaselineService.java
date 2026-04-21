@@ -62,6 +62,7 @@ public class DevTestUserLoginBaselineService {
 	@Transactional
 	public void resetUser(long userId) {
 		appUserMapper.updateCoinsAndMarkWelcomeHomeBonusGranted(userId, BASELINE_GEMS);
+		appUserMapper.setRecycleCrystal(userId, 0);
 		appUserMapper.setStarterGiftStandard1Remaining(userId, 0);
 		userCollectionMapper.deleteByUserId(userId);
 		for (var c : cardCatalogService.all()) {

@@ -163,6 +163,7 @@ public class CpuBattleService {
 						? toBattleCardDto(st.getActiveField())
 						: null,
 				st.getScrapyardFieldTurnsRemaining(),
+				st.getDeathbounceFieldTurnsRemaining(),
 				hbPow,
 				cbPow,
 				st.getHumanNextDeployBonus(),

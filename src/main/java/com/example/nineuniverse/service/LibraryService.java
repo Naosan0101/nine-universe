@@ -47,6 +47,34 @@ public class LibraryService {
 	/**
 	 * パック開封後のフラッシュ復元用（ID のみ渡す）。順序は引きの順のまま。
 	 */
+	/**
+	 * カード定義から表示用ビューを生成（リサイクル画面など）。
+	 */
+	public LibraryCardView viewForCardDefinition(CardDefinition c) {
+		LibraryCardView v = new LibraryCardView();
+		fillCardFace(v, c);
+		return v;
+	}
+
+	/**
+	 * レジェンダリー交換：一覧用。詳細表示のため {@link LibraryCardView#setOwned(boolean)} は呼び出し側で true にする。
+	 */
+	public List<LibraryCardView> legendaryDefinitionsAsViews() {
+		List<LibraryCardView> out = new ArrayList<>();
+		for (CardDefinition c : cardCatalogService.all()) {
+			String r = c.getRarity();
+			if (r == null || !"Reg".equalsIgnoreCase(r.trim())) {
+				continue;
+			}
+			LibraryCardView v = viewForCardDefinition(c);
+			v.setOwned(true);
+			v.setQuantity(1);
+			out.add(v);
+		}
+		out.sort(Comparator.comparing(LibraryCardView::getName, String.CASE_INSENSITIVE_ORDER));
+		return out;
+	}
+
 	public List<LibraryCardView> displayFacesForCardIds(List<Short> cardIds) {
 		Map<Short, CardDefinition> map = cardCatalogService.mapById();
 		List<LibraryCardView> out = new ArrayList<>();

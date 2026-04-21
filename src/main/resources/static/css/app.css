@@ -867,6 +867,217 @@ body {
 	color: #fecaca;
 }
 
+.time-pack-choice-layer {
+	position: fixed;
+	inset: 0;
+	z-index: 900;
+	display: grid;
+	place-items: center;
+	padding: 16px;
+}
+.time-pack-choice-layer[hidden] {
+	display: none !important;
+}
+.time-pack-choice-modal__panel {
+	width: min(560px, calc(100vw - 32px));
+	max-height: min(88vh, 760px);
+}
+.time-pack-choice-modal__lead {
+	margin: 0 0 1rem;
+	font-size: 0.9rem;
+	line-height: 1.5;
+	color: var(--muted);
+}
+.time-pack-choice-modal__form {
+	margin: 0;
+}
+.time-pack-choice-modal__slot {
+	margin-bottom: 1.1rem;
+}
+.time-pack-choice-modal__slot-label {
+	margin: 0 0 0.5rem;
+	font-size: 0.82rem;
+	font-weight: 700;
+	color: var(--muted);
+	letter-spacing: 0.04em;
+}
+.time-pack-choice-modal__grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0.65rem;
+}
+.time-pack-choice-modal__cell {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	align-items: stretch;
+}
+.time-pack-choice-modal__opt {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.35rem;
+	margin: 0;
+	padding: 0.55rem 0.45rem 0.6rem;
+	border-radius: 12px;
+	border: 2px solid rgba(255, 255, 255, 0.12);
+	background: rgba(0, 0, 0, 0.2);
+	cursor: pointer;
+	transition: border-color 0.15s ease, background 0.15s ease;
+}
+.time-pack-choice-modal__opt:hover {
+	border-color: rgba(255, 255, 255, 0.22);
+}
+.time-pack-choice-modal__opt:has(input:checked) {
+	border-color: rgba(74, 125, 255, 0.75);
+	background: rgba(74, 125, 255, 0.1);
+}
+.time-pack-choice-modal__opt input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+.time-pack-choice-modal__img {
+	width: 100%;
+	max-width: 140px;
+	height: auto;
+	display: block;
+	border-radius: 8px;
+}
+.time-pack-choice-modal__name {
+	font-size: 0.78rem;
+	font-weight: 700;
+	text-align: center;
+	line-height: 1.35;
+	color: var(--text);
+}
+.time-pack-choice-modal__detail {
+	width: 100%;
+	font-size: 0.82rem;
+	padding: 0.35rem 0.5rem;
+}
+.time-pack-choice-modal__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	justify-content: flex-end;
+	margin-top: 0.25rem;
+	padding-top: 0.35rem;
+	border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+#home-pack-detail-standard.pack-detail-modal,
+#home-pack-detail-standard-2.pack-detail-modal {
+	z-index: 910;
+}
+@media (max-width: 420px) {
+	.time-pack-choice-modal__grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+.settings-panel__tagline {
+	margin: 0 0 0.75rem;
+	font-size: 0.92rem;
+	color: var(--muted);
+}
+.settings-panel__field {
+	margin-bottom: 1.1rem;
+}
+.settings-panel__label {
+	display: block;
+	font-weight: 700;
+	font-size: 0.88rem;
+	margin-bottom: 0.35rem;
+	color: var(--text);
+}
+.settings-panel__readonly {
+	margin: 0;
+	padding: 0.45rem 0.55rem;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	font-size: 0.95rem;
+	word-break: break-all;
+}
+.settings-panel__hint {
+	margin: 0.35rem 0 0;
+	font-size: 0.82rem;
+	line-height: 1.45;
+}
+.settings-panel__form select {
+	width: 100%;
+	max-width: 22rem;
+	padding: 0.45rem 0.5rem;
+	border-radius: 10px;
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	background: rgba(0, 0, 0, 0.25);
+	color: var(--text);
+	font-size: 0.92rem;
+}
+
+/* CPU はやさ: プルダウンを内容幅に寄せ、左右の内側余白だけ詰める（タテは通常どおり） */
+.settings-panel__form .settings-panel__field--cpu-speed select {
+	width: auto;
+	max-width: 11rem;
+	padding: 0.45rem 0.32rem;
+}
+
+.settings-panel__toggle-heading {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.5rem 0.65rem;
+}
+.settings-panel__toggle-heading .settings-panel__label {
+	display: inline;
+	margin-bottom: 0;
+}
+.settings-toggle {
+	flex-shrink: 0;
+	position: relative;
+	width: 3.35rem;
+	height: 1.85rem;
+	border-radius: 999px;
+	border: 1px solid rgba(255, 255, 255, 0.22);
+	padding: 0;
+	cursor: pointer;
+	transition: background 0.15s ease, border-color 0.15s ease;
+}
+.settings-toggle:focus-visible {
+	outline: 2px solid rgba(120, 200, 255, 0.85);
+	outline-offset: 2px;
+}
+.settings-toggle--on {
+	background: #2e7d4a;
+	border-color: rgba(100, 200, 130, 0.55);
+}
+.settings-toggle--off {
+	background: rgba(255, 255, 255, 0.1);
+}
+.settings-toggle::after {
+	content: "";
+	position: absolute;
+	top: 3px;
+	left: 3px;
+	width: 1.3rem;
+	height: 1.3rem;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+	transition: left 0.15s ease, right 0.15s ease;
+}
+.settings-toggle--on::after {
+	left: auto;
+	right: 3px;
+}
+
 .home-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -1425,6 +1636,23 @@ body {
 		0 0 22px rgba(74, 125, 255, 0.18),
 		0 16px 48px rgba(0, 0, 0, 0.25);
 }
+.settings-panel__form .btn--primary.settings-panel__save-btn {
+	align-self: flex-start;
+	width: fit-content;
+	padding: 0.35rem 0.65rem;
+	font-size: 0.82rem;
+	border-radius: 7px;
+	box-shadow:
+		0 0 0 1px rgba(0, 0, 0, 0.12),
+		0 4px 14px rgba(74, 125, 255, 0.2),
+		0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.settings-panel__form .btn--primary.settings-panel__save-btn:hover {
+	box-shadow:
+		0 0 0 1px rgba(0, 0, 0, 0.14),
+		0 6px 18px rgba(74, 125, 255, 0.22),
+		0 10px 28px rgba(0, 0, 0, 0.2);
+}
 .btn--ghost { background: transparent; }
 .btn--danger {
 	background: linear-gradient(180deg, #e05555, #a82828);
@@ -1541,6 +1769,14 @@ a:hover {
 	-webkit-backdrop-filter: blur(10px);
 }
 
+.auth-quit-app-wrap {
+	margin-top: 1rem;
+	padding-top: 1rem;
+	border-top: 1px solid rgba(255, 255, 255, 0.1);
+	display: flex;
+	justify-content: center;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.btn {
 		transition: none;
@@ -1601,6 +1837,55 @@ a:hover {
 	align-items: center;
 	justify-content: flex-end;
 	flex: 0 1 auto;
+}
+
+/* 開封画面：画面全体を金色（body に .page が付いているため body で上書き） */
+body.page--pack-opening {
+	background:
+		radial-gradient(1100px 720px at 50% -8%, rgba(255, 252, 235, 0.55) 0%, transparent 52%),
+		radial-gradient(900px 640px at 50% 108%, rgba(70, 42, 10, 0.55) 0%, transparent 52%),
+		linear-gradient(185deg, #e8c56a 0%, #b8892e 38%, #7a5818 72%, #4a3410 100%);
+	color: var(--text);
+	min-height: 100vh;
+}
+body.page--pack-opening .game-title {
+	color: #fff8e8;
+	text-shadow:
+		0 1px 2px rgba(40, 24, 6, 0.55),
+		0 0 22px rgba(120, 70, 12, 0.45);
+}
+body.page--pack-opening .muted {
+	color: rgba(255, 250, 238, 0.9);
+	text-shadow: 0 1px 2px rgba(40, 24, 6, 0.45);
+}
+body.page--pack-opening .topbar {
+	border-bottom-color: rgba(40, 28, 10, 0.18);
+	background:
+		radial-gradient(900px 260px at 20% 0%, rgba(255, 240, 200, 0.22), transparent 58%),
+		radial-gradient(700px 240px at 80% 0%, rgba(180, 120, 40, 0.16), transparent 60%),
+		rgba(30, 22, 10, 0.28);
+	box-shadow:
+		0 0 0 1px rgba(255, 255, 255, 0.12),
+		0 18px 70px rgba(0, 0, 0, 0.28);
+}
+body.page--pack-opening::before {
+	background:
+		radial-gradient(1000px 560px at 50% 12%, rgba(255, 245, 210, 0.42) 0%, transparent 50%),
+		radial-gradient(700px 420px at 12% 70%, rgba(255, 210, 120, 0.18) 0%, transparent 55%),
+		linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(0, 0, 0, 0)),
+		linear-gradient(rgba(160, 110, 30, 0.14) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(160, 110, 30, 0.14) 1px, transparent 1px);
+	background-size: auto, auto, auto, 44px 44px, 44px 44px;
+	opacity: 0.5;
+	mix-blend-mode: soft-light;
+	filter: saturate(1.08) brightness(1.03);
+}
+body.page--pack-opening::after {
+	background:
+		radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.18) 0%, transparent 52%),
+		radial-gradient(circle at 72% 78%, rgba(255, 230, 160, 0.12) 0%, transparent 52%);
+	opacity: 0.2;
+	mix-blend-mode: overlay;
 }
 .pack-result__draw-again-form {
 	margin: 0;
@@ -1876,13 +2161,87 @@ a:hover {
 .page--deck .deck-panels--stack {
 	display: flex;
 	flex-direction: column;
-	gap: 1.25rem;
+	gap: 0.85rem;
 }
 .page--deck .deck-panel--slots {
 	order: 1;
+	position: sticky;
+	top: 0;
+	z-index: 40;
+	align-self: flex-start;
+	width: 100%;
+	/* 上段は中身に合わせて伸びる（内部スクロールは使わない）。矢印タブなしで常時表示 */
+	max-height: none;
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 0;
+	min-height: 0;
+	overflow: visible;
+	margin-bottom: 0.3rem;
+	padding: 0.32rem 0.5rem;
+	border-radius: 10px;
+	box-shadow:
+		0 0 0 1px rgba(255, 255, 255, 0.04),
+		0 6px 24px rgba(0, 0, 0, 0.28);
+}
+.page--deck .deck-panel__slots-body {
+	overflow: visible;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+.page--deck .deck-panel__slots-body > h2,
+.page--deck .deck-panel__slots-body > p.muted,
+.page--deck .deck-panel__slots-body > p#recycle-estimate,
+.page--deck .deck-panel__slots-body .deck-panel__actions-row {
+	flex: 0 0 auto;
+}
+.page--deck .deck-panel__slots-body > h2 {
+	margin: 0 0 0.2rem;
+	font-size: 0.94rem;
+	line-height: 1.25;
+}
+.page--deck .deck-panel__slots-body > p.muted,
+.page--deck .deck-panel__slots-body > p#recycle-estimate {
+	margin-top: 0;
+	margin-bottom: 0.2rem;
+	line-height: 1.35;
+	font-size: 0.88rem;
+}
+.page--deck .deck-panel__slots-body .deck-panel__actions-row {
+	margin-top: 0.18rem;
+	gap: 0.45rem;
+}
+.page--deck .deck-panel--slots .card-pool--deck {
+	/* 幅はカードぶんに縮めて中央 */
+	flex: 0 0 auto;
+	min-height: clamp(5rem, 12vmin, 8rem);
+	max-height: none;
+	overflow: visible;
+	align-items: center;
+	align-content: center;
+	justify-content: center;
+	width: fit-content;
+	max-width: 100%;
+	margin-inline: auto;
+	align-self: center;
+	padding: 0.5rem 0.55rem;
+	gap: 0.35rem;
+	border-radius: 7px;
+	background: rgba(0, 0, 0, 0.16);
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 .page--deck .deck-panel--library {
 	order: 2;
+	/* ライブラリグリッドを横いっぱいに近づける */
+	padding-left: 0.45rem;
+	padding-right: 0.45rem;
+}
+/* リサイクル：メインのデッキ／ライブラリはデッキ編集と同じくページ幅いっぱい（.container 外のフォーム） */
+.page--recycle .deck-form--recycle-main {
+	width: 100%;
+	box-sizing: border-box;
 }
 .deck-panel__actions-row {
 	display: flex;
@@ -1938,6 +2297,10 @@ a:hover {
 	margin: 0.5rem 0 0;
 	width: 100%;
 }
+.page--deck .library-pool > .deck-lib-empty-msg {
+	grid-column: 1 / -1;
+	justify-self: stretch;
+}
 .card-pool {
 	min-height: 140px;
 	display: flex;
@@ -1955,9 +2318,38 @@ a:hover {
 	justify-content: center;
 }
 .page--deck .library-pool {
+	width: 100%;
 	min-height: 148px;
-	gap: 0.5rem;
 	padding: 0.65rem;
+	/* auto-fit + 1fr で行を幅いっぱいに（justify-content:center だと列が寄って両端に余白が出る） */
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.25rem), 1fr));
+	justify-items: center;
+	align-content: start;
+	gap: 0.5rem;
+	box-sizing: border-box;
+}
+/* ライブラリ一覧と同じ .library-card__inner ラップ用（内側の overflow・角丸でキラの見え方を揃える） */
+.page--deck .mini-card .library-card__inner {
+	display: block;
+	width: fit-content;
+	max-width: 100%;
+	margin: 0;
+	padding: 0;
+}
+.page--deck .library-pool .mini-card--lib.mini-card--deck-1 .card-face--mini-deck,
+.page--deck .library-pool .mini-card--lib.mini-card--deck-1 > img,
+.page--deck .library-pool .mini-card--lib.mini-card--deck-1 > .mini-card__no-art {
+	box-shadow:
+		0 0 0 1px rgba(230, 200, 80, 0.9),
+		0 2px 10px rgba(0, 0, 0, 0.38);
+}
+.page--deck .library-pool .mini-card--lib.mini-card--deck-2 .card-face--mini-deck,
+.page--deck .library-pool .mini-card--lib.mini-card--deck-2 > img,
+.page--deck .library-pool .mini-card--lib.mini-card--deck-2 > .mini-card__no-art {
+	box-shadow:
+		0 0 0 1px rgba(220, 72, 72, 0.9),
+		0 2px 10px rgba(0, 0, 0, 0.38);
 }
 .mini-card {
 	padding: 0;
@@ -1966,10 +2358,32 @@ a:hover {
 	cursor: pointer;
 }
 .page--deck .mini-card--lib {
+	position: relative;
 	display: inline-flex;
 	flex-direction: column;
 	align-items: center;
 	gap: 0.2rem;
+}
+.page--deck .mini-card--lib.mini-card--disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+.page--deck .card-pool-badge {
+	position: absolute;
+	top: 2px;
+	right: 2px;
+	z-index: 5;
+	min-width: 1.35rem;
+	padding: 2px 6px;
+	border-radius: 9px;
+	font-size: 0.74rem;
+	font-weight: 800;
+	line-height: 1.15;
+	background: rgba(18, 22, 34, 0.92);
+	color: #f0f4ff;
+	border: 1px solid rgba(255, 255, 255, 0.32);
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+	pointer-events: none;
 }
 .page--deck .mini-card--lib .mini-card__qty {
 	color: #fff;
@@ -1978,7 +2392,8 @@ a:hover {
 	letter-spacing: 0.02em;
 	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
-.mini-card img { width: 72px; border-radius: 8px; display: block; }
+/* 直下の単一画像のみ（レイヤードの子 img は幅を別途 100% にする） */
+.mini-card > img { width: 72px; border-radius: 8px; display: block; }
 .page--deck .mini-card .card-face--mini-deck {
 	width: 72px;
 	max-width: 72px;
@@ -1993,12 +2408,39 @@ a:hover {
 	max-width: clamp(122px, 14.2vw, 176px);
 	box-shadow: 0 5px 18px rgba(0, 0, 0, 0.38);
 }
-.page--deck .mini-card--deck img {
+.page--deck .mini-card--deck > img {
 	width: clamp(112px, 13vw, 142px);
 	border-radius: 11px;
 	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.39);
 }
-.page--deck .mini-card--lib img {
+/* レイヤード：.mini-card--deck img のような子孫セレクタに幅を当てない（層はカード枠いっぱい） */
+.page--deck .mini-card--deck .card-face__stack .card-face__layer-img,
+.page--deck .mini-card--lib .card-face__stack .card-face__layer-img {
+	width: 100%;
+	height: 100%;
+	max-width: none;
+	box-shadow: none;
+	border-radius: 0;
+}
+/* 上段：カード枠とレイヤー画像の幅を一致させる（子孫 img に一覧用 clamp を当てない） */
+.page--deck .deck-panel--slots .mini-card--deck .card-face--mini-deck,
+.page--deck .deck-panel--slots .mini-card--deck > img,
+.page--deck .deck-panel--slots .mini-card--deck > .mini-card__no-art {
+	width: clamp(86px, 9.5vw, 108px);
+	max-width: clamp(86px, 9.5vw, 108px);
+	aspect-ratio: 5 / 7;
+	box-sizing: border-box;
+	border-radius: 8px;
+	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.39);
+}
+.page--deck .deck-panel--slots .mini-card--deck {
+	flex: 0 0 auto;
+	align-self: flex-start;
+	width: fit-content;
+	max-width: 100%;
+	min-width: 0;
+}
+.page--deck .mini-card--lib > img {
 	width: clamp(122px, 14.2vw, 176px);
 	border-radius: 9px;
 	box-shadow: 0 5px 18px rgba(0, 0, 0, 0.38);
@@ -3111,7 +3553,7 @@ body.battle-intro-is-running {
 .page--battle .battle-cell--zone-human .battle-field-label {
 	color: rgba(240, 215, 150, 0.92);
 }
-/* 廃棄工場 5C-R4P: 残りターン（4…1） */
+/* 廃棄工場 / 霊園教会デスバウンス: 残りターン（バッジ。廃棄工場は4…1、デスバウンスは6…1） */
 .page--battle .battle-field-card {
 	position: relative;
 }
@@ -5243,4 +5685,342 @@ body.battle-intro-is-running {
 	56% { transform: translateX(-2px); }
 	64% { transform: translateX(2px); }
 	100% { transform: translateX(0); }
+}
+
+/* リサイクル：レジェンダリー一覧（交換選択） */
+.page--recycle-legendary .recycle-legendary-toolbar {
+	margin-bottom: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.page--recycle-legendary .recycle-legendary-toolbar__row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 0.65rem 1rem;
+}
+.page--recycle-legendary .recycle-legendary-toolbar__crystal {
+	margin: 0;
+	flex: 1 1 12rem;
+	min-width: 0;
+}
+.page--recycle-legendary .recycle-legendary-trade-form {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex: 0 0 auto;
+}
+.page--recycle-legendary .recycle-legendary-toolbar__search {
+	margin-top: 0;
+}
+.page--recycle-legendary .library-card.library-card--picker.library-card--selected .library-card__inner {
+	box-shadow:
+		0 0 0 3px rgba(72, 210, 120, 0.95),
+		0 0 14px rgba(72, 210, 120, 0.35),
+		0 8px 28px rgba(0, 0, 0, 0.45);
+	border-radius: 12px;
+}
+
+.page--recycle .recycle-crystal-banner {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px 20px;
+	align-items: baseline;
+	margin-bottom: 16px;
+}
+.page--recycle-hub .recycle-hub-section + .recycle-hub-section {
+	margin-top: 18px;
+}
+.page--recycle-hub .recycle-hub-section__title {
+	margin: 0 0 10px;
+	font-size: 1.15rem;
+}
+.page--recycle-hub .recycle-hub-section--crystal-to-card .recycle-hub-section__title {
+	margin-bottom: 0.35rem;
+}
+.page--recycle-hub .recycle-hub-section__lead {
+	margin: 0 0 1rem;
+	line-height: 1.55;
+	font-size: 0.92rem;
+}
+.page--recycle-hub .recycle-shop.recycle-shop--hub-cards {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.75rem;
+	margin-top: 0;
+	width: auto;
+}
+.page--recycle-hub .recycle-hub-offer {
+	display: grid;
+	grid-template-columns: auto auto;
+	align-items: center;
+	column-gap: 0.8rem;
+	row-gap: 0.25rem;
+	width: fit-content;
+	max-width: min(40rem, 100%);
+	margin: 0;
+	padding: 0.75rem 0.95rem 0.8rem 1rem;
+	border-radius: 14px;
+	background: linear-gradient(145deg, rgba(26, 30, 44, 0.95) 0%, rgba(12, 14, 22, 0.98) 100%);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.22);
+	border-left: 4px solid rgba(130, 200, 255, 0.78);
+}
+.page--recycle-hub .recycle-hub-offer__body {
+	min-width: 0;
+}
+.page--recycle-hub .recycle-hub-offer--legendary-pack {
+	border-left-color: rgba(255, 210, 110, 0.92);
+}
+.page--recycle-hub .recycle-hub-offer--epic-plus-pack {
+	border-left-color: rgba(200, 130, 255, 0.88);
+}
+.page--recycle-hub .recycle-hub-offer__title {
+	margin: 0 0 0.4rem;
+	font-size: 1.09rem;
+	font-weight: 800;
+	letter-spacing: 0.02em;
+	color: #f4f7ff;
+	line-height: 1.3;
+}
+.page--recycle-hub .recycle-hub-offer__cost {
+	margin: 0;
+	display: flex;
+	flex-wrap: nowrap;
+	align-items: baseline;
+	gap: 0.25em 0.4em;
+}
+.page--recycle-hub .recycle-hub-offer__cost-num {
+	font-size: 1.2rem;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.02em;
+	color: #eef3ff;
+	text-shadow: none;
+}
+.page--recycle-hub .recycle-hub-offer--legendary-pack .recycle-hub-offer__cost-num {
+	color: #f5e6c8;
+	text-shadow: none;
+}
+.page--recycle-hub .recycle-hub-offer--epic-plus-pack .recycle-hub-offer__cost-num {
+	color: #eadcf8;
+	text-shadow: none;
+}
+.page--recycle-hub .recycle-hub-offer__cost-unit {
+	font-size: 0.88rem;
+	font-weight: 700;
+	color: rgba(220, 228, 245, 0.82);
+	text-shadow: none;
+}
+.page--recycle-hub .recycle-hub-offer__action {
+	align-self: center;
+}
+.page--recycle-hub .recycle-hub-offer__btn {
+	width: auto;
+	min-width: 5.25rem;
+	padding-left: 0.85rem;
+	padding-right: 0.85rem;
+	font-weight: 800;
+	white-space: nowrap;
+	text-align: center;
+}
+
+.recycle-surplus-form {
+	display: none;
+}
+.page--recycle-cards .recycle-panel-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	justify-content: flex-end;
+	gap: 0.65rem 0.85rem;
+	margin-top: 0.75rem;
+}
+.page--recycle-cards .recycle-action-col--complete {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.28rem;
+	min-width: 7.5rem;
+}
+.page--recycle-cards .recycle-action-crystal {
+	margin: 0;
+	font-size: 0.84rem;
+	line-height: 1.35;
+	text-align: center;
+}
+.page--recycle-cards .recycle-panel-actions .deck-panel__clear-deck-btn {
+	margin-left: 0;
+}
+/* ライブラリ詳細モーダルと同じ __panel だが、こちらは1カラムの確認ダイアログ（2列 grid を上書き） */
+.recycle-surplus-modal .library-detail-modal__panel.recycle-surplus-modal__panel {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	grid-template-columns: none;
+	gap: 0;
+	max-width: min(46rem, calc(100vw - 2rem));
+	width: 100%;
+	box-sizing: border-box;
+	overflow-x: hidden;
+}
+.page--recycle-cards .recycle-surplus-modal__title {
+	margin: 0 0 0.75rem;
+	padding-right: 2.75rem;
+	font-size: 1.05rem;
+}
+.page--recycle-cards .recycle-surplus-modal__lead {
+	display: inline-block;
+	white-space: nowrap;
+	font-size: clamp(0.78rem, 0.55rem + 1.1vw, 1rem);
+	letter-spacing: -0.015em;
+}
+.page--recycle-cards .recycle-surplus-modal__body {
+	margin: 0 0 0.65rem;
+	line-height: 1.55;
+	min-width: 0;
+}
+.page--recycle-cards .recycle-surplus-modal__crystal {
+	margin: 0 0 1rem;
+	font-size: 0.95rem;
+	min-width: 0;
+}
+.page--recycle-cards .recycle-surplus-modal__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.65rem 0.75rem;
+	justify-content: flex-end;
+}
+
+.page--recycle-pack-pick .pack-buy__grid.recycle-pack-pick__grid {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	justify-content: center;
+	align-items: flex-start;
+	gap: 1.25rem 2rem;
+}
+.page--recycle-pack-pick .pack-buy__cell {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.55rem;
+	flex: 1 1 200px;
+	max-width: 320px;
+}
+.page--recycle-pack-pick .recycle-pack-pick__detail {
+	width: 100%;
+	max-width: 16rem;
+}
+.page--recycle-pack-pick .recycle-pack-pick__open-cost {
+	margin: 0 0 0.85rem;
+	font-size: 0.95rem;
+}
+.page--recycle-pack-pick .recycle-pack-pick__modal-rules {
+	margin: 0.35rem 0 0.85rem;
+	padding-left: 1.2rem;
+	line-height: 1.5;
+	font-size: 0.9rem;
+}
+.page--recycle-pack-pick .recycle-pack-pick__form {
+	margin: 0;
+	width: 100%;
+}
+.page--recycle-pack-pick .recycle-pack-pick__submit {
+	width: 100%;
+	border: 0;
+	background: transparent;
+	padding: 0;
+	cursor: pointer;
+	text-align: center;
+	font: inherit;
+	color: inherit;
+}
+.page--recycle-pack-pick .recycle-pack-pick__submit:focus-visible {
+	outline: 2px solid rgba(140, 180, 255, 0.85);
+	outline-offset: 3px;
+	border-radius: 10px;
+}
+.page--recycle .recycle-table-wrap {
+	overflow-x: auto;
+	margin-top: 8px;
+}
+.page--recycle .recycle-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.92rem;
+}
+.page--recycle .recycle-table th,
+.page--recycle .recycle-table td {
+	padding: 6px 8px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	text-align: left;
+}
+.page--recycle .recycle-table th {
+	color: rgba(230, 232, 240, 0.85);
+	font-weight: 700;
+}
+.page--recycle .recycle-table input[type="number"] {
+	width: 4.5rem;
+	padding: 4px 6px;
+	border-radius: 6px;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	background: rgba(0, 0, 0, 0.25);
+	color: inherit;
+}
+.page--recycle .recycle-shop {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin-top: 20px;
+}
+.page--recycle .recycle-shop__row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px 14px;
+	justify-content: space-between;
+	padding: 10px 12px;
+	border-radius: 10px;
+	background: rgba(12, 14, 22, 0.55);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* リサイクル確定パック開封：背景の光 */
+.page--pack-opening.pack-opening--theme-epic-plus .pack-opening-stage {
+	position: relative;
+	border-radius: 16px;
+	padding: 14px 12px 18px;
+	background:
+		radial-gradient(ellipse 90% 70% at 50% 20%, rgba(180, 100, 255, 0.42) 0%, transparent 55%),
+		radial-gradient(ellipse 60% 50% at 85% 75%, rgba(90, 40, 200, 0.35) 0%, transparent 50%),
+		linear-gradient(165deg, rgba(18, 8, 32, 0.95) 0%, rgba(8, 6, 18, 0.98) 100%);
+	box-shadow:
+		inset 0 0 100px rgba(130, 60, 255, 0.22),
+		0 0 48px rgba(100, 40, 220, 0.25);
+	animation: recyclePackGlowEpic 2.6s ease-in-out infinite alternate;
+}
+.page--pack-opening.pack-opening--theme-legendary .pack-opening-stage {
+	position: relative;
+	border-radius: 16px;
+	padding: 14px 12px 18px;
+	background:
+		radial-gradient(ellipse 95% 75% at 50% 18%, rgba(255, 230, 140, 0.55) 0%, transparent 58%),
+		radial-gradient(ellipse 55% 45% at 20% 80%, rgba(200, 140, 40, 0.35) 0%, transparent 48%),
+		linear-gradient(175deg, rgba(40, 28, 8, 0.96) 0%, rgba(12, 10, 6, 0.98) 100%);
+	box-shadow:
+		inset 0 0 110px rgba(255, 200, 80, 0.28),
+		0 0 52px rgba(220, 160, 40, 0.3);
+	animation: recyclePackGlowLeg 2.8s ease-in-out infinite alternate;
+}
+@keyframes recyclePackGlowEpic {
+	from { filter: saturate(1.05) brightness(1); }
+	to { filter: saturate(1.2) brightness(1.06); }
+}
+@keyframes recyclePackGlowLeg {
+	from { filter: saturate(1.08) brightness(1.02); }
+	to { filter: saturate(1.25) brightness(1.08); }
 }

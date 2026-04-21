@@ -287,7 +287,8 @@
 		if (!modal || !modalCost || !modalAbility) return;
 		const d = btn.dataset;
 		const owned = d.owned === 'true';
-		if (!owned) return;
+		const forceDetail = d.forceDetail === 'true';
+		if (!owned && !forceDetail) return;
 
 		const rarity = rarityCode4(d.rarity);
 		const rarityLabel = rarityLabelJa(rarity, d.rarityLabel || rarity || 'C');
@@ -307,14 +308,9 @@
 			modalRarity.textContent = rarity;
 		}
 		if (modalPackInitial) {
-			const pi = (d.packInitial || '').trim();
-			if (pi && pi.toUpperCase() !== 'STD') {
-				modalPackInitial.textContent = pi;
-				modalPackInitial.hidden = false;
-			} else {
-				modalPackInitial.textContent = '';
-				modalPackInitial.hidden = true;
-			}
+			const raw = (d.packInitial || '').trim();
+			modalPackInitial.textContent = raw === '' ? 'STD' : raw.toUpperCase();
+			modalPackInitial.hidden = false;
 		}
 		if (sideRarity) {
 			sideRarity.textContent = rarityLabel;
@@ -449,6 +445,12 @@
 		modal.hidden = false;
 		document.body.style.overflow = 'hidden';
 
+		try {
+			window.dispatchEvent(new CustomEvent('nu-library-modal-opened', { detail: { button: btn } }));
+		} catch (err) {
+			// noop
+		}
+
 		// モーダルのカード名が2行になる場合は1行に収める
 		if (modalFaceRoot && typeof window.fitCardFaceNameToOneLine === 'function') {
 			setTimeout(function () {
@@ -467,6 +469,11 @@
 
 	function closeModal() {
 		hideHoverTooltip();
+		try {
+			window.dispatchEvent(new CustomEvent('nu-library-modal-closed'));
+		} catch (err) {
+			// noop
+		}
 		if (!modal) return;
 		const modalSpark = document.getElementById('lib-modal-spark');
 		if (modalSpark) {
@@ -494,12 +501,30 @@
 	document.querySelectorAll('.library-card').forEach(function (card) {
 		const btn = card.querySelector('.library-card__open');
 		if (!btn) return;
+		const isLegendaryPicker = card.classList.contains('library-card--picker');
 		// 一覧側のレイヤー画像も、読み込み失敗時に壊れアイコンが出ないようにする
 		wireCardFaceImgFallbacks(card);
 		bindHoverTooltip(card, btn);
-		btn.addEventListener('click', function () {
+		btn.addEventListener('click', function (e) {
+			if (isLegendaryPicker) {
+				e.preventDefault();
+				try {
+					document.dispatchEvent(
+						new CustomEvent('nu-recycle-legendary-select', { detail: { button: btn, cardEl: card } })
+					);
+				} catch (err) {
+					// noop
+				}
+				return;
+			}
 			openModal(btn);
 		});
+		if (isLegendaryPicker) {
+			btn.addEventListener('contextmenu', function (e) {
+				e.preventDefault();
+				openModal(btn);
+			});
+		}
 
 		const rarity = (btn.dataset.rarity || 'C').trim();
 		const owned = btn.dataset.owned === 'true';

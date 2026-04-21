@@ -75,6 +75,8 @@ public class CpuBattleEngine {
 	private static final short BELIEVER_ID = 50;
 	/** 霊園教会 デスバウンス（id=68・〈フィールド〉） */
 	private static final short DEATHBOUNCE_FIELD_ID = 68;
+	/** 霊園教会 デスバウンス: 効果が持続するターン数（配置直後からカウントダウン） */
+	private static final int DEATHBOUNCE_FIELD_INITIAL_TURNS = 6;
 	/** ハーフエルフ（id=51） */
 	private static final short HALF_ELF_ID = 51;
 	/** 艦隊 HO-IVI-I3（id=62・〈フィールド〉） */
@@ -1889,6 +1891,7 @@ public class CpuBattleEngine {
 		}
 
 		tickScrapyardFieldAtTurnStart(st);
+		tickDeathbounceFieldAtTurnStart(st);
 
 		if (isFirstPlayersFirstTurn) {
 			st.addLog(forHuman ? "あなたの先攻1ターン目: ストーン獲得なし"
@@ -1963,8 +1966,10 @@ public class CpuBattleEngine {
 		ns.setActiveField(copyCard(st.getActiveField()));
 		ns.setActiveFieldOwnerHuman(st.getActiveFieldOwnerHuman());
 		ns.setScrapyardFieldTurnsRemaining(st.getScrapyardFieldTurnsRemaining());
+		ns.setDeathbounceFieldTurnsRemaining(st.getDeathbounceFieldTurnsRemaining());
 		ns.setHumanSlotDeckId(st.getHumanSlotDeckId());
 		ns.setCpuSlotDeckId(st.getCpuSlotDeckId());
+		ns.setBattleMainLineSeqCounter(st.getBattleMainLineSeqCounter());
 		return ns;
 	}
 
@@ -1999,8 +2004,13 @@ public class CpuBattleEngine {
 		st.setActiveFieldOwnerHuman(newField == null ? null : Boolean.valueOf(newFieldPlacedByHost));
 		if (newField != null && newField.getCardId() == SCRAPYARD_FIELD_ID) {
 			st.setScrapyardFieldTurnsRemaining(4);
+			st.setDeathbounceFieldTurnsRemaining(0);
+		} else if (newField != null && newField.getCardId() == DEATHBOUNCE_FIELD_ID) {
+			st.setScrapyardFieldTurnsRemaining(0);
+			st.setDeathbounceFieldTurnsRemaining(DEATHBOUNCE_FIELD_INITIAL_TURNS);
 		} else {
 			st.setScrapyardFieldTurnsRemaining(0);
+			st.setDeathbounceFieldTurnsRemaining(0);
 		}
 	}
 
@@ -2105,7 +2115,7 @@ public class CpuBattleEngine {
 				paid.add(st.getHumanHand().remove(st.getHumanHand().size() - 1));
 			}
 			ZoneFighter z = new ZoneFighter();
-			z.setMain(main);
+			assignBattleZoneMain(z, main, st);
 			z.setCostUnder(paid);
 			z.setCostPayCardCount(cost);
 			applyCrystakulBonusesToDeployedZone(st, z, deployBonus, true);
@@ -2389,7 +2399,7 @@ public class CpuBattleEngine {
 			paid.addAll(levelUpCards);
 
 			ZoneFighter z = new ZoneFighter();
-			z.setMain(main);
+			assignBattleZoneMain(z, main, st);
 			z.setCostUnder(paid);
 			z.setCostPayCardCount(payIds.size());
 			applyCrystakulBonusesToDeployedZone(st, z, deployBonus, true);
@@ -2638,7 +2648,7 @@ public class CpuBattleEngine {
 			paid.addAll(levelUpCards);
 
 			ZoneFighter z = new ZoneFighter();
-			z.setMain(main);
+			assignBattleZoneMain(z, main, st);
 			z.setCostUnder(paid);
 			z.setCostPayCardCount(payIds.size());
 			applyCrystakulBonusesToDeployedZone(st, z, deployBonus, false);
@@ -2763,7 +2773,13 @@ public class CpuBattleEngine {
 		nz.setFieldNebulaStoneGrantedForThisDeploy(z.isFieldNebulaStoneGrantedForThisDeploy());
 		nz.setSpec777RolledPower(z.getSpec777RolledPower());
 		nz.setBotBikeMechanicPowerBonus(z.getBotBikeMechanicPowerBonus());
+		nz.setBattleMainLineSeq(z.getBattleMainLineSeq());
 		return nz;
+	}
+
+	private void assignBattleZoneMain(ZoneFighter z, BattleCard main, CpuBattleState st) {
+		z.setMain(main);
+		z.setBattleMainLineSeq(st.takeNextBattleMainLineSeq());
 	}
 
 	private CpuBattleState copyStateForCpuSim(CpuBattleState st) {
@@ -2809,8 +2825,10 @@ public class CpuBattleEngine {
 		ns.setActiveField(copyCard(st.getActiveField()));
 		ns.setActiveFieldOwnerHuman(st.getActiveFieldOwnerHuman());
 		ns.setScrapyardFieldTurnsRemaining(st.getScrapyardFieldTurnsRemaining());
+		ns.setDeathbounceFieldTurnsRemaining(st.getDeathbounceFieldTurnsRemaining());
 		ns.setHumanSlotDeckId(st.getHumanSlotDeckId());
 		ns.setCpuSlotDeckId(st.getCpuSlotDeckId());
+		ns.setBattleMainLineSeqCounter(st.getBattleMainLineSeqCounter());
 		return ns;
 	}
 
@@ -2996,7 +3014,7 @@ public class CpuBattleEngine {
 							paid.add(simSt.getCpuHand().remove(simSt.getCpuHand().size() - 1));
 						}
 						ZoneFighter z = new ZoneFighter();
-						z.setMain(simMain);
+						assignBattleZoneMain(z, simMain, simSt);
 						z.setCostUnder(paid);
 						z.setCostPayCardCount(payCards);
 						applyCrystakulBonusesToDeployedZone(simSt, z, deployBonus, false);
@@ -3185,7 +3203,7 @@ public class CpuBattleEngine {
 		}
 		paid.addAll(levelUpCards);
 		ZoneFighter z = new ZoneFighter();
-		z.setMain(main);
+		assignBattleZoneMain(z, main, st);
 		z.setCostUnder(paid);
 		z.setCostPayCardCount(payCards);
 		applyCrystakulBonusesToDeployedZone(st, z, pick.deployBonus, false);
@@ -3335,7 +3353,7 @@ public class CpuBattleEngine {
 							paid.add(simSt.getCpuHand().remove(simSt.getCpuHand().size() - 1));
 						}
 						ZoneFighter z = new ZoneFighter();
-						z.setMain(simMain);
+						assignBattleZoneMain(z, simMain, simSt);
 						z.setCostUnder(paid);
 						z.setCostPayCardCount(payCards);
 						applyCrystakulBonusesToDeployedZone(simSt, z, deployBonus, false);
@@ -3443,7 +3461,7 @@ public class CpuBattleEngine {
 						}
 						paid.addAll(levelUpCards);
 						ZoneFighter z = new ZoneFighter();
-						z.setMain(main);
+						assignBattleZoneMain(z, main, st);
 						z.setCostUnder(paid);
 						z.setCostPayCardCount(payCards);
 						applyCrystakulBonusesToDeployedZone(st, z, bestDeployBonus, false);
@@ -3505,6 +3523,7 @@ public class CpuBattleEngine {
 			}
 		}
 		maybeExpireScrapyardFieldAfterKnock(st, humanWasActing, defs);
+		maybeExpireDeathbounceFieldAfterKnock(st, humanWasActing, defs);
 	}
 
 	/** 〈フィールド〉廃棄工場: 効果残存中のみ。名前に「ガラクタ」を含むメインはノック時に手札へ（コスト下はレストのまま） */
@@ -3582,6 +3601,62 @@ public class CpuBattleEngine {
 		st.setScrapyardFieldTurnsRemaining(0);
 	}
 
+	/** 霊園教会 デスバウンス: ターン開始時に 6→5→…→1（1 の間は減らさない） */
+	private static void tickDeathbounceFieldAtTurnStart(CpuBattleState st) {
+		if (st == null) {
+			return;
+		}
+		BattleCard f = st.getActiveField();
+		if (f == null || f.getCardId() != DEATHBOUNCE_FIELD_ID) {
+			return;
+		}
+		int n = st.getDeathbounceFieldTurnsRemaining();
+		if (n <= 0) {
+			return;
+		}
+		if (n > 1) {
+			st.setDeathbounceFieldTurnsRemaining(n - 1);
+		}
+	}
+
+	/**
+	 * 霊園教会 デスバウンス: 残り「1」の相手ターンの終了時（ノック・ドロー処理の直後）に場から使用者のレストへ。
+	 */
+	private void maybeExpireDeathbounceFieldAfterKnock(CpuBattleState st, boolean humanWasActing,
+			Map<Short, CardDefinition> defs) {
+		if (st == null) {
+			return;
+		}
+		BattleCard field = st.getActiveField();
+		if (field == null || field.getCardId() != DEATHBOUNCE_FIELD_ID) {
+			return;
+		}
+		if (st.getDeathbounceFieldTurnsRemaining() != 1) {
+			return;
+		}
+		Boolean ownerHuman = st.getActiveFieldOwnerHuman();
+		if (ownerHuman == null) {
+			return;
+		}
+		if (humanWasActing == ownerHuman.booleanValue()) {
+			return;
+		}
+		CardDefinition fd = defs != null ? defs.get(field.getCardId()) : null;
+		String nm = fd != null && fd.getName() != null ? fd.getName() : "霊園教会 デスバウンス";
+		if (ownerHuman) {
+			st.getHumanRest().add(field);
+			st.addLog("〈フィールド〉「" + nm + "」の効果が切れ、あなたのレストに置かれた");
+		} else {
+			st.getCpuRest().add(field);
+			st.addLog(st.isPvp()
+					? "〈フィールド〉「" + nm + "」の効果が切れ、ゲストのレストに置かれた"
+					: "〈フィールド〉「" + nm + "」の効果が切れ、相手のレストに置かれた");
+		}
+		st.setActiveField(null);
+		st.setActiveFieldOwnerHuman(null);
+		st.setDeathbounceFieldTurnsRemaining(0);
+	}
+
 	/**
 	 * 〈フィールド〉霊園教会 デスバウンス: バトルゾーンのアンデッド・ファイターはレストでなく手札へ戻り、
 	 * {@link BattleCard#getHandDeployCostModifier} に +1（バトル終了まで。再適用のたびに累積）。
@@ -3593,6 +3668,9 @@ public class CpuBattleEngine {
 		}
 		BattleCard field = st.getActiveField();
 		if (field == null || field.getCardId() != DEATHBOUNCE_FIELD_ID) {
+			return false;
+		}
+		if (st.getDeathbounceFieldTurnsRemaining() <= 0) {
 			return false;
 		}
 		CardDefinition md = defs.get(z.getMain().getCardId());
@@ -3687,6 +3765,7 @@ public class CpuBattleEngine {
 	/**
 	 * ターン終了時にバトルゾーンの一時加算を消す（{@link ZoneFighter#getTemporaryPowerBonus()} 等）。
 	 * 〈神秘の大樹 スカイア〉が場にある間は、種族がエルフのファイターの一時加算は相手ターンにも持続するため消さない。
+	 * 忍者の入れ替えによる強さ−2（{@link ZoneFighter#getNinjaSwapPowerPenalty()}）は相手ターン中も持続させるため、ここでは消さない。
 	 */
 	private void resetTurnBuffs(CpuBattleState st, Map<Short, CardDefinition> defs) {
 		boolean skyArbor = defs != null && skyArborFieldPersistsElfTurnBuffs(st);
@@ -3694,13 +3773,11 @@ public class CpuBattleEngine {
 			if (!skyArbor || !isElfFighterInZone(st.getHumanBattle(), defs)) {
 				st.getHumanBattle().setTemporaryPowerBonus(0);
 			}
-			st.getHumanBattle().setNinjaSwapPowerPenalty(0);
 		}
 		if (st.getCpuBattle() != null) {
 			if (!skyArbor || !isElfFighterInZone(st.getCpuBattle(), defs)) {
 				st.getCpuBattle().setTemporaryPowerBonus(0);
 			}
-			st.getCpuBattle().setNinjaSwapPowerPenalty(0);
 		}
 		st.setPowerSwapActive(false);
 	}
@@ -3817,10 +3894,9 @@ public class CpuBattleEngine {
 				? hasRyuoh(st.getHumanBattle())
 				: hasRyuoh(st.getCpuBattle());
 
-		// ガラクタレッグ（相手前列）: このファイターは〈常時〉による強さ加減を適用しない（配置由来の一時加算・古竜等は対象外）
-		boolean passivesSuppressedByOpponentGarakutaLeg = ownerIsHuman
-				? hasGarakutaLeg(st.getCpuBattle())
-				: hasGarakutaLeg(st.getHumanBattle());
+		// ガラクタレッグ系（相手前列／デンジリオン＋レスト継承）: このファイターは〈常時〉による強さ加減を適用しない（先出し解決あり）
+		boolean passivesSuppressedByOpponentGarakutaLeg = opponentGarakutaSuppressesFighterPassives(ownerIsHuman, st,
+				defs);
 
 		// 一時強化（古竜・クリスタクル・ボットバイク）
 		if (st != null) {
@@ -4028,9 +4104,8 @@ public class CpuBattleEngine {
 				? hasRyuoh(st.getHumanBattle())
 				: hasRyuoh(st.getCpuBattle());
 
-		boolean passivesSuppressedByOpponentGarakutaLeg = ownerIsHuman
-				? hasGarakutaLeg(st.getCpuBattle())
-				: hasGarakutaLeg(st.getHumanBattle());
+		boolean passivesSuppressedByOpponentGarakutaLeg = opponentGarakutaSuppressesFighterPassives(ownerIsHuman, st,
+				defs);
 
 		if (zf.getTemporaryPowerBonus() != 0) {
 			out.add(new BattlePowerModifierDto(null, "レベルアップ（配置）"));
@@ -4199,6 +4274,68 @@ public class CpuBattleEngine {
 	/** ガラクタレッグ（61）: 相手のファイターは〈常時〉が使えない */
 	private static boolean hasGarakutaLeg(ZoneFighter z) {
 		return z != null && z.getMain() != null && z.getMain().getCardId() == GARAKUTA_LEG_ID;
+	}
+
+	/**
+	 * 磁力合体デンジリオンが、レストのガラクタレッグの〈常時〉（相手の〈常時〉を封じる）を継承しているか。
+	 */
+	private static boolean battleLineInheritsGarakutaFromRestDenzirion(ZoneFighter zf, CpuBattleState st,
+			boolean zoneOwnerIsHuman, Map<Short, CardDefinition> defs) {
+		if (zf == null || zf.getMain() == null || zf.getMain().getCardId() != DENZIRION_ID || defs == null || st == null) {
+			return false;
+		}
+		List<BattleCard> rest = zoneOwnerIsHuman ? st.getHumanRest() : st.getCpuRest();
+		if (rest == null) {
+			return false;
+		}
+		for (BattleCard rc : rest) {
+			if (isTuckedUnderOwnFighter(zf, rc)) {
+				continue;
+			}
+			CardDefinition rcd = defs.get(rc.getCardId());
+			if (!isMachineFighterRestSourceForDenziron(rcd)) {
+				continue;
+			}
+			if (rc.getCardId() == DENZIRION_ID) {
+				continue;
+			}
+			if (rc.getCardId() == GARAKUTA_LEG_ID) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** 前列がガラクタレッグ、またはデンジリオンがレストのガラクタレッグの〈常時〉を持つとき */
+	private static boolean battleLineHasGarakutaLegStylePassive(ZoneFighter zf, CpuBattleState st,
+			boolean zoneOwnerIsHuman, Map<Short, CardDefinition> defs) {
+		return hasGarakutaLeg(zf)
+				|| battleLineInheritsGarakutaFromRestDenzirion(zf, st, zoneOwnerIsHuman, defs);
+	}
+
+	/**
+	 * 相手前列の「相手のファイターは〈常時〉効果が使えない」が、こちらの〈常時〉強さ加減を封じるか。
+	 * 双方に同系があるときは {@link ZoneFighter#getBattleMainLineSeq()} が小さい（先に前列に置かれた）側のみ有効。
+	 */
+	private boolean opponentGarakutaSuppressesFighterPassives(boolean ownerIsHuman, CpuBattleState st,
+			Map<Short, CardDefinition> defs) {
+		ZoneFighter me = ownerIsHuman ? st.getHumanBattle() : st.getCpuBattle();
+		ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
+		if (!battleLineHasGarakutaLegStylePassive(opp, st, !ownerIsHuman, defs)) {
+			return false;
+		}
+		if (!battleLineHasGarakutaLegStylePassive(me, st, ownerIsHuman, defs)) {
+			return true;
+		}
+		int oSeq = opp.getBattleMainLineSeq();
+		int mSeq = me.getBattleMainLineSeq();
+		if (oSeq <= 0 || mSeq <= 0) {
+			return true;
+		}
+		if (oSeq == mSeq) {
+			return true;
+		}
+		return oSeq < mSeq;
 	}
 
 	/**
@@ -4425,6 +4562,7 @@ public class CpuBattleEngine {
 			BattleCard paidCard = z.getCostUnder().get(0);
 			BattleCard oldMain = z.getMain();
 			z.setMain(paidCard);
+			z.setBattleMainLineSeq(st.takeNextBattleMainLineSeq());
 			z.getCostUnder().set(0, oldMain);
 			z.setNinjaSwapPowerPenalty(NINJA_SWAP_POWER_PENALTY);
 			z.setSpec777RolledPower(0);
@@ -4759,7 +4897,7 @@ public class CpuBattleEngine {
 			}
 			case "OKAMI_OTOKO" -> {
 				if (st.getHumanBattle() != null) {
-					swapMainWithWolfIfPaid(st.getHumanBattle());
+					swapMainWithWolfIfPaid(st.getHumanBattle(), st);
 				}
 			}
 			case "MIKO" -> {
@@ -5206,7 +5344,7 @@ public class CpuBattleEngine {
 			}
 			case "OKAMI_OTOKO" -> {
 				if (st.getCpuBattle() != null) {
-					swapMainWithWolfIfPaid(st.getCpuBattle());
+					swapMainWithWolfIfPaid(st.getCpuBattle(), st);
 				}
 			}
 			case "MIKO" -> {
@@ -5730,7 +5868,7 @@ public class CpuBattleEngine {
 			}
 			case "OKAMI_OTOKO" -> {
 				if (st.getCpuBattle() != null) {
-					swapMainWithWolfIfPaid(st.getCpuBattle());
+					swapMainWithWolfIfPaid(st.getCpuBattle(), st);
 				}
 			}
 			case "MIKO" -> {
@@ -5999,14 +6137,15 @@ public class CpuBattleEngine {
 		}
 	}
 
-	private void swapMainWithWolfIfPaid(ZoneFighter z) {
-		if (z == null || z.getMain() == null) return;
+	private void swapMainWithWolfIfPaid(ZoneFighter z, CpuBattleState st) {
+		if (z == null || z.getMain() == null || st == null) return;
 		for (int i = 0; i < z.getCostUnder().size(); i++) {
 			BattleCard c = z.getCostUnder().get(i);
 			if (c != null && c.getCardId() == 21) {
 				BattleCard oldMain = z.getMain();
 				z.getCostUnder().set(i, oldMain);
 				z.setMain(c);
+				z.setBattleMainLineSeq(st.takeNextBattleMainLineSeq());
 				return;
 			}
 		}
@@ -6452,7 +6591,7 @@ public class CpuBattleEngine {
 								if (forHuman) sim2.setHumanNextMechanicStacks(0);
 								else sim2.setCpuNextMechanicStacks(0);
 								ZoneFighter z = new ZoneFighter();
-								z.setMain(pickedMain);
+								assignBattleZoneMain(z, pickedMain, sim2);
 								z.setCostUnder(paid);
 								z.setCostPayCardCount(needCards);
 								applyCrystakulBonusesToDeployedZone(sim2, z, deployBonus, forHuman);

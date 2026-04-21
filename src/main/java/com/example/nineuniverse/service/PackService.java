@@ -65,6 +65,17 @@ public class PackService {
 	}
 
 	/**
+	 * ボーナス開封（時間ゲージなど）：ジェム消費なし。スタンダード1または2のみ。
+	 */
+	@Transactional
+	public List<CardDefinition> openBonusPackWithoutGemCost(long userId, PackType type) {
+		if (type != PackType.STANDARD && type != PackType.STANDARD_2) {
+			throw new IllegalArgumentException("ボーナスパックではスタンダードパック1または2のみ選べます");
+		}
+		return pullPackIntoCollection(userId, type, false);
+	}
+
+	/**
 	 * 新規登録プレゼントの「スタンダードパック1」を1パック開封（残数を1減らしてから、ジェム消費なしで {@link PackType#STANDARD} と同じ排出）。
 	 */
 	@Transactional
@@ -113,6 +124,18 @@ public class PackService {
 			return new ArrayList<>(cardCatalogService.all());
 		}
 		return all;
+	}
+
+	/**
+	 * リサイクルショップの「スタンダードから1つ選ぶ」対象。
+	 * スタンダードパック3以降を追加する場合は {@link PackType} と {@link #filterCardsForPack} を拡張し、ここにも列挙する。
+	 */
+	public List<PackType> recycleStandardBundlePackTypes() {
+		return List.of(PackType.STANDARD, PackType.STANDARD_2);
+	}
+
+	public boolean isRecycleStandardBundlePack(PackType type) {
+		return type != null && recycleStandardBundlePackTypes().contains(type);
 	}
 
 	private static int raritySortKey(CardDefinition c) {

@@ -5,6 +5,9 @@
 	const cards = Array.from(document.querySelectorAll('.pack-opening-card[data-pack-index]'));
 	if (cards.length === 0) return;
 
+	const afterOpenUrl =
+		(document.body && document.body.getAttribute('data-pack-opening-after-url')) || '/pack/result';
+
 	const revealAllBtn = document.getElementById('pack-opening-reveal-all');
 
 	let active = 0;
@@ -67,7 +70,7 @@
 		updateRevealAllEnabled();
 		if (revealed >= cards.length) {
 			setTimeout(function () {
-				window.location.href = '/pack/result';
+				window.location.href = afterOpenUrl;
 			}, 2000);
 			return;
 		}

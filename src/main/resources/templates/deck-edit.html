@@ -39,20 +39,22 @@
 	</label>
 
 	<div class="deck-panels deck-panels--stack">
-		<section class="panel deck-panel deck-panel--slots">
-			<h2>デッキ（8枚・クリックで詳細・ダブルクリックまたは右クリックで戻す）</h2>
-			<div id="deck-zone" class="card-pool card-pool--deck" data-max="8"></div>
-			<p id="deck-count" class="muted">0 / 8</p>
-			<div class="deck-panel__actions-row">
-				<button type="submit" id="complete-btn" class="btn btn--primary" style="display:none">完了</button>
-				<button type="button" id="deck-clear-all-btn" class="btn btn--ghost deck-panel__clear-deck-btn"
-						disabled
-						aria-label="デッキに入っているカードをすべてライブラリに戻す">すべてライブラリに戻す</button>
+		<section class="panel deck-panel deck-panel--slots" id="deck-slots-panel">
+			<div class="deck-panel__slots-body">
+				<h2>デッキ</h2>
+				<div id="deck-zone" class="card-pool card-pool--deck" data-max="8"></div>
+				<p id="deck-count" class="muted">0 / 8</p>
+				<div class="deck-panel__actions-row">
+					<button type="submit" id="complete-btn" class="btn btn--primary" style="display:none">完了</button>
+					<button type="button" id="deck-clear-all-btn" class="btn btn--ghost deck-panel__clear-deck-btn"
+							disabled
+							aria-label="デッキに入っているカードをすべてライブラリに戻す">すべてライブラリに戻す</button>
+				</div>
 			</div>
 		</section>
 		<section class="panel deck-panel deck-panel--library">
 			<div class="deck-lib-toolbar">
-				<h2 class="deck-lib-toolbar__title">ライブラリ（クリックで詳細・ダブルクリックまたは右クリックでデッキへ）</h2>
+				<h2 class="deck-lib-toolbar__title">ライブラリ（左クリックでデッキへ・右クリックで詳細）</h2>
 				<div class="deck-lib-toolbar__controls">
 					<label class="deck-lib-field">検索
 						<input type="search" id="lib-search" class="deck-lib-input" autocomplete="off" placeholder="カード名・効果の一部"/>
@@ -216,5 +218,6 @@
 <script th:src="@{/js/card-spark.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/card-face-layer.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/deck-edit.js(v=${assetVersion})}"></script>
+<script th:replace="~{fragments/tab-fullscreen :: script}"></script>
 </body>
 </html>

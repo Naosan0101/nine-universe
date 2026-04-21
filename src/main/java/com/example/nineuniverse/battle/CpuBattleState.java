@@ -76,6 +76,11 @@ public class CpuBattleState implements Serializable {
 	 * ターン開始ごとに減り、1 の相手ターン終了時に場から使用者レストへ移る。
 	 */
 	private int scrapyardFieldTurnsRemaining;
+	/**
+	 * 霊園教会 デスバウンス が場にあるときの残りターン（6→1）。場に無い・該当フィールドでないときは 0。
+	 * ターン開始ごとに減り、1 の相手ターン終了時に場から使用者レストへ移る。
+	 */
+	private int deathbounceFieldTurnsRemaining;
 
 	private List<BattleCard> cpuDeck = new ArrayList<>();
 	private List<BattleCard> cpuHand = new ArrayList<>();
@@ -95,6 +100,15 @@ public class CpuBattleState implements Serializable {
 	/** 対人戦のみ: ゲストのデッキ（cpuスロット）。CPU戦では null */
 	private Long cpuSlotDeckId;
 	private List<String> eventLog = new ArrayList<>();
+	/**
+	 * 前列メインが配置・忍者入れ替え等で置かれるたびに増える。ガラクタレッグ系〈常時〉の「先出し」判定に使う。
+	 */
+	private int battleMainLineSeqCounter;
+
+	/** @return 新しい前列メインの通し番号（1起算） */
+	public int takeNextBattleMainLineSeq() {
+		return ++battleMainLineSeqCounter;
+	}
 
 	public void addLog(String line) {
 		eventLog.add(line);

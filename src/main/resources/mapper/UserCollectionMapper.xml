@@ -22,4 +22,14 @@
 	<insert id="insertQuantity">
 		INSERT INTO user_collection (user_id, card_id, quantity) VALUES (#{userId}, #{cardId}, #{quantity})
 	</insert>
+
+	<update id="subtractQuantityIfEnough">
+		UPDATE user_collection
+		SET quantity = quantity - #{delta}
+		WHERE user_id = #{userId} AND card_id = #{cardId} AND quantity >= #{delta}
+	</update>
+
+	<delete id="deleteZeroQuantityRow">
+		DELETE FROM user_collection WHERE user_id = #{userId} AND card_id = #{cardId} AND quantity = 0
+	</delete>
 </mapper>

@@ -17,6 +17,17 @@
 	const pvpMatchId = document.querySelector('meta[name="pvp_match_id"]')?.getAttribute('content') || '';
 	const battleIsPvp = pvpMatchId.length > 0;
 	const battleApiBase = battleIsPvp ? (contextPath + '/battle/pvp/api/' + encodeURIComponent(pvpMatchId)) : null;
+	const cpuThinkSpeedMeta = document.querySelector('meta[name="cpu_think_speed"]')?.getAttribute('content') || 'NORMAL';
+	function cpuThinkWaitMs() {
+		const raw = String(cpuThinkSpeedMeta || '').trim().toUpperCase();
+		if (raw === 'FAST') {
+			return 2000 + Math.floor(Math.random() * 1000);
+		}
+		if (raw === 'SLOW') {
+			return 6000 + Math.floor(Math.random() * 2000);
+		}
+		return 3000 + Math.floor(Math.random() * 4000);
+	}
 	/** {@code battle-deck-select.js} と同じキー（降参後もデッキ選択の先頭に使う） */
 	const LAST_BATTLE_DECK_STORAGE_KEY = battleIsPvp ? 'nu.lastBattleDeckId' : 'nu.lastCpuBattleDeckId';
 
@@ -2269,10 +2280,12 @@
 		/** ガラクタレッグ / CpuBattleEngine.GARAKUTA_LEG_ID */
 		GARAKUTA_LEG: 61,
 		/** 廃棄工場 5C-R4P / CpuBattleEngine.SCRAPYARD_FIELD_ID */
-		FIELD_SCRAPYARD: 63
+		FIELD_SCRAPYARD: 63,
+		/** 霊園教会 デスバウンス / CpuBattleEngine.DEATHBOUNCE_FIELD_ID */
+		FIELD_DEATHBOUNCE: 68
 	};
 
-	/** 廃棄工場: 効果文の「◯ターンの間」を残りターン N に合わせる（DB は 4 固定のまま） */
+	/** 〈フィールド〉持続ターン系: 効果文の「◯ターンの間」を残りターン N に合わせる */
 	function adjustScrapyardFieldAbilityTextForRemaining(text, remaining) {
 		const r = remaining != null ? Math.max(0, Math.floor(Number(remaining))) : 0;
 		if (r < 1 || text == null) return String(text || '');
@@ -2281,9 +2294,15 @@
 		});
 	}
 
-	function defWithScrapyardFieldTurnOverlay(d, remaining) {
-		if (!d || Number(d.id) !== PREVIEW_CARD_IDS.FIELD_SCRAPYARD) return d;
-		const r = remaining != null ? Math.max(0, Math.floor(Number(remaining))) : 0;
+	function defWithTimedFieldTurnOverlay(d, st) {
+		if (!d || !st) return d;
+		const id = Number(d.id);
+		let r = 0;
+		if (id === PREVIEW_CARD_IDS.FIELD_SCRAPYARD && st.scrapyardFieldTurnsRemaining != null) {
+			r = Math.max(0, Math.floor(Number(st.scrapyardFieldTurnsRemaining)));
+		} else if (id === PREVIEW_CARD_IDS.FIELD_DEATHBOUNCE && st.deathbounceFieldTurnsRemaining != null) {
+			r = Math.max(0, Math.floor(Number(st.deathbounceFieldTurnsRemaining)));
+		}
 		if (r < 1 || !Array.isArray(d.abilityBlocks)) return d;
 		const blocks = d.abilityBlocks.map(function (b) {
 			const body = b.body != null ? String(b.body) : '';
@@ -2820,11 +2839,13 @@
 			return box;
 		}
 		const st = opts.battleState;
-		const rem =
-			st && Number(d.id) === PREVIEW_CARD_IDS.FIELD_SCRAPYARD && st.scrapyardFieldTurnsRemaining != null
-				? Math.max(0, Math.floor(Number(st.scrapyardFieldTurnsRemaining)))
-				: 0;
-		const dForFace = rem > 0 ? defWithScrapyardFieldTurnOverlay(d, rem) : d;
+		let rem = 0;
+		if (st && Number(d.id) === PREVIEW_CARD_IDS.FIELD_SCRAPYARD && st.scrapyardFieldTurnsRemaining != null) {
+			rem = Math.max(0, Math.floor(Number(st.scrapyardFieldTurnsRemaining)));
+		} else if (st && Number(d.id) === PREVIEW_CARD_IDS.FIELD_DEATHBOUNCE && st.deathbounceFieldTurnsRemaining != null) {
+			rem = Math.max(0, Math.floor(Number(st.deathbounceFieldTurnsRemaining)));
+		}
+		const dForFace = rem > 0 ? defWithTimedFieldTurnOverlay(d, st) : d;
 		const wrap = el('div', 'library-card battle-zone-card battle-field-card', null);
 		const shell = buildBattleCardFaceShell(dForFace, opponentZone ? 'hand' : 'zone');
 		if (opponentZone) {
@@ -3701,13 +3722,13 @@
 		const ability = el('div', 'battle-zone-detail-modal__ability');
 		ability.textContent = '';
 		let raw = battleCardAbilityTooltipText(def);
-		if (
-			def.fieldCard &&
-			Number(def.id) === PREVIEW_CARD_IDS.FIELD_SCRAPYARD &&
-			stCost &&
-			stCost.scrapyardFieldTurnsRemaining != null
-		) {
-			const rr = Math.max(0, Math.floor(Number(stCost.scrapyardFieldTurnsRemaining)));
+		if (def.fieldCard && stCost) {
+			let rr = 0;
+			if (Number(def.id) === PREVIEW_CARD_IDS.FIELD_SCRAPYARD && stCost.scrapyardFieldTurnsRemaining != null) {
+				rr = Math.max(0, Math.floor(Number(stCost.scrapyardFieldTurnsRemaining)));
+			} else if (Number(def.id) === PREVIEW_CARD_IDS.FIELD_DEATHBOUNCE && stCost.deathbounceFieldTurnsRemaining != null) {
+				rr = Math.max(0, Math.floor(Number(stCost.deathbounceFieldTurnsRemaining)));
+			}
 			if (rr > 0) {
 				raw = adjustScrapyardFieldAbilityTextForRemaining(raw, rr);
 			}
@@ -3931,10 +3952,10 @@
 		// game over modal (only once per battle end)
 		maybeShowGameOverModal(st);
 
-		// CPU random think (3-7s) → cpu-step（対人戦では使わない）
+		// CPU think delay（設定の「CPUが考えるはやさ」／対人戦では使わない）
 		if (st.phase === 'CPU_THINKING' && !st.gameOver && !st.pvpMatch) {
 			if (ui._cpuThinkTimer == null) {
-				const waitMs = 3000 + Math.floor(Math.random() * 4000);
+				const waitMs = cpuThinkWaitMs();
 				ui._cpuThinkTimer = window.setTimeout(function () {
 					ui._cpuThinkTimer = null;
 					const prev = captureAnimRects();

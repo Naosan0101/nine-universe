@@ -28,6 +28,8 @@ public record CpuBattleStateDto(
 		BattleCardDto activeField,
 		/** 廃棄工場 5C-R4P の残りターン（4…1）。該当フィールドでないときは 0 */
 		int scrapyardFieldTurnsRemaining,
+		/** 霊園教会 デスバウンス の残りターン（6…1）。該当フィールドでないときは 0 */
+		int deathbounceFieldTurnsRemaining,
 		int humanBattlePower,
 		int cpuBattlePower,
 		int humanNextDeployBonus,

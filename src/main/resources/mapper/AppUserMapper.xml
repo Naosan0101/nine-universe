@@ -3,28 +3,32 @@
 <mapper namespace="com.example.nineuniverse.repository.AppUserMapper">
 
 	<select id="findByUsername" resultType="com.example.nineuniverse.domain.AppUser">
-		SELECT id, username, password_hash AS passwordHash, coins,
+		SELECT id, username, display_name AS displayName, password_hash AS passwordHash, coins,
+		       recycle_crystal AS recycleCrystal,
 		       welcome_home_bonus_granted AS welcomeHomeBonusGranted,
 		       last_mission_date AS lastMissionDate, created_at AS createdAt,
 		       last_access_at AS lastAccessAt,
+		       cpu_think_speed AS cpuThinkSpeed,
 		       time_pack_cycle_start AS timePackCycleStart,
 		       starter_gift_standard1_remaining AS starterGiftStandard1Remaining
 		FROM app_user WHERE username = #{username}
 	</select>
 
 	<select id="findById" resultType="com.example.nineuniverse.domain.AppUser">
-		SELECT id, username, password_hash AS passwordHash, coins,
+		SELECT id, username, display_name AS displayName, password_hash AS passwordHash, coins,
+		       recycle_crystal AS recycleCrystal,
 		       welcome_home_bonus_granted AS welcomeHomeBonusGranted,
 		       last_mission_date AS lastMissionDate, created_at AS createdAt,
 		       last_access_at AS lastAccessAt,
+		       cpu_think_speed AS cpuThinkSpeed,
 		       time_pack_cycle_start AS timePackCycleStart,
 		       starter_gift_standard1_remaining AS starterGiftStandard1Remaining
 		FROM app_user WHERE id = #{id}
 	</select>
 
 	<insert id="insert">
-		INSERT INTO app_user (username, password_hash, coins, last_mission_date, starter_gift_standard1_remaining)
-		VALUES (#{username}, #{passwordHash}, #{coins}, #{lastMissionDate}, #{starterGiftStandard1Remaining})
+		INSERT INTO app_user (username, display_name, password_hash, coins, last_mission_date, starter_gift_standard1_remaining, cpu_think_speed)
+		VALUES (#{username}, #{displayName}, #{passwordHash}, #{coins}, #{lastMissionDate}, #{starterGiftStandard1Remaining}, COALESCE(#{cpuThinkSpeed}, 'NORMAL'))
 	</insert>
 
 	<update id="updateCoins">
@@ -69,5 +73,26 @@
 
 	<update id="setStarterGiftStandard1Remaining">
 		UPDATE app_user SET starter_gift_standard1_remaining = #{remaining} WHERE id = #{id}
+	</update>
+
+	<update id="updateProfileSettings">
+		UPDATE app_user
+		SET display_name = #{displayName},
+		    cpu_think_speed = #{cpuThinkSpeed}
+		WHERE id = #{id}
+	</update>
+
+	<update id="addRecycleCrystalDelta">
+		UPDATE app_user SET recycle_crystal = COALESCE(recycle_crystal, 0) + #{delta} WHERE id = #{id}
+	</update>
+
+	<update id="subtractRecycleCrystalIfEnough">
+		UPDATE app_user
+		SET recycle_crystal = recycle_crystal - #{amount}
+		WHERE id = #{id} AND COALESCE(recycle_crystal, 0) >= #{amount}
+	</update>
+
+	<update id="setRecycleCrystal">
+		UPDATE app_user SET recycle_crystal = #{crystal} WHERE id = #{id}
 	</update>
 </mapper>

@@ -6,16 +6,21 @@ import com.example.nineuniverse.service.AnnouncementRewardService;
 import com.example.nineuniverse.service.AnnouncementRewardService.BulkGemClaimResult;
 import com.example.nineuniverse.service.AnnouncementRewardService.ClaimOutcome;
 import com.example.nineuniverse.service.MissionService;
+import com.example.nineuniverse.service.PackService;
+import com.example.nineuniverse.service.PackService.PackType;
 import com.example.nineuniverse.service.TimePackGaugeService;
 import jakarta.servlet.http.HttpSession;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -26,6 +31,7 @@ public class HomeController {
 	private final MissionService missionService;
 	private final AnnouncementRewardService announcementRewardService;
 	private final TimePackGaugeService timePackGaugeService;
+	private final PackService packService;
 
 	@GetMapping({"/", "/home"})
 	public String home(Model model) {
@@ -84,6 +90,12 @@ public class HomeController {
 		boolean listWeaponDepotDenzirionFix = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_START);
+		boolean listFieldDisplaySettingsBonus = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_START);
+		boolean listDenzirionGarakutaFusionFix = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -101,6 +113,8 @@ public class HomeController {
 		model.addAttribute("announcementListDenzirionFix", listDenzirionFix);
 		model.addAttribute("announcementListNinjaDarkDragonFix", listNinjaDarkDragonFix);
 		model.addAttribute("announcementListWeaponDepotDenzirionFix", listWeaponDepotDenzirionFix);
+		model.addAttribute("announcementListFieldDisplaySettingsBonus", listFieldDisplaySettingsBonus);
+		model.addAttribute("announcementListDenzirionGarakutaFusionFix", listDenzirionGarakutaFusionFix);
 
 		Set<String> claimedKeys = announcementRewardService.findClaimedKeys(uid);
 
@@ -287,6 +301,38 @@ public class HomeController {
 				!weaponDepotDenzirionFixAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_START));
 		model.addAttribute("weaponDepotDenzirionFixAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_GEMS);
 
+		boolean fieldDisplaySettingsBonusAnnClaimed =
+				claimedKeys.contains(GameConstants.ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_KEY);
+		boolean fieldDisplaySettingsBonusAnnInWindow =
+				announcementRewardService.isWithinFieldDisplaySettingsBonusAnnouncementWindow(today);
+		model.addAttribute("fieldDisplaySettingsBonusAnnouncementClaimed", fieldDisplaySettingsBonusAnnClaimed);
+		model.addAttribute("fieldDisplaySettingsBonusAnnouncementClaimable",
+				fieldDisplaySettingsBonusAnnInWindow && !fieldDisplaySettingsBonusAnnClaimed);
+		model.addAttribute("fieldDisplaySettingsBonusAnnouncementExpiredUnclaimed",
+				!fieldDisplaySettingsBonusAnnClaimed
+						&& today.isAfter(GameConstants.ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_LAST_DAY));
+		model.addAttribute("fieldDisplaySettingsBonusAnnouncementFutureUnclaimed",
+				!fieldDisplaySettingsBonusAnnClaimed
+						&& today.isBefore(GameConstants.ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_START));
+		model.addAttribute("fieldDisplaySettingsBonusAnnouncementGemAmount",
+				GameConstants.ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_GEMS);
+
+		boolean denzirionGarakutaFusionFixAnnClaimed =
+				claimedKeys.contains(GameConstants.ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_KEY);
+		boolean denzirionGarakutaFusionFixAnnInWindow =
+				announcementRewardService.isWithinDenzirionGarakutaFusionFixAnnouncementWindow(today);
+		model.addAttribute("denzirionGarakutaFusionFixAnnouncementClaimed", denzirionGarakutaFusionFixAnnClaimed);
+		model.addAttribute("denzirionGarakutaFusionFixAnnouncementClaimable",
+				denzirionGarakutaFusionFixAnnInWindow && !denzirionGarakutaFusionFixAnnClaimed);
+		model.addAttribute("denzirionGarakutaFusionFixAnnouncementExpiredUnclaimed",
+				!denzirionGarakutaFusionFixAnnClaimed
+						&& today.isAfter(GameConstants.ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_LAST_DAY));
+		model.addAttribute("denzirionGarakutaFusionFixAnnouncementFutureUnclaimed",
+				!denzirionGarakutaFusionFixAnnClaimed
+						&& today.isBefore(GameConstants.ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_START));
+		model.addAttribute("denzirionGarakutaFusionFixAnnouncementGemAmount",
+				GameConstants.ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_GEMS);
+
 		int announcementBulkClaimableGemTotal = 0;
 		if (listPerfLight && perfInWindow && !perfClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PERF_LIGHT_GEMS;
@@ -339,6 +385,12 @@ public class HomeController {
 		if (listWeaponDepotDenzirionFix && weaponDepotDenzirionFixAnnInWindow && !weaponDepotDenzirionFixAnnClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_GEMS;
 		}
+		if (listFieldDisplaySettingsBonus && fieldDisplaySettingsBonusAnnInWindow && !fieldDisplaySettingsBonusAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_GEMS;
+		}
+		if (listDenzirionGarakutaFusionFix && denzirionGarakutaFusionFixAnnInWindow && !denzirionGarakutaFusionFixAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_GEMS;
+		}
 		model.addAttribute("announcementBulkClaimableGemTotal", announcementBulkClaimableGemTotal);
 		model.addAttribute("announcementAnyGemClaimable", announcementBulkClaimableGemTotal > 0);
 
@@ -347,6 +399,12 @@ public class HomeController {
 		model.addAttribute("timePackAvailablePacks", gauge.availablePacks());
 		model.addAttribute("timePackCycleStartEpochMs", gauge.cycleStartEpochMilli());
 		model.addAttribute("timePackDurationMs", gauge.durationMs());
+		model.addAttribute("packArtCacheKey", PackController.getPackArtCacheKey());
+		model.addAttribute("standardPackImage", GameConstants.packArtImageUrl("スタンダードパック1.PNG"));
+		model.addAttribute("standard2PackImage", GameConstants.packArtImageUrl("スタンダードパック2.PNG"));
+		model.addAttribute("packRarityRates", PackController.getPackRarityRatesForView());
+		model.addAttribute("standardPackPreview", PackController.buildPackPreviewLines(packService, PackType.STANDARD));
+		model.addAttribute("standard2PackPreview", PackController.buildPackPreviewLines(packService, PackType.STANDARD_2));
 		model.addAttribute("announcementUiEpoch", GameConstants.ANNOUNCEMENT_UI_EPOCH);
 
 		int granted = appUserMapper.grantWelcomeHomeBonusIfPending(uid, GameConstants.WELCOME_HOME_BONUS_GEMS);
@@ -699,6 +757,48 @@ public class HomeController {
 		return "redirect:/home";
 	}
 
+	@PostMapping("/home/announcements/field-display-settings-bonus/claim")
+	public String claimFieldDisplaySettingsBonusAnnouncement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimFieldDisplaySettingsBonusAnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/denzirion-garakuta-fusion-fix/claim")
+	public String claimDenzirionGarakutaFusionFixAnnouncement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimDenzirionGarakutaFusionFixAnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
 	@PostMapping("/home/announcements/major-update/claim")
 	public String claimMajorUpdateAnnouncement(RedirectAttributes ra) {
 		long uid = CurrentUser.require().getId();
@@ -745,16 +845,38 @@ public class HomeController {
 	}
 
 	@PostMapping("/home/time-pack/open")
-	public String openTimePack(HttpSession session, RedirectAttributes ra) {
+	public String openTimePack(HttpSession session, RedirectAttributes ra,
+			@RequestParam(name = "pack0", required = false) String pack0,
+			@RequestParam(name = "pack1", required = false) String pack1) {
 		long uid = CurrentUser.require().getId();
 		try {
-			var ids = timePackGaugeService.claimFreePacksFromGauge(uid);
+			var gauge = timePackGaugeService.snapshotForUser(uid);
+			int n = gauge.availablePacks();
+			List<PackType> choices = new ArrayList<>();
+			choices.add(parseBonusPackChoiceParam(pack0));
+			if (n >= 2) {
+				choices.add(parseBonusPackChoiceParam(pack1));
+			}
+			var ids = timePackGaugeService.claimFreePacksFromGauge(uid, choices);
 			session.setAttribute("pack_last_pulled_ids", ids);
-			session.setAttribute("pack_last_type", "STANDARD");
+			session.setAttribute("pack_last_type", choices.get(0).name());
+			session.setAttribute(PackController.SESSION_PACK_RESULT_FROM_BONUS_PACK, Boolean.TRUE);
 			return "redirect:/pack/opening";
-		} catch (IllegalStateException e) {
+		} catch (IllegalStateException | IllegalArgumentException e) {
 			ra.addFlashAttribute("flashTimePackError", e.getMessage());
 			return "redirect:/home";
 		}
+	}
+
+	private static PackType parseBonusPackChoiceParam(String raw) {
+		if (raw == null || raw.isBlank()) {
+			throw new IllegalArgumentException("開封するパックを選んでください。");
+		}
+		String s = raw.trim().toUpperCase();
+		return switch (s) {
+			case "STANDARD" -> PackType.STANDARD;
+			case "STANDARD_2" -> PackType.STANDARD_2;
+			default -> throw new IllegalArgumentException("開封できるのはスタンダードパック1または2です。");
+		};
 	}
 }

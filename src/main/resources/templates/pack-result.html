@@ -12,13 +12,19 @@
 <body class="page page--pack-result">
 <header class="topbar">
 	<h1 class="game-title">結果</h1>
-	<div class="pack-result__actions">
+	<div class="pack-result__actions" th:unless="${packResultFromBonusPack or (lastPackType != null and #strings.startsWith(lastPackType,'RECYCLE_'))}">
 		<form th:action="@{/pack/buy}" method="post" class="pack-result__draw-again-form">
 			<input type="hidden" name="type" th:value="${lastPackType}"/>
 			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 			<button type="submit" class="btn btn--primary">もう一度引く</button>
 		</form>
 		<a class="btn btn--ghost" th:href="@{/pack}">パック一覧に戻る</a>
+	</div>
+	<div class="pack-result__actions" th:if="${lastPackType != null and #strings.startsWith(lastPackType,'RECYCLE_')}">
+		<a class="btn btn--ghost" th:href="@{/recycle}">カードリサイクルに戻る</a>
+	</div>
+	<div class="pack-result__actions" th:if="${packResultFromBonusPack}">
+		<a class="btn btn--ghost" th:href="@{/home}">ホームに戻る</a>
 	</div>
 </header>
 
@@ -93,6 +99,7 @@
 <script th:src="@{/js/card-spark.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/card-face-layer.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/library.js(v=${assetVersion})}"></script>
+<script th:replace="~{fragments/tab-fullscreen :: script}"></script>
 </body>
 </html>
 

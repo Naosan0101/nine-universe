@@ -1,7 +1,10 @@
 package com.example.nineuniverse.web;
 
 import com.example.nineuniverse.GameConstants;
+import com.example.nineuniverse.domain.AppUser;
 import com.example.nineuniverse.domain.CardDefinition;
+import com.example.nineuniverse.domain.UserDisplayNames;
+import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.battle.CpuBattleMode;
 import com.example.nineuniverse.service.CpuBattleService;
 import com.example.nineuniverse.service.DeckService;
@@ -29,6 +32,7 @@ public class CpuBattleController {
 
 	private final CpuBattleService cpuBattleService;
 	private final DeckService deckService;
+	private final AppUserMapper appUserMapper;
 
 	private static CpuBattleMode parseCpuBattleMode(String raw) {
 		if (raw == null || raw.isBlank()) {
@@ -65,6 +69,7 @@ public class CpuBattleController {
 
 	@GetMapping("/play")
 	public String play(Model model, HttpSession session) {
+		long uid = CurrentUser.require().getId();
 		var st = cpuBattleService.current(session);
 		if (st == null) {
 			return "redirect:/battle/cpu";
@@ -86,7 +91,15 @@ public class CpuBattleController {
 		model.addAttribute("humanBattleDef", hb);
 		model.addAttribute("cpuBattleDef", cb);
 		model.addAttribute("myBattleDeckId", st.getHumanSlotDeckId());
-		model.addAttribute("battleIntroMyName", CurrentUser.require().getUsername());
+		AppUser me = appUserMapper.findById(uid);
+		model.addAttribute("battleIntroMyName", UserDisplayNames.effectiveDisplayName(me));
+		String speed = me != null && me.getCpuThinkSpeed() != null && !me.getCpuThinkSpeed().isBlank()
+				? me.getCpuThinkSpeed().trim().toUpperCase()
+				: "NORMAL";
+		if (!speed.equals("FAST") && !speed.equals("NORMAL") && !speed.equals("SLOW")) {
+			speed = "NORMAL";
+		}
+		model.addAttribute("cpuThinkSpeed", speed);
 		model.addAttribute("battleIntroOppName", "CPU（レベル" + st.getCpuLevel() + "）");
 		model.addAttribute("battleIntroIAmFirst", st.isHumanGoesFirst());
 		return "cpu-play";

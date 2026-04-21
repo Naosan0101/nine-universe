@@ -1,5 +1,22 @@
 const path = require('path');
-const { app, BrowserWindow, Menu } = require('electron');
+const fs = require('fs');
+const { app, BrowserWindow, Menu, ipcMain } = require('electron');
+
+/**
+ * インストール後のウィンドウ／タスクバー用。アセットはアイコン01.PNG と同じ画像を build-resources/icon.png にコピーして同梱。
+ * （Setup.exe のアイコンは package.json の nsis.installerIcon で Electron 既定の ICO を使用）
+ */
+function appIconPath() {
+	var p = path.join(__dirname, 'build-resources', 'icon.png');
+	try {
+		if (fs.existsSync(p)) {
+			return p;
+		}
+	} catch (e) {
+		/* ignore */
+	}
+	return undefined;
+}
 
 /**
  * Windows 等で「タイトルだけ更新されて中身が真っ黒／グリッドだけ」になることがある。
@@ -18,6 +35,10 @@ try {
 /** 本番は nine-universe.jp。開発時は環境変数で上書き可能。 */
 const START_URL = process.env.NINE_UNIVERSE_URL || 'https://nine-universe.jp';
 
+/**
+ * 開発で最初からウィンドウ表示にしたいときは NINE_UNIVERSE_START_FULLSCREEN=0（preload の初期希望と一致）。
+ * 実際のウィンドウ状態はページ側の localStorage と IPC で同期する。
+ */
 function escapeHtml(s) {
 	return String(s)
 		.replace(/&/g, '&amp;')
@@ -52,7 +73,8 @@ ul{padding-left:1.2rem;margin:0.5rem 0}
 }
 
 function createWindow() {
-	const win = new BrowserWindow({
+	var icon = appIconPath();
+	var winOpts = {
 		width: 1280,
 		height: 800,
 		minWidth: 360,
@@ -63,8 +85,13 @@ function createWindow() {
 			contextIsolation: true,
 			nodeIntegration: false,
 			sandbox: true,
+			preload: path.join(__dirname, 'preload.js'),
 		},
-	});
+	};
+	if (icon) {
+		winOpts.icon = icon;
+	}
+	const win = new BrowserWindow(winOpts);
 
 	win.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
 		if (!isMainFrame) {
@@ -79,6 +106,17 @@ function createWindow() {
 
 	win.loadURL(START_URL);
 }
+
+ipcMain.handle('nu-quit-app', () => {
+	app.quit();
+});
+
+ipcMain.handle('nu-set-fullscreen', (event, on) => {
+	const w = BrowserWindow.fromWebContents(event.sender);
+	if (w && !w.isDestroyed()) {
+		w.setFullScreen(!!on);
+	}
+});
 
 app.whenReady().then(() => {
 	Menu.setApplicationMenu(null);

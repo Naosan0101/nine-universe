@@ -329,10 +329,9 @@
 				: rar;
 		datum.appendChild(elSpan('card-face__rarity', rlab));
 
-		const pi = card.packInitial != null ? String(card.packInitial).trim() : '';
-		if (pi && pi.toUpperCase() !== 'STD') {
-			datum.appendChild(elSpan('card-face__pack-initial', pi));
-		}
+		const piRaw = card.packInitial != null ? String(card.packInitial).trim() : '';
+		const piDisp = piRaw === '' ? 'STD' : piRaw.toUpperCase();
+		datum.appendChild(elSpan('card-face__pack-initial', piDisp));
 
 		face.appendChild(datum);
 

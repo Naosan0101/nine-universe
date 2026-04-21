@@ -28,6 +28,18 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequiredArgsConstructor
 public class PackController {
 
+	/** 開封演出のあとに遷移する URL（セッション）。未設定時は {@code /pack/result}。 */
+	public static final String SESSION_PACK_AFTER_OPEN_REDIRECT = "pack_after_open_redirect";
+
+	/** 開封画面の背景演出（セッション）。値: {@code EPIC_PLUS} / {@code LEGENDARY}。未設定時は通常。 */
+	public static final String SESSION_PACK_OPENING_THEME = "pack_opening_theme";
+
+	/**
+	 * 時間パックのボーナス開封から結果画面へ来た場合 true（表示後に {@link #result} でクリア）。
+	 * 右上ナビを「ホームに戻る」のみにする。
+	 */
+	public static final String SESSION_PACK_RESULT_FROM_BONUS_PACK = "pack_result_from_bonus_pack";
+
 	private static final List<PackRarityRateRow> PACK_RARITY_RATES = List.of(
 			new PackRarityRateRow("レジェンダリー", "2%"),
 			new PackRarityRateRow("エピック", "10%"),
@@ -57,6 +69,18 @@ public class PackController {
 	private static final long PACK_ART_CACHE_KEY = computePackArtCacheKey();
 
 	private static final long CARD_BACK_CACHE_KEY = computeCardBackCacheKey();
+
+	public static long getPackArtCacheKey() {
+		return PACK_ART_CACHE_KEY;
+	}
+
+	public static List<PackRarityRateRow> getPackRarityRatesForView() {
+		return PACK_RARITY_RATES;
+	}
+
+	public static List<PackPreviewLine> buildPackPreviewLines(PackService packService, PackType type) {
+		return toPreviewLines(packService.sortedEligibleCardsForPreview(type));
+	}
 
 	@GetMapping
 	public String page(Model model) {
@@ -157,6 +181,7 @@ public class PackController {
 	public String openStarterGift(HttpSession session, RedirectAttributes ra) {
 		try {
 			long uid = CurrentUser.require().getId();
+			session.removeAttribute(SESSION_PACK_RESULT_FROM_BONUS_PACK);
 			var pulled = packService.openStarterGiftStandard1Pack(uid);
 			List<Short> ids = pulled.stream().map(c -> c.getId()).toList();
 			session.setAttribute("pack_last_pulled_ids", ids);
@@ -173,6 +198,7 @@ public class PackController {
 			RedirectAttributes ra) {
 		try {
 			long uid = CurrentUser.require().getId();
+			session.removeAttribute(SESSION_PACK_RESULT_FROM_BONUS_PACK);
 			PackType t = parsePackType(type);
 			var pulled = packService.openPack(uid, t);
 			List<Short> ids = pulled.stream().map(c -> c.getId()).toList();
@@ -199,6 +225,27 @@ public class PackController {
 			return "redirect:/pack";
 		}
 		model.addAttribute("pulledFaces", libraryService.displayFacesForCardIds(ids));
+		Object redir = session.getAttribute(SESSION_PACK_AFTER_OPEN_REDIRECT);
+		String afterUrl = "/pack/result";
+		if (redir instanceof String s && !s.isBlank()) {
+			afterUrl = s;
+			session.removeAttribute(SESSION_PACK_AFTER_OPEN_REDIRECT);
+		}
+		model.addAttribute("packOpeningAfterUrl", afterUrl);
+		Object themeObj = session.getAttribute(SESSION_PACK_OPENING_THEME);
+		String theme = null;
+		String themeClass = null;
+		if (themeObj instanceof String s && !s.isBlank()) {
+			theme = s.trim();
+			session.removeAttribute(SESSION_PACK_OPENING_THEME);
+			if ("EPIC_PLUS".equals(theme)) {
+				themeClass = "epic-plus";
+			} else if ("LEGENDARY".equals(theme)) {
+				themeClass = "legendary";
+			}
+		}
+		model.addAttribute("packOpeningTheme", theme);
+		model.addAttribute("packOpeningThemeClass", themeClass);
 		return "pack-opening";
 	}
 
@@ -224,6 +271,10 @@ public class PackController {
 			lastPackType = s;
 		}
 		model.addAttribute("lastPackType", lastPackType);
+		Object bonusObj = session.getAttribute(SESSION_PACK_RESULT_FROM_BONUS_PACK);
+		boolean fromBonusPack = Boolean.TRUE.equals(bonusObj);
+		model.addAttribute("packResultFromBonusPack", fromBonusPack);
+		session.removeAttribute(SESSION_PACK_RESULT_FROM_BONUS_PACK);
 		return "pack-result";
 	}
 

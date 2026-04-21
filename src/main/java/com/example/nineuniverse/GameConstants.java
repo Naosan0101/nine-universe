@@ -368,6 +368,26 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_LAST_DAY =
 			ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_START.plusDays(30 - 1);
 
+	/** お知らせ配布（〈フィールド〉無限ループ修正・表示名変更・ボーナスでスタンダードパック2） */
+	public static final String ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_KEY = "field_display_settings_bonus_2026_04";
+
+	public static final int ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_GEMS = 10;
+
+	public static final LocalDate ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_START = LocalDate.of(2026, 4, 21);
+
+	public static final LocalDate ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_LAST_DAY =
+			ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_START.plusDays(30 - 1);
+
+	/** お知らせ配布（「磁力合体デンジリオン」に「ガラクタレッグ」が正しく合体するよう修正） */
+	public static final String ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_KEY = "denzirion_garakuta_fusion_fix_2026_04";
+
+	public static final int ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_GEMS = 3;
+
+	public static final LocalDate ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_START = LocalDate.of(2026, 4, 21);
+
+	public static final LocalDate ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_LAST_DAY =
+			ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_START.plusDays(30 - 1);
+
 	/**
 	 * ログイン時ポップアップ「もう表示しない」用（ジェム受け取りとは別行）。
 	 */
@@ -419,7 +439,20 @@ public final class GameConstants {
 	/**
 	 * お知らせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
 	 */
-	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-20-4";
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-21-2";
+
+	/** リサイクル：レア度ごとに得るクリスタル（1枚あたり） */
+	public static final int RECYCLE_CRYSTAL_PER_CARD_C = 20;
+	public static final int RECYCLE_CRYSTAL_PER_CARD_R = 100;
+	public static final int RECYCLE_CRYSTAL_PER_CARD_EP = 500;
+	public static final int RECYCLE_CRYSTAL_PER_CARD_REG = 1500;
+
+	/** 1000クリスタルで1ジェムに変換 */
+	public static final int RECYCLE_CRYSTAL_PER_GEM = 1000;
+
+	public static final int RECYCLE_SHOP_LEGENDARY_PICK_CRYSTAL = 10000;
+	public static final int RECYCLE_SHOP_LEGENDARY_PACK_CRYSTAL = 5000;
+	public static final int RECYCLE_SHOP_EPIC_PLUS_PACK_CRYSTAL = 2000;
 
 	private GameConstants() {
 	}

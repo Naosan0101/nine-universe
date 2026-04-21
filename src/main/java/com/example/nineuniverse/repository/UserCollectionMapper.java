@@ -14,4 +14,9 @@ public interface UserCollectionMapper {
 	int deleteByUserId(@Param("userId") long userId);
 
 	int insertQuantity(@Param("userId") long userId, @Param("cardId") short cardId, @Param("quantity") int quantity);
+
+	/** 所持が十分なときだけ減算。更新行数 1 で成功。 */
+	int subtractQuantityIfEnough(@Param("userId") long userId, @Param("cardId") short cardId, @Param("delta") int delta);
+
+	int deleteZeroQuantityRow(@Param("userId") long userId, @Param("cardId") short cardId);
 }

@@ -7,9 +7,10 @@
   "author": "Nine Universe",
   "scripts": {
     "start": "electron .",
-    "start:local": "cross-env NINE_UNIVERSE_URL=http://127.0.0.1:8080 electron .",
+    "start:local": "cross-env NINE_UNIVERSE_URL=http://127.0.0.1:8080 NINE_UNIVERSE_START_FULLSCREEN=0 electron .",
     "dist": "electron-builder --win --x64",
-    "dist:dir": "electron-builder --win --x64 --dir"
+    "dist:dir": "electron-builder --win --x64 --dir",
+    "desktop-shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/desktop-shortcut.ps1"
   },
   "build": {
     "appId": "jp.nine-universe.desktop",
@@ -19,11 +20,20 @@
     },
     "files": [
       "main.js",
-      "package.json"
+      "preload.js",
+      "package.json",
+      "build-resources/icon.png"
     ],
     "win": {
+      "icon": "build-resources/icon.png",
       "signAndEditExecutable": false,
       "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
         {
           "target": "dir",
           "arch": [
@@ -31,6 +41,15 @@
           ]
         }
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "include": "build/installer.nsh",
+      "createDesktopShortcut": false,
+      "shortcutName": "Nine Universe",
+      "installerIcon": "installerIcon.ico",
+      "uninstallerIcon": "uninstallerIcon.ico"
     }
   },
   "devDependencies": {

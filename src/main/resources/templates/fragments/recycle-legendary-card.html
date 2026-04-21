@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="cell(c, cp)" class="library-card library-card--picker">
+	<button type="button" class="library-card__open"
+			th:attr="data-force-detail='true', data-card-id=${c.id}, data-attr-pipe=${c.attributeLabelPipe}"
+			th:data-name="${c.name}"
+			th:data-attribute="${c.attribute}"
+			th:data-rarity="${c.rarity}"
+			th:data-rarity-label="${c.rarityLabel}"
+			th:data-pack-initial="${c.packInitial}"
+			th:data-attribute-ja="${c.attributeLabelJa}"
+			th:data-cost="${c.cost}"
+			th:data-base-power="${c.basePower}"
+			th:data-field-card="${c.fieldCard}"
+			data-owned="true"
+			th:data-quantity="${c.quantity}"
+			th:data-ability="${c.libraryAbilityText != null ? c.libraryAbilityText : ''}"
+			th:data-canonical-line="${c.canonicalAbilityLine != null ? c.canonicalAbilityLine : ''}"
+			th:data-deploy-help="${c.deployHelp != null ? c.deployHelp : ''}"
+			th:data-passive-help="${c.passiveHelp != null ? c.passiveHelp : ''}"
+			th:data-layer-base="${c.layerBasePath}"
+			th:data-layer-portrait="${c.layerPortraitPath}"
+			th:data-layer-frame="${c.layerFramePath}"
+			th:data-layer-bar="${c.barImagePath}">
+		<div class="library-card__inner">
+			<div th:replace="~{fragments/card-face :: layers(c=${c}, cp=${cp})}"></div>
+		</div>
+	</button>
+</div>
+</body>
+</html>

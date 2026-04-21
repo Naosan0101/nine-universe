@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>設定 — ナインユニバース</title>
+	<link rel="stylesheet" th:href="@{/css/app.css(v=${assetVersion})}"/>
+</head>
+<body class="page page--theme-arcane">
+<header class="topbar">
+	<h1 class="game-title">設定</h1>
+	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
+</header>
+
+<div class="container">
+	<section class="panel settings-panel">
+		<p class="muted settings-panel__tagline">あそびやすくカスタマイズ</p>
+
+		<p class="ok" th:if="${flashSettingsSuccess}" th:text="${flashSettingsSuccess}">保存しました</p>
+		<p class="error" th:if="${flashSettingsError}" th:text="${flashSettingsError}">エラー</p>
+
+		<form th:action="@{/settings/save}" method="post" class="stack settings-panel__form">
+			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+			<div class="settings-panel__field">
+				<label class="settings-panel__label">ユーザーID（変更不可）</label>
+				<p class="settings-panel__readonly" th:text="${user.username}">id</p>
+			</div>
+
+			<div class="settings-panel__field">
+				<label class="settings-panel__label" for="displayName">ユーザー名（バトルなどに表示）</label>
+				<input id="displayName" name="displayName" type="text" required
+				       th:value="${effectiveDisplayName}"
+				       th:attr="maxlength=${displayNameMaxLen}"
+				       autocomplete="nickname"/>
+				<p class="muted settings-panel__hint">ログインに使うユーザーIDとは別です。バトル開始時の名前などに使われます。</p>
+			</div>
+
+			<div class="settings-panel__field">
+				<div class="settings-panel__toggle-heading">
+					<span class="settings-panel__label" id="fullscreenLabel">フルスクリーン</span>
+					<button type="button" id="fullscreenSwitch" class="settings-toggle settings-toggle--on" role="switch"
+					        aria-checked="true" aria-labelledby="fullscreenLabel"></button>
+				</div>
+				<p class="muted settings-panel__hint">オン（緑）でフルスクリーン、オフでウィンドウ表示です。ブラウザではページを移動するとフルスクリーンは解除され、初回やそのあとにクリックなどが必要な場合があります。ブラウザによってはフルスクリーンにできない場合があります。</p>
+			</div>
+
+			<div class="settings-panel__field settings-panel__field--cpu-speed">
+				<label class="settings-panel__label" for="cpuThinkSpeed">CPUが考えるはやさ（ひとりで対戦）</label>
+				<select id="cpuThinkSpeed" name="cpuThinkSpeed">
+					<option value="FAST" th:selected="${cpuThinkSpeed == 'FAST'}">はやい</option>
+					<option value="NORMAL" th:selected="${cpuThinkSpeed == 'NORMAL'}">ふつう</option>
+					<option value="SLOW" th:selected="${cpuThinkSpeed == 'SLOW'}">おそい</option>
+				</select>
+				<p class="muted settings-panel__hint">CPUが手を考えるはやさの設定です。対人戦には影響しません。</p>
+			</div>
+
+			<button type="submit" class="btn btn--primary settings-panel__save-btn">保存</button>
+		</form>
+	</section>
+</div>
+<script th:replace="~{fragments/tab-fullscreen :: script}"></script>
+</body>
+</html>

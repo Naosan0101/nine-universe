@@ -29,7 +29,7 @@
 	</div>
 </header>
 
-<div id="battle-app">
+<div id="battle-app" tabindex="-1">
 	<p class="muted">読み込み中…</p>
 </div>
 
@@ -67,5 +67,6 @@
 <script th:src="@{/js/card-spark.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/card-face-layer.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/battle-ui.js(v=${assetVersion})}"></script>
+<script th:replace="~{fragments/tab-fullscreen :: script}"></script>
 </body>
 </html>

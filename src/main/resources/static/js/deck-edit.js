@@ -57,6 +57,64 @@
 		MACHINE: 'マシン',
 		CARBUNCLE: 'カーバンクル'
 	};
+	/** 上段カードの種族ソート順（種族フィルターと同じ並び） */
+	const TRIBE_SORT_ORDER = ['HUMAN', 'ELF', 'UNDEAD', 'DRAGON', 'MACHINE', 'CARBUNCLE'];
+
+	function tribeSortIndex(segment) {
+		const u = (segment || '').trim().toUpperCase();
+		const i = TRIBE_SORT_ORDER.indexOf(u);
+		return i >= 0 ? i : 99;
+	}
+
+	/** 複合種族（A_B）は各コードの順位を並べたキーで比較 */
+	function tribeSortKey(attr) {
+		const raw = (attr || '').trim();
+		if (!raw) return '99';
+		const parts = raw
+			.split('_')
+			.map(function (s) {
+				return s.trim();
+			})
+			.filter(Boolean);
+		if (parts.length === 0) return '99';
+		const idx = parts.map(tribeSortIndex).sort(function (a, b) {
+			return a - b;
+		});
+		return idx
+			.map(function (n) {
+				return n.toString().padStart(2, '0');
+			})
+			.join(',');
+	}
+
+	/** デッキ上段：種族順 → ID 順 */
+	function sortUpperZoneByTribeThenId(zone) {
+		if (!zone) return;
+		const nodes = Array.from(zone.querySelectorAll(':scope > .mini-card'));
+		if (nodes.length <= 1) return;
+		function cardFor(node) {
+			const id = parseInt(node.dataset.id, 10);
+			if (isNaN(id)) return null;
+			return seeds.find(function (s) {
+				return s.id === id;
+			});
+		}
+		nodes.sort(function (a, b) {
+			const ca = cardFor(a);
+			const cb = cardFor(b);
+			const ka = tribeSortKey(ca && ca.attribute ? ca.attribute : '');
+			const kb = tribeSortKey(cb && cb.attribute ? cb.attribute : '');
+			if (ka !== kb) {
+				return ka < kb ? -1 : ka > kb ? 1 : 0;
+			}
+			const ida = parseInt(a.dataset.id, 10) || 0;
+			const idb = parseInt(b.dataset.id, 10) || 0;
+			return ida - idb;
+		});
+		nodes.forEach(function (n) {
+			zone.appendChild(n);
+		});
+	}
 	const RARITY_LABEL = { Reg: 'レジェンダリー', Ep: 'エピック', R: 'レア', C: 'コモン' };
 	const PACK_JA = {
 		STD: 'スタンダードパック1',
@@ -342,24 +400,6 @@
 	}
 
 
-	function applyContinuousSparkToFaceRoot(faceRoot, rarityCode) {
-		if (!faceRoot || typeof fillContinuousCardSpark !== 'function') return;
-		const r = (rarityCode || 'C').trim();
-		if (r === 'C') return;
-		const spark = faceRoot.querySelector('.card-spark');
-		if (spark) {
-			fillContinuousCardSpark(spark, r);
-		}
-	}
-
-	function wireSparkOnMiniCardHost(hostEl, c) {
-		if (!hostEl || !c) return;
-		const face = hostEl.querySelector('.card-face--layered');
-		if (face) {
-			applyContinuousSparkToFaceRoot(face, c.rarity);
-		}
-	}
-
 	function matchesTribeFilter(cardAttr, filterVal) {
 		if (!filterVal) return true;
 		if (!cardAttr) return false;
@@ -413,30 +453,16 @@
 		return code.indexOf('_') !== -1;
 	}
 
-	/** デッキへの追加／デッキからの削除はダブルクリック・右クリック。キーボードは約0.5秒以内に2回 Enter または Space */
-	function bindDeckDoubleAction(el, handler) {
-		let lastKeyTs = 0;
-		el.addEventListener('dblclick', function (e) {
-			e.preventDefault();
-			handler();
+	/** 上段デッキ内カード：左クリックで1枚ライブラリへ戻す（Enter / Space も可） */
+	function bindDeckSlotRemove(copy, removeHandler) {
+		copy.addEventListener('click', function (e) {
+			if (e.button !== 0) return;
+			removeHandler();
 		});
-		el.addEventListener('keydown', function (ev) {
+		copy.addEventListener('keydown', function (ev) {
 			if (ev.key !== 'Enter' && ev.key !== ' ') return;
 			ev.preventDefault();
-			const now = Date.now();
-			if (lastKeyTs && now - lastKeyTs < 520) {
-				lastKeyTs = 0;
-				handler();
-			} else {
-				lastKeyTs = now;
-			}
-		});
-	}
-
-	function bindDeckContextMenu(el, handler) {
-		el.addEventListener('contextmenu', function (e) {
-			e.preventDefault();
-			handler();
+			removeHandler();
 		});
 	}
 
@@ -596,7 +622,32 @@
 			}
 		);
 		wireLibraryCardFaceImages(face, plateFbFull, dataFbFull);
-		return face;
+		if (typeof applyLibraryCardFaceSpark === 'function') {
+			applyLibraryCardFaceSpark(face, c.rarity);
+		}
+		const inner = document.createElement('div');
+		inner.className = 'library-card__inner';
+		inner.appendChild(face);
+		return inner;
+	}
+
+	/** デッキ上段に載せたあとでカード名の 1 行フィットを再計測（初回幅 0 回避） */
+	function refitMiniCardFaceName(hostEl) {
+		const face = hostEl.querySelector('.card-face.card-face--layered');
+		if (!face || typeof window.fitCardFaceNameToOneLine !== 'function') return;
+		const nameEl = face.querySelector('.card-face__name');
+		if (nameEl && typeof window.resetCardFaceNameFitInline === 'function') {
+			window.resetCardFaceNameFitInline(nameEl);
+		}
+		requestAnimationFrame(function () {
+			requestAnimationFrame(function () {
+				try {
+					window.fitCardFaceNameToOneLine(face);
+				} catch (e) {
+					// noop
+				}
+			});
+		});
 	}
 
 	function appendCardImage(parent, c) {
@@ -627,28 +678,30 @@
 		parent.appendChild(qty);
 	}
 
-	/** シングルクリックで詳細モーダル（ライブラリページと同じ `#library-detail-modal`）。ダブルクリック操作と競合しないよう遅延＋キャンセル */
-	let pendingCardDetailTimer = null;
-	function bindClickOpenCardDetail(el, c) {
-		el.addEventListener('click', function (e) {
-			if (e.detail >= 2) {
-				if (pendingCardDetailTimer) {
-					clearTimeout(pendingCardDetailTimer);
-					pendingCardDetailTimer = null;
-				}
-				return;
+	/** デッキに入れた枚数をカード右上に重ね表示 */
+	function setSelectionBadge(el, n) {
+		let b = el.querySelector('.card-pool-badge');
+		if (n <= 0) {
+			if (b) {
+				b.remove();
 			}
-			if (pendingCardDetailTimer) clearTimeout(pendingCardDetailTimer);
-			pendingCardDetailTimer = setTimeout(function () {
-				pendingCardDetailTimer = null;
-				openCardDetailModal(c);
-			}, 280);
-		});
-		el.addEventListener('dblclick', function () {
-			if (pendingCardDetailTimer) {
-				clearTimeout(pendingCardDetailTimer);
-				pendingCardDetailTimer = null;
-			}
+			return;
+		}
+		if (!b) {
+			b = document.createElement('span');
+			b.className = 'card-pool-badge';
+			b.setAttribute('aria-hidden', 'true');
+			el.insertBefore(b, el.firstChild);
+		}
+		b.textContent = String(n);
+	}
+
+	/** 右クリックで詳細（ブラウザのコンテキストメニューは出さない） */
+	function bindRightClickOpenCardDetail(el, c) {
+		el.addEventListener('contextmenu', function (e) {
+			e.preventDefault();
+			hideTooltip();
+			openCardDetailModal(c);
 		});
 	}
 
@@ -750,11 +803,11 @@
 					(c.fieldCard ? '（×' : '（強さ' + c.power + '・×') +
 					c.qty +
 					inDeckHint +
-					'）。クリックで詳細、ダブルクリックまたは右クリックでデッキへ'
+					'）。左クリックでデッキへ、右クリックで詳細'
 			);
 			appendLibCardFace(el, c);
-			wireSparkOnMiniCardHost(el, c);
-			bindClickOpenCardDetail(el, c);
+			setSelectionBadge(el, inDeck);
+			bindRightClickOpenCardDetail(el, c);
 			bindCardTooltip(el, c);
 			const addToDeck = function () {
 				if (!canAddToDeck(c.id, cap)) return;
@@ -765,25 +818,27 @@
 				copy.setAttribute('tabindex', '0');
 				copy.setAttribute(
 					'aria-label',
-					c.name + '。クリックで詳細、ダブルクリックまたは右クリックでデッキから戻す'
+					c.name + '。左クリックでデッキから戻す、右クリックで詳細'
 				);
 				appendCardImage(copy, c);
-				wireSparkOnMiniCardHost(copy, c);
-				bindClickOpenCardDetail(copy, c);
+				bindRightClickOpenCardDetail(copy, c);
 				bindCardTooltip(copy, c);
 				const removeFromDeck = function () {
 					copy.remove();
 					refreshLib();
 					update();
 				};
-				bindDeckDoubleAction(copy, removeFromDeck);
-				bindDeckContextMenu(copy, removeFromDeck);
+				bindDeckSlotRemove(copy, removeFromDeck);
 				deckZone.appendChild(copy);
+				sortUpperZoneByTribeThenId(deckZone);
+				refitMiniCardFaceName(copy);
 				refreshLib();
 				update();
 			};
-			bindDeckDoubleAction(el, addToDeck);
-			bindDeckContextMenu(el, addToDeck);
+			el.addEventListener('click', function (e) {
+				if (e.button !== 0) return;
+				addToDeck();
+			});
 			libZone.appendChild(el);
 			added++;
 		});
@@ -845,21 +900,21 @@
 			copy.setAttribute('tabindex', '0');
 			copy.setAttribute(
 				'aria-label',
-				c.name + '。クリックで詳細、ダブルクリックまたは右クリックでデッキから戻す'
+				c.name + '。左クリックでデッキから戻す、右クリックで詳細'
 			);
 			appendCardImage(copy, c);
-			wireSparkOnMiniCardHost(copy, c);
-			bindClickOpenCardDetail(copy, c);
+			bindRightClickOpenCardDetail(copy, c);
 			bindCardTooltip(copy, c);
 			const removeFromDeck = function () {
 				copy.remove();
 				refreshLib();
 				update();
 			};
-			bindDeckDoubleAction(copy, removeFromDeck);
-			bindDeckContextMenu(copy, removeFromDeck);
+			bindDeckSlotRemove(copy, removeFromDeck);
 			deckZone.appendChild(copy);
+			refitMiniCardFaceName(copy);
 		});
+		sortUpperZoneByTribeThenId(deckZone);
 	}
 
 	function onFilterChange() {

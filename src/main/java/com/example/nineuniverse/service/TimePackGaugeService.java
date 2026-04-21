@@ -43,10 +43,12 @@ public class TimePackGaugeService {
 	}
 
 	/**
-	 * ゲージに応じて無料スタンダードを開封し、ゲージをリセットする。返り値は開封結果のカード ID（1〜2パック分）。
+	 * ゲージに応じて無料ボーナスパックを開封し、ゲージをリセットする。返り値は開封結果のカード ID（1〜2パック分）。
+	 *
+	 * @param packChoicePerOpen 開封する順に、各パックごとの {@link PackService.PackType#STANDARD} または {@link PackService.PackType#STANDARD_2}
 	 */
 	@Transactional
-	public List<Short> claimFreePacksFromGauge(long userId) {
+	public List<Short> claimFreePacksFromGauge(long userId, List<PackService.PackType> packChoicePerOpen) {
 		AppUser u = appUserMapper.findById(userId);
 		if (u == null) {
 			throw new IllegalStateException("ユーザーが見つかりません");
@@ -56,9 +58,17 @@ public class TimePackGaugeService {
 		if (snap.availablePacks() == 0) {
 			throw new IllegalStateException("ゲージが半分に達していません。しばらく待ってから再度お試しください。");
 		}
+		if (packChoicePerOpen == null || packChoicePerOpen.size() != snap.availablePacks()) {
+			throw new IllegalArgumentException("開封するパックの選択が不正です。");
+		}
+		for (PackService.PackType t : packChoicePerOpen) {
+			if (t != PackService.PackType.STANDARD && t != PackService.PackType.STANDARD_2) {
+				throw new IllegalArgumentException("開封できるのはスタンダードパック1または2です。");
+			}
+		}
 		List<Short> merged = new ArrayList<>();
-		for (int i = 0; i < snap.availablePacks(); i++) {
-			var pulled = packService.openStandardPackWithoutGemCost(userId);
+		for (PackService.PackType choice : packChoicePerOpen) {
+			var pulled = packService.openBonusPackWithoutGemCost(userId, choice);
 			for (var c : pulled) {
 				if (c.getId() != null) {
 					merged.add(c.getId());
