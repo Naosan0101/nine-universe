@@ -27,6 +27,37 @@
 				<p class="settings-panel__readonly" th:text="${user.username}">id</p>
 			</div>
 
+			<div class="settings-panel__field settings-panel__field--epithet">
+				<span class="settings-panel__label">二つ名（バトルでユーザー名の上に表示）</span>
+				<p class="muted settings-panel__hint" style="margin-top:0">二つ名は、ボーナスパックか「カードリサイクル」から入手できます。</p>
+				<div class="settings-epithet-with-save">
+					<div class="settings-epithet-pair">
+						<div class="settings-epithet-pair__half">
+							<select id="epithetUpperId" name="epithetUpperId" class="settings-epithet-pair__select" required
+							        aria-label="二つ名の上段">
+								<option th:each="e : ${epithetOwnedUpper}"
+								        th:value="${e.id}"
+								        th:selected="${selectedEpithetUpperId != null && selectedEpithetUpperId == e.id}"
+								        th:text="${e.phrase}">—</option>
+							</select>
+						</div>
+						<span class="settings-epithet-pair__slash" aria-hidden="true">/</span>
+						<div class="settings-epithet-pair__half">
+							<select id="epithetLowerId" name="epithetLowerId" class="settings-epithet-pair__select" required
+							        aria-label="二つ名の下段">
+								<option th:each="e : ${epithetOwnedLower}"
+								        th:value="${e.id}"
+								        th:selected="${selectedEpithetLowerId != null && selectedEpithetLowerId == e.id}"
+								        th:text="${e.phrase}">—</option>
+							</select>
+						</div>
+					</div>
+					<button type="submit" class="btn btn--ghost settings-epithet-with-save__btn"
+					        th:formaction="@{/settings/save-epithets}"
+					        title="二つ名のみ保存（ユーザー名・CPU速度などはこのボタンでは保存されません）">保存</button>
+				</div>
+			</div>
+
 			<div class="settings-panel__field">
 				<label class="settings-panel__label" for="displayName">ユーザー名（バトルなどに表示）</label>
 				<input id="displayName" name="displayName" type="text" required
@@ -42,7 +73,6 @@
 					<button type="button" id="fullscreenSwitch" class="settings-toggle settings-toggle--on" role="switch"
 					        aria-checked="true" aria-labelledby="fullscreenLabel"></button>
 				</div>
-				<p class="muted settings-panel__hint">オン（緑）でフルスクリーン、オフでウィンドウ表示です。ブラウザではページを移動するとフルスクリーンは解除され、初回やそのあとにクリックなどが必要な場合があります。ブラウザによってはフルスクリーンにできない場合があります。</p>
 			</div>
 
 			<div class="settings-panel__field settings-panel__field--cpu-speed">
@@ -59,6 +89,6 @@
 		</form>
 	</section>
 </div>
-<script th:replace="~{fragments/tab-fullscreen :: script}"></script>
+<th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>

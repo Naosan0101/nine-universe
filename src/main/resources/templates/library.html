@@ -18,7 +18,6 @@
 <div class="container">
 	<section class="panel">
 		<div class="lib-page-toolbar">
-			<p class="lib-page-toolbar__title">全カードを表示しています。検索（カード名・効果）・絞り込みで表示を限定できます。</p>
 			<div class="lib-page-toolbar__controls">
 				<label class="lib-page-field">検索
 					<input type="search" id="library-search" class="lib-page-input" autocomplete="off" placeholder="カード名・効果の一部"/>
@@ -152,6 +151,6 @@
 <script th:src="@{/js/card-spark.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/card-face-layer.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/library.js(v=${assetVersion})}"></script>
-<script th:replace="~{fragments/tab-fullscreen :: script}"></script>
+<th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>

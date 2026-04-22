@@ -2,7 +2,11 @@ package com.example.nineuniverse.service;
 
 import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.domain.AppUser;
+import com.example.nineuniverse.domain.CardDefinition;
 import com.example.nineuniverse.repository.AppUserMapper;
+import com.example.nineuniverse.service.NicknameEpithetService.EpithetGachaResult;
+import com.example.nineuniverse.service.PackService.PackType;
+import com.example.nineuniverse.web.dto.PackOpeningSessionSlot;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -17,6 +21,13 @@ public class TimePackGaugeService {
 
 	private final AppUserMapper appUserMapper;
 	private final PackService packService;
+	private final NicknameEpithetService nicknameEpithetService;
+
+	public record TimePackClaimResult(
+			List<Short> flatCardIds,
+			List<PackOpeningSessionSlot> openingSlots,
+			List<EpithetGachaResult> epithetResults) {
+	}
 
 	public TimePackGaugeSnapshot snapshotForUser(long userId) {
 		AppUser u = appUserMapper.findById(userId);
@@ -43,40 +54,57 @@ public class TimePackGaugeService {
 	}
 
 	/**
-	 * ゲージに応じて無料ボーナスパックを開封し、ゲージをリセットする。返り値は開封結果のカード ID（1〜2パック分）。
-	 *
-	 * @param packChoicePerOpen 開封する順に、各パックごとの {@link PackService.PackType#STANDARD} または {@link PackService.PackType#STANDARD_2}
+	 * ボーナスパックを1パック分だけ開封する（カードは {@link GameConstants#PACK_CARD_COUNT} 枚＝1パック）。
+	 * ゲージが MAX で2パック分あるときは、1回目の開封でサイクルをリセットし残り1パックを {@link AppUser#getTimePackBonusBank()} に預ける。
 	 */
 	@Transactional
-	public List<Short> claimFreePacksFromGauge(long userId, List<PackService.PackType> packChoicePerOpen) {
+	public TimePackClaimResult claimOneBonusPackFromGauge(long userId, PackType choice) {
+		if (choice != PackType.STANDARD && choice != PackType.STANDARD_2 && choice != PackType.BONUS_EPITHET_GACHA) {
+			throw new IllegalArgumentException("開封できるのはスタンダードパック1・2、または二つ名ガチャです。");
+		}
 		AppUser u = appUserMapper.findById(userId);
 		if (u == null) {
 			throw new IllegalStateException("ユーザーが見つかりません");
 		}
+		int bank = u.getTimePackBonusBank() != null ? Math.max(0, u.getTimePackBonusBank()) : 0;
 		Instant start = u.getTimePackCycleStart() != null ? u.getTimePackCycleStart() : Instant.now();
-		var snap = computeSnapshot(start, Instant.now());
-		if (snap.availablePacks() == 0) {
+		int timerPacks = computeSnapshot(start, Instant.now()).availablePacks();
+		if (bank == 0 && timerPacks == 0) {
 			throw new IllegalStateException("ゲージが半分に達していません。しばらく待ってから再度お試しください。");
 		}
-		if (packChoicePerOpen == null || packChoicePerOpen.size() != snap.availablePacks()) {
-			throw new IllegalArgumentException("開封するパックの選択が不正です。");
-		}
-		for (PackService.PackType t : packChoicePerOpen) {
-			if (t != PackService.PackType.STANDARD && t != PackService.PackType.STANDARD_2) {
-				throw new IllegalArgumentException("開封できるのはスタンダードパック1または2です。");
+
+		if (bank > 0) {
+			int rows = appUserMapper.subtractTimePackBonusBankIfPositive(userId);
+			if (rows != 1) {
+				throw new IllegalStateException("開封できるボーナスパックがありません。");
 			}
+		} else if (timerPacks == 2) {
+			appUserMapper.updateTimePackCycleStart(userId, Instant.now());
+			appUserMapper.addTimePackBonusBankDelta(userId, 1);
+		} else if (timerPacks == 1) {
+			appUserMapper.updateTimePackCycleStart(userId, Instant.now());
+		} else {
+			throw new IllegalStateException("開封できるボーナスパックがありません。");
 		}
-		List<Short> merged = new ArrayList<>();
-		for (PackService.PackType choice : packChoicePerOpen) {
-			var pulled = packService.openBonusPackWithoutGemCost(userId, choice);
-			for (var c : pulled) {
+
+		List<Short> flatCardIds = new ArrayList<>();
+		List<PackOpeningSessionSlot> openingSlots = new ArrayList<>();
+		List<EpithetGachaResult> epithetResults = new ArrayList<>();
+		if (choice == PackType.BONUS_EPITHET_GACHA) {
+			EpithetGachaResult r = nicknameEpithetService.rollBonusEpithetGacha(userId);
+			epithetResults.add(r);
+			openingSlots.add(PackOpeningSessionSlot.epithet(r.upperGained(), r.lowerGained()));
+		} else {
+			List<CardDefinition> pulled = packService.openBonusPackWithoutGemCost(userId, choice);
+			for (CardDefinition c : pulled) {
 				if (c.getId() != null) {
-					merged.add(c.getId());
+					short cid = c.getId();
+					flatCardIds.add(cid);
+					openingSlots.add(PackOpeningSessionSlot.card(cid));
 				}
 			}
 		}
-		appUserMapper.updateTimePackCycleStart(userId, Instant.now());
-		return merged;
+		return new TimePackClaimResult(flatCardIds, openingSlots, epithetResults);
 	}
 
 	public record TimePackGaugeSnapshot(

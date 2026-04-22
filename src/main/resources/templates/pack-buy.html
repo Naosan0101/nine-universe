@@ -6,21 +6,22 @@
 	<title>カードパック購入 — ナインユニバース</title>
 	<link rel="stylesheet" th:href="@{/css/app.css(v=${assetVersion})}"/>
 </head>
-<body class="page page--pack" th:attr="data-user-gems=${gems}">
+<body class="page page--theme-arcane page--pack page--single-screen-hub" th:attr="data-user-gems=${gems}">
 <header class="topbar">
-	<h1 class="game-title">カードパックを購入</h1>
-	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
+	<div th:replace="~{fragments/game-title-brand :: brand}"></div>
+	<div class="topbar__meta">
+		<span class="topbar__hub-meta muted">ジェム <strong th:text="${gems}">0</strong></span>
+		<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
+	</div>
 </header>
 
-<div class="container">
-	<section class="panel pack-buy-head">
-		<div class="pack-buy-head__row">
-			<div class="pack-buy-head__left">
-				<p class="pack-buy-head__label">所持ジェム</p>
-				<p class="pack-buy-head__value"><strong th:text="${gems}">0</strong></p>
-			</div>
-		</div>
-		<p class="error pack-buy-head__error" th:if="${error}" th:text="${error}"></p>
+<div class="hub-screen-title">
+	<h2 class="hub-screen-title__h">カードパックを購入</h2>
+</div>
+
+<div class="container hub-main">
+	<section class="panel pack-buy-head" th:if="${error}">
+		<p class="error pack-buy-head__error" th:text="${error}"></p>
 	</section>
 
 	<section class="panel pack-starter-gift"
@@ -264,6 +265,6 @@
 </div>
 
 <script th:src="@{/js/pack-buy.js(v=${assetVersion})}"></script>
-<script th:replace="~{fragments/tab-fullscreen :: script}"></script>
+<th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>

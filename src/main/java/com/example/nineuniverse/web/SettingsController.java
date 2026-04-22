@@ -4,6 +4,7 @@ import com.example.nineuniverse.domain.AppUser;
 import com.example.nineuniverse.domain.UserDisplayNames;
 import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.security.AccountUserDetails;
+import com.example.nineuniverse.service.NicknameEpithetService;
 import com.example.nineuniverse.service.UserSettingsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -21,6 +22,7 @@ public class SettingsController {
 
 	private final AppUserMapper appUserMapper;
 	private final UserSettingsService userSettingsService;
+	private final NicknameEpithetService nicknameEpithetService;
 
 	@GetMapping("/settings")
 	public String settings(Model model) {
@@ -33,6 +35,10 @@ public class SettingsController {
 		model.addAttribute("effectiveDisplayName", UserDisplayNames.effectiveDisplayName(u));
 		model.addAttribute("cpuThinkSpeed", UserSettingsService.normalizeCpuThinkSpeed(u.getCpuThinkSpeed()));
 		model.addAttribute("displayNameMaxLen", UserSettingsService.DISPLAY_NAME_MAX_LEN);
+		model.addAttribute("epithetOwnedUpper", nicknameEpithetService.listOwnedUpper(uid));
+		model.addAttribute("epithetOwnedLower", nicknameEpithetService.listOwnedLower(uid));
+		model.addAttribute("selectedEpithetUpperId", u.getSelectedEpithetUpperId());
+		model.addAttribute("selectedEpithetLowerId", u.getSelectedEpithetLowerId());
 		return "settings";
 	}
 
@@ -40,15 +46,39 @@ public class SettingsController {
 	public String save(
 			@RequestParam("displayName") String displayName,
 			@RequestParam(value = "cpuThinkSpeed", required = false) String cpuThinkSpeed,
+			@RequestParam("epithetUpperId") long epithetUpperId,
+			@RequestParam("epithetLowerId") long epithetLowerId,
 			RedirectAttributes ra) {
 		long uid = CurrentUser.require().getId();
 		try {
-			userSettingsService.updateProfile(uid, displayName, cpuThinkSpeed);
+			userSettingsService.updateProfileAndEpithets(uid, displayName, cpuThinkSpeed, epithetUpperId, epithetLowerId);
 			Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 			if (auth != null && auth.getPrincipal() instanceof AccountUserDetails d) {
 				userSettingsService.refreshUserInMemory(d.getUser(), uid);
 			}
 			ra.addFlashAttribute("flashSettingsSuccess", "設定を保存しました。");
+		} catch (IllegalArgumentException e) {
+			ra.addFlashAttribute("flashSettingsError", e.getMessage());
+		} catch (IllegalStateException e) {
+			ra.addFlashAttribute("flashSettingsError", e.getMessage());
+		}
+		return "redirect:/settings";
+	}
+
+	/** 二つ名のみ保存（表示名・CPU速度などは変更しない） */
+	@PostMapping("/settings/save-epithets")
+	public String saveEpithetsOnly(
+			@RequestParam("epithetUpperId") long epithetUpperId,
+			@RequestParam("epithetLowerId") long epithetLowerId,
+			RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		try {
+			nicknameEpithetService.updateSelection(uid, epithetUpperId, epithetLowerId);
+			Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+			if (auth != null && auth.getPrincipal() instanceof AccountUserDetails d) {
+				userSettingsService.refreshUserInMemory(d.getUser(), uid);
+			}
+			ra.addFlashAttribute("flashSettingsSuccess", "二つ名を保存しました。");
 		} catch (IllegalArgumentException e) {
 			ra.addFlashAttribute("flashSettingsError", e.getMessage());
 		} catch (IllegalStateException e) {

@@ -226,6 +226,13 @@ public class AnnouncementRewardService {
 		return !today.isAfter(GameConstants.ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_LAST_DAY);
 	}
 
+	public boolean isWithinPlatformApr2026AnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_LAST_DAY);
+	}
+
 	public enum ClaimOutcome {
 		SUCCESS,
 		ALREADY_CLAIMED,
@@ -373,6 +380,13 @@ public class AnnouncementRewardService {
 				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_START)) {
 			if (claimDenzirionGarakutaFusionFixAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
 				totalGems += GameConstants.ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_START)) {
+			if (claimPlatformApr2026AnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_GEMS;
 				claimed++;
 			}
 		}
@@ -703,6 +717,23 @@ public class AnnouncementRewardService {
 			return ClaimOutcome.ALREADY_CLAIMED;
 		}
 		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimPlatformApr2026AnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_GEMS);
 		return ClaimOutcome.SUCCESS;
 	}
 

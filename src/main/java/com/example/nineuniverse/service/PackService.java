@@ -23,7 +23,9 @@ public class PackService {
 		EVIL_THREAT(5),
 		STANDARD_2(3),
 		JEWEL_UTOPIA(4),
-		IRON_FLEET(5);
+		IRON_FLEET(5),
+		/** 時間ゲージのボーナス開封のみ（カードは排出しない／二つ名ガチャ） */
+		BONUS_EPITHET_GACHA(0);
 
 		public final int cost;
 
@@ -165,6 +167,7 @@ public class PackService {
 			case STANDARD_2 -> List.of("JU", "IF");
 			case JEWEL_UTOPIA -> List.of("JU");
 			case IRON_FLEET -> List.of("IF");
+			case BONUS_EPITHET_GACHA -> List.of();
 		};
 		for (CardDefinition c : all) {
 			if (c == null) continue;

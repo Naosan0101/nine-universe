@@ -315,7 +315,8 @@ public class CpuBattleService {
 		var main = toBattleCardDto(z.getMain());
 		var under = z.getCostUnder().stream().map(CpuBattleService::toBattleCardDto).toList();
 		List<BattlePowerModifierDto> mods = powerModifiers != null ? powerModifiers : List.of();
-		return new ZoneFighterDto(main, under, z.getTemporaryPowerBonus(), mods, z.getSpec777RolledPower());
+		return new ZoneFighterDto(main, under, z.getTemporaryPowerBonus(), mods, z.getSpec777RolledPower(),
+				z.getBattleMainLineSeq());
 	}
 
 	private void maybeNotifyCpuWinMission(CpuBattleState st) {

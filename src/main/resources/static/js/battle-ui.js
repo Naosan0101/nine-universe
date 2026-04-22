@@ -326,26 +326,31 @@
 		postDefeatSurrenderAside.el = null;
 	}
 
-	function showPostDefeatSurrenderAside() {
-		hidePostDefeatSurrenderAside();
-		const panel = el('aside', 'battle-unwinnable-pop');
-		panel.setAttribute('role', 'status');
-		panel.setAttribute('aria-live', 'polite');
-		panel.appendChild(el('p', 'battle-unwinnable-pop__title', 'バトルは終了しました'));
-		panel.appendChild(el(
-			'p',
-			'battle-unwinnable-pop__body',
-			'メニューへ戻るには降参してください。'
-		));
-		const btn = el('button', 'btn btn--danger', '降参');
-		btn.type = 'button';
-		btn.addEventListener('click', function () {
-			hidePostDefeatSurrenderAside();
-			submitSurrenderWithoutConfirm();
-		});
-		panel.appendChild(btn);
-		document.body.appendChild(panel);
-		postDefeatSurrenderAside.el = panel;
+	/** 勝敗モーダルを閉じたあと：盤面を見たままにし、降参ボタンを「ホームへ」に切り替え */
+	function enterBattleEndedLeaveMode() {
+		if (document.body.dataset.battleEndedLeave === '1') return;
+		document.body.dataset.battleEndedLeave = '1';
+		const btn = document.querySelector('#battle-top-actions form[action*="surrender"] button[type="submit"]');
+		if (btn) {
+			if (!btn.dataset.originalSurrenderLabel) {
+				btn.dataset.originalSurrenderLabel = (btn.textContent || '').trim() || '降参';
+			}
+			btn.textContent = 'ホーム画面へ戻る';
+			btn.classList.remove('btn--danger');
+			btn.classList.add('btn--ghost');
+		}
+	}
+
+	function exitBattleEndedLeaveMode() {
+		if (document.body.dataset.battleEndedLeave !== '1') return;
+		delete document.body.dataset.battleEndedLeave;
+		const btn = document.querySelector('#battle-top-actions form[action*="surrender"] button[type="submit"]');
+		if (btn) {
+			btn.textContent = btn.dataset.originalSurrenderLabel || '降参';
+			btn.classList.add('btn--danger');
+			btn.classList.remove('btn--ghost');
+			delete btn.dataset.originalSurrenderLabel;
+		}
 	}
 
 	function hideUnwinnableDeployPop() {
@@ -574,12 +579,12 @@
 	}
 
 	/**
-	 * 右上の降参ボタン以外（「この手番では勝てません」等）からの即時降参。確認モーダルは出さない。
+	 * 降参フォーム以外（「この手番では勝てません」等）からの即時降参。確認モーダルは出さない。
 	 * {@link #installSurrenderIntercept} は submit ボタンのクリック／submit イベントのみ対象のため、
 	 * {@code HTMLFormElement#submit()} はそのまま POST される。
 	 */
 	function submitSurrenderWithoutConfirm() {
-		const form = document.querySelector('.topbar--battle form[action*="surrender"]');
+		const form = document.querySelector('#battle-top-actions form[action*="surrender"]');
 		if (!(form instanceof HTMLFormElement) || !isSurrenderForm(form)) {
 			return;
 		}
@@ -607,6 +612,7 @@
 		document.addEventListener(
 			'click',
 			function (e) {
+				if (document.body.dataset.battleEndedLeave === '1') return;
 				const t = e.target;
 				if (!(t instanceof Element)) return;
 				const form = t.closest('form');
@@ -627,6 +633,7 @@
 		document.addEventListener(
 			'submit',
 			function (e) {
+				if (document.body.dataset.battleEndedLeave === '1') return;
 				const t = e.target;
 				if (!isSurrenderForm(t)) return;
 				if (surrenderGuard.submitting) return;
@@ -641,6 +648,7 @@
 		if (!st) return;
 		if (!st.gameOver) {
 			ui._resultShown = false;
+			exitBattleEndedLeaveMode();
 			teardownSurrenderConfirmModal();
 			teardownResultModal();
 			return;
@@ -662,14 +670,13 @@
 			showResultModal('victory', '勝利', msg || '勝利しました。', {
 				showy: showy,
 				onClose: function () {
-					// Return to home on victory close.
-					window.location.href = contextPath + '/';
+					enterBattleEndedLeaveMode();
 				}
 			});
 		} else {
 			showResultModal('defeat', '敗北', msg || '敗北しました。', {
 				onClose: function () {
-					showPostDefeatSurrenderAside();
+					enterBattleEndedLeaveMode();
 				}
 			});
 		}
@@ -928,6 +935,41 @@
 		});
 	}
 
+	/**
+	 * ツールチップ内カード面の強さを、メイン表示と同じ実効値に合わせる（ゾーン／手札）。
+	 */
+	function applyBattleTooltipPreviewPower(host, shellRoot, def) {
+		if (!shellRoot || !def || !host) return;
+		if (def.fieldCard) return;
+		const st = lastStateForHandPower;
+		const defs = lastDefsForTooltip;
+		if (!st || !defs) return;
+		const ds = host.dataset;
+		const inst = ds && (ds.battleInstanceId || ds.instanceId);
+		if (!inst) return;
+		const basePow = Number(def.basePower != null ? def.basePower : 0);
+
+		if (st.humanBattle && st.humanBattle.main && String(st.humanBattle.main.instanceId) === String(inst)) {
+			applyCurrentPowerDisplay(shellRoot, basePow, Number(st.humanBattlePower != null ? st.humanBattlePower : 0));
+			return;
+		}
+		if (st.cpuBattle && st.cpuBattle.main && String(st.cpuBattle.main.instanceId) === String(inst)) {
+			applyCurrentPowerDisplay(shellRoot, basePow, Number(st.cpuBattlePower != null ? st.cpuBattlePower : 0));
+			return;
+		}
+
+		let handCard = null;
+		(st.humanHand || []).forEach(function (c) {
+			if (c && String(c.instanceId) === String(inst)) handCard = c;
+		});
+		if (handCard) {
+			const bonus = computeHumanNextDeployBonusForDef(st, def, handCard);
+			const curPow = previewHumanBattlePowerForHand(st, defs, def, bonus, handCard);
+			applyCurrentPowerDisplay(shellRoot, basePow, curPow);
+			applyCurrentCostDisplay(shellRoot, def, st, handCard);
+		}
+	}
+
 	function setBattleZonePowerContributorsDataset(el, mods) {
 		if (!el || !el.dataset) return;
 		if (mods && mods.length) {
@@ -1134,7 +1176,9 @@
 				defDetail = zoneOrHandDetailDef(host, cid);
 				def = defDetail || resolveCardDef(lastDefsForTooltip, cid);
 				if (def) {
-					battleTipPreview.appendChild(buildBattleCardFaceShell(defDetail || def, 'tip'));
+					const tipShell = buildBattleCardFaceShell(defDetail || def, 'tip');
+					battleTipPreview.appendChild(tipShell);
+					applyBattleTooltipPreviewPower(host, tipShell, defDetail || def);
 				}
 			}
 		}
@@ -1230,6 +1274,31 @@
 		return new Promise(resolve => setTimeout(resolve, ms));
 	}
 
+	function metaContent(name) {
+		const m = document.querySelector('meta[name="' + name + '"]');
+		return m && m.content != null ? String(m.content).trim() : '';
+	}
+
+	/** 二つ名（上の句／下の句）。どちらも空なら null。side は me / opp（プレートの光彩色）。 */
+	function battleIntroEpithetRow(upperRaw, lowerRaw, side) {
+		const u = upperRaw != null ? String(upperRaw).trim() : '';
+		const l = lowerRaw != null ? String(lowerRaw).trim() : '';
+		if (!u && !l) {
+			return null;
+		}
+		const s = side === 'opp' ? 'opp' : 'me';
+		const row = el('div', 'battle-intro-overlay__epithet');
+		const plate = el('div', 'battle-intro-overlay__epithet-plate battle-intro-overlay__epithet-plate--' + s);
+		if (u) {
+			plate.appendChild(el('span', 'battle-intro-overlay__epithet-chunk battle-intro-overlay__epithet-chunk--upper', u));
+		}
+		if (l) {
+			plate.appendChild(el('span', 'battle-intro-overlay__epithet-chunk battle-intro-overlay__epithet-chunk--lower', l));
+		}
+		row.appendChild(plate);
+		return row;
+	}
+
 	/** メタタグからバトル開始イントロ（名前衝突 → 先攻/後攻）を実行。メタが無い場合は何もしない。 */
 	async function runBattleIntroFromMeta() {
 		const myMeta = document.querySelector('meta[name="battle_intro_my_name"]');
@@ -1247,6 +1316,14 @@
 		const arena = el('div', 'battle-intro-overlay__arena');
 
 		const plateMe = el('div', 'battle-intro-overlay__plate battle-intro-overlay__plate--me');
+		const myEp = battleIntroEpithetRow(
+			metaContent('battle_intro_my_epithet_upper'),
+			metaContent('battle_intro_my_epithet_lower'),
+			'me'
+		);
+		if (myEp) {
+			plateMe.appendChild(myEp);
+		}
 		plateMe.appendChild(el('div', 'battle-intro-overlay__name', myName));
 		const orderMe = el(
 			'div',
@@ -1258,6 +1335,14 @@
 		sparkHost.appendChild(el('div', 'battle-intro-overlay__spark'));
 
 		const plateOpp = el('div', 'battle-intro-overlay__plate battle-intro-overlay__plate--opp');
+		const oppEp = battleIntroEpithetRow(
+			metaContent('battle_intro_opp_epithet_upper'),
+			metaContent('battle_intro_opp_epithet_lower'),
+			'opp'
+		);
+		if (oppEp) {
+			plateOpp.appendChild(oppEp);
+		}
 		plateOpp.appendChild(el('div', 'battle-intro-overlay__name', oppName));
 		const orderOpp = el(
 			'div',
@@ -1312,9 +1397,7 @@
 		const sel = selectedCard(st);
 		if (!sel) return;
 		const def = st.defs[sel.cardId];
-		const raw = def ? Number(def.cost || 0) : 0;
-		const adj = sel.handDeployCostModifier != null ? Number(sel.handDeployCostModifier) : 0;
-		const cost = Math.max(0, raw + adj);
+		const cost = effectiveFighterDeployCostFromState(def, st, sel);
 		ui.pay = { stones: cost, cardInstanceIds: [] };
 
 		const overlay = el('div', 'battle-pay-modal battle-pay-modal--field-only');
@@ -1515,21 +1598,16 @@
 		const sel = selectedCard(st);
 		if (!sel) return;
 		const def = st.defs[sel.cardId];
-		const cost = def && !def.fieldCard ? effectiveFighterDeployCostFromState(def, st, sel) : def ? Number(def.cost || 0) : 0;
+		const cost = def ? effectiveFighterDeployCostFromState(def, st, sel) : 0;
 		if (def && def.fieldCard) {
-			if (cost <= 0) {
-				return;
-			}
-			/* ストーンが足りるときは第2モーダルで止まらないよう、そのままコミット */
-			const available = Math.max(0, st.humanStones - (ui.levelUpStones | 0));
-			if (available >= cost) {
+			const commitFieldDeploy = function (stonesToPay) {
 				const prev = captureAnimRects();
 				const payload = {
 					levelUpRest: ui.levelUpRest,
 					levelUpDiscardInstanceIds: ui.levelUpDiscardIds,
 					levelUpStones: ui.levelUpStones,
 					deployInstanceId: String(sel.instanceId),
-					payCostStones: cost,
+					payCostStones: stonesToPay,
 					payCostCardInstanceIds: []
 				};
 				commitAction(payload)
@@ -1554,6 +1632,15 @@
 						alert('操作に失敗しました（' + (e && e.message ? e.message : String(e)) + '）');
 						rerenderWithFreshState();
 					});
+			};
+			if (cost <= 0) {
+				commitFieldDeploy(0);
+				return;
+			}
+			/* ストーンが足りるときは第2モーダルで止まらないよう、そのままコミット */
+			const available = Math.max(0, st.humanStones - (ui.levelUpStones | 0));
+			if (available >= cost) {
+				commitFieldDeploy(cost);
 				return;
 			}
 			showFieldStonePayModal(st);
@@ -2277,8 +2364,16 @@
 		SHINY: 31,
 		/** 磁力合体デンジリオン / CpuBattleEngine.DENZIRION_ID */
 		DENZIRION: 59,
+		/** ガラクタアーム / CpuBattleEngine.GARAKUTA_ARM_ID */
+		GARAKUTA_ARM: 60,
 		/** ガラクタレッグ / CpuBattleEngine.GARAKUTA_LEG_ID */
 		GARAKUTA_LEG: 61,
+		/** レッドアイ / CpuBattleEngine.RED_EYE_ID */
+		RED_EYE: 58,
+		/** フロストクルル / CpuBattleEngine.FROSTKRUL_ID */
+		FROSTKRUL: 32,
+		/** 探鉱の洞窟ネムリィ: 相手ターン強さ加算（CpuBattleEngine.NEMURY_OPPONENT_TURN_POWER_BONUS） */
+		NEMURY_OPP_BONUS: 4,
 		/** 廃棄工場 5C-R4P / CpuBattleEngine.SCRAPYARD_FIELD_ID */
 		FIELD_SCRAPYARD: 63,
 		/** 霊園教会 デスバウンス / CpuBattleEngine.DEATHBOUNCE_FIELD_ID */
@@ -2489,28 +2584,185 @@
 		return n;
 	}
 
+	function isRestCardTuckedUnderOwnFighter(ownBattle, restCard) {
+		if (!ownBattle || !restCard || restCard.instanceId == null) return false;
+		const under = battleCostUnderInstanceIdSet(ownBattle);
+		return !!under[String(restCard.instanceId)];
+	}
+
+	/** CpuBattleEngine.isMachineFighterRestSourceForDenziron と同じ */
+	function isMachineFighterRestSourceForDenzironPreview(d) {
+		if (!d || d.fieldCard) return false;
+		return weaponDepotMachineFighterForCost(d, null);
+	}
+
+	/** CpuBattleEngine.denzirionPassivePowerFromRestCard と同じ（レスト1枚あたり） */
+	function denzirionPassivePowerFromRestCardPreview(sourceCardId, st, defs, ownerIsHuman, battleZf) {
+		const sid = Number(sourceCardId);
+		const oppTurn = ownerIsHuman ? !st.humansTurn : st.humansTurn;
+		const ownTurn = ownerIsHuman ? st.humansTurn : !st.humansTurn;
+		const rest = ownerIsHuman ? st.humanRest || [] : st.cpuRest || [];
+		const ownZoneForShiny = ownerIsHuman ? st.humanBattle : st.cpuBattle;
+
+		if (sid === PREVIEW_CARD_IDS.ARCHER) {
+			const opp = ownerIsHuman ? st.cpuBattle : st.humanBattle;
+			if (opp && opp.main) {
+				const od = resolveCardDef(defs, opp.main.cardId);
+				if (!hasCardAttributeResolved(od, opp.main, 'DRAGON')) return 1;
+			}
+			return 0;
+		}
+		if (sid === PREVIEW_CARD_IDS.DRAGON_RIDER) {
+			return restContainsTribe(rest, defs, 'DRAGON') ? 4 : 0;
+		}
+		if (sid === PREVIEW_CARD_IDS.GAIKOTSU) {
+			const opp = ownerIsHuman ? st.cpuBattle : st.humanBattle;
+			if (opp && opp.main) {
+				const od = resolveCardDef(defs, opp.main.cardId);
+				if (hasCardAttributeResolved(od, opp.main, 'ELF')) return 2;
+			}
+			return 0;
+		}
+		if (sid === PREVIEW_CARD_IDS.RED_EYE) {
+			const opp = ownerIsHuman ? st.cpuBattle : st.humanBattle;
+			if (opp && opp.main) {
+				const od = resolveCardDef(defs, opp.main.cardId);
+				if (hasCardAttributeResolved(od, opp.main, 'HUMAN')) return 1;
+			}
+			return 0;
+		}
+		if (sid === PREVIEW_CARD_IDS.SHIREI) {
+			const opp = ownerIsHuman ? st.cpuBattle : st.humanBattle;
+			if (opp && opp.main) {
+				const od = resolveCardDef(defs, opp.main.cardId);
+				if (!hasCardAttributeResolved(od, opp.main, 'HUMAN')) return 1;
+			}
+			return 0;
+		}
+		if (sid === PREVIEW_CARD_IDS.HONE) {
+			let undead = 0;
+			for (let i = 0; i < rest.length; i++) {
+				const c = rest[i];
+				if (!c || isRestCardTuckedUnderOwnFighter(battleZf, c)) continue;
+				if (hasCardAttributeResolved(resolveCardDef(defs, c.cardId), c, 'UNDEAD')) undead++;
+			}
+			return undead;
+		}
+		if (sid === PREVIEW_CARD_IDS.SHINY) {
+			return countDistinctCarbuncleTypesInRestForPreview(defs, rest, ownZoneForShiny) * 2;
+		}
+		if (sid === PREVIEW_CARD_IDS.FROSTKRUL) {
+			return oppTurn && countAttributeInRest(rest, defs, 'CARBUNCLE') > 0 ? 3 : 0;
+		}
+		if (sid === PREVIEW_CARD_IDS.NEMURY) {
+			return oppTurn ? PREVIEW_CARD_IDS.NEMURY_OPP_BONUS : 0;
+		}
+		if (sid === PREVIEW_CARD_IDS.ARTHUR) {
+			return st.activeField && Number(st.activeField.cardId) === PREVIEW_CARD_IDS.FIELD_KAMUI ? 3 : 0;
+		}
+		if (sid === PREVIEW_CARD_IDS.STONIA) {
+			const stones = ownerIsHuman ? st.humanStones : st.cpuStones;
+			return ownTurn ? Number(stones || 0) : 0;
+		}
+		if (sid === PREVIEW_CARD_IDS.GARAKUTA_ARM) {
+			return oppTurn ? 1 : 0;
+		}
+		return 0;
+	}
+
+	function hasGarakutaLegZone(z) {
+		return z && z.main && Number(z.main.cardId) === PREVIEW_CARD_IDS.GARAKUTA_LEG;
+	}
+
+	function battleLineInheritsGarakutaFromRestDenzirion(zf, st, zoneOwnerIsHuman, defs) {
+		if (!zf || !zf.main || Number(zf.main.cardId) !== PREVIEW_CARD_IDS.DENZIRION || !st || !defs) return false;
+		const rest = zoneOwnerIsHuman ? st.humanRest || [] : st.cpuRest || [];
+		for (let i = 0; i < rest.length; i++) {
+			const rc = rest[i];
+			if (!rc || isRestCardTuckedUnderOwnFighter(zf, rc)) continue;
+			const rcd = resolveCardDef(defs, rc.cardId);
+			if (!isMachineFighterRestSourceForDenzironPreview(rcd)) continue;
+			if (Number(rc.cardId) === PREVIEW_CARD_IDS.DENZIRION) continue;
+			if (Number(rc.cardId) === PREVIEW_CARD_IDS.GARAKUTA_LEG) return true;
+		}
+		return false;
+	}
+
+	function battleLineHasGarakutaLegStylePassive(zf, st, zoneOwnerIsHuman, defs) {
+		return hasGarakutaLegZone(zf) || battleLineInheritsGarakutaFromRestDenzirion(zf, st, zoneOwnerIsHuman, defs);
+	}
+
+	/** CpuBattleEngine.opponentGarakutaSuppressesFighterPassives と同じ（先出しのガラクタ系がいると〈常時〉強さ加減なし） */
+	function opponentGarakutaSuppressesFighterPassivesPreview(ownerIsHuman, st, defs) {
+		if (!st || !defs) return false;
+		const me = ownerIsHuman ? st.humanBattle : st.cpuBattle;
+		const opp = ownerIsHuman ? st.cpuBattle : st.humanBattle;
+		if (!battleLineHasGarakutaLegStylePassive(opp, st, !ownerIsHuman, defs)) return false;
+		if (!battleLineHasGarakutaLegStylePassive(me, st, ownerIsHuman, defs)) return true;
+		const oSeq = opp.battleMainLineSeq != null ? Number(opp.battleMainLineSeq) : 0;
+		const mSeq = me.battleMainLineSeq != null ? Number(me.battleMainLineSeq) : 0;
+		if (oSeq <= 0 || mSeq <= 0) return true;
+		if (oSeq === mSeq) return true;
+		return oSeq < mSeq;
+	}
+
+	/** CpuBattleEngine: デンジリオン前列のレスト継承合算（ガラクタアームは枚数ぶん重複） */
+	function denzirionFusionPowerFromRest(st, defs, ownBattle, ownerIsHuman, restOverride) {
+		if (!st || !defs) return 0;
+		if (opponentGarakutaSuppressesFighterPassivesPreview(ownerIsHuman, st, defs)) return 0;
+		const rest = restOverride != null ? restOverride : ownerIsHuman ? st.humanRest || [] : st.cpuRest || [];
+		let add = 0;
+		for (let i = 0; i < rest.length; i++) {
+			const rc = rest[i];
+			if (!rc) continue;
+			if (isRestCardTuckedUnderOwnFighter(ownBattle, rc)) continue;
+			const rcd = resolveCardDef(defs, rc.cardId);
+			if (!isMachineFighterRestSourceForDenzironPreview(rcd)) continue;
+			if (Number(rc.cardId) === PREVIEW_CARD_IDS.DENZIRION) continue;
+			add += denzirionPassivePowerFromRestCardPreview(Number(rc.cardId), st, defs, ownerIsHuman, ownBattle);
+		}
+		return add;
+	}
+
 	function computeDeployBonus(def, levelUpRest, levelUpStones) {
 		if (!def) return 0;
 		return levelUpRest * 2 + levelUpStones * 2;
 	}
 
 	/**
-	 * ファイター配置の必要コスト（CpuBattleEngine.effectiveDeployCost と同順）
-	 * ・ネムリィ: 自分レストのカーバンクル枚数ぶん基本コストから減算（炭鉱夫無効時は割引なし）
-	 * ・メカニック残機・研究者アストリアの手札補正
+	 * ファイター・〈フィールド〉配置の必要コスト（CpuBattleEngine.effectiveDeployCost と同順）
+	 * ・〈フィールド〉: 武器庫の「コスト1」はマシン・ファイターのみ（〈フィールド〉は対象外）。手札補正・メカニック残機・ネムリィ割引を反映
+	 * ・ファイター: 武器庫・ネムリィ・メカニック残機・手札補正
 	 */
 	function effectiveFighterDeployCostFromState(def, st, handCard) {
-		if (!def || def.fieldCard) return Number(def.cost != null ? def.cost : 0);
-		let base = Number(def.cost != null ? def.cost : 0);
-		if (weaponDepotFieldActive(st) && weaponDepotMachineFighterForCost(def, handCard)) {
-			base = 1;
-		}
+		if (!def) return 0;
 		const mechanic = Number(st && st.humanNextMechanicStacks != null ? st.humanNextMechanicStacks : 0);
 		let handAdj = 0;
 		if (handCard && handCard.handDeployCostModifier != null) {
 			handAdj = Number(handCard.handDeployCostModifier);
 		}
-		if (handCard && (handCard.blankEffects === true || handCard.blankEffects === 'true')) {
+		const blank =
+			handCard && (handCard.blankEffects === true || handCard.blankEffects === 'true');
+		const printed = Number(def.cost != null ? def.cost : 0);
+
+		if (def.fieldCard) {
+			if (blank) {
+				return Math.max(0, printed + mechanic + handAdj);
+			}
+			let core = printed;
+			if (Number(def.id) === PREVIEW_CARD_IDS.NEMURY) {
+				const defs = st && st.defs ? st.defs : {};
+				const disc = countAttributeInRest(st && st.humanRest ? st.humanRest : [], defs, 'CARBUNCLE');
+				core = Math.max(0, printed - disc);
+			}
+			return Math.max(0, core + mechanic + handAdj);
+		}
+
+		let base = printed;
+		if (weaponDepotFieldActive(st) && weaponDepotMachineFighterForCost(def, handCard)) {
+			base = 1;
+		}
+		if (blank) {
 			return Math.max(0, base + mechanic + handAdj);
 		}
 		let core = base;
@@ -2568,6 +2820,10 @@
 
 		if (handCard && (handCard.blankEffects === true || handCard.blankEffects === 'true')) {
 			return Math.max(0, p);
+		}
+
+		if (id === PREVIEW_CARD_IDS.DENZIRION) {
+			p += denzirionFusionPowerFromRest(st, defs, st.humanBattle, true, null);
 		}
 
 		if (id === PREVIEW_CARD_IDS.ARCHER) {
@@ -2658,6 +2914,10 @@
 			return Math.max(0, p);
 		}
 
+		if (id === PREVIEW_CARD_IDS.DENZIRION) {
+			p += denzirionFusionPowerFromRest(st, defs, st.humanBattle, true, simRest);
+		}
+
 		if (id === PREVIEW_CARD_IDS.ARCHER) {
 			const opp = st.cpuBattle;
 			if (opp && opp.main) {
@@ -2742,9 +3002,9 @@
 		}
 	}
 
-	/** 手札・モーダル：実効コストを表示。カードに印字のコストより下げ＝緑、上げ＝赤 */
+	/** 手札・モーダル：実効コストを表示。カードに印字のコストより下げ＝緑、上げ＝赤（〈フィールド〉も手札補正等を反映） */
 	function applyCurrentCostDisplay(shellRoot, def, st, handCard) {
-		if (!shellRoot || !def || def.fieldCard) return;
+		if (!shellRoot || !def) return;
 		const costEl = shellRoot.querySelector('.card-face__cost');
 		if (!costEl) return;
 		const baseNum = Math.max(0, Math.floor(Number(def.cost != null ? def.cost : 0)));
@@ -2878,7 +3138,7 @@
 		const opponentZone = opts.opponentZone === true;
 		const box = el('div', 'zone');
 		if (!zone || !zone.main) {
-			box.appendChild(el('p', 'muted', 'なし'));
+			box.classList.add('zone--empty');
 			return box;
 		}
 		const d = cardDefForBattleFace(resolveCardDef(defs, zone.main.cardId), zone.main, defs);
@@ -3063,7 +3323,7 @@
 
 				function proceedAfterDiscardConfirm() {
 					const def = resolveCardDef(st.defs, sel.cardId);
-					const cost = def && !def.fieldCard ? effectiveFighterDeployCostFromState(def, st, sel) : def ? Number(def.cost || 0) : 0;
+					const cost = def ? effectiveFighterDeployCostFromState(def, st, sel) : 0;
 					if (def && def.fieldCard) {
 						if ((ui.levelUpRest | 0) !== 0 || (ui.levelUpStones | 0) !== 0) {
 							showBattleToast('フィールドはレベルアップできません', 'warn');
@@ -3303,6 +3563,24 @@
 	function showChoiceModal(st) {
 		const pc = st.pendingChoice;
 		if (!pc) return;
+		/*
+		 * 候補カードが 0 件の SELECT_* はモーダルを出さず効果解決へ進める（墓守神父など）。
+		 * サーバ側でも pending を付けないが、不整合時の保険。
+		 */
+		const choiceKind = String(pc.kind || '');
+		if (choiceKind.indexOf('SELECT_') === 0) {
+			const optIds = pc.optionInstanceIds || [];
+			if (!optIds.length) {
+				resolvePending()
+					.then(function (next) {
+						if (next) render(next);
+					})
+					.catch(function () {
+						rerenderWithFreshState();
+					});
+				return;
+			}
+		}
 		/*
 		 * viewerMayRespond / forHuman が JSON で欠落すると undefined になり、
 		 * 「選択してください」だけが出てモーダルが開かないことがある（忍者入れ替え〈配置〉確認など）。
@@ -3707,7 +3985,7 @@
 		}
 		stats.appendChild(statRow('種族', formatBattleCardAttr(def)));
 		let costDisplay = String(def.cost != null ? def.cost : '—');
-		if (stCost && battleCard && !def.fieldCard) {
+		if (stCost && battleCard) {
 			costDisplay = String(Math.max(0, Math.floor(Number(effectiveFighterDeployCostFromState(def, stCost, battleCard)))));
 		}
 		stats.appendChild(statRow('コスト', costDisplay));
@@ -3813,6 +4091,10 @@
 		} else {
 			st.defs = lastDefsForTooltip || {};
 		}
+		const battleTopActionsEl = document.getElementById('battle-top-actions');
+		if (battleTopActionsEl && battleTopActionsEl.parentNode) {
+			battleTopActionsEl.parentNode.removeChild(battleTopActionsEl);
+		}
 		app.innerHTML = '';
 		hideBattleCardTooltip();
 		hideBattleDeckTooltip();
@@ -3832,11 +4114,12 @@
 
 		const oppTop = el('section', 'battle-row battle-row--opp battle-band battle-band--opp');
 		{
-			const inner = el('div', 'battle-band__inner');
+			const inner = el('div', 'battle-band__inner battle-band__inner--opp');
+			const oppMain = el('div', 'battle-band__opp-main');
 
 			const cellDeck = el('div', 'battle-cell battle-cell--compact battle-cell--opp-deck');
 			cellDeck.appendChild(renderDeckStackVisual(st.cpuDeck.length, '相手デッキ'));
-			inner.appendChild(cellDeck);
+			oppMain.appendChild(cellDeck);
 
 			const cellHand = el('div', 'battle-cell battle-cell--opp-hand');
 			cellHand.setAttribute('aria-label', '相手の手札');
@@ -3848,14 +4131,23 @@
 			oppStonesInline.appendChild(el('span', 'battle-opp-hand-row__stones-value', String(st.cpuStones)));
 			oppHandRow.appendChild(oppStonesInline);
 			cellHand.appendChild(oppHandRow);
-			inner.appendChild(cellHand);
+			oppMain.appendChild(cellHand);
 
 			const cellRest = el('div', 'battle-cell battle-cell--compact battle-cell--opp-rest');
 			cellRest.appendChild(el('h3', '', 'レスト'));
 			cellRest.appendChild(
 				renderRestStackVisual(st.cpuRest, st.defs, 'レスト', { maxVisual: 4, stackOffsetPx: 2, battleState: st })
 			);
-			inner.appendChild(cellRest);
+			oppMain.appendChild(cellRest);
+
+			inner.appendChild(oppMain);
+
+			const cellOppActions = el('div', 'battle-cell battle-cell--compact battle-cell--opp-actions');
+			cellOppActions.setAttribute('aria-label', 'ログ・降参');
+			if (battleTopActionsEl) {
+				cellOppActions.appendChild(battleTopActionsEl);
+			}
+			inner.appendChild(cellOppActions);
 
 			oppTop.appendChild(inner);
 		}
@@ -3871,6 +4163,9 @@
 			// 〈フィールド〉は共有だが、常に自分側のバトル列に表示する（相手ターンで上段に出さない）
 			rowOpp.appendChild(renderZone(st.cpuBattle, st.defs, st.cpuBattlePower, { opponentZone: true, battleState: st }));
 			cellZoneOpp.appendChild(rowOpp);
+			if (!st.cpuBattle || !st.cpuBattle.main) {
+				cellZoneOpp.classList.add('battle-cell--zone-empty');
+			}
 			zonesStack.appendChild(cellZoneOpp);
 
 			const cellZoneYou = el('div', 'battle-cell battle-cell--zone battle-cell--zone-human');
@@ -3883,6 +4178,9 @@
 			}
 			rowYou.appendChild(renderZone(st.humanBattle, st.defs, st.humanBattlePower, { battleState: st }));
 			cellZoneYou.appendChild(rowYou);
+			if ((!st.humanBattle || !st.humanBattle.main) && !st.activeField) {
+				cellZoneYou.classList.add('battle-cell--zone-empty');
+			}
 			zonesStack.appendChild(cellZoneYou);
 
 			zonesWrap.appendChild(zonesStack);
@@ -4145,6 +4443,42 @@
 
 		syncTurnChangeNotice(st);
 		syncUnwinnableDeployNotice(st);
+		scheduleBattleZoom();
+	}
+
+	/** ビューポート内に収まるよう #battle-app の --battle-zoom を更新（幅・高さの両方を考慮） */
+	function applyBattleZoom() {
+		const appEl = document.getElementById('battle-app');
+		if (!appEl) return;
+		const baseW = 980; /* CSS #battle-app min-width と揃える */
+		const body = document.body;
+		const bpad = body ? window.getComputedStyle(body) : null;
+		const padTop = bpad ? parseFloat(bpad.paddingTop) || 0 : 0;
+		const padBottom = bpad ? parseFloat(bpad.paddingBottom) || 0 : 0;
+
+		appEl.style.setProperty('--battle-zoom', '1');
+		// eslint-disable-next-line no-unused-expressions
+		appEl.offsetHeight;
+
+		const naturalW = Math.max(baseW, appEl.scrollWidth);
+		const naturalH = appEl.scrollHeight;
+
+		const availW = Math.max(200, window.innerWidth - 8);
+		const availH = Math.max(120, window.innerHeight - padTop - padBottom - 4);
+
+		let z = Math.min(1, availW / naturalW, availH / naturalH);
+		z = Math.max(0.42, Math.min(1, z));
+		appEl.style.setProperty('--battle-zoom', String(z));
+	}
+
+	function scheduleBattleZoom() {
+		if (typeof window.requestAnimationFrame === 'function') {
+			window.requestAnimationFrame(function () {
+				window.requestAnimationFrame(applyBattleZoom);
+			});
+		} else {
+			window.setTimeout(applyBattleZoom, 0);
+		}
 	}
 
 	function installOrUpdateTurnTimer(st) {
@@ -4504,19 +4838,10 @@
 		wireBattleLogModal();
 		installSurrenderIntercept();
 		try {
-			function applyBattleZoom() {
-				const appEl = document.getElementById('battle-app');
-				if (!appEl) return;
-				const base = 980; // CSS の #battle-app 幅と揃える
-				// 画面に収まるよう縮小のみ（拡大はしない）
-				const z = Math.max(0.72, Math.min(1, window.innerWidth / (base + 24)));
-				appEl.style.setProperty('--battle-zoom', String(z));
-			}
-
 			document.addEventListener('scroll', hideBattleCardTooltip, true);
 			document.addEventListener('scroll', hideBattleDeckTooltip, true);
-			window.addEventListener('resize', applyBattleZoom);
-			applyBattleZoom();
+			window.addEventListener('resize', scheduleBattleZoom);
+			scheduleBattleZoom();
 			ensureBattleTurnPopupHost();
 			const st = await fetchState();
 			/* 先攻/後攻・名前のイントロが終わるまで描画しない（描画内で CPU_THINKING タイマーが走るのを防ぐ） */
@@ -4524,7 +4849,14 @@
 			render(st);
 			attachHandlers();
 		} catch (e) {
+			const battleTopActionsEl = document.getElementById('battle-top-actions');
+			if (battleTopActionsEl && battleTopActionsEl.parentNode) {
+				battleTopActionsEl.parentNode.removeChild(battleTopActionsEl);
+			}
 			app.innerHTML = '';
+			if (battleTopActionsEl && app.parentNode) {
+				app.parentNode.insertBefore(battleTopActionsEl, app);
+			}
 			const p = el('p', 'panel error', '読み込みに失敗しました。再読み込みしてください。');
 			app.appendChild(p);
 			// eslint-disable-next-line no-console

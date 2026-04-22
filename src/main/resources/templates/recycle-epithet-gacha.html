@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>二つ名ガチャ — ナインユニバース</title>
+	<link rel="stylesheet" th:href="@{/css/app.css(v=${assetVersion})}"/>
+</head>
+<body class="page page--recycle page--recycle-epithet-gacha">
+<header class="topbar">
+	<h1 class="game-title">二つ名ガチャ</h1>
+	<a class="btn btn--ghost" th:href="@{/recycle}">戻る</a>
+</header>
+
+<p class="error" th:if="${recycleError != null}" th:text="${recycleError}"></p>
+<p class="ok" th:if="${recycleSuccess != null}" th:text="${recycleSuccess}"></p>
+
+<div class="container">
+	<div class="recycle-crystal-banner muted">
+		<span>所持クリスタル: <strong th:text="${recycleCrystal}">0</strong></span>
+	</div>
+
+	<section class="panel recycle-epithet-gacha-panel">
+		<p class="muted" style="margin-top:0">1回<strong th:text="${costEpithetGacha}">500</strong>クリスタルで、〈上の句〉と〈下の句〉をそれぞれランダムで1つずつ入手します。</p>
+		<p class="error" th:if="${recycleCrystal != null && recycleCrystal lt costEpithetGacha}"
+		   th:text="|クリスタルが足りません（${costEpithetGacha}必要）。|">クリスタルが足りません（500必要）。</p>
+		<p class="error" th:if="${canRollEpithetGacha == false}">
+			未入手の〈上の句〉と〈下の句〉の両方が残っていないため、いまは引けません。
+		</p>
+		<form id="recycle-epithet-gacha-form" th:action="@{/recycle/epithet-gacha/roll}" method="post"
+		      class="recycle-epithet-gacha-form" th:attr="data-cost=${costEpithetGacha}">
+			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+			<button type="submit" class="btn btn--primary"
+			        th:disabled="${recycleCrystal == null || recycleCrystal lt costEpithetGacha || canRollEpithetGacha == false}">
+				<span th:text="${costEpithetGacha}">500</span>クリスタルで引く
+			</button>
+		</form>
+	</section>
+</div>
+
+<div id="epithet-gacha-result-modal" class="epithet-gacha-result-layer" hidden role="dialog" aria-modal="true"
+     aria-labelledby="epithet-gacha-result-title" aria-hidden="true">
+	<div class="epithet-gacha-result-layer__backdrop" data-epithet-gacha-modal-close tabindex="-1" aria-hidden="true"></div>
+	<div class="epithet-gacha-result-modal pack-detail-modal__panel">
+		<h2 id="epithet-gacha-result-title" class="pack-detail-modal__heading">二つ名を獲得</h2>
+		<p class="epithet-gacha-result-modal__lead muted">バトルや設定で表示できる二つ名が追加されました。</p>
+		<div class="epithet-gacha-result-modal__plate" aria-live="polite">
+			<span class="epithet-gacha-result-modal__chunk epithet-gacha-result-modal__chunk--upper" id="epithet-gacha-result-upper">—</span>
+			<span class="epithet-gacha-result-modal__mid" aria-hidden="true">/</span>
+			<span class="epithet-gacha-result-modal__chunk epithet-gacha-result-modal__chunk--lower" id="epithet-gacha-result-lower">—</span>
+		</div>
+		<div class="epithet-gacha-result-modal__actions">
+			<button type="button" class="btn btn--primary" data-epithet-gacha-modal-close>OK</button>
+		</div>
+	</div>
+</div>
+
+<script th:src="@{/js/recycle-epithet-gacha.js(v=${assetVersion})}"></script>
+<th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
+</body>
+</html>

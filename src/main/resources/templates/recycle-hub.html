@@ -6,21 +6,24 @@
 	<title>カードリサイクル — ナインユニバース</title>
 	<link rel="stylesheet" th:href="@{/css/app.css(v=${assetVersion})}"/>
 </head>
-<body class="page page--recycle page--recycle-hub">
+<body class="page page--theme-arcane page--recycle page--recycle-hub page--single-screen-hub">
 <header class="topbar">
-	<h1 class="game-title">カードリサイクル</h1>
-	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
+	<div th:replace="~{fragments/game-title-brand :: brand}"></div>
+	<div class="topbar__meta">
+		<span class="topbar__hub-meta muted">クリスタル <strong th:text="${recycleCrystal}">0</strong></span>
+		<span class="topbar__hub-meta muted">ジェム <strong th:text="${gems}">0</strong></span>
+		<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
+	</div>
 </header>
+
+<div class="hub-screen-title">
+	<h2 class="hub-screen-title__h">カードリサイクル</h2>
+</div>
 
 <p class="error" th:if="${recycleError != null}" th:text="${recycleError}"></p>
 <p class="ok" th:if="${recycleSuccess != null}" th:text="${recycleSuccess}"></p>
 
-<div class="container">
-	<div class="recycle-crystal-banner muted">
-		<span>所持クリスタル: <strong th:text="${recycleCrystal}">0</strong></span>
-		<span>所持ジェム: <strong th:text="${gems}">0</strong></span>
-	</div>
-
+<div class="container hub-main">
 	<section class="panel recycle-hub-section">
 		<h2 class="recycle-hub-section__title">カードをクリスタルに変換</h2>
 		<p class="muted" style="margin-top:0">不要なカードをクリスタルに変換します。</p>
@@ -58,6 +61,15 @@
 					<a class="btn btn--primary recycle-hub-offer__btn" th:href="@{/recycle/open/epic-plus}">開封へ</a>
 				</div>
 			</article>
+			<article class="recycle-hub-offer recycle-hub-offer--epithet-gacha">
+				<div class="recycle-hub-offer__body">
+					<h3 class="recycle-hub-offer__title">二つ名ガチャ</h3>
+					<p class="recycle-hub-offer__cost"><span class="recycle-hub-offer__cost-num" th:text="${costEpithetGacha}">500</span><span class="recycle-hub-offer__cost-unit">クリスタル</span></p>
+				</div>
+				<div class="recycle-hub-offer__action">
+					<a class="btn btn--primary recycle-hub-offer__btn" th:href="@{/recycle/epithet-gacha}">引く</a>
+				</div>
+			</article>
 		</div>
 	</section>
 
@@ -70,5 +82,6 @@
 		</form>
 	</section>
 </div>
+<th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>

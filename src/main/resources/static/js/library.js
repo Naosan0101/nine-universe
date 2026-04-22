@@ -553,15 +553,33 @@
 		});
 	}
 
-	const grid = document.getElementById('library-all-grid');
-	const searchInput = document.getElementById('library-search');
-	const filterAttr = document.getElementById('library-filter-attr');
-	const filterCost = document.getElementById('library-filter-cost');
-	const filterPower = document.getElementById('library-filter-power');
-	const filterRarity = document.getElementById('library-filter-rarity');
-	const filterPack = document.getElementById('library-filter-pack');
-	const filterCardKind = document.getElementById('library-filter-card-kind');
-	const emptyMsg = document.getElementById('library-empty-msg');
+	const grid =
+		document.getElementById('library-all-grid') ||
+		document.getElementById('recycle-legendary-grid');
+	const searchInput =
+		document.getElementById('library-search') ||
+		document.getElementById('recycle-legendary-search');
+	const filterAttr =
+		document.getElementById('library-filter-attr') ||
+		document.getElementById('recycle-legendary-filter-attr');
+	const filterCost =
+		document.getElementById('library-filter-cost') ||
+		document.getElementById('recycle-legendary-filter-cost');
+	const filterPower =
+		document.getElementById('library-filter-power') ||
+		document.getElementById('recycle-legendary-filter-power');
+	const filterRarity =
+		document.getElementById('library-filter-rarity') ||
+		document.getElementById('recycle-legendary-filter-rarity');
+	const filterPack =
+		document.getElementById('library-filter-pack') ||
+		document.getElementById('recycle-legendary-filter-pack');
+	const filterCardKind =
+		document.getElementById('library-filter-card-kind') ||
+		document.getElementById('recycle-legendary-filter-card-kind');
+	const emptyMsg =
+		document.getElementById('library-empty-msg') ||
+		document.getElementById('recycle-legendary-empty');
 
 	if (grid && searchInput && filterAttr && filterCost && filterPower && filterRarity && filterPack && filterCardKind) {
 		const ATTR_ORDER = {

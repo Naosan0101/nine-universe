@@ -389,6 +389,18 @@ public final class GameConstants {
 			ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_START.plusDays(30 - 1);
 
 	/**
+	 * お知らせ配布（カードリサイクル・二つ名ガチャ・UI見直し・カード調整・アーサーアート更新・各種不具合修正のまとめ）
+	 */
+	public static final String ANNOUNCEMENT_PLATFORM_APR_2026_KEY = "platform_apr_2026_04_22";
+
+	public static final int ANNOUNCEMENT_PLATFORM_APR_2026_GEMS = 20;
+
+	public static final LocalDate ANNOUNCEMENT_PLATFORM_APR_2026_START = LocalDate.of(2026, 4, 22);
+
+	public static final LocalDate ANNOUNCEMENT_PLATFORM_APR_2026_LAST_DAY =
+			ANNOUNCEMENT_PLATFORM_APR_2026_START.plusDays(30 - 1);
+
+	/**
 	 * ログイン時ポップアップ「もう表示しない」用（ジェム受け取りとは別行）。
 	 */
 	public static final String ANNOUNCEMENT_MAJOR_UPDATE_POPUP_SUPPRESS_KEY = "major_update_popup_suppress_2026_04";
@@ -439,7 +451,7 @@ public final class GameConstants {
 	/**
 	 * お知らせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
 	 */
-	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-21-2";
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-22-1";
 
 	/** リサイクル：レア度ごとに得るクリスタル（1枚あたり） */
 	public static final int RECYCLE_CRYSTAL_PER_CARD_C = 20;
@@ -453,6 +465,9 @@ public final class GameConstants {
 	public static final int RECYCLE_SHOP_LEGENDARY_PICK_CRYSTAL = 10000;
 	public static final int RECYCLE_SHOP_LEGENDARY_PACK_CRYSTAL = 5000;
 	public static final int RECYCLE_SHOP_EPIC_PLUS_PACK_CRYSTAL = 2000;
+
+	/** 二つ名ガチャ1回 */
+	public static final int RECYCLE_SHOP_EPITHET_GACHA_CRYSTAL = 500;
 
 	private GameConstants() {
 	}

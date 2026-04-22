@@ -5,6 +5,7 @@ import com.example.nineuniverse.service.DeckService;
 import com.example.nineuniverse.domain.AppUser;
 import com.example.nineuniverse.domain.UserDisplayNames;
 import com.example.nineuniverse.repository.AppUserMapper;
+import com.example.nineuniverse.service.NicknameEpithetService;
 import com.example.nineuniverse.service.PvpBattleService;
 import com.example.nineuniverse.web.dto.CpuBattleChoiceRequest;
 import com.example.nineuniverse.web.dto.CpuBattleCommitRequest;
@@ -31,6 +32,7 @@ public class PvpController {
 	private final PvpBattleService pvpBattleService;
 	private final DeckService deckService;
 	private final AppUserMapper appUserMapper;
+	private final NicknameEpithetService nicknameEpithetService;
 
 	@GetMapping
 	public String menu(Model model) {
@@ -146,6 +148,14 @@ public class PvpController {
 		}
 		model.addAttribute("battleIntroMyName", iAmHost ? hostName : guestName);
 		model.addAttribute("battleIntroOppName", iAmHost ? guestName : hostName);
+		long myUid = iAmHost ? m.getHostUserId() : m.getGuestUserId();
+		Long oppUid = iAmHost ? m.getGuestUserId() : m.getHostUserId();
+		var myEp = nicknameEpithetService.resolveDisplay(myUid);
+		var oppEp = oppUid != null ? nicknameEpithetService.resolveDisplay(oppUid) : NicknameEpithetService.EpithetDisplay.empty();
+		model.addAttribute("battleIntroMyEpithetUpper", myEp.upperText());
+		model.addAttribute("battleIntroMyEpithetLower", myEp.lowerText());
+		model.addAttribute("battleIntroOppEpithetUpper", oppEp.upperText());
+		model.addAttribute("battleIntroOppEpithetLower", oppEp.lowerText());
 		boolean iAmFirst = false;
 		if (st != null) {
 			boolean humanFirst = st.isHumanGoesFirst();

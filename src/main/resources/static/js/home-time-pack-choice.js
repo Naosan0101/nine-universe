@@ -1,8 +1,6 @@
 (function () {
 	var choiceModal = document.getElementById('time-pack-choice-modal');
 	var openBtn = document.getElementById('time-pack-open-btn');
-	var slot2 = document.getElementById('time-pack-slot2-wrap');
-	var label1 = document.getElementById('time-pack-label-slot1');
 
 	function anyHomeDetailOpen() {
 		var a = document.getElementById('home-pack-detail-standard');
@@ -85,17 +83,4 @@
 			closeChoiceModal();
 		}
 	});
-
-	window.nuTimePackChoiceSyncSlot2 = function (packs) {
-		var n = typeof packs === 'number' ? packs : 0;
-		if (slot2) {
-			slot2.hidden = n < 2;
-		}
-		if (label1) {
-			label1.textContent = n > 1 ? '1パック目' : '開封するパック';
-		}
-		document.querySelectorAll('input[name="pack1"]').forEach(function (r) {
-			r.disabled = n < 2;
-		});
-	};
 })();

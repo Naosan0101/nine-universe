@@ -9,23 +9,24 @@
 	<meta name="card_plate_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|"/>
 	<meta name="card_data_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardDataUrl}|"/>
 </head>
-<body class="page page--recycle page--recycle-cards page--deck">
+<body class="page page--theme-arcane page--recycle page--recycle-cards page--deck page--single-screen-hub">
 <header class="topbar">
-	<h1 class="game-title">カードをクリスタルに変換</h1>
-	<a class="btn btn--ghost" th:href="@{/recycle}">戻る</a>
+	<div th:replace="~{fragments/game-title-brand :: brand}"></div>
+	<div class="topbar__meta">
+		<span class="topbar__hub-meta muted">クリスタル <strong th:text="${recycleCrystal}">0</strong></span>
+		<span class="topbar__hub-meta muted">ジェム <strong th:text="${gems}">0</strong></span>
+		<a class="btn btn--ghost" th:href="@{/recycle}">リサイクルへ戻る</a>
+	</div>
 </header>
+
+<div class="hub-screen-title">
+	<h2 class="hub-screen-title__h">カードをクリスタルに変換</h2>
+</div>
 
 <p class="error" th:if="${recycleError != null}" th:text="${recycleError}"></p>
 <p class="ok" th:if="${recycleSuccess != null}" th:text="${recycleSuccess}"></p>
 
-<div class="container">
-	<div class="recycle-crystal-banner muted">
-		<span>所持クリスタル: <strong th:text="${recycleCrystal}">0</strong></span>
-		<span>所持ジェム: <strong th:text="${gems}">0</strong></span>
-	</div>
-</div>
-
-	<form id="recycle-main-form" th:action="@{/recycle/cards}" method="post" class="deck-form deck-form--recycle-main">
+	<form id="recycle-main-form" th:action="@{/recycle/cards}" method="post" class="deck-form deck-form--recycle-main hub-main">
 		<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 		<div id="recycle-form-fields"></div>
 
@@ -145,6 +146,19 @@
 	</div>
 </div>
 
+<div id="recycle-complete-modal" class="library-detail-modal recycle-surplus-modal" hidden>
+	<div class="library-detail-modal__panel recycle-surplus-modal__panel" role="dialog" aria-modal="true" aria-labelledby="recycle-complete-modal-title">
+		<button type="button" class="library-detail-modal__close" data-recycle-complete-close aria-label="閉じる">×</button>
+		<h2 id="recycle-complete-modal-title" class="recycle-surplus-modal__title">クリスタルに変換</h2>
+		<p class="recycle-surplus-modal__body">選択したカードをクリスタルに変換します。よろしいですか？</p>
+		<p class="muted recycle-surplus-modal__crystal">獲得クリスタル：<strong id="recycle-complete-modal-crystal">0</strong></p>
+		<div class="recycle-surplus-modal__actions">
+			<button type="button" class="btn btn--ghost" data-recycle-complete-no>いいえ</button>
+			<button type="button" class="btn btn--primary" data-recycle-complete-yes>はい</button>
+		</div>
+	</div>
+</div>
+
 <div id="recycle-lib-seed" style="display:none">
 	<div th:each="line : ${lines}" th:if="${line.owned > 0}" class="seed"
 	     th:data-id="${line.card.id}"
@@ -229,5 +243,6 @@
 <script th:src="@{/js/card-spark.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/card-face-layer.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/recycle.js(v=${assetVersion})}"></script>
+<th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>

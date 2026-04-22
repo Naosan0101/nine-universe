@@ -8,6 +8,31 @@
 	const afterOpenUrl =
 		(document.body && document.body.getAttribute('data-pack-opening-after-url')) || '/pack/result';
 
+	/** hidden のまま計測されると幅0でカード名フィットが失敗するため、表出後に再計測する */
+	function refitCardNameAfterReveal(faceRootEl) {
+		if (!faceRootEl) return;
+		var cf = faceRootEl.querySelector('.card-face.card-face--layered');
+		if (!cf) return;
+		var nameEl = cf.querySelector('.card-face__name');
+		if (nameEl && typeof window.resetCardFaceNameFitInline === 'function') {
+			window.resetCardFaceNameFitInline(nameEl);
+		}
+		if (typeof window.fitCardFaceNameToOneLine !== 'function') return;
+		function runFit() {
+			try {
+				window.fitCardFaceNameToOneLine(cf);
+			} catch (e) {
+				// noop
+			}
+		}
+		requestAnimationFrame(function () {
+			requestAnimationFrame(function () {
+				runFit();
+				setTimeout(runFit, 80);
+			});
+		});
+	}
+
 	const revealAllBtn = document.getElementById('pack-opening-reveal-all');
 
 	let active = 0;
@@ -49,6 +74,7 @@
 
 		if (back) back.classList.add('is-flipped');
 		if (face) face.hidden = false;
+		refitCardNameAfterReveal(face);
 		if (arrow) arrow.hidden = true;
 		if (spark && typeof fillPackRevealBurstSpark === 'function') {
 			fillPackRevealBurstSpark(spark, rarity);

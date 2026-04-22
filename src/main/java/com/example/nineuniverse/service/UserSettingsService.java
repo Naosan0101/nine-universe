@@ -13,12 +13,29 @@ public class UserSettingsService {
 	public static final int DISPLAY_NAME_MAX_LEN = 64;
 
 	private final AppUserMapper appUserMapper;
+	private final NicknameEpithetService nicknameEpithetService;
 
 	@Transactional
 	public void updateProfile(long userId, String displayNameRaw, String cpuThinkSpeedRaw) {
 		String speed = normalizeCpuThinkSpeed(cpuThinkSpeedRaw);
 		String name = normalizeDisplayName(displayNameRaw);
 		int n = appUserMapper.updateProfileSettings(userId, name, speed);
+		if (n == 0) {
+			throw new IllegalStateException("ユーザーが見つかりません");
+		}
+	}
+
+	@Transactional
+	public void updateProfileAndEpithets(
+			long userId,
+			String displayNameRaw,
+			String cpuThinkSpeedRaw,
+			long epithetUpperId,
+			long epithetLowerId) {
+		String speed = normalizeCpuThinkSpeed(cpuThinkSpeedRaw);
+		String name = normalizeDisplayName(displayNameRaw);
+		nicknameEpithetService.validateEpithetSelection(userId, epithetUpperId, epithetLowerId);
+		int n = appUserMapper.updateProfileCpuAndEpithets(userId, name, speed, epithetUpperId, epithetLowerId);
 		if (n == 0) {
 			throw new IllegalStateException("ユーザーが見つかりません");
 		}
@@ -53,5 +70,7 @@ public class UserSettingsService {
 		}
 		sessionUser.setDisplayName(fresh.getDisplayName());
 		sessionUser.setCpuThinkSpeed(fresh.getCpuThinkSpeed());
+		sessionUser.setSelectedEpithetUpperId(fresh.getSelectedEpithetUpperId());
+		sessionUser.setSelectedEpithetLowerId(fresh.getSelectedEpithetLowerId());
 	}
 }

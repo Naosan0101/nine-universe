@@ -8,6 +8,8 @@
 	<meta name="nine_universe_context_path" th:content="${contextPath != null ? contextPath : ''}"/>
 	<meta name="card_plate_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|"/>
 	<meta name="card_data_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardDataUrl}|"/>
+	<meta name="_csrf" th:content="${_csrf.token}"/>
+	<meta name="_csrf_header" th:content="${_csrf.headerName}"/>
 </head>
 <body class="page page--library page--recycle-legendary">
 <header class="topbar">
@@ -19,7 +21,7 @@
 	<section class="panel">
 		<div class="recycle-legendary-toolbar">
 			<div class="recycle-legendary-toolbar__row">
-				<p class="muted recycle-legendary-toolbar__crystal">所持クリスタル: <strong th:text="${recycleCrystal}">0</strong>
+				<p class="muted recycle-legendary-toolbar__crystal">所持クリスタル: <strong id="recycle-legendary-crystal-val" th:text="${recycleCrystal}">0</strong>
 					（交換に <span th:text="${costLegendaryPick}">10000</span>クリスタル必要）</p>
 				<form th:action="@{/recycle/legendary-pick/confirm}" method="post" id="legendary-pick-trade-form" class="recycle-legendary-trade-form">
 					<input type="hidden" name="cardId" id="legendary-pick-card-id" value=""/>
@@ -27,16 +29,80 @@
 					<button type="submit" class="btn btn--primary" id="legendary-pick-confirm-btn" disabled>決定</button>
 				</form>
 			</div>
-			<label class="lib-page-field recycle-legendary-toolbar__search">名前で絞り込み
-				<input type="search" id="recycle-legendary-search" class="lib-page-input" autocomplete="off" placeholder="カード名の一部"/>
-			</label>
+			<p id="recycle-legendary-ajax-msg" class="muted" hidden role="status" aria-live="polite"></p>
+			<div class="lib-page-toolbar">
+				<div class="lib-page-toolbar__controls">
+					<label class="lib-page-field">検索
+						<input type="search" id="recycle-legendary-search" class="lib-page-input" autocomplete="off" placeholder="カード名・効果の一部"/>
+					</label>
+					<label class="lib-page-field">種族
+						<select id="recycle-legendary-filter-attr" class="lib-page-select">
+							<option value="" selected>すべて</option>
+							<option value="HUMAN">人間</option>
+							<option value="ELF">エルフ</option>
+							<option value="UNDEAD">アンデッド</option>
+							<option value="DRAGON">ドラゴン</option>
+							<option value="MACHINE">マシン</option>
+							<option value="CARBUNCLE">カーバンクル</option>
+						</select>
+					</label>
+					<label class="lib-page-field">種類
+						<select id="recycle-legendary-filter-card-kind" class="lib-page-select">
+							<option value="" selected>すべて</option>
+							<option value="fighter">ファイター</option>
+							<option value="field">フィールド</option>
+						</select>
+					</label>
+					<label class="lib-page-field">パック
+						<select id="recycle-legendary-filter-pack" class="lib-page-select">
+							<option value="" selected>すべて</option>
+							<option value="STANDARD_1">スタンダードパック1（WH/ET）</option>
+							<option value="STANDARD_2">スタンダードパック2（JU/IF）</option>
+							<option value="WH">風吹く丘パック（WH）</option>
+							<option value="ET">邪悪なる脅威パック（ET）</option>
+							<option value="JU">宝石の秘境パック（JU）</option>
+							<option value="IF">鉄面の艦隊パック（IF）</option>
+						</select>
+					</label>
+					<label class="lib-page-field">コスト
+						<select id="recycle-legendary-filter-cost" class="lib-page-select">
+							<option value="" selected>すべて</option>
+							<option value="0">0</option>
+							<option value="1">1</option>
+							<option value="2">2</option>
+							<option value="3">3</option>
+						</select>
+					</label>
+					<label class="lib-page-field">強さ
+						<select id="recycle-legendary-filter-power" class="lib-page-select">
+							<option value="" selected>すべて</option>
+							<option value="0">0</option>
+							<option value="1">1</option>
+							<option value="2">2</option>
+							<option value="3">3</option>
+							<option value="4">4</option>
+							<option value="5">5</option>
+							<option value="6">6</option>
+						</select>
+					</label>
+					<label class="lib-page-field">★
+						<select id="recycle-legendary-filter-rarity" class="lib-page-select">
+							<option value="" selected>すべて</option>
+							<option value="Reg">レジェンダリー</option>
+							<option value="Ep">エピック</option>
+							<option value="R">レア</option>
+							<option value="C">コモン</option>
+						</select>
+					</label>
+				</div>
+			</div>
 		</div>
+		<p id="recycle-legendary-empty" class="muted" hidden>一致するカードがありません。</p>
 		<div id="recycle-legendary-grid" class="library-grid">
 			<th:block th:each="c : ${legendaryCards}">
 				<div th:replace="~{fragments/recycle-legendary-card :: cell(c=${c}, cp=${contextPath})}"></div>
 			</th:block>
 		</div>
-		<p id="recycle-legendary-empty" class="muted" hidden>一致するカードがありません。</p>
 	</section>
 </div>
 
@@ -100,5 +166,6 @@
 <script th:src="@{/js/card-face-layer.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/library.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/recycle-legendary.js(v=${assetVersion})}"></script>
+<th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>

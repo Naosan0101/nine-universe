@@ -30,7 +30,13 @@
 
 <p class="muted">所持ジェム: <strong th:text="${gems}">0</strong></p>
 
-<section class="panel">
+<section class="panel" th:if="${packResultEpithets != null && !packResultEpithets.isEmpty()}">
+	<h2>二つ名</h2>
+	<ul class="pack-result__epithet-list muted">
+		<li th:each="e : ${packResultEpithets}">〈<span th:text="${e.upperGained()}">—</span>〉〈<span th:text="${e.lowerGained()}">—</span>〉</li>
+	</ul>
+</section>
+<section class="panel" th:if="${cards != null && !cards.isEmpty()}">
 	<h2>結果</h2>
 	<div class="library-grid">
 		<th:block th:each="c : ${cards}">
@@ -99,7 +105,7 @@
 <script th:src="@{/js/card-spark.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/card-face-layer.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/library.js(v=${assetVersion})}"></script>
-<script th:replace="~{fragments/tab-fullscreen :: script}"></script>
+<th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>
 

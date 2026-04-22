@@ -29,7 +29,17 @@ public class AppUser {
 	private Instant timePackCycleStart;
 
 	/**
+	 * 時間ゲージが MAX のとき先に1パックだけ開封した場合に、もう1パック分をここに預ける。
+	 */
+	private Integer timePackBonusBank;
+
+	/**
 	 * 新規登録プレゼントの「スタンダードパック1」未開封数（0 なら表示・開封不可）。
 	 */
 	private Integer starterGiftStandard1Remaining;
+
+	/** 表示用二つ名〈上の句〉（{@link #selectedEpithetUpperId} の参照先テキストは別途JOIN） */
+	private Long selectedEpithetUpperId;
+	/** 表示用二つ名〈下の句〉 */
+	private Long selectedEpithetLowerId;
 }

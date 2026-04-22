@@ -1,0 +1,39 @@
+<th:block xmlns:th="http://www.thymeleaf.org" th:fragment="tail">
+	<th:block th:if="${webDesktopMigrationNoticeEnabled}">
+		<aside id="web-desktop-migration-notice"
+		       class="web-desktop-migration-notice"
+		       hidden
+		       role="dialog"
+		       aria-modal="true"
+		       aria-labelledby="web-desktop-migration-notice-title">
+			<div class="web-desktop-migration-notice__inner" role="document">
+				<h2 id="web-desktop-migration-notice-title" class="web-desktop-migration-notice__title">ユーザーのみなさまへ</h2>
+				<div class="web-desktop-migration-notice__body">
+					<p class="announcement-modal__card-text">いつも『ナインユニバース』を遊んでいただき、誠にありがとうございます。</p>
+					<p class="announcement-modal__card-text">これまでは、みなさんにWebでURLを入力していただいていましたが、もっと気軽に遊んでいただけるように、『ナインユニバース』をアプリ化することにしました。</p>
+					<p class="announcement-modal__card-text">・これより、Web版ナインユニバースはサービスを終了し、アプリ版に移行します。</p>
+					<p class="announcement-modal__card-text">・これより先は、アプリ版を基準にアップデートをしていきます。</p>
+					<p class="announcement-modal__card-text">以下のダウンロードリンクからインストーラーを入れて、実行していただければ、デスクトップに『ナインユニバース』が配置され、より遊びやすくなります。</p>
+					<p class="web-desktop-migration-notice__download">
+						<a class="btn btn--primary web-desktop-migration-notice__download-btn"
+						   th:href="${webDesktopMigrationInstallerHref}"
+						   download>ダウンロードはこちらから</a>
+					</p>
+					<p class="announcement-modal__card-text">アップデートでより遊びやすくなった『ナインユニバース』をお楽しみください。引き続き、『ナインユニバース』をよろしくお願いいたします。</p>
+					<p class="announcement-modal__card-text operator-message__gap muted">ナインユニバース 運営</p>
+				</div>
+			</div>
+		</aside>
+		<script>
+			(function () {
+				var el = document.getElementById('web-desktop-migration-notice');
+				if (!el) return;
+				var isApp = typeof window.nuElectron !== 'undefined' && window.nuElectron;
+				if (isApp) return;
+				el.removeAttribute('hidden');
+				document.documentElement.classList.add('nu-has-web-migration-notice');
+			})();
+		</script>
+	</th:block>
+	<script th:replace="~{fragments/tab-fullscreen :: script}"></script>
+</th:block>

@@ -18,29 +18,50 @@
 
 <p class="muted">所持ジェム: <strong th:text="${gems}">0</strong></p>
 
-<section class="pack-opening-stage" th:if="${pulledFaces != null}">
+<section class="pack-opening-stage" th:if="${packOpeningViewSlots != null}">
 	<div id="pack-opening-row" class="pack-opening-row">
-		<button type="button"
-		        class="pack-opening-card"
-		        th:each="c, iter : ${pulledFaces}"
-		        th:attr="data-pack-index=${iter.index}, data-rarity=${c.rarity}">
-			<div class="pack-opening-card__inner">
-				<img class="pack-opening-card__back" th:src="|${contextPath != null ? contextPath : ''}${cardBackUrl}?v=${cardBackCacheKey}|"
-				     alt="カードうら"/>
-				<div class="pack-opening-card__face" hidden>
-					<div th:replace="~{fragments/card-face :: layers(c=${c}, cp=${contextPath})}"></div>
+		<th:block th:each="slot, iter : ${packOpeningViewSlots}">
+			<button type="button"
+			        th:if="${!slot.epithet()}"
+			        class="pack-opening-card"
+			        th:attr="data-pack-index=${slot.index()}, data-rarity=${slot.card().rarity}">
+				<div class="pack-opening-card__inner">
+					<img class="pack-opening-card__back" th:src="|${contextPath != null ? contextPath : ''}${cardBackUrl}?v=${cardBackCacheKey}|"
+					     alt="カードうら"/>
+					<div class="pack-opening-card__face" hidden>
+						<div th:replace="~{fragments/card-face :: layers(c=${slot.card()}, cp=${contextPath})}"></div>
+					</div>
+					<div class="pack-opening-card__spark" hidden aria-hidden="true"></div>
+					<div class="pack-opening-card__arrow" th:if="${iter.first}" aria-hidden="true">▼</div>
 				</div>
-				<div class="pack-opening-card__spark" hidden aria-hidden="true"></div>
-				<div class="pack-opening-card__arrow" th:if="${iter.first}" aria-hidden="true">▼</div>
-			</div>
-		</button>
+			</button>
+			<button type="button"
+			        th:if="${slot.epithet()}"
+			        class="pack-opening-card pack-opening-card--epithet"
+			        data-rarity="C"
+			        th:attr="data-pack-index=${slot.index()}">
+				<div class="pack-opening-card__inner">
+					<img class="pack-opening-card__back" th:src="|${contextPath != null ? contextPath : ''}${cardBackUrl}?v=${cardBackCacheKey}|"
+					     alt=""/>
+					<div class="pack-opening-card__face pack-opening-card__face--epithet" hidden>
+						<div class="pack-opening-epithet-reveal">
+							<span class="pack-opening-epithet-reveal__u" th:text="${slot.epithetUpper()}">上</span>
+							<span class="pack-opening-epithet-reveal__slash">/</span>
+							<span class="pack-opening-epithet-reveal__l" th:text="${slot.epithetLower()}">下</span>
+						</div>
+					</div>
+					<div class="pack-opening-card__spark" hidden aria-hidden="true"></div>
+					<div class="pack-opening-card__arrow" th:if="${iter.first}" aria-hidden="true">▼</div>
+				</div>
+			</button>
+		</th:block>
 	</div>
 </section>
 
 <script th:src="@{/js/card-spark.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/card-face-layer.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/pack-opening.js(v=${assetVersion})}"></script>
-<script th:replace="~{fragments/tab-fullscreen :: script}"></script>
+<th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>
 

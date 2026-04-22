@@ -14,6 +14,7 @@ public class RegistrationService {
 
 	private final AppUserMapper appUserMapper;
 	private final PasswordEncoder passwordEncoder;
+	private final NicknameEpithetService nicknameEpithetService;
 
 	@Transactional
 	public void register(String username, String rawPassword) {
@@ -32,5 +33,6 @@ public class RegistrationService {
 		u.setLastMissionDate(null);
 		u.setStarterGiftStandard1Remaining(GameConstants.STARTER_GIFT_STANDARD1_PACK_COUNT);
 		appUserMapper.insert(u);
+		nicknameEpithetService.grantBeginnerOwnedForNewUser(u.getId());
 	}
 }

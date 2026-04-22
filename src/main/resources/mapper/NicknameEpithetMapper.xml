@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.nineuniverse.repository.NicknameEpithetMapper">
+
+	<select id="findPhraseById" resultType="string">
+		SELECT phrase FROM nickname_epithet WHERE id = #{id}
+	</select>
+
+	<select id="listOwnedByKind" resultType="com.example.nineuniverse.domain.NicknameEpithet">
+		SELECT e.id AS id, e.kind AS kind, e.phrase AS phrase
+		FROM nickname_epithet e
+		INNER JOIN user_nickname_epithet_owned o ON o.epithet_id = e.id
+		WHERE o.user_id = #{userId} AND e.kind = #{kind}
+		ORDER BY e.phrase
+	</select>
+
+	<select id="listUnownedIdsByKind" resultType="long">
+		SELECT e.id
+		FROM nickname_epithet e
+		WHERE e.kind = #{kind}
+		  AND NOT EXISTS (
+			SELECT 1 FROM user_nickname_epithet_owned o
+			WHERE o.user_id = #{userId} AND o.epithet_id = e.id
+		  )
+	</select>
+
+	<insert id="insertOwned">
+		INSERT INTO user_nickname_epithet_owned (user_id, epithet_id)
+		VALUES (#{userId}, #{epithetId})
+		ON CONFLICT DO NOTHING
+	</insert>
+
+	<select id="countOwnedByKind" resultType="int">
+		SELECT COUNT(*)::int
+		FROM user_nickname_epithet_owned o
+		INNER JOIN nickname_epithet e ON e.id = o.epithet_id
+		WHERE o.user_id = #{userId} AND e.kind = #{kind}
+	</select>
+
+	<select id="countCatalogByKind" resultType="int">
+		SELECT COUNT(*)::int FROM nickname_epithet WHERE kind = #{kind}
+	</select>
+
+	<select id="userOwns" resultType="boolean">
+		SELECT CASE WHEN EXISTS (
+			SELECT 1 FROM user_nickname_epithet_owned
+			WHERE user_id = #{userId} AND epithet_id = #{epithetId}
+		) THEN TRUE ELSE FALSE END
+	</select>
+
+	<insert id="grantBeginnerOwned">
+		INSERT INTO user_nickname_epithet_owned (user_id, epithet_id)
+		SELECT #{userId}, id FROM nickname_epithet
+		WHERE (kind = 'UPPER' AND phrase = 'ビギナー中の')
+		   OR (kind = 'LOWER' AND phrase = 'ビギナー')
+		ON CONFLICT DO NOTHING
+	</insert>
+</mapper>

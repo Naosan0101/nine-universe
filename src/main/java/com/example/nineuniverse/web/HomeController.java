@@ -12,8 +12,6 @@ import com.example.nineuniverse.service.TimePackGaugeService;
 import jakarta.servlet.http.HttpSession;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -96,6 +94,9 @@ public class HomeController {
 		boolean listDenzirionGarakutaFusionFix = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_START);
+		boolean listPlatformApr2026 = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -115,6 +116,7 @@ public class HomeController {
 		model.addAttribute("announcementListWeaponDepotDenzirionFix", listWeaponDepotDenzirionFix);
 		model.addAttribute("announcementListFieldDisplaySettingsBonus", listFieldDisplaySettingsBonus);
 		model.addAttribute("announcementListDenzirionGarakutaFusionFix", listDenzirionGarakutaFusionFix);
+		model.addAttribute("announcementListPlatformApr2026", listPlatformApr2026);
 
 		Set<String> claimedKeys = announcementRewardService.findClaimedKeys(uid);
 
@@ -333,6 +335,17 @@ public class HomeController {
 		model.addAttribute("denzirionGarakutaFusionFixAnnouncementGemAmount",
 				GameConstants.ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_GEMS);
 
+		boolean platformApr2026AnnClaimed = claimedKeys.contains(GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_KEY);
+		boolean platformApr2026AnnInWindow = announcementRewardService.isWithinPlatformApr2026AnnouncementWindow(today);
+		model.addAttribute("platformApr2026AnnouncementClaimed", platformApr2026AnnClaimed);
+		model.addAttribute("platformApr2026AnnouncementClaimable",
+				platformApr2026AnnInWindow && !platformApr2026AnnClaimed);
+		model.addAttribute("platformApr2026AnnouncementExpiredUnclaimed",
+				!platformApr2026AnnClaimed && today.isAfter(GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_LAST_DAY));
+		model.addAttribute("platformApr2026AnnouncementFutureUnclaimed",
+				!platformApr2026AnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_START));
+		model.addAttribute("platformApr2026AnnouncementGemAmount", GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_GEMS);
+
 		int announcementBulkClaimableGemTotal = 0;
 		if (listPerfLight && perfInWindow && !perfClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PERF_LIGHT_GEMS;
@@ -391,12 +404,18 @@ public class HomeController {
 		if (listDenzirionGarakutaFusionFix && denzirionGarakutaFusionFixAnnInWindow && !denzirionGarakutaFusionFixAnnClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_GEMS;
 		}
+		if (listPlatformApr2026 && platformApr2026AnnInWindow && !platformApr2026AnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_GEMS;
+		}
 		model.addAttribute("announcementBulkClaimableGemTotal", announcementBulkClaimableGemTotal);
 		model.addAttribute("announcementAnyGemClaimable", announcementBulkClaimableGemTotal > 0);
 
 		var gauge = timePackGaugeService.snapshotForUser(uid);
+		int bonusBank = userForAnnouncements != null && userForAnnouncements.getTimePackBonusBank() != null
+				? userForAnnouncements.getTimePackBonusBank() : 0;
 		model.addAttribute("timePackFillPercent", gauge.fillPercent());
-		model.addAttribute("timePackAvailablePacks", gauge.availablePacks());
+		model.addAttribute("timePackAvailablePacks", gauge.availablePacks() + bonusBank);
+		model.addAttribute("timePackBonusBank", bonusBank);
 		model.addAttribute("timePackCycleStartEpochMs", gauge.cycleStartEpochMilli());
 		model.addAttribute("timePackDurationMs", gauge.durationMs());
 		model.addAttribute("packArtCacheKey", PackController.getPackArtCacheKey());
@@ -799,6 +818,27 @@ public class HomeController {
 		return "redirect:/home";
 	}
 
+	@PostMapping("/home/announcements/platform-apr-2026/claim")
+	public String claimPlatformApr2026Announcement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimPlatformApr2026AnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
 	@PostMapping("/home/announcements/major-update/claim")
 	public String claimMajorUpdateAnnouncement(RedirectAttributes ra) {
 		long uid = CurrentUser.require().getId();
@@ -846,20 +886,15 @@ public class HomeController {
 
 	@PostMapping("/home/time-pack/open")
 	public String openTimePack(HttpSession session, RedirectAttributes ra,
-			@RequestParam(name = "pack0", required = false) String pack0,
-			@RequestParam(name = "pack1", required = false) String pack1) {
+			@RequestParam(name = "pack0", required = false) String pack0) {
 		long uid = CurrentUser.require().getId();
 		try {
-			var gauge = timePackGaugeService.snapshotForUser(uid);
-			int n = gauge.availablePacks();
-			List<PackType> choices = new ArrayList<>();
-			choices.add(parseBonusPackChoiceParam(pack0));
-			if (n >= 2) {
-				choices.add(parseBonusPackChoiceParam(pack1));
-			}
-			var ids = timePackGaugeService.claimFreePacksFromGauge(uid, choices);
-			session.setAttribute("pack_last_pulled_ids", ids);
-			session.setAttribute("pack_last_type", choices.get(0).name());
+			PackType choice = parseBonusPackChoiceParam(pack0);
+			var outcome = timePackGaugeService.claimOneBonusPackFromGauge(uid, choice);
+			session.setAttribute("pack_last_pulled_ids", outcome.flatCardIds());
+			session.setAttribute(PackController.SESSION_PACK_OPENING_SLOTS, outcome.openingSlots());
+			session.setAttribute(PackController.SESSION_PACK_LAST_EPITHET_RESULTS, outcome.epithetResults());
+			session.setAttribute("pack_last_type", choice.name());
 			session.setAttribute(PackController.SESSION_PACK_RESULT_FROM_BONUS_PACK, Boolean.TRUE);
 			return "redirect:/pack/opening";
 		} catch (IllegalStateException | IllegalArgumentException e) {
@@ -876,7 +911,8 @@ public class HomeController {
 		return switch (s) {
 			case "STANDARD" -> PackType.STANDARD;
 			case "STANDARD_2" -> PackType.STANDARD_2;
-			default -> throw new IllegalArgumentException("開封できるのはスタンダードパック1または2です。");
+			case "BONUS_EPITHET_GACHA" -> PackType.BONUS_EPITHET_GACHA;
+			default -> throw new IllegalArgumentException("開封できるのはスタンダードパック1・2、または二つ名ガチャです。");
 		};
 	}
 }

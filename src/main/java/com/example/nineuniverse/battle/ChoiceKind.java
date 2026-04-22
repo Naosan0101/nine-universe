@@ -8,7 +8,7 @@ public enum ChoiceKind {
 	CONFIRM_NINJA_SWAPPED_DEPLOY,
 	CONFIRM_ACCEPT_LOSS, // confirm=true to accept loss, false to cancel and rollback
 	SELECT_ONE_FROM_HAND_TO_REST,
-	/** 墓守神父: 手札のアンデッド・ファイター1枚にバトル終了までコスト-2（手札に留まる） */
+	/** 墓守神父: 手札の墓守神父以外のアンデッド・ファイター1枚にバトル終了までコスト-2（手札に留まる） */
 	SELECT_ONE_UNDEAD_FIGHTER_FROM_HAND_FOR_COST,
 	SELECT_TWO_FROM_HAND_TO_REST,
 	SELECT_SWAP_REST_AND_HAND, // requires 2 ids: restId, handId

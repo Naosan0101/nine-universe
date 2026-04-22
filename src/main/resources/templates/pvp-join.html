@@ -28,6 +28,6 @@
 	<button type="submit" class="btn btn--primary">バトル開始</button>
 </form>
 <script th:src="@{/js/battle-deck-select.js(v=${assetVersion})}"></script>
-<script th:replace="~{fragments/tab-fullscreen :: script}"></script>
+<th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>

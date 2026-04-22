@@ -6,7 +6,7 @@
 	<title>Nine Universe — ホーム</title>
 	<link rel="stylesheet" th:href="@{/css/app.css(v=${assetVersion})}"/>
 </head>
-<body class="page page--theme-arcane"
+<body class="page page--theme-arcane page--single-screen-hub"
       th:attr="data-announce-epoch=${announcementUiEpoch},
                data-perf-claimable=${perfLightAnnouncementClaimable and announcementListPerfLight},
                data-ttp-claimable=${timePackAnnouncementClaimable and announcementListTimePack},
@@ -27,22 +27,12 @@
                data-weapon-depot-denzirion-fix-claimable=${weaponDepotDenzirionFixAnnouncementClaimable and announcementListWeaponDepotDenzirionFix},
                data-field-display-settings-bonus-claimable=${fieldDisplaySettingsBonusAnnouncementClaimable and announcementListFieldDisplaySettingsBonus},
                data-denzirion-garakuta-fusion-fix-claimable=${denzirionGarakutaFusionFixAnnouncementClaimable and announcementListDenzirionGarakutaFusionFix},
+               data-platform-apr-2026-claimable=${platformApr2026AnnouncementClaimable and announcementListPlatformApr2026},
                data-major-update-login-popup=${majorUpdateLoginPopupShow},
                data-user-id=${user.id}">
 <header class="topbar">
 	<div th:replace="~{fragments/game-title-brand :: brand}"></div>
 	<div class="topbar__meta">
-		<button type="button"
-		        class="btn btn--ghost topbar__announce"
-		        th:classappend="${(perfLightAnnouncementClaimable and announcementListPerfLight) or (timePackAnnouncementClaimable and announcementListTimePack) or (balanceUiMissionAnnouncementClaimable and announcementListBalanceUiMission) or (packRatesAnnouncementClaimable and announcementListPackRates) or (packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain) or (captainTextAnnouncementClaimable and announcementListCaptainText) or (missionFixAnnouncementClaimable and announcementListMissionFix) or (cardTextFixAnnouncementClaimable and announcementListCardTextFix) or (samuraiFixAnnouncementClaimable and announcementListSamuraiFix) or (packMissionBonusFixAnnouncementClaimable and announcementListPackMissionBonusFix) or (celebrate30UsersAnnouncementClaimable and announcementList30Users) or (kaenryuStatusAnnouncementClaimable and announcementListKaenryuStatus) or (samuraiStatusAnnouncementClaimable and announcementListSamuraiStatus) or (majorUpdateAnnouncementClaimable and announcementListMajorUpdate) or (denzirionFixAnnouncementClaimable and announcementListDenzirionFix) or (ninjaDarkDragonFixAnnouncementClaimable and announcementListNinjaDarkDragonFix) or (weaponDepotDenzirionFixAnnouncementClaimable and announcementListWeaponDepotDenzirionFix) or (fieldDisplaySettingsBonusAnnouncementClaimable and announcementListFieldDisplaySettingsBonus) or (denzirionGarakutaFusionFixAnnouncementClaimable and announcementListDenzirionGarakutaFusionFix) or (timePackAvailablePacks != null and timePackAvailablePacks > 0)} ? ' topbar__announce--highlight' : ''"
-		        id="announcement-open"
-		        aria-haspopup="dialog"
-		        aria-controls="announcement-modal">
-			<span class="topbar__announce-label">
-				<span class="topbar__announce-dot" id="announcement-unread-dot" hidden aria-hidden="true"></span>
-				お知らせ
-			</span>
-		</button>
 		<span>ジェム: <strong th:text="${user.coins}">0</strong></span>
 		<form th:action="@{/logout}" method="post" class="inline">
 			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
@@ -438,6 +428,38 @@
 			</div>
 		</article>
 
+		<article class="announcement-modal__card"
+		         th:if="${announcementListPlatformApr2026 and (platformApr2026AnnouncementClaimable or platformApr2026AnnouncementClaimed or platformApr2026AnnouncementExpiredUnclaimed or platformApr2026AnnouncementFutureUnclaimed)}">
+			<div class="announcement-modal__mailbox">
+				<div class="announcement-modal__mailbox-body">
+					<p class="announcement-modal__card-text">・「カードリサイクル」を追加しました。</p>
+					<p class="announcement-modal__card-text">・「二つ名ガチャ」を追加しました。</p>
+					<p class="announcement-modal__card-text">・全体のUIの見直しをしました。</p>
+					<p class="announcement-modal__card-text">・「ウッドエルフ」のステータスを修正しました。</p>
+					<p class="announcement-modal__card-text">・「ピクシー」のステータスを修正しました。</p>
+					<p class="announcement-modal__card-text">・「墓守神父」の効果が正しく動作しないのを修正しました。</p>
+					<p class="announcement-modal__card-text">・「忍者」で強さが-2されない不具合を修正しました。</p>
+					<p class="announcement-modal__card-text">・「磁力合体デンジリオン」が正しく効果が適用されない不具合を調整しました。</p>
+					<p class="announcement-modal__card-text">・「アーサー」のアートワークを更新しました。</p>
+					<p class="announcement-modal__card-text">・CPUが「忍者」を使用する際のロジックを見直しました。</p>
+				</div>
+				<aside class="announcement-modal__mailbox-aside">
+					<span th:if="${platformApr2026AnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
+					<form th:if="${platformApr2026AnnouncementClaimable}"
+					      th:action="@{/home/announcements/platform-apr-2026/claim}"
+					      method="post"
+					      class="announcement-modal__gem-form">
+						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+						<button type="submit" class="btn btn--primary announcement-modal__gem-btn"
+						        th:text="|${platformApr2026AnnouncementGemAmount}ジェム|">20ジェム</button>
+					</form>
+					<p th:if="${platformApr2026AnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
+					<p th:if="${platformApr2026AnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
+					<p th:if="${platformApr2026AnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
+				</aside>
+			</div>
+		</article>
+
 		<div th:replace="~{fragments/announcement-captain-text :: card}"></div>
 		<div th:replace="~{fragments/announcement-kaenryu-status :: card}"></div>
 		<div th:replace="~{fragments/announcement-samurai-status :: card}"></div>
@@ -500,9 +522,9 @@
 	</div>
 </div>
 
-<div class="container">
+<div class="container hub-main">
 	<section class="home-time-pack"
-	         th:attr="data-duration-ms=${timePackDurationMs},data-start-ms=${timePackCycleStartEpochMs}">
+	         th:attr="data-duration-ms=${timePackDurationMs},data-start-ms=${timePackCycleStartEpochMs},data-bonus-bank=${timePackBonusBank}">
 		<div class="home-time-pack__head">
 			<h2 class="home-time-pack__title">ボーナスパック</h2>
 			<div class="home-time-pack__lead">
@@ -536,7 +558,7 @@
 		        class="btn btn--primary home-time-pack__btn"
 		        id="time-pack-open-btn"
 		        th:disabled="${timePackAvailablePacks == 0}"
-		        th:text="${timePackAvailablePacks == 2} ? 'パックを選んで開封（2パック）' : (${timePackAvailablePacks == 1} ? 'パックを選んで開封' : '開封できるまで待機中')">
+		        th:text="${timePackAvailablePacks > 1} ? |パックを選んで開封（${timePackAvailablePacks}パック分）| : (${timePackAvailablePacks == 1} ? 'パックを選んで開封' : '開封できるまで待機中')">
 			開封できるまで待機中
 		</button>
 		<p th:if="${flashTimePackError}" class="home-time-pack__err" th:text="${flashTimePackError}">エラー</p>
@@ -548,12 +570,11 @@
 		<div class="pack-detail-modal__panel time-pack-choice-modal__panel">
 			<button type="button" class="pack-detail-modal__close" data-time-pack-choice-close aria-label="閉じる">×</button>
 			<h2 id="time-pack-choice-title" class="pack-detail-modal__heading">ボーナスパックを開封</h2>
-			<p class="time-pack-choice-modal__lead">開封するスタンダードパックの種類を選んでください（各パックごとに選べます）。</p>
+			<p class="time-pack-choice-modal__lead">開封する内容を選んでください（1回につき1パック＝カード4枚分。スタンダードパック1・2、または二つ名ガチャ）。</p>
 			<form th:action="@{/home/time-pack/open}" method="post" class="time-pack-choice-modal__form" id="time-pack-choice-form">
 				<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 				<div class="time-pack-choice-modal__slot">
-					<p class="time-pack-choice-modal__slot-label" id="time-pack-label-slot1"
-					   th:text="${timePackAvailablePacks > 1} ? '1パック目' : '開封するパック'">開封するパック</p>
+					<p class="time-pack-choice-modal__slot-label" id="time-pack-label-slot1">開封するパック</p>
 					<div class="time-pack-choice-modal__grid">
 						<div class="time-pack-choice-modal__cell">
 							<label class="time-pack-choice-modal__opt">
@@ -571,26 +592,12 @@
 							</label>
 							<button type="button" class="btn btn--ghost time-pack-choice-modal__detail" data-open-pack-detail="home-pack-detail-standard-2">詳細を見る</button>
 						</div>
-					</div>
-				</div>
-				<div id="time-pack-slot2-wrap" class="time-pack-choice-modal__slot" th:hidden="${timePackAvailablePacks < 2}">
-					<p class="time-pack-choice-modal__slot-label">2パック目</p>
-					<div class="time-pack-choice-modal__grid">
-						<div class="time-pack-choice-modal__cell">
+						<div class="time-pack-choice-modal__cell time-pack-choice-modal__cell--epithet">
 							<label class="time-pack-choice-modal__opt">
-								<input type="radio" name="pack1" value="STANDARD" checked="checked" th:disabled="${timePackAvailablePacks < 2}"/>
-								<img class="time-pack-choice-modal__img" th:src="|${standardPackImage}?v=${packArtCacheKey}|" alt="" onerror="this.hidden=true; this.removeAttribute('src');"/>
-								<span class="time-pack-choice-modal__name">スタンダードパック1（WH+ET）</span>
+								<input type="radio" name="pack0" value="BONUS_EPITHET_GACHA"/>
+								<div class="time-pack-choice-modal__epithet-art" aria-hidden="true">〈〉/〈〉</div>
+								<span class="time-pack-choice-modal__name">二つ名ガチャ</span>
 							</label>
-							<button type="button" class="btn btn--ghost time-pack-choice-modal__detail" data-open-pack-detail="home-pack-detail-standard">詳細を見る</button>
-						</div>
-						<div class="time-pack-choice-modal__cell">
-							<label class="time-pack-choice-modal__opt">
-								<input type="radio" name="pack1" value="STANDARD_2" th:disabled="${timePackAvailablePacks < 2}"/>
-								<img class="time-pack-choice-modal__img" th:src="|${standard2PackImage}?v=${packArtCacheKey}|" alt="" onerror="this.hidden=true; this.removeAttribute('src');"/>
-								<span class="time-pack-choice-modal__name">スタンダードパック2（JU+IF）</span>
-							</label>
-							<button type="button" class="btn btn--ghost time-pack-choice-modal__detail" data-open-pack-detail="home-pack-detail-standard-2">詳細を見る</button>
 						</div>
 					</div>
 				</div>
@@ -662,60 +669,72 @@
 				</div>
 				<a class="btn btn--primary home-hero__cta" th:href="@{/pack}">パック購入へ</a>
 				<a class="btn btn--ghost home-hero__cta" th:href="@{/decks}">デッキ編集</a>
+				<button type="button"
+				        class="btn btn--ghost home-hero__announce topbar__announce"
+				        th:classappend="${(perfLightAnnouncementClaimable and announcementListPerfLight) or (timePackAnnouncementClaimable and announcementListTimePack) or (balanceUiMissionAnnouncementClaimable and announcementListBalanceUiMission) or (packRatesAnnouncementClaimable and announcementListPackRates) or (packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain) or (captainTextAnnouncementClaimable and announcementListCaptainText) or (missionFixAnnouncementClaimable and announcementListMissionFix) or (cardTextFixAnnouncementClaimable and announcementListCardTextFix) or (samuraiFixAnnouncementClaimable and announcementListSamuraiFix) or (packMissionBonusFixAnnouncementClaimable and announcementListPackMissionBonusFix) or (celebrate30UsersAnnouncementClaimable and announcementList30Users) or (kaenryuStatusAnnouncementClaimable and announcementListKaenryuStatus) or (samuraiStatusAnnouncementClaimable and announcementListSamuraiStatus) or (majorUpdateAnnouncementClaimable and announcementListMajorUpdate) or (denzirionFixAnnouncementClaimable and announcementListDenzirionFix) or (ninjaDarkDragonFixAnnouncementClaimable and announcementListNinjaDarkDragonFix) or (weaponDepotDenzirionFixAnnouncementClaimable and announcementListWeaponDepotDenzirionFix) or (fieldDisplaySettingsBonusAnnouncementClaimable and announcementListFieldDisplaySettingsBonus) or (denzirionGarakutaFusionFixAnnouncementClaimable and announcementListDenzirionGarakutaFusionFix) or (platformApr2026AnnouncementClaimable and announcementListPlatformApr2026) or (timePackAvailablePacks != null and timePackAvailablePacks > 0)} ? ' topbar__announce--highlight' : ''"
+				        id="announcement-open"
+				        aria-haspopup="dialog"
+				        aria-controls="announcement-modal">
+					<span class="topbar__announce-label">
+						<span class="topbar__announce-dot" id="announcement-unread-dot" hidden aria-hidden="true"></span>
+						お知らせ
+					</span>
+				</button>
 			</div>
 		</div>
 	</section>
 
-	<main class="home-grid" aria-label="メニュー">
-		<a class="tile tile--featured" th:href="@{/pack}">
+	<main class="home-grid--primary" aria-label="メニュー">
+		<a class="tile tile--featured tile--home-primary" th:href="@{/pack}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="12" height="16" rx="1"/><rect x="8" y="3" width="12" height="16" rx="1"/></svg></span>
 			<span class="tile__label">カードパックを購入</span>
 			<span class="tile__hint">新たなファイターを仲間に</span>
 		</a>
-		<a class="tile" th:href="@{/battle/cpu}">
+		<a class="tile tile--home-primary" th:href="@{/battle/cpu}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M7 5l10 14M17 5L7 19"/></svg></span>
 			<span class="tile__label">ひとりで対戦</span>
 			<span class="tile__hint">CPUとバトル</span>
 		</a>
-		<a class="tile" th:href="@{/battle/pvp}">
+		<a class="tile tile--home-primary" th:href="@{/battle/pvp}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 5v8l-8 5-8-5V8l8-5z"/><line x1="12" y1="8" x2="12" y2="21"/></svg></span>
-			<span class="tile__label">だれかと対戦</span>
+			<span class="tile__label">みんなで対戦</span>
 			<span class="tile__hint">対人戦で腕試し</span>
 		</a>
-		<a class="tile" th:href="@{/decks}">
+		<a class="tile tile--home-primary" th:href="@{/decks}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="8" height="5" rx="0.8"/><rect x="3" y="12" width="8" height="7" rx="0.8"/><rect x="13" y="5" width="8" height="14" rx="0.8"/></svg></span>
 			<span class="tile__label">デッキを作成</span>
 			<span class="tile__hint">バトルの準備</span>
 		</a>
-		<a class="tile" th:href="@{/library}">
+		<a class="tile tile--home-primary" th:href="@{/library}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="14" y2="16"/></svg></span>
 			<span class="tile__label">ライブラリ</span>
 			<span class="tile__hint">すべてのカードを確認</span>
 		</a>
-		<a class="tile" th:href="@{/recycle}">
+		<a class="tile tile--home-primary" th:href="@{/recycle}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M6 7V5a1 1 0 011-1h10a1 1 0 011 1v2"/><path d="M9 11v6M15 11v6"/><path d="M8 21h8l1-7H7l1 7z"/></svg></span>
 			<span class="tile__label">カードリサイクル</span>
-			<span class="tile__hint">不要なカードをクリスタルにする</span>
+			<span class="tile__hint">余剰カードを交換</span>
 		</a>
-		<a class="tile tile--mission-tile" th:href="@{/missions}">
+		<a class="tile tile--home-primary" th:href="@{/missions}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></span>
-			<span class="tile__label tile__label--notify">
-				<span class="tile__label__text">ミッション</span>
+			<span class="tile__label" th:classappend="${missionHasUnclaimedReward} ? ' tile__label--notify' : ''">
 				<span class="tile__mission-dot" th:if="${missionHasUnclaimedReward}" aria-hidden="true"></span>
+				ミッション
 			</span>
 			<span class="tile__hint">ジェムを獲得</span>
 		</a>
-		<a class="tile" th:href="@{/how-to-play}">
-			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h7a3 3 0 013 3v13H9a3 3 0 01-3-3V4z"/><path d="M9 4v13h7"/></svg></span>
-			<span class="tile__label">遊び方</span>
-			<span class="tile__hint">ルールを確認</span>
-		</a>
-		<a class="tile" th:href="@{/settings}">
-			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></span>
-			<span class="tile__label">設定</span>
-			<span class="tile__hint">あそびやすくカスタマイズ</span>
-		</a>
 	</main>
+
+	<nav class="home-icon-dock" aria-label="ヘルプ・設定">
+		<a class="tile tile--icon-only home-icon-dock__btn" th:href="@{/how-to-play}" aria-label="遊び方">
+			<span class="home-icon-dock__hover-label" aria-hidden="true">遊び方</span>
+			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h7a3 3 0 013 3v13H9a3 3 0 01-3-3V4z"/><path d="M9 4v13h7"/></svg></span>
+		</a>
+		<a class="tile tile--icon-only home-icon-dock__btn" th:href="@{/settings}" aria-label="設定">
+			<span class="home-icon-dock__hover-label" aria-hidden="true">設定</span>
+			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33 1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82 1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span>
+		</a>
+	</nav>
 
 </div>
 <script th:if="${welcomeHomeBonusShown}">
@@ -797,6 +816,7 @@
 		var weaponDepotDenzirionFix = document.body.getAttribute('data-weapon-depot-denzirion-fix-claimable') === 'true';
 		var fieldDisplaySettingsBonus = document.body.getAttribute('data-field-display-settings-bonus-claimable') === 'true';
 		var denzirionGarakutaFusionFix = document.body.getAttribute('data-denzirion-garakuta-fusion-fix-claimable') === 'true';
+		var platformApr2026 = document.body.getAttribute('data-platform-apr-2026-claimable') === 'true';
 		var ack = '';
 		try {
 			ack = localStorage.getItem('nu_ann_ack') || '';
@@ -804,7 +824,7 @@
 			ack = '';
 		}
 		var unseen = epoch !== '' && ack !== epoch;
-		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || cardTextFix || samuraiFix || packMissionBonusFix || celebrate30 || kaenryuStatus || samuraiStatus || majorUpdate || denzirionFix || ninjaDarkDragonFix || weaponDepotDenzirionFix || fieldDisplaySettingsBonus || denzirionGarakutaFusionFix || unseen;
+		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || cardTextFix || samuraiFix || packMissionBonusFix || celebrate30 || kaenryuStatus || samuraiStatus || majorUpdate || denzirionFix || ninjaDarkDragonFix || weaponDepotDenzirionFix || fieldDisplaySettingsBonus || denzirionGarakutaFusionFix || platformApr2026 || unseen;
 		dot.hidden = !show;
 		dot.setAttribute('aria-hidden', show ? 'false' : 'true');
 	}
@@ -889,7 +909,10 @@
 		var ratio = Math.min(1, elapsed / dur);
 		var pct = Math.round(ratio * 100);
 		fill.style.width = pct + '%';
-		var packs = ratio >= 1 ? 2 : (ratio >= 0.5 ? 1 : 0);
+		var timerPacks = ratio >= 1 ? 2 : (ratio >= 0.5 ? 1 : 0);
+		var bonusBank = parseInt(root.getAttribute('data-bonus-bank'), 10);
+		if (isNaN(bonusBank)) bonusBank = 0;
+		var packs = timerPacks + bonusBank;
 		btn.disabled = packs === 0;
 		var halfAt = start + Math.floor(dur / 2);
 		var maxAt = start + dur;
@@ -905,21 +928,18 @@
 		} else {
 			cdMax.textContent = '0時間0分0秒';
 		}
-		if (packs === 2) {
-			btn.textContent = 'パックを選んで開封（2パック）';
+		if (packs > 1) {
+			btn.textContent = 'パックを選んで開封（' + packs + 'パック分）';
 		} else if (packs === 1) {
 			btn.textContent = 'パックを選んで開封';
 		} else {
 			btn.textContent = '開封できるまで待機中';
-		}
-		if (typeof window.nuTimePackChoiceSyncSlot2 === 'function') {
-			window.nuTimePackChoiceSyncSlot2(packs);
 		}
 	}
 	tick();
 	setInterval(tick, 1000);
 })();
 </script>
-<script th:replace="~{fragments/tab-fullscreen :: script}"></script>
+<th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>

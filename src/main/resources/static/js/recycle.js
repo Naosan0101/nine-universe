@@ -17,6 +17,8 @@
 	const surplusOpenBtn = document.getElementById('recycle-surplus-open-btn');
 	const surplusModal = document.getElementById('recycle-surplus-modal');
 	const surplusModalCrystal = document.getElementById('recycle-surplus-modal-crystal');
+	const completeModal = document.getElementById('recycle-complete-modal');
+	const completeModalCrystal = document.getElementById('recycle-complete-modal-crystal');
 	const surplusForm = document.getElementById('recycle-surplus-form');
 	const mainForm = document.getElementById('recycle-main-form');
 	const formFields = document.getElementById('recycle-form-fields');
@@ -222,7 +224,9 @@
 	/** 選択エリア内カード：左クリックで1枚ライブラリへ戻す（Enter / Space も可） */
 	function bindRecycleSlotRemove(copy, removeHandler) {
 		copy.addEventListener('click', function (e) {
-			if (e.button !== 0) return;
+			if (typeof e.button === 'number' && e.button !== 0) {
+				return;
+			}
 			removeHandler();
 		});
 		copy.addEventListener('keydown', function (ev) {
@@ -331,9 +335,12 @@
 	}
 
 	function countInRecycle(id) {
-		return Array.from(recycleZone.querySelectorAll('.mini-card')).filter(function (n) {
-			return parseInt(n.dataset.id, 10) === id;
-		}).length;
+		const node = recycleZone.querySelector('.mini-card--deck[data-id="' + id + '"]');
+		if (!node) {
+			return 0;
+		}
+		const c = parseInt(node.dataset.recycleStack, 10);
+		return isNaN(c) ? 1 : c;
 	}
 
 	function canAddToRecycle(id) {
@@ -512,6 +519,34 @@
 			el.insertBefore(b, el.firstChild);
 		}
 		b.textContent = String(n);
+	}
+
+	/** リサイクル上段：同一カードの積み枚数（2以上で右上バッジ） */
+	function setRecycleStackBadge(el, n) {
+		let b = el.querySelector('.card-pool-badge');
+		if (n <= 1) {
+			if (b) {
+				b.remove();
+			}
+			el.dataset.recycleStack = '1';
+			return;
+		}
+		el.dataset.recycleStack = String(n);
+		if (!b) {
+			b = document.createElement('span');
+			b.className = 'card-pool-badge';
+			b.setAttribute('aria-hidden', 'true');
+			el.insertBefore(b, el.firstChild);
+		}
+		b.textContent = String(n);
+	}
+
+	function recyclePendingAriaLabel(c, n) {
+		const name = c.name || 'カード';
+		if (n <= 1) {
+			return name + '。左クリックで1枚戻す、右クリックで詳細';
+		}
+		return name + '、' + n + '枚選択中。左クリックで1枚戻す、右クリックで詳細';
 	}
 
 	function closeCardDetailModal() {
@@ -770,13 +805,24 @@
 
 	function totalEstimateCrystal() {
 		let sum = 0;
-		Array.from(recycleZone.querySelectorAll('.mini-card')).forEach(function (n) {
+		Array.from(recycleZone.querySelectorAll('.mini-card--deck')).forEach(function (n) {
 			const x = parseInt(n.dataset.crystal, 10);
+			const cnt = parseInt(n.dataset.recycleStack, 10);
+			const q = isNaN(cnt) ? 1 : cnt;
 			if (!isNaN(x)) {
-				sum += x;
+				sum += x * q;
 			}
 		});
 		return sum;
+	}
+
+	function totalPendingCardsInRecycle() {
+		let n = 0;
+		recycleZone.querySelectorAll('.mini-card--deck').forEach(function (el) {
+			const c = parseInt(el.dataset.recycleStack, 10);
+			n += isNaN(c) ? 1 : c;
+		});
+		return n;
 	}
 
 	function inDecksForSeed(c) {
@@ -804,17 +850,38 @@
 	}
 
 	function addPendingCardCopy(c) {
+		const existing = recycleZone.querySelector('.mini-card--deck[data-id="' + c.id + '"]');
+		if (existing) {
+			const next =
+				(parseInt(existing.dataset.recycleStack, 10) || 1) + 1;
+			existing.dataset.recycleStack = String(next);
+			setRecycleStackBadge(existing, next);
+			existing.setAttribute('aria-label', recyclePendingAriaLabel(c, next));
+			return;
+		}
 		const copy = document.createElement('div');
 		copy.className = 'mini-card mini-card--deck';
 		copy.dataset.id = String(c.id);
 		copy.dataset.crystal = String(c.crystal);
+		copy.dataset.recycleStack = '1';
 		copy.setAttribute('role', 'button');
 		copy.setAttribute('tabindex', '0');
-		copy.setAttribute('aria-label', c.name + '。左クリックで1枚戻す、右クリックで詳細');
+		copy.setAttribute('aria-label', recyclePendingAriaLabel(c, 1));
 		appendCardImage(copy, c);
+		setRecycleStackBadge(copy, 1);
 		bindRightClickOpenCardDetail(copy, c);
 		bindCardTooltip(copy, c);
 		const removeOne = function () {
+			const cur = parseInt(copy.dataset.recycleStack, 10) || 1;
+			if (cur > 1) {
+				const left = cur - 1;
+				copy.dataset.recycleStack = String(left);
+				setRecycleStackBadge(copy, left);
+				copy.setAttribute('aria-label', recyclePendingAriaLabel(c, left));
+				refreshLib();
+				update();
+				return;
+			}
 			copy.remove();
 			refreshLib();
 			update();
@@ -825,7 +892,7 @@
 	}
 
 	function update() {
-		const n = recycleZone.querySelectorAll('.mini-card').length;
+		const n = totalPendingCardsInRecycle();
 		if (crystalCompleteVal) {
 			crystalCompleteVal.textContent = String(totalEstimateCrystal());
 		}
@@ -927,6 +994,50 @@
 		document.body.style.overflow = '';
 	}
 
+	function openCompleteConfirmModal() {
+		if (!completeModal) {
+			return;
+		}
+		if (completeModalCrystal) {
+			completeModalCrystal.textContent = String(totalEstimateCrystal());
+		}
+		completeModal.hidden = false;
+		document.body.style.overflow = 'hidden';
+	}
+
+	function closeCompleteConfirmModal() {
+		if (!completeModal) {
+			return;
+		}
+		completeModal.hidden = true;
+		document.body.style.overflow = '';
+	}
+
+	function submitRecycleConversion() {
+		if (!mainForm || !formFields) {
+			return;
+		}
+		formFields.innerHTML = '';
+		const byId = {};
+		Array.from(recycleZone.querySelectorAll('.mini-card--deck')).forEach(function (n) {
+			const id = parseInt(n.dataset.id, 10);
+			if (isNaN(id)) {
+				return;
+			}
+			const cnt = parseInt(n.dataset.recycleStack, 10);
+			const q = isNaN(cnt) ? 1 : cnt;
+			byId[id] = (byId[id] || 0) + q;
+		});
+		Object.keys(byId).forEach(function (k) {
+			const inp = document.createElement('input');
+			inp.type = 'hidden';
+			inp.name = 'qty_' + k;
+			inp.value = String(byId[k]);
+			formFields.appendChild(inp);
+		});
+		mainForm.submit();
+	}
+
 	if (surplusOpenBtn) {
 		surplusOpenBtn.addEventListener('click', function () {
 			if (surplusOpenBtn.disabled) return;
@@ -955,22 +1066,32 @@
 
 	if (completeBtn && mainForm && formFields) {
 		completeBtn.addEventListener('click', function () {
-			formFields.innerHTML = '';
-			const byId = {};
-			Array.from(recycleZone.querySelectorAll('.mini-card')).forEach(function (n) {
-				const id = parseInt(n.dataset.id, 10);
-				if (isNaN(id)) return;
-				byId[id] = (byId[id] || 0) + 1;
-			});
-			Object.keys(byId).forEach(function (k) {
-				const inp = document.createElement('input');
-				inp.type = 'hidden';
-				inp.name = 'qty_' + k;
-				inp.value = String(byId[k]);
-				formFields.appendChild(inp);
-			});
-			mainForm.submit();
+			if (totalPendingCardsInRecycle() <= 0) {
+				return;
+			}
+			openCompleteConfirmModal();
 		});
+	}
+	if (completeModal) {
+		completeModal.addEventListener('click', function (e) {
+			if (e.target === completeModal) {
+				closeCompleteConfirmModal();
+			}
+		});
+		completeModal.querySelectorAll('[data-recycle-complete-close]').forEach(function (el) {
+			el.addEventListener('click', closeCompleteConfirmModal);
+		});
+		const completeNo = completeModal.querySelector('[data-recycle-complete-no]');
+		if (completeNo) {
+			completeNo.addEventListener('click', closeCompleteConfirmModal);
+		}
+		const completeYes = completeModal.querySelector('[data-recycle-complete-yes]');
+		if (completeYes) {
+			completeYes.addEventListener('click', function () {
+				closeCompleteConfirmModal();
+				submitRecycleConversion();
+			});
+		}
 	}
 
 	function onFilterChange() {
@@ -999,7 +1120,13 @@
 	}
 
 	document.addEventListener('keydown', function (e) {
-		if (e.key !== 'Escape') return;
+		if (e.key !== 'Escape') {
+			return;
+		}
+		if (completeModal && !completeModal.hidden) {
+			closeCompleteConfirmModal();
+			return;
+		}
 		if (surplusModal && !surplusModal.hidden) {
 			closeSurplusModal();
 			return;
@@ -1008,6 +1135,74 @@
 			closeCardDetailModal();
 		}
 	});
+
+	(function bindRecycleZoneHorizontalDrag() {
+		const zone = recycleZone;
+		if (!zone) {
+			return;
+		}
+		let drag = null;
+		zone.addEventListener('pointerdown', function (e) {
+			if (e.button !== 0) {
+				return;
+			}
+			/* カード上のクリックはキャプチャしない（capture すると click がカードに届かず1枚戻しが効かない） */
+			if (e.target && e.target.closest && e.target.closest('.mini-card--deck')) {
+				return;
+			}
+			drag = {
+				id: e.pointerId,
+				x0: e.clientX,
+				sl0: zone.scrollLeft,
+				suppressed: false
+			};
+			try {
+				zone.setPointerCapture(e.pointerId);
+			} catch (err) {
+				// noop
+			}
+		});
+		zone.addEventListener('pointermove', function (e) {
+			if (!drag || e.pointerId !== drag.id) {
+				return;
+			}
+			const dx = e.clientX - drag.x0;
+			if (Math.abs(dx) > 8) {
+				drag.suppressed = true;
+			}
+			if (drag.suppressed) {
+				zone.scrollLeft = drag.sl0 - dx;
+				e.preventDefault();
+			}
+		});
+		function endDrag(e) {
+			if (!drag || e.pointerId !== drag.id) {
+				return;
+			}
+			if (drag.suppressed) {
+				zone.addEventListener(
+					'click',
+					function cap(ev) {
+						ev.preventDefault();
+						ev.stopPropagation();
+						ev.stopImmediatePropagation();
+					},
+					true
+				);
+				setTimeout(function () {
+					zone.removeEventListener('click', cap, true);
+				}, 0);
+			}
+			try {
+				zone.releasePointerCapture(e.pointerId);
+			} catch (err2) {
+				// noop
+			}
+			drag = null;
+		}
+		zone.addEventListener('pointerup', endDrag);
+		zone.addEventListener('pointercancel', endDrag);
+	})();
 
 	refreshLib();
 	update();

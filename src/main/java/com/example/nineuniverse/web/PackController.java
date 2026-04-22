@@ -6,6 +6,8 @@ import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.service.LibraryService;
 import com.example.nineuniverse.service.PackService;
 import com.example.nineuniverse.service.PackService.PackType;
+import com.example.nineuniverse.web.dto.PackOpeningSessionSlot;
+import com.example.nineuniverse.web.dto.PackOpeningSlotView;
 import com.example.nineuniverse.web.dto.PackPreviewLine;
 import com.example.nineuniverse.web.dto.PackRarityRateRow;
 import java.io.IOException;
@@ -39,6 +41,12 @@ public class PackController {
 	 * 右上ナビを「ホームに戻る」のみにする。
 	 */
 	public static final String SESSION_PACK_RESULT_FROM_BONUS_PACK = "pack_result_from_bonus_pack";
+
+	/** 時間ゲージボーナス：開封順（カード／二つ名が混在しうる）。{@link com.example.nineuniverse.web.dto.PackOpeningSessionSlot} のリスト */
+	public static final String SESSION_PACK_OPENING_SLOTS = "pack_opening_slots";
+
+	/** 結果画面用：ボーナス二つ名の獲得一覧（{@link com.example.nineuniverse.service.NicknameEpithetService.EpithetGachaResult} のリスト） */
+	public static final String SESSION_PACK_LAST_EPITHET_RESULTS = "pack_last_epithet_results";
 
 	private static final List<PackRarityRateRow> PACK_RARITY_RATES = List.of(
 			new PackRarityRateRow("レジェンダリー", "2%"),
@@ -182,6 +190,8 @@ public class PackController {
 		try {
 			long uid = CurrentUser.require().getId();
 			session.removeAttribute(SESSION_PACK_RESULT_FROM_BONUS_PACK);
+			session.removeAttribute(SESSION_PACK_OPENING_SLOTS);
+			session.removeAttribute(SESSION_PACK_LAST_EPITHET_RESULTS);
 			var pulled = packService.openStarterGiftStandard1Pack(uid);
 			List<Short> ids = pulled.stream().map(c -> c.getId()).toList();
 			session.setAttribute("pack_last_pulled_ids", ids);
@@ -199,6 +209,8 @@ public class PackController {
 		try {
 			long uid = CurrentUser.require().getId();
 			session.removeAttribute(SESSION_PACK_RESULT_FROM_BONUS_PACK);
+			session.removeAttribute(SESSION_PACK_OPENING_SLOTS);
+			session.removeAttribute(SESSION_PACK_LAST_EPITHET_RESULTS);
 			PackType t = parsePackType(type);
 			var pulled = packService.openPack(uid, t);
 			List<Short> ids = pulled.stream().map(c -> c.getId()).toList();
@@ -218,13 +230,43 @@ public class PackController {
 		model.addAttribute("gems", fresh != null && fresh.getCoins() != null ? fresh.getCoins() : 0);
 		model.addAttribute("cardBackUrl", GameConstants.cardBackUrl());
 		model.addAttribute("cardBackCacheKey", CARD_BACK_CACHE_KEY);
-		Object idsObj = session.getAttribute("pack_last_pulled_ids");
-		List<Short> ids = coerceIds(idsObj);
-		if (ids.isEmpty()) {
+		Object slotsObj = session.getAttribute(SESSION_PACK_OPENING_SLOTS);
+		List<PackOpeningSlotView> viewSlots = new ArrayList<>();
+		if (slotsObj instanceof List<?> rawSlots && !rawSlots.isEmpty() && rawSlots.get(0) instanceof PackOpeningSessionSlot) {
+			@SuppressWarnings("unchecked")
+			List<PackOpeningSessionSlot> slots = (List<PackOpeningSessionSlot>) slotsObj;
+			int idx = 0;
+			for (PackOpeningSessionSlot s : slots) {
+				if ("EPITHET".equals(s.kind())) {
+					viewSlots.add(new PackOpeningSlotView(true, null, s.epithetUpper(), s.epithetLower(), idx++));
+				} else if (s.cardId() != null) {
+					var faces = libraryService.displayFacesForCardIds(List.of(s.cardId()));
+					if (!faces.isEmpty()) {
+						viewSlots.add(new PackOpeningSlotView(false, faces.get(0), null, null, idx++));
+					}
+				}
+			}
+			session.removeAttribute(SESSION_PACK_OPENING_SLOTS);
+		} else {
+			Object idsObj = session.getAttribute("pack_last_pulled_ids");
+			List<Short> ids = coerceIds(idsObj);
+			if (ids.isEmpty()) {
+				ra.addFlashAttribute("error", "開封中のパックがありません");
+				return "redirect:/pack";
+			}
+			int idx = 0;
+			for (Short id : ids) {
+				var faces = libraryService.displayFacesForCardIds(List.of(id));
+				if (!faces.isEmpty()) {
+					viewSlots.add(new PackOpeningSlotView(false, faces.get(0), null, null, idx++));
+				}
+			}
+		}
+		if (viewSlots.isEmpty()) {
 			ra.addFlashAttribute("error", "開封中のパックがありません");
 			return "redirect:/pack";
 		}
-		model.addAttribute("pulledFaces", libraryService.displayFacesForCardIds(ids));
+		model.addAttribute("packOpeningViewSlots", viewSlots);
 		Object redir = session.getAttribute(SESSION_PACK_AFTER_OPEN_REDIRECT);
 		String afterUrl = "/pack/result";
 		if (redir instanceof String s && !s.isBlank()) {
@@ -257,11 +299,17 @@ public class PackController {
 		model.addAttribute("packImage", GameConstants.packImageUrl());
 		Object idsObj = session.getAttribute("pack_last_pulled_ids");
 		List<Short> ids = coerceIds(idsObj);
-		if (ids.isEmpty()) {
+		Object epObj = session.getAttribute(SESSION_PACK_LAST_EPITHET_RESULTS);
+		boolean hasEpithets = epObj instanceof List<?> el && !el.isEmpty();
+		if (ids.isEmpty() && !hasEpithets) {
 			ra.addFlashAttribute("error", "結果表示できるパックがありません");
 			return "redirect:/pack";
 		}
 		model.addAttribute("cards", libraryService.displayFacesForCardIds(ids));
+		if (hasEpithets) {
+			model.addAttribute("packResultEpithets", epObj);
+			session.removeAttribute(SESSION_PACK_LAST_EPITHET_RESULTS);
+		}
 		model.addAttribute("contextPath", "");
 		model.addAttribute("cardPlateUrl", GameConstants.CARD_LAYER_BASE);
 		model.addAttribute("cardDataUrl", GameConstants.CARD_LAYER_DATA);

@@ -6,6 +6,7 @@ import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.service.LibraryService;
 import com.example.nineuniverse.service.PackService;
 import com.example.nineuniverse.service.PackService.PackType;
+import com.example.nineuniverse.service.NicknameEpithetService;
 import com.example.nineuniverse.service.RecycleService;
 import com.example.nineuniverse.web.dto.PackRarityRateRow;
 import com.example.nineuniverse.web.dto.RecycleStandardPackOption;
@@ -16,10 +17,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -44,6 +49,7 @@ public class RecycleController {
 	private final AppUserMapper appUserMapper;
 	private final LibraryService libraryService;
 	private final PackService packService;
+	private final NicknameEpithetService nicknameEpithetService;
 
 	@GetMapping
 	public String hub(Model model) {
@@ -80,6 +86,7 @@ public class RecycleController {
 		model.addAttribute("costLegendaryPick", GameConstants.RECYCLE_SHOP_LEGENDARY_PICK_CRYSTAL);
 		model.addAttribute("costLegendaryPack", GameConstants.RECYCLE_SHOP_LEGENDARY_PACK_CRYSTAL);
 		model.addAttribute("costEpicPlusPack", GameConstants.RECYCLE_SHOP_EPIC_PLUS_PACK_CRYSTAL);
+		model.addAttribute("costEpithetGacha", GameConstants.RECYCLE_SHOP_EPITHET_GACHA_CRYSTAL);
 	}
 
 	@PostMapping("/cards/surplus-keep-two")
@@ -271,14 +278,76 @@ public class RecycleController {
 	}
 
 	@PostMapping("/legendary-pick/confirm")
-	public String legendaryPickConfirm(@RequestParam("cardId") short cardId, RedirectAttributes ra) {
+	public Object legendaryPickConfirm(
+			@RequestParam("cardId") short cardId,
+			@RequestHeader(value = "Accept", required = false) String accept,
+			RedirectAttributes ra) {
 		long uid = CurrentUser.require().getId();
+		boolean wantJson = accept != null && accept.contains(MediaType.APPLICATION_JSON_VALUE);
 		try {
 			recycleService.claimLegendaryPick(uid, cardId);
+			if (wantJson) {
+				var u = appUserMapper.findById(uid);
+				int crystal = u != null && u.getRecycleCrystal() != null ? u.getRecycleCrystal() : 0;
+				Map<String, Object> body = new HashMap<>();
+				body.put("ok", true);
+				body.put("message", "レジェンダリーカードを獲得しました。");
+				body.put("recycleCrystal", crystal);
+				return ResponseEntity.ok(body);
+			}
 			ra.addFlashAttribute("recycleSuccess", "レジェンダリーカードを獲得しました。");
 		} catch (IllegalArgumentException | IllegalStateException e) {
+			if (wantJson) {
+				Map<String, Object> err = new HashMap<>();
+				err.put("ok", false);
+				err.put("error", e.getMessage());
+				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(err);
+			}
 			ra.addFlashAttribute("recycleError", e.getMessage());
 		}
 		return "redirect:/recycle";
+	}
+
+	@GetMapping("/epithet-gacha")
+	public String epithetGachaPage(Model model) {
+		long uid = CurrentUser.require().getId();
+		addRecycleBalances(model, uid);
+		addRecycleShopCosts(model);
+		model.addAttribute("canRollEpithetGacha", nicknameEpithetService.canRollGacha(uid));
+		return "recycle-epithet-gacha";
+	}
+
+	@PostMapping("/epithet-gacha/roll")
+	public Object epithetGachaRoll(
+			@RequestHeader(value = "Accept", required = false) String accept,
+			RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		boolean wantJson = accept != null && accept.contains(MediaType.APPLICATION_JSON_VALUE);
+		try {
+			var r = nicknameEpithetService.rollGacha(uid);
+			if (wantJson) {
+				var u = appUserMapper.findById(uid);
+				int crystal = u != null && u.getRecycleCrystal() != null ? u.getRecycleCrystal() : 0;
+				Map<String, Object> body = new HashMap<>();
+				body.put("ok", true);
+				body.put("upperGained", r.upperGained());
+				body.put("lowerGained", r.lowerGained());
+				body.put("recycleCrystal", crystal);
+				body.put("canRollEpithetGacha", nicknameEpithetService.canRollGacha(uid));
+				return ResponseEntity.ok(body);
+			}
+			ra.addFlashAttribute(
+					"recycleSuccess",
+					"二つ名を獲得しました：〈" + r.upperGained() + "〉〈" + r.lowerGained() + "〉");
+		} catch (IllegalArgumentException | IllegalStateException e) {
+			if (wantJson) {
+				Map<String, Object> err = new HashMap<>();
+				err.put("ok", false);
+				err.put("error", e.getMessage());
+				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(err);
+			}
+			ra.addFlashAttribute("recycleError", e.getMessage());
+		}
+		return "redirect:/recycle/epithet-gacha";
 	}
 }

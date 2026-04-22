@@ -7,6 +7,7 @@ import com.example.nineuniverse.domain.UserDisplayNames;
 import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.battle.CpuBattleMode;
 import com.example.nineuniverse.service.CpuBattleService;
+import com.example.nineuniverse.service.NicknameEpithetService;
 import com.example.nineuniverse.service.DeckService;
 import com.example.nineuniverse.web.dto.CpuBattleCommitRequest;
 import com.example.nineuniverse.web.dto.CpuBattleChoiceRequest;
@@ -33,6 +34,7 @@ public class CpuBattleController {
 	private final CpuBattleService cpuBattleService;
 	private final DeckService deckService;
 	private final AppUserMapper appUserMapper;
+	private final NicknameEpithetService nicknameEpithetService;
 
 	private static CpuBattleMode parseCpuBattleMode(String raw) {
 		if (raw == null || raw.isBlank()) {
@@ -93,6 +95,11 @@ public class CpuBattleController {
 		model.addAttribute("myBattleDeckId", st.getHumanSlotDeckId());
 		AppUser me = appUserMapper.findById(uid);
 		model.addAttribute("battleIntroMyName", UserDisplayNames.effectiveDisplayName(me));
+		var myEp = nicknameEpithetService.resolveDisplay(uid);
+		model.addAttribute("battleIntroMyEpithetUpper", myEp.upperText());
+		model.addAttribute("battleIntroMyEpithetLower", myEp.lowerText());
+		model.addAttribute("battleIntroOppEpithetUpper", "");
+		model.addAttribute("battleIntroOppEpithetLower", "");
 		String speed = me != null && me.getCpuThinkSpeed() != null && !me.getCpuThinkSpeed().isBlank()
 				? me.getCpuThinkSpeed().trim().toUpperCase()
 				: "NORMAL";

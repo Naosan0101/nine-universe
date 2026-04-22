@@ -11,6 +11,10 @@
 	<meta name="nine_universe_context_path" th:content="${contextPath != null ? contextPath : ''}"/>
 	<meta name="my_battle_deck_id" th:content="${myBattleDeckId != null ? myBattleDeckId : ''}"/>
 	<meta name="battle_intro_my_name" th:content="${battleIntroMyName}"/>
+	<meta name="battle_intro_my_epithet_upper" th:content="${battleIntroMyEpithetUpper}"/>
+	<meta name="battle_intro_my_epithet_lower" th:content="${battleIntroMyEpithetLower}"/>
+	<meta name="battle_intro_opp_epithet_upper" th:content="${battleIntroOppEpithetUpper}"/>
+	<meta name="battle_intro_opp_epithet_lower" th:content="${battleIntroOppEpithetLower}"/>
 	<meta name="cpu_think_speed" th:content="${cpuThinkSpeed}"/>
 	<meta name="battle_intro_opp_name" th:content="${battleIntroOppName}"/>
 	<meta name="battle_intro_i_am_first" th:content="${battleIntroIAmFirst}"/>
@@ -18,16 +22,13 @@
 	<meta name="card_data_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardDataUrl}|"/>
 </head>
 <body class="page page--battle">
-<header class="topbar topbar--battle">
-	<h1 class="game-title">バトル</h1>
-	<div class="topbar__actions">
-		<button type="button" class="btn btn--ghost" id="battle-log-open" aria-haspopup="dialog" aria-controls="battle-log-modal">ログ</button>
-		<form th:action="@{/battle/cpu/surrender}" method="post" class="inline">
-			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-			<button type="submit" class="btn btn--danger">降参</button>
-		</form>
-	</div>
-</header>
+<div id="battle-top-actions" class="battle-top-actions">
+	<button type="button" class="btn btn--ghost battle-top-actions__log" id="battle-log-open" aria-haspopup="dialog" aria-controls="battle-log-modal">ログ</button>
+	<form th:action="@{/battle/cpu/surrender}" method="post" class="inline battle-top-actions__surrender-form">
+		<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+		<button type="submit" class="btn btn--danger">降参</button>
+	</form>
+</div>
 
 <div id="battle-app" tabindex="-1">
 	<p class="muted">読み込み中…</p>
@@ -67,6 +68,6 @@
 <script th:src="@{/js/card-spark.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/card-face-layer.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/battle-ui.js(v=${assetVersion})}"></script>
-<script th:replace="~{fragments/tab-fullscreen :: script}"></script>
+<th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>
