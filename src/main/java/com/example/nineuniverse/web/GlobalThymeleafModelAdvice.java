@@ -1,11 +1,9 @@
 package com.example.nineuniverse.web;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.nio.charset.StandardCharsets;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.util.UriUtils;
 
 /**
  * Thymeleaf 3.1+ では #request が既定で使えないため、JS 用にコンテキストパスをモデルへ渡す。
@@ -16,8 +14,9 @@ public class GlobalThymeleafModelAdvice {
 	@Value("${app.web-desktop-migration-notice.enabled:true}")
 	private boolean webDesktopMigrationNoticeEnabled;
 
-	@Value("${app.web-desktop-migration-notice.installer-resource-path:/downloads/Nine Universe Setup 0.1.0.exe}")
-	private String webDesktopMigrationInstallerResourcePath;
+	/** 空でなければポップアップのリンク先をこの絶対 URL に差し替え（CDN 等）。未設定時は {@code /downloads/nine-universe-setup-0.1.0.exe}。 */
+	@Value("${app.web-desktop-migration-notice.installer-absolute-url:}")
+	private String webDesktopMigrationInstallerAbsoluteUrl;
 
 	@ModelAttribute("contextPath")
 	public String contextPath(HttpServletRequest request) {
@@ -35,15 +34,11 @@ public class GlobalThymeleafModelAdvice {
 		if (!webDesktopMigrationNoticeEnabled) {
 			return "";
 		}
+		if (webDesktopMigrationInstallerAbsoluteUrl != null && !webDesktopMigrationInstallerAbsoluteUrl.isBlank()) {
+			return webDesktopMigrationInstallerAbsoluteUrl.trim();
+		}
 		String cp = request.getContextPath();
 		String prefix = (cp == null || cp.isEmpty()) ? "" : cp;
-		String path = webDesktopMigrationInstallerResourcePath;
-		if (path == null || path.isBlank()) {
-			return prefix;
-		}
-		if (!path.startsWith("/")) {
-			path = "/" + path;
-		}
-		return prefix + UriUtils.encodePath(path, StandardCharsets.UTF_8);
+		return prefix + "/downloads/nine-universe-setup-0.1.0.exe";
 	}
 }

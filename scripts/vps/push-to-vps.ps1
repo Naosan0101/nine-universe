@@ -2,15 +2,24 @@
 # Example: .\scripts\vps\push-to-vps.ps1 -SshHost 133.167.90.218 -SshUser ubuntu
 param(
 	[string] $SshHost = "",
-	[string] $SshUser = "ubuntu"
+	[string] $SshUser = "ubuntu",
+	[switch] $Build
 )
 
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 Set-Location $root
 
+if ($Build) {
+	$gw = Join-Path $root "gradlew.bat"
+	Write-Host "bootJar (desktop installer is copied from electron/dist-installer when present)..." -ForegroundColor Cyan
+	& $gw @("bootJar", "-q")
+	if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+
 if (-not $SshHost) {
-	Write-Host "Usage: .\scripts\vps\push-to-vps.ps1 -SshHost YOUR_VPS_IP [-SshUser ubuntu]" -ForegroundColor Yellow
+	Write-Host "Usage: .\scripts\vps\push-to-vps.ps1 -SshHost YOUR_VPS_IP [-SshUser ubuntu] [-Build]" -ForegroundColor Yellow
+	Write-Host "  -Build  Run gradlew bootJar first (bundles electron/dist-installer/Nine Universe Setup 0.1.0.exe when it exists)." -ForegroundColor DarkGray
 	exit 1
 }
 

@@ -43,6 +43,35 @@ tasks.named('bootJar') {
 	archiveFileName = 'nine-universe.jar'
 }
 
+/**
+ * Electron の NSIS 成果物を JAR に同梱（BOOT-INF/classes/static/downloads/nine-universe-setup-0.1.0.exe）。
+ * ソースが無い場合はディレクトリのみ用意（ダウンロードは 404。リリース前に electron のパッケージを実行すること）。
+ */
+def desktopInstallerSource = file("${rootDir}/electron/dist-installer/Nine Universe Setup 0.1.0.exe")
+def desktopInstallerStage = layout.buildDirectory.dir('desktop-installer-for-jar')
+tasks.register('copyDesktopInstaller') {
+	outputs.dir(desktopInstallerStage)
+	doLast {
+		def root = desktopInstallerStage.get().asFile
+		project.delete(root)
+		def downloads = new File(root, 'static/downloads')
+		downloads.mkdirs()
+		if (desktopInstallerSource.isFile()) {
+			java.nio.file.Files.copy(
+					desktopInstallerSource.toPath(),
+					new File(downloads, 'nine-universe-setup-0.1.0.exe').toPath(),
+					java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+		}
+	}
+}
+tasks.named('bootJar', Jar) {
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+	dependsOn('copyDesktopInstaller')
+	from(desktopInstallerStage) {
+		into 'BOOT-INF/classes'
+	}
+}
+
 /* bootJar に META-INF/build-info.properties を同梱し、ビルドごとに assetVersion が変わるようにする（CSS/JS キャッシュ対策） */
 springBoot {
 	buildInfo()

@@ -82,6 +82,20 @@ sudo -E bash ~/nine-universe-vps/setup-web-nginx.sh
 
 ## 更新デプロイ（JAR 差し替え）
 
+### デスクトップインストーラを JAR に同梱する
+
+`bootJar` 実行時に **`electron/dist-installer/Nine Universe Setup 0.1.0.exe`** が存在すると、自動で  
+`BOOT-INF/classes/static/downloads/nine-universe-setup-0.1.0.exe` として JAR に入ります（`build.gradle` の `copyDesktopInstaller`）。  
+Electron のパッケージを先に実行してから `bootJar` してください。
+
+手元から VPS へ JAR を送るときは、ビルド込みで:
+
+```powershell
+.\scripts\vps\push-to-vps.ps1 -SshHost YOUR_VPS_IP -Build
+```
+
+### systemd での差し替え
+
 手元で `bootJar` したあと、`scp` で `/tmp/nine-universe.jar` に送り、VPS で:
 
 ```bash
