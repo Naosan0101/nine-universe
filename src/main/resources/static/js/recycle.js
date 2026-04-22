@@ -240,6 +240,7 @@
 		const p = parseInt(el.dataset.power, 10);
 		const cost = parseInt(el.dataset.cost, 10);
 		const rec = parseInt(el.dataset.recyclable, 10);
+		const inDecksRaw = parseInt(el.dataset.inDecks, 10);
 		const cry = parseInt(el.dataset.crystal, 10);
 		return {
 			id: parseInt(el.dataset.id, 10),
@@ -251,6 +252,7 @@
 			rarity: (el.dataset.rarity || 'C').trim(),
 			rarityLabel: (el.dataset.rarityLabel || '').trim(),
 			qty: parseInt(el.dataset.qty, 10) || 0,
+			inDecks: isNaN(inDecksRaw) ? null : inDecksRaw,
 			recyclable: isNaN(rec) ? 0 : rec,
 			crystal: isNaN(cry) ? 0 : cry,
 			name: el.dataset.name || '',
@@ -826,6 +828,9 @@
 	}
 
 	function inDecksForSeed(c) {
+		if (c.inDecks != null && !isNaN(c.inDecks)) {
+			return Math.max(0, c.inDecks);
+		}
 		const owned = c.qty;
 		const rec = c.recyclable;
 		return Math.max(0, owned - rec);
@@ -833,9 +838,7 @@
 
 	function surplusRecycleQty(c) {
 		const owned = c.qty;
-		const inD = inDecksForSeed(c);
-		const keep = Math.max(2, inD);
-		return Math.max(0, owned - keep);
+		return Math.max(0, owned - 2);
 	}
 
 	function totalSurplusCrystal() {
@@ -928,7 +931,9 @@
 				c.name +
 					'（所持×' +
 					c.qty +
-					'・リサイクル可' +
+					'・デッキ' +
+					inDecksForSeed(c) +
+					'・変換可' +
 					c.recyclable +
 					'）。左クリックで選択エリアへ追加、右クリックで詳細'
 			);

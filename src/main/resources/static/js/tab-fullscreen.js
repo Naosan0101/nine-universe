@@ -4,6 +4,12 @@
  * ページ遷移後はブラウザ仕様によりフルスクリーンは解除されます。
  */
 (function () {
+	/* 同一 HTML に script が二重に入った場合の二重 init（設定トグルが連打される等）を防ぐ */
+	if (window.__nuTabFullscreenLoaded) {
+		return;
+	}
+	window.__nuTabFullscreenLoaded = true;
+
 	var STORAGE_KEY = 'nu_fullscreen_mode';
 
 	function defaultFromElectron() {
@@ -76,6 +82,10 @@
 		var want = readPreferred();
 		if (isElectronShell()) {
 			window.nuElectron.setFullScreen(want).catch(function () {});
+			/* OS ウィンドウのフルスクリーン以外に Fullscreen API が掛かっている場合もウィンドウ表示に戻す */
+			if (!want) {
+				exitFullscreenDoc().catch(function () {});
+			}
 			return;
 		}
 		if (!want) {
@@ -93,13 +103,12 @@
 			return;
 		}
 		firstGestureBound = true;
-		function once() {
-			document.removeEventListener('pointerdown', once, true);
+		function onFirstPointerDown() {
 			if (readPreferred() && !isFullscreen()) {
 				requestFullscreenEl(document.documentElement).catch(function () {});
 			}
 		}
-		document.addEventListener('pointerdown', once, true);
+		window.addEventListener('pointerdown', onFirstPointerDown, { capture: true, once: true });
 	}
 
 	function syncSettingsSwitch(btn) {

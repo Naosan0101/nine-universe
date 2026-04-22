@@ -304,7 +304,8 @@ public class CpuBattleService {
 		if (c == null) {
 			return null;
 		}
-		return new BattleCardDto(c.getInstanceId(), c.getCardId(), c.isBlankEffects(), c.getHandDeployCostModifier(),
+		int handAdjDisplay = c.getHandDeployCostModifier() + c.getDeathbounceHandCostStacks();
+		return new BattleCardDto(c.getInstanceId(), c.getCardId(), c.isBlankEffects(), handAdjDisplay,
 				c.getBattleTribeOverride());
 	}
 
@@ -315,8 +316,8 @@ public class CpuBattleService {
 		var main = toBattleCardDto(z.getMain());
 		var under = z.getCostUnder().stream().map(CpuBattleService::toBattleCardDto).toList();
 		List<BattlePowerModifierDto> mods = powerModifiers != null ? powerModifiers : List.of();
-		return new ZoneFighterDto(main, under, z.getTemporaryPowerBonus(), mods, z.getSpec777RolledPower(),
-				z.getBattleMainLineSeq());
+		return new ZoneFighterDto(main, under, z.getTemporaryPowerBonus() + z.getLevelUpDeployPowerBonus(), mods,
+				z.getSpec777RolledPower(), z.getBattleMainLineSeq());
 	}
 
 	private void maybeNotifyCpuWinMission(CpuBattleState st) {

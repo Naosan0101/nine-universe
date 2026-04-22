@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.nineuniverse.repository.PvpFriendInviteMapper">
+
+	<insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+		INSERT INTO pvp_friend_invite (match_id, challenger_user_id, opponent_user_id, status)
+		VALUES (#{matchId}, #{challengerUserId}, #{opponentUserId}, #{status})
+	</insert>
+
+	<select id="findById" resultType="com.example.nineuniverse.domain.PvpFriendInvite">
+		SELECT id, match_id AS matchId, challenger_user_id AS challengerUserId,
+		       opponent_user_id AS opponentUserId, status, created_at AS createdAt
+		FROM pvp_friend_invite WHERE id = #{id}
+	</select>
+
+	<select id="findPendingByMatchId" resultType="com.example.nineuniverse.domain.PvpFriendInvite">
+		SELECT id, match_id AS matchId, challenger_user_id AS challengerUserId,
+		       opponent_user_id AS opponentUserId, status, created_at AS createdAt
+		FROM pvp_friend_invite
+		WHERE match_id = #{matchId} AND status = 'PENDING'
+	</select>
+
+	<select id="findPendingInboundForUser" resultType="com.example.nineuniverse.domain.PvpInviteNotice">
+		SELECT i.id AS inviteId, i.match_id AS matchId, i.challenger_user_id AS counterpartUserId,
+		       COALESCE(NULLIF(TRIM(u.display_name), ''), u.username) AS counterpartDisplayName
+		FROM pvp_friend_invite i
+		JOIN app_user u ON u.id = i.challenger_user_id
+		WHERE i.opponent_user_id = #{opponentUserId} AND i.status = 'PENDING'
+		ORDER BY i.id DESC
+	</select>
+
+	<select id="findPendingOutboundForUser" resultType="com.example.nineuniverse.domain.PvpInviteNotice">
+		SELECT i.id AS inviteId, i.match_id AS matchId, i.opponent_user_id AS counterpartUserId,
+		       COALESCE(NULLIF(TRIM(u.display_name), ''), u.username) AS counterpartDisplayName
+		FROM pvp_friend_invite i
+		JOIN app_user u ON u.id = i.opponent_user_id
+		WHERE i.challenger_user_id = #{challengerUserId} AND i.status = 'PENDING'
+		ORDER BY i.id DESC
+	</select>
+
+	<select id="countPendingInboundForUser" resultType="int">
+		SELECT COUNT(*)::int FROM pvp_friend_invite
+		WHERE opponent_user_id = #{opponentUserId} AND status = 'PENDING'
+	</select>
+
+	<update id="updateStatus">
+		UPDATE pvp_friend_invite SET status = #{status} WHERE id = #{id}
+	</update>
+
+	<select id="findInviteIdByMatchAndChallenger" resultType="long">
+		SELECT id FROM pvp_friend_invite
+		WHERE match_id = #{matchId} AND challenger_user_id = #{challengerUserId} AND status = 'PENDING'
+		LIMIT 1
+	</select>
+</mapper>

@@ -153,8 +153,8 @@ html:has(.page--single-screen-hub) {
 }
 .page.page--single-screen-hub .home-time-pack__btn {
 	min-width: 0;
-	width: 100%;
-	max-width: 22rem;
+	width: fit-content;
+	max-width: min(100%, 15rem);
 	padding: 0.38rem 0.65rem;
 	font-size: clamp(0.72rem, 0.65rem + 0.45vw, 0.88rem);
 	margin-top: 0.28rem;
@@ -245,8 +245,9 @@ html:has(.page--single-screen-hub) {
 	overflow-x: hidden;
 	overscroll-behavior: contain;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: 0.4rem 0.5rem;
+	gap: 0.35rem 0.5rem;
 	align-items: stretch;
+	align-content: start;
 }
 @media (max-width: 820px) {
 	.page.page--single-screen-hub.page--pack .pack-buy__grid {
@@ -347,13 +348,17 @@ html:has(.page--single-screen-hub) {
 	overflow: hidden;
 	gap: 0.45rem;
 }
+/* デッキ編集と同様：上の選択エリアは固定相当（スタック上段）、フィルタ〜カードは下段パネル内でまとめてスクロール */
 .page.page--single-screen-hub.page--recycle-cards .deck-panel--library {
 	flex: 1 1 auto;
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
-	overflow: hidden;
+	overflow-x: hidden;
+	overflow-y: auto;
+	overscroll-behavior: contain;
 	padding-bottom: 0.35rem;
+	-webkit-overflow-scrolling: touch;
 }
 .page.page--single-screen-hub.page--recycle-cards .deck-lib-toolbar {
 	flex: 0 0 auto;
@@ -366,11 +371,9 @@ html:has(.page--single-screen-hub) {
 	flex: 0 0 auto;
 }
 .page.page--single-screen-hub.page--recycle-cards .library-pool {
-	flex: 1 1 auto;
+	flex: 0 0 auto;
 	min-height: 0;
-	overflow-y: auto;
-	overflow-x: hidden;
-	overscroll-behavior: contain;
+	overflow: visible;
 	align-content: start;
 }
 .page.page--single-screen-hub.page--recycle-cards .deck-panel--slots {
@@ -714,6 +717,89 @@ html:has(.page--single-screen-hub) {
 	border-color: rgba(255, 110, 110, 0.62);
 }
 
+/* 対戦申し込み: ログイン中ページ右下（ポーリング） */
+.pvp-invite-banner {
+	position: fixed;
+	z-index: 200;
+	right: max(0.75rem, env(safe-area-inset-right, 0px));
+	bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+	max-width: min(22rem, calc(100vw - 1.5rem));
+	display: none;
+	align-items: stretch;
+	gap: 0;
+	border-radius: 14px;
+	overflow: hidden;
+	cursor: pointer;
+	text-align: left;
+	background: linear-gradient(135deg, rgba(36, 48, 92, 0.97), rgba(14, 18, 32, 0.98));
+	border: 1px solid rgba(120, 170, 255, 0.45);
+	box-shadow:
+		0 0 0 1px rgba(0, 0, 0, 0.35),
+		0 14px 48px rgba(0, 0, 0, 0.55),
+		0 0 28px rgba(74, 125, 255, 0.18);
+	color: rgba(240, 244, 255, 0.96);
+	font-family: inherit;
+	padding: 0;
+	margin: 0;
+	-webkit-tap-highlight-color: transparent;
+	transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.pvp-invite-banner[hidden] {
+	display: none !important;
+}
+.pvp-invite-banner.is-visible {
+	display: flex;
+}
+.pvp-invite-banner:hover {
+	border-color: rgba(160, 200, 255, 0.65);
+	box-shadow:
+		0 0 0 1px rgba(0, 0, 0, 0.35),
+		0 18px 56px rgba(0, 0, 0, 0.58),
+		0 0 36px rgba(120, 170, 255, 0.22);
+}
+.pvp-invite-banner:active {
+	transform: scale(0.98);
+}
+.pvp-invite-banner__body {
+	padding: 0.75rem 0.85rem 0.75rem 0.95rem;
+	flex: 1;
+	min-width: 0;
+}
+.pvp-invite-banner__title {
+	margin: 0;
+	font-size: 0.92rem;
+	font-weight: 900;
+	letter-spacing: 0.04em;
+	line-height: 1.35;
+}
+.pvp-invite-banner__hint {
+	margin: 0.35rem 0 0;
+	font-size: 0.78rem;
+	font-weight: 600;
+	color: rgba(200, 215, 255, 0.82);
+	line-height: 1.4;
+}
+.pvp-invite-banner__close {
+	flex: 0 0 auto;
+	align-self: stretch;
+	width: 2.35rem;
+	border: none;
+	margin: 0;
+	padding: 0;
+	cursor: pointer;
+	font-size: 1.25rem;
+	line-height: 1;
+	font-weight: 700;
+	color: rgba(255, 255, 255, 0.75);
+	background: rgba(0, 0, 0, 0.22);
+	border-left: 1px solid rgba(255, 255, 255, 0.12);
+	transition: background 0.12s ease, color 0.12s ease;
+}
+.pvp-invite-banner__close:hover {
+	color: #fff;
+	background: rgba(0, 0, 0, 0.38);
+}
+
 /* ターン表示の配置基準（#battle-app を内包。ポップアップは fixed せずレイアウトに追従） */
 .battle-turn-popup-host {
 	position: relative;
@@ -879,7 +965,7 @@ html:has(.page--single-screen-hub) {
 .announcement-modal__panel {
 	position: relative;
 	width: 100%;
-	/* 長いお知らせ＋受け取り欄が並んでも折り返しやすいようやや広め */
+	/* 長いおしらせ＋受け取り欄が並んでも折り返しやすいようやや広め */
 	max-width: min(920px, 100%);
 	padding: 1.75rem 1.5rem 1.5rem;
 	border-radius: 16px;
@@ -982,7 +1068,7 @@ html:has(.page--single-screen-hub) {
 	word-break: break-word;
 }
 
-/* 長文お知らせモーダルは常に折り返して枠内に収める */
+/* 長文おしらせモーダルは常に折り返して枠内に収める */
 #major-update-modal .announcement-modal__card-text {
 	white-space: normal !important;
 	overflow-wrap: anywhere;
@@ -1055,6 +1141,8 @@ html.nu-has-web-migration-notice body {
 }
 .web-desktop-migration-notice__inner {
 	box-sizing: border-box;
+	position: relative;
+	z-index: 1;
 	width: 100%;
 	max-width: min(40rem, 100%);
 	max-height: calc(100dvh - 2 * clamp(0.5rem, 2.8vmin, 1.35rem));
@@ -1065,17 +1153,22 @@ html.nu-has-web-migration-notice body {
 	background: linear-gradient(165deg, rgba(36, 42, 72, 0.98), rgba(18, 20, 32, 0.99));
 	box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
 	padding: clamp(0.6rem, 2.4vmin, 1.05rem) clamp(0.7rem, 3.2vmin, 1.25rem);
-	overflow: hidden;
+	overflow-x: hidden;
+	overflow-y: auto;
+	-webkit-overflow-scrolling: touch;
+	overscroll-behavior: contain;
 	text-align: left;
 }
 .web-desktop-migration-notice__title {
 	flex: 0 0 auto;
-	margin: 0 0 clamp(0.28rem, 1.2vmin, 0.55rem);
+	margin: 0 0 clamp(0.45rem, 1.8vmin, 0.95rem);
 	font-size: clamp(1rem, 3.6vmin, 1.32rem);
-	line-height: 1.28;
-	color: var(--accent-2);
+	line-height: 1.35;
+	color: var(--accent);
+	font-style: italic;
 	font-weight: 800;
 	text-align: center;
+	text-shadow: 0 0 12px rgba(201, 162, 39, 0.35);
 }
 .web-desktop-migration-notice__body {
 	flex: 1 1 auto;
@@ -1084,10 +1177,32 @@ html.nu-has-web-migration-notice body {
 	display: flex;
 	flex-direction: column;
 	justify-content: flex-start;
-	gap: clamp(0.1rem, 0.45vmin, 0.26rem);
-	overflow: hidden;
+	gap: 0;
+	/* 内側スクロールは __inner に任せる（overflow:hidden だと末尾の DL ボタンがクリップされクリック不能になる） */
+	overflow: visible;
 	font-size: clamp(0.78rem, 2.45vmin, 1.02rem);
-	line-height: 1.45;
+	line-height: 1.72;
+}
+.web-desktop-migration-notice__stanza {
+	display: flex;
+	flex-direction: column;
+	gap: clamp(0.42em, 1.6vmin, 0.65em);
+	margin-bottom: clamp(0.65rem, 2.4vmin, 1.15rem);
+}
+.web-desktop-migration-notice__stanza:last-child {
+	margin-bottom: 0;
+}
+.web-desktop-migration-notice__stanza--signoff {
+	margin-top: clamp(0.15rem, 0.8vmin, 0.45rem);
+	margin-bottom: 0;
+	text-align: center;
+}
+.web-desktop-migration-notice__stanza--signoff .announcement-modal__card-text {
+	color: var(--accent);
+	font-style: italic;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-shadow: 0 0 12px rgba(201, 162, 39, 0.35);
 }
 .web-desktop-migration-notice__body .announcement-modal__card-text {
 	font-size: inherit;
@@ -1099,22 +1214,38 @@ html.nu-has-web-migration-notice body {
 }
 .web-desktop-migration-notice__download {
 	flex: 0 0 auto;
-	margin: clamp(0.2rem, 1vmin, 0.4rem) 0 0;
+	flex-shrink: 0;
+	margin: clamp(0.35rem, 1.4vmin, 0.65rem) 0 0;
 	text-align: center;
+	position: relative;
+	z-index: 2;
 }
 .web-desktop-migration-notice__download-btn {
+	position: relative;
+	z-index: 2;
+	cursor: pointer;
 	font-weight: 800;
 	padding: clamp(0.38rem, 1.45vmin, 0.58rem) clamp(0.85rem, 2.9vmin, 1.2rem);
 	font-size: clamp(0.82rem, 2.5vmin, 1.02rem);
 }
+.web-desktop-migration-notice__browser-hint {
+	margin-top: clamp(0.35rem, 1.2vmin, 0.55rem) !important;
+	font-size: clamp(0.68rem, 1.9vmin, 0.82rem) !important;
+	line-height: 1.45 !important;
+	text-align: left;
+}
 @media (max-height: 520px) {
 	.web-desktop-migration-notice__body {
 		font-size: clamp(0.7rem, 2.1vmin, 0.88rem);
-		line-height: 1.36;
+		line-height: 1.58;
+	}
+	.web-desktop-migration-notice__stanza {
+		margin-bottom: clamp(0.45rem, 1.8vmin, 0.85rem);
+		gap: clamp(0.28em, 1.2vmin, 0.45em);
 	}
 	.web-desktop-migration-notice__title {
 		font-size: clamp(0.88rem, 2.9vmin, 1.12rem);
-		margin-bottom: 0.2rem;
+		margin-bottom: clamp(0.28rem, 1vmin, 0.5rem);
 	}
 }
 @media (max-height: 420px) {
@@ -1124,8 +1255,11 @@ html.nu-has-web-migration-notice body {
 	}
 	.web-desktop-migration-notice__body {
 		font-size: clamp(0.65rem, 1.85vmin, 0.8rem);
-		line-height: 1.32;
-		gap: 0.05rem;
+		line-height: 1.48;
+	}
+	.web-desktop-migration-notice__stanza {
+		margin-bottom: clamp(0.35rem, 1.4vmin, 0.65rem);
+		gap: 0.22em;
 	}
 }
 
@@ -1311,7 +1445,9 @@ html.nu-has-web-migration-notice body {
 	margin: 0;
 }
 .home-time-pack__btn {
-	min-width: 12rem;
+	min-width: 0;
+	width: fit-content;
+	max-width: min(100%, 15rem);
 }
 .home-time-pack__btn:disabled {
 	opacity: 0.55;
@@ -1605,7 +1741,7 @@ html.nu-has-web-migration-notice body {
 	right: 3px;
 }
 
-/* メインメニュー：4列（7タイル時は2行目に3つ） */
+/* メインメニュー：4列×2行（8タイル） */
 .home-grid--primary {
 	display: grid;
 	grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1977,7 +2113,7 @@ html.nu-has-web-migration-notice body {
 }
 .tile__label { font-weight: 800; letter-spacing: 0.02em; }
 .tile__hint { font-size: 0.85rem; color: var(--muted); }
-/* ホーム：ミッションタイル「ミッション」ラベル右上に未受取バッジ（お知らせボタンと同様） */
+/* ホーム：ミッションタイル「ミッション」ラベル右上に未受取バッジ（おしらせボタンと同様） */
 .tile__label--notify {
 	position: relative;
 	display: inline-block;
@@ -2369,6 +2505,78 @@ a:hover {
 	background: rgba(0, 0, 0, 0.22);
 	border: 1px solid rgba(255, 255, 255, 0.08);
 }
+
+.friends-page__section,
+.pvp-menu-page__section {
+	margin-bottom: 1.25rem;
+}
+.friends-page__heading,
+.pvp-menu-page__heading {
+	font-size: 1.05rem;
+	margin: 0 0 0.5rem;
+}
+.friends-page__lead {
+	margin: 0 0 0.75rem;
+}
+.friends-page__form {
+	max-width: 22rem;
+}
+.friends-page__submit-btn {
+	width: fit-content;
+	max-width: min(100%, 11rem);
+	align-self: flex-start;
+}
+.friends-page__label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 0.35rem;
+}
+.friends-page__list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+.friends-page__row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.65rem;
+	padding: 0.55rem 0;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.friends-page__row--plain {
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.friends-page__name {
+	font-weight: 600;
+}
+.friends-page__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.45rem;
+}
+.pvp-menu-page__list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+.pvp-menu-page__row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.65rem;
+	padding: 0.55rem 0;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.pvp-menu-page__name {
+	font-weight: 600;
+}
+.pvp-menu-page__lead {
+	margin: 0 0 0.75rem;
+}
+
 .pvp-copy-url-btn {
 	flex-shrink: 0;
 	padding: 0.45rem;
@@ -4473,16 +4681,16 @@ body.battle-intro-is-running {
 }
 .page--battle .battle-field-turn-badge {
 	position: absolute;
-	right: 0.18rem;
-	top: 0.18rem;
+	right: 0.14rem;
+	top: 0.14rem;
 	z-index: 4;
-	min-width: 1.35rem;
-	height: 1.35rem;
-	padding: 0 0.3rem;
+	min-width: 1.65rem;
+	height: 1.65rem;
+	padding: 0 0.38rem;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 0.78rem;
+	font-size: 1.02rem;
 	font-weight: 800;
 	line-height: 1;
 	color: #fff;
@@ -5428,7 +5636,7 @@ body.battle-intro-is-running {
 	/* ページ見出し右上の未受取ドットが文字と重ならないよう余白を確保 */
 	padding-right: 0.7rem;
 }
-/* ホーム「お知らせ」の未読ドットと同サイズ・同位置関係 */
+/* ホーム「おしらせ」の未読ドットと同サイズ・同位置関係 */
 .missions-page__notify-dot {
 	position: absolute;
 	top: -0.18rem;
@@ -5825,10 +6033,15 @@ body.battle-intro-is-running {
 	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 	gap: 14px;
 	align-items: start;
+	/* 親が flex で縦に伸びているとき、空行や stretch で行と行の間に巨大な余白が入らないようにする */
+	align-content: start;
 }
 .page--pack .pack-buy__row-break {
 	grid-column: 1 / -1;
 	height: 0;
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
 }
 .pack-buy__item {
 	border: 1px solid rgba(255,255,255,0.12);

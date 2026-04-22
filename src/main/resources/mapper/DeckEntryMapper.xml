@@ -21,4 +21,21 @@
 	<insert id="insert">
 		INSERT INTO deck_entry (deck_id, slot, card_id) VALUES (#{deckId}, #{slot}, #{cardId})
 	</insert>
+
+	<select id="findFirstSlotByUserAndCard" resultType="com.example.nineuniverse.domain.DeckEntry">
+		SELECT de.deck_id AS deckId, de.slot AS slot, de.card_id AS cardId
+		FROM deck_entry de
+		INNER JOIN deck d ON d.id = de.deck_id
+		WHERE d.user_id = #{userId} AND de.card_id = #{cardId}
+		ORDER BY de.deck_id, de.slot
+		LIMIT 1
+	</select>
+
+	<update id="updateSlotCard">
+		UPDATE deck_entry SET card_id = #{cardId} WHERE deck_id = #{deckId} AND slot = #{slot}
+	</update>
+
+	<select id="countInDeck" resultType="int">
+		SELECT CAST(COUNT(*) AS INTEGER) FROM deck_entry WHERE deck_id = #{deckId} AND card_id = #{cardId}
+	</select>
 </mapper>

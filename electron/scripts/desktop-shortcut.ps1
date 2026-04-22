@@ -19,9 +19,12 @@ $lnkPath = Join-Path $desktop "Nine Universe.lnk"
 
 $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut($lnkPath)
-$shortcut.TargetPath = (Resolve-Path -LiteralPath $exe).Path
+$exeResolved = (Resolve-Path -LiteralPath $exe).Path
+$shortcut.TargetPath = $exeResolved
 $shortcut.WorkingDirectory = Split-Path -LiteralPath $exe
 $shortcut.Description = "Nine Universe"
+# exe に埋め込んだアイコン（インデックス 0）を明示（未設定だと古いキャッシュのままになることがある）
+$shortcut.IconLocation = "$exeResolved,0"
 $shortcut.Save()
 
 Write-Host "Desktop shortcut created: $lnkPath" -ForegroundColor Green

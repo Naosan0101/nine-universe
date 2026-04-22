@@ -38,7 +38,7 @@ public class CpuBattleEngine {
 	private static final int NEMURY_OPPONENT_TURN_POWER_BONUS = 4;
 	/** フェザリア（レスト回収で自分自身は選べない） */
 	private static final short FEATHERIA_ID = 38;
-	/** ノクスクル（id=37・能力コード STONIA）。自分のターンの終わりまで、所持ストーンを強さに加算 */
+	/** ノクスクル（id=37・能力コード STONIA）。〈配置〉相当の強さ加算（自分のターンの終わりまで所持ストーンぶん） */
 	private static final short STONIA_ID = 37;
 	/** 宝石の地 グロリア輝石台地 */
 	private static final short FIELD_GLORIA_ID = 41;
@@ -85,7 +85,7 @@ public class CpuBattleEngine {
 	private static final short SCRAPYARD_FIELD_ID = 63;
 	/** 武器庫 VV-E4-PON（id=64・〈フィールド〉）: 種族：マシンのファイターはコスト1（〈フィールド〉カード自体は対象外） */
 	private static final short WEAPON_DEPOT_FIELD_ID = 64;
-	/** 神秘の大樹 スカイア（id=66・〈フィールド〉）: エルフの「ターン終了まで」の強さ加算が相手ターンでも持続 */
+	/** 神秘の大樹 スカイア（id=66・〈フィールド〉）: エルフの「カード効果による」ターン跨ぎの強さ加算が相手ターンでも持続（レベルアップ分は除く） */
 	private static final short MYSTERIOUS_TREE_SKYAR_FIELD_ID = 66;
 	/** 磁力合体デンジリオン（id=59） */
 	private static final short DENZIRION_ID = 59;
@@ -1019,6 +1019,15 @@ public class CpuBattleEngine {
 		if (st == null || st.isGameOver()) return;
 		PendingEffect pe = st.getPendingEffect();
 		if (pe == null) return;
+		/*
+		 * 〈配置〉本体は HUMAN_EFFECT_PENDING / CPU_EFFECT_PENDING のときだけ解決する。
+		 * 忍者の入れ替え確認などで HUMAN_CHOICE 中に誤って /resolve が呼ばれると、入れ替え後メイン（例: 策士）の
+		 * 〈配置〉が先に適用され、確認後の resolveNinjaSwappedDeployEffects で再度適用され、デッキ上が複数回レストへ送られる。
+		 */
+		BattlePhase phase = st.getPhase();
+		if (phase != BattlePhase.HUMAN_EFFECT_PENDING && phase != BattlePhase.CPU_EFFECT_PENDING) {
+			return;
+		}
 
 		boolean pendingOnHumanSlot = pendingDeployEffectOnHumanBattleSlot(st, pe);
 		boolean pendingOnCpuSlot = pendingDeployEffectOnCpuBattleSlot(st, pe);
@@ -1073,6 +1082,14 @@ public class CpuBattleEngine {
 			}
 			if (fighterDefForFieldTriggers != null && !isFieldCard(fighterDefForFieldTriggers)) {
 				applyFieldNebulaWhenCarbuncleFighterDeployed(st, fighterDefForFieldTriggers, deployedMain, deployerActsAsHuman);
+			}
+			// SPEC-666 の種族上書きは〈配置〉抑止（竜王等）とは無関係に適用する（抑止時は applyDeployHuman 自体が呼ばれないため）
+			if (fighterDefForFieldTriggers != null && !isFieldCard(fighterDefForFieldTriggers)) {
+				if (pendingOnHumanSlot) {
+					applySpec666UndeadToDeployedFighterIfPending(st, true, defs);
+				} else if (pendingOnCpuSlot) {
+					applySpec666UndeadToDeployedFighterIfPending(st, false, defs);
+				}
 			}
 			// 相手の竜王、または（クリスタクル以外なら）ミスティンクルで〈配置〉が無効
 			boolean deploySuppressed = deployAbilitySuppressedByOpponentLine(st, deployerActsAsHuman, fighterDefForFieldTriggers);
@@ -1278,10 +1295,15 @@ public class CpuBattleEngine {
 				if (confirm) {
 					resolveNinjaSwappedDeployEffects(st, defs, rnd, pendHum, pendCpu);
 					if (st.getPendingChoice() != null) {
+						// 〈配置〉本体は resolveNinja 内で適用済み。applied を立てないと後続の resolve で再度〈配置〉が走る
+						peff.setApplied(true);
+						st.setPendingEffect(peff);
 						return;
 					}
 					ensureCrystakulOptionalStonePromptAfterDeployEffect(st, defs, deployerActsAsHuman);
 					if (st.getPendingChoice() != null) {
+						peff.setApplied(true);
+						st.setPendingEffect(peff);
 						return;
 					}
 				} else {
@@ -1523,9 +1545,15 @@ public class CpuBattleEngine {
 				int n = 0;
 				for (String id : pickedInstanceIds) {
 					BattleCard c = removeByInstanceId(st.getHumanRest(), id);
-					if (c != null && isFezariaPickableCarbuncleInRest(c, st.getHumanBattle(), defs)) {
+					if (c == null) {
+						continue;
+					}
+					if (isFezariaPickableCarbuncleInRest(c, st.getHumanBattle(), defs)) {
 						st.getHumanHand().add(0, c);
 						n++;
+					} else {
+						// 不整合時にレストから取り除いたままにしない（種族は定義ベースで選別済みのはず）
+						st.getHumanRest().add(c);
 					}
 				}
 				st.addLog("フェザリア: レストから手札へ（" + n + "枚）");
@@ -1633,10 +1661,15 @@ public class CpuBattleEngine {
 				if (confirm) {
 					resolveNinjaSwappedDeployEffects(st, defs, rnd, pendHumG, pendCpuG);
 					if (st.getPendingChoice() != null) {
+						// 〈配置〉本体は resolveNinja 内で適用済み。applied を立てないと後続の resolve で再度〈配置〉が走る
+						peffG.setApplied(true);
+						st.setPendingEffect(peffG);
 						return;
 					}
 					ensureCrystakulOptionalStonePromptAfterDeployEffect(st, defs, deployerActsAsHumanG);
 					if (st.getPendingChoice() != null) {
+						peffG.setApplied(true);
+						st.setPendingEffect(peffG);
 						return;
 					}
 				} else {
@@ -1875,9 +1908,14 @@ public class CpuBattleEngine {
 				int ng = 0;
 				for (String id : pickedInstanceIds) {
 					BattleCard c = removeByInstanceId(st.getCpuRest(), id);
-					if (c != null && isFezariaPickableCarbuncleInRest(c, st.getCpuBattle(), defs)) {
+					if (c == null) {
+						continue;
+					}
+					if (isFezariaPickableCarbuncleInRest(c, st.getCpuBattle(), defs)) {
 						st.getCpuHand().add(0, c);
 						ng++;
+					} else {
+						st.getCpuRest().add(c);
 					}
 				}
 				st.addLog("フェザリア: レストから手札へ（" + ng + "枚）");
@@ -2011,6 +2049,10 @@ public class CpuBattleEngine {
 	 */
 	private void replaceActiveField(CpuBattleState st, BattleCard newField, boolean newFieldPlacedByHost, Map<Short, CardDefinition> defs) {
 		BattleCard old = st.getActiveField();
+		boolean oldWasSkya = old != null && old.getCardId() == MYSTERIOUS_TREE_SKYAR_FIELD_ID;
+		boolean newIsSkya = newField != null && newField.getCardId() == MYSTERIOUS_TREE_SKYAR_FIELD_ID;
+		boolean oldWasDeathbounce = old != null && old.getCardId() == DEATHBOUNCE_FIELD_ID;
+		boolean newIsDeathbounce = newField != null && newField.getCardId() == DEATHBOUNCE_FIELD_ID;
 		Boolean prevOwner = st.getActiveFieldOwnerHuman();
 		if (old != null && prevOwner != null) {
 			CardDefinition oldDef = defs != null ? defs.get(old.getCardId()) : null;
@@ -2042,6 +2084,12 @@ public class CpuBattleEngine {
 		} else {
 			st.setScrapyardFieldTurnsRemaining(0);
 			st.setDeathbounceFieldTurnsRemaining(0);
+		}
+		if (oldWasSkya && !newIsSkya) {
+			stripSkyaPersistedElfDeployBonusesOnFieldLoss(st, defs);
+		}
+		if (oldWasDeathbounce && !newIsDeathbounce) {
+			stripDeathbouncePersistedHandPenalties(st);
 		}
 	}
 
@@ -2149,7 +2197,8 @@ public class CpuBattleEngine {
 			assignBattleZoneMain(z, main, st);
 			z.setCostUnder(paid);
 			z.setCostPayCardCount(cost);
-			applyCrystakulBonusesToDeployedZone(st, z, deployBonus, true);
+			int levelUpDeployPwr = levelUpRest * 2 + levelUpStones * 2;
+			applyCrystakulBonusesToDeployedZone(st, z, deployBonus, levelUpDeployPwr, true);
 			// 次回配置ボーナス消費
 			st.setHumanNextDeployBonus(0);
 			st.setHumanNextElfOnlyBonus(0);
@@ -2433,7 +2482,8 @@ public class CpuBattleEngine {
 			assignBattleZoneMain(z, main, st);
 			z.setCostUnder(paid);
 			z.setCostPayCardCount(payIds.size());
-			applyCrystakulBonusesToDeployedZone(st, z, deployBonus, true);
+			int levelUpDeployPwr = levelUpRest * 2 + levelUpStones * 2;
+			applyCrystakulBonusesToDeployedZone(st, z, deployBonus, levelUpDeployPwr, true);
 			st.setHumanNextDeployBonus(0);
 			st.setHumanNextElfOnlyBonus(0);
 			st.setHumanNextDeployCostBonusTimes(0);
@@ -2682,7 +2732,8 @@ public class CpuBattleEngine {
 			assignBattleZoneMain(z, main, st);
 			z.setCostUnder(paid);
 			z.setCostPayCardCount(payIds.size());
-			applyCrystakulBonusesToDeployedZone(st, z, deployBonus, false);
+			int levelUpDeployPwrGuest = levelUpRest * 2 + levelUpStones * 2;
+			applyCrystakulBonusesToDeployedZone(st, z, deployBonus, levelUpDeployPwrGuest, false);
 			st.setCpuNextDeployBonus(0);
 			st.setCpuNextElfOnlyBonus(0);
 			st.setCpuNextDeployCostBonusTimes(0);
@@ -2857,8 +2908,8 @@ public class CpuBattleEngine {
 	}
 
 	private Optional<BattleCard> bestCpuNinjaSwapCostAmongTier(CpuBattleState simHandAfterMainRemovedTemplate,
-			BattleCard ninjaMain, CardDefinition ninjaDef, int payCards, int deployBonus, List<BattleCard> tier,
-			Map<Short, CardDefinition> defs, long simSalt, boolean hasOpp) {
+			BattleCard ninjaMain, CardDefinition ninjaDef, int payCards, int deployBonus, int levelUpDeployPowerBonus,
+			List<BattleCard> tier, Map<Short, CardDefinition> defs, long simSalt, boolean hasOpp) {
 		BattleCard best = null;
 		int bestCpuEff = hasOpp ? Integer.MAX_VALUE : Integer.MIN_VALUE;
 		for (BattleCard cand : tier) {
@@ -2885,7 +2936,7 @@ public class CpuBattleEngine {
 			assignBattleZoneMain(z, ninjaMain, trial);
 			z.setCostUnder(paid);
 			z.setCostPayCardCount(payCards);
-			applyCrystakulBonusesToDeployedZone(trial, z, deployBonus, false);
+			applyCrystakulBonusesToDeployedZone(trial, z, deployBonus, levelUpDeployPowerBonus, false);
 			retireOwnBattleZoneBeforeNewDeploy(trial, false, false, defs);
 			trial.setCpuBattle(z);
 			long salt = simSalt ^ (cand.getCardId() * 31L);
@@ -2922,8 +2973,8 @@ public class CpuBattleEngine {
 	 * どのコスト帯でも足りなければ {@link NinjaFirstCostPick#skip()}（レベルアップ等の別案へ）。
 	 */
 	private NinjaFirstCostPick pickCpuNinjaCharacteristicFirstCost(CpuBattleState simTemplateAfterMainRemoved,
-			BattleCard ninjaMain, CardDefinition ninjaDef, int payCards, int deployBonus, CpuBattleState stCostContext,
-			Map<Short, CardDefinition> defs, long simSalt) {
+			BattleCard ninjaMain, CardDefinition ninjaDef, int payCards, int deployBonus, int levelUpDeployPowerBonus,
+			CpuBattleState stCostContext, Map<Short, CardDefinition> defs, long simSalt) {
 		if (ninjaDef == null || ninjaDef.getAbilityDeployCode() == null
 				|| !"NINJA".equals(ninjaDef.getAbilityDeployCode()) || payCards <= 0) {
 			return NinjaFirstCostPick.legacy();
@@ -2968,7 +3019,7 @@ public class CpuBattleEngine {
 				j++;
 			}
 			Optional<BattleCard> best = bestCpuNinjaSwapCostAmongTier(simTemplateAfterMainRemoved, ninjaMain, ninjaDef,
-					payCards, deployBonus, fighters.subList(i, j), defs, simSalt, hasOpp);
+					payCards, deployBonus, levelUpDeployPowerBonus, fighters.subList(i, j), defs, simSalt, hasOpp);
 			if (best.isPresent()) {
 				return NinjaFirstCostPick.choice(best.get().getInstanceId());
 			}
@@ -2981,6 +3032,7 @@ public class CpuBattleEngine {
 		if (c == null) return null;
 		BattleCard n = new BattleCard(c.getInstanceId(), c.getCardId(), c.isBlankEffects());
 		n.setHandDeployCostModifier(c.getHandDeployCostModifier());
+		n.setDeathbounceHandCostStacks(c.getDeathbounceHandCostStacks());
 		n.setBattleTribeOverride(c.getBattleTribeOverride());
 		return n;
 	}
@@ -3006,6 +3058,7 @@ public class CpuBattleEngine {
 		}
 		nz.setCostUnder(under);
 		nz.setTemporaryPowerBonus(z.getTemporaryPowerBonus());
+		nz.setLevelUpDeployPowerBonus(z.getLevelUpDeployPowerBonus());
 		nz.setNinjaSwapPowerPenalty(z.getNinjaSwapPowerPenalty());
 		nz.setCostPayCardCount(z.getCostPayCardCount());
 		nz.setReturnToHandOnKnock(z.isReturnToHandOnKnock());
@@ -3249,8 +3302,9 @@ public class CpuBattleEngine {
 							continue;
 						}
 						long simSalt = main.getCardId() ^ (levelUpRest * 31L) ^ (levelUpStones * 131L);
+						int levelUpDeployPwrSimAdv = levelUpRest * 2 + levelUpStones * 2;
 						NinjaFirstCostPick nPick = pickCpuNinjaCharacteristicFirstCost(
-								simSt, simMain, mainDef, payCards, deployBonus, st, defs, simSalt);
+								simSt, simMain, mainDef, payCards, deployBonus, levelUpDeployPwrSimAdv, st, defs, simSalt);
 						if (nPick.skipped()) {
 							continue;
 						}
@@ -3262,7 +3316,7 @@ public class CpuBattleEngine {
 						assignBattleZoneMain(z, simMain, simSt);
 						z.setCostUnder(paid);
 						z.setCostPayCardCount(payCards);
-						applyCrystakulBonusesToDeployedZone(simSt, z, deployBonus, false);
+						applyCrystakulBonusesToDeployedZone(simSt, z, deployBonus, levelUpDeployPwrSimAdv, false);
 						retireOwnBattleZoneBeforeNewDeploy(simSt, false, false, defs);
 						simSt.setCpuBattle(z);
 
@@ -3457,7 +3511,8 @@ public class CpuBattleEngine {
 		assignBattleZoneMain(z, main, st);
 		z.setCostUnder(paid);
 		z.setCostPayCardCount(payCards);
-		applyCrystakulBonusesToDeployedZone(st, z, pick.deployBonus, false);
+		int levelUpDeployPick = pick.levelUpRest * 2 + pick.levelUpStones * 2;
+		applyCrystakulBonusesToDeployedZone(st, z, pick.deployBonus, levelUpDeployPick, false);
 		st.setCpuNextDeployBonus(0);
 		st.setCpuNextElfOnlyBonus(0);
 		st.setCpuNextDeployCostBonusTimes(0);
@@ -3600,8 +3655,9 @@ public class CpuBattleEngine {
 						BattleCard simMain = removeByInstanceId(simSt.getCpuHand(), main.getInstanceId());
 						if (simMain == null) continue;
 						long simSalt = main.getCardId() ^ (levelUpRest * 31L) ^ (levelUpStones * 131L);
+						int levelUpDeployPwrSimOrig = levelUpRest * 2 + levelUpStones * 2;
 						NinjaFirstCostPick nPick = pickCpuNinjaCharacteristicFirstCost(
-								simSt, simMain, mainDef, payCards, deployBonus, st, defs, simSalt);
+								simSt, simMain, mainDef, payCards, deployBonus, levelUpDeployPwrSimOrig, st, defs, simSalt);
 						if (nPick.skipped()) {
 							continue;
 						}
@@ -3613,7 +3669,7 @@ public class CpuBattleEngine {
 						assignBattleZoneMain(z, simMain, simSt);
 						z.setCostUnder(paid);
 						z.setCostPayCardCount(payCards);
-						applyCrystakulBonusesToDeployedZone(simSt, z, deployBonus, false);
+						applyCrystakulBonusesToDeployedZone(simSt, z, deployBonus, levelUpDeployPwrSimOrig, false);
 						retireOwnBattleZoneBeforeNewDeploy(simSt, false, false, defs);
 						simSt.setCpuBattle(z);
 
@@ -3726,7 +3782,8 @@ public class CpuBattleEngine {
 							assignBattleZoneMain(z, main, st);
 							z.setCostUnder(paid);
 							z.setCostPayCardCount(payCards);
-							applyCrystakulBonusesToDeployedZone(st, z, bestDeployBonus, false);
+							int levelUpDeployBest = bestLevelUpRest * 2 + bestLevelUpStones * 2;
+							applyCrystakulBonusesToDeployedZone(st, z, bestDeployBonus, levelUpDeployBest, false);
 							st.setCpuNextDeployBonus(0);
 							st.setCpuNextElfOnlyBonus(0);
 							st.setCpuNextDeployCostBonusTimes(0);
@@ -3935,8 +3992,53 @@ public class CpuBattleEngine {
 	}
 
 	/**
+	 * デスバウンスが〈場〉から上書き等で失われたとき、同フィールドで付与した手札コスト+1だけを戻す。
+	 */
+	private static void stripDeathbouncePersistedHandPenalties(CpuBattleState st) {
+		if (st == null) {
+			return;
+		}
+		stripDeathbounceOnCardList(st.getHumanHand());
+		stripDeathbounceOnCardList(st.getCpuHand());
+		stripDeathbounceOnCardList(st.getHumanRest());
+		stripDeathbounceOnCardList(st.getCpuRest());
+		stripDeathbounceOnCardList(st.getHumanDeck());
+		stripDeathbounceOnCardList(st.getCpuDeck());
+		stripDeathbounceOnZone(st.getHumanBattle());
+		stripDeathbounceOnZone(st.getCpuBattle());
+	}
+
+	private static void stripDeathbounceOnZone(ZoneFighter z) {
+		if (z == null) {
+			return;
+		}
+		stripDeathbounceOnCardList(z.getCostUnder());
+		stripDeathbounceOnOneCard(z.getMain());
+	}
+
+	private static void stripDeathbounceOnCardList(List<BattleCard> list) {
+		if (list == null) {
+			return;
+		}
+		for (BattleCard c : list) {
+			stripDeathbounceOnOneCard(c);
+		}
+	}
+
+	private static void stripDeathbounceOnOneCard(BattleCard c) {
+		if (c == null) {
+			return;
+		}
+		if (c.getDeathbounceHandCostStacks() <= 0) {
+			return;
+		}
+		c.setDeathbounceHandCostStacks(0);
+	}
+
+	/**
 	 * 〈フィールド〉霊園教会 デスバウンス: バトルゾーンのアンデッド・ファイターはレストでなく手札へ戻り、
-	 * {@link BattleCard#getHandDeployCostModifier} に +1（バトル終了まで。再適用のたびに累積）。
+	 * 手札コスト+1 は {@link BattleCard#getDeathbounceHandCostStacks()} にのみ積む（墓守神父の -2 等の
+	 * {@link BattleCard#getHandDeployCostModifier()} とは分離。〈場〉喪失時はスタックのみクリア）。
 	 */
 	private static boolean deathbounceFieldSendsUndeadMainToHand(CpuBattleState st, ZoneFighter z,
 			Map<Short, CardDefinition> defs) {
@@ -3961,7 +4063,7 @@ public class CpuBattleEngine {
 		if (main == null) {
 			return;
 		}
-		main.setHandDeployCostModifier(main.getHandDeployCostModifier() + 1);
+		main.setDeathbounceHandCostStacks(main.getDeathbounceHandCostStacks() + 1);
 	}
 
 	private boolean moveZoneToRestOrReturnToHand(CpuBattleState st, ZoneFighter z, List<BattleCard> rest, List<BattleCard> hand,
@@ -4040,23 +4142,51 @@ public class CpuBattleEngine {
 	}
 
 	/**
-	 * ターン終了時にバトルゾーンの一時加算を消す（{@link ZoneFighter#getTemporaryPowerBonus()} 等）。
-	 * 〈神秘の大樹 スカイア〉が場にある間は、種族がエルフのファイターの一時加算は相手ターンにも持続するため消さない。
+	 * ターン終了時にバトルゾーンの一時加算を消す。
+	 * {@link ZoneFighter#getLevelUpDeployPowerBonus()} は毎ターン境界で必ずリセット（スカイアの対象外）。
+	 * {@link ZoneFighter#getTemporaryPowerBonus()} のうち、〈神秘の大樹 スカイア〉が〈場〉にある間の
+	 * 種族：エルフの分だけ相手ターンにも持続するため消さない（カード効果由来のみが本フィールドに入る）。
 	 * 忍者の入れ替えによる強さ−2（{@link ZoneFighter#getNinjaSwapPowerPenalty()}）は相手ターン中も持続させるため、ここでは消さない。
 	 */
 	private void resetTurnBuffs(CpuBattleState st, Map<Short, CardDefinition> defs) {
 		boolean skyArbor = defs != null && skyArborFieldPersistsElfTurnBuffs(st);
 		if (st.getHumanBattle() != null) {
+			st.getHumanBattle().setLevelUpDeployPowerBonus(0);
 			if (!skyArbor || !isElfFighterInZone(st.getHumanBattle(), defs)) {
 				st.getHumanBattle().setTemporaryPowerBonus(0);
 			}
 		}
 		if (st.getCpuBattle() != null) {
+			st.getCpuBattle().setLevelUpDeployPowerBonus(0);
 			if (!skyArbor || !isElfFighterInZone(st.getCpuBattle(), defs)) {
 				st.getCpuBattle().setTemporaryPowerBonus(0);
 			}
 		}
 		st.setPowerSwapActive(false);
+	}
+
+	/**
+	 * 〈神秘の大樹 スカイア〉が〈場〉から去った直後。スカイアによって相手ターンまで伸びていた
+	 * エルフの「ターン終了まで」のカード由来加算を、手番でない側から即座に取り除く。
+	 */
+	private void stripSkyaPersistedElfDeployBonusesOnFieldLoss(CpuBattleState st, Map<Short, CardDefinition> defs) {
+		if (st == null || defs == null) {
+			return;
+		}
+		boolean humansTurn = st.isHumansTurn();
+		clearSkyaOffTurnElfTemporaryDeployBonus(st.getHumanBattle(), true, humansTurn, defs);
+		clearSkyaOffTurnElfTemporaryDeployBonus(st.getCpuBattle(), false, humansTurn, defs);
+	}
+
+	private static void clearSkyaOffTurnElfTemporaryDeployBonus(ZoneFighter z, boolean zoneOwnerIsHuman,
+			boolean humansInteractiveTurn, Map<Short, CardDefinition> defs) {
+		if (z == null || z.getMain() == null || !isElfFighterInZone(z, defs)) {
+			return;
+		}
+		if (zoneOwnerIsHuman == humansInteractiveTurn) {
+			return;
+		}
+		z.setTemporaryPowerBonus(0);
 	}
 
 	private static boolean skyArborFieldPersistsElfTurnBuffs(CpuBattleState st) {
@@ -4079,12 +4209,21 @@ public class CpuBattleEngine {
 	}
 
 	/**
-	 * クリスタクル「次の配置 +N」は {@link ZoneFighter#getTemporaryPowerBonus()} に含めない。
+	 * クリスタクル「次の配置 +N」は {@link ZoneFighter#getTemporaryPowerBonus()} / {@link ZoneFighter#getLevelUpDeployPowerBonus()} に含めない。
 	 * ターン終了時の {@link #resetTurnBuffs} で消えないよう {@link CpuBattleState} 側の戦闘加算として持つ。
+	 *
+	 * @param levelUpDeployPowerBonus レベルアップ（レスト捨て・ストーン）のみの強さ加算。〈神秘の大樹 スカイア〉の相手ターン持続対象外。
 	 */
-	private void applyCrystakulBonusesToDeployedZone(CpuBattleState st, ZoneFighter z, int deployBonus, boolean forHuman) {
+	private void applyCrystakulBonusesToDeployedZone(CpuBattleState st, ZoneFighter z, int deployBonus,
+			int levelUpDeployPowerBonus, boolean forHuman) {
 		int cry = forHuman ? st.getHumanNextCrystakulDeployBonus() : st.getCpuNextCrystakulDeployBonus();
-		z.setTemporaryPowerBonus(deployBonus - cry);
+		int nonCry = deployBonus - cry;
+		int lu = Math.max(0, levelUpDeployPowerBonus);
+		if (lu > nonCry) {
+			lu = nonCry;
+		}
+		z.setLevelUpDeployPowerBonus(lu);
+		z.setTemporaryPowerBonus(nonCry - lu);
 		if (forHuman) {
 			st.setHumanCrystakulCombatBonus(st.getHumanCrystakulCombatBonus() + cry);
 			st.setHumanNextCrystakulDeployBonus(0);
@@ -4153,7 +4292,7 @@ public class CpuBattleEngine {
 		if (id == SPEC_777_ID && zf.getSpec777RolledPower() > 0) {
 			basePower = zf.getSpec777RolledPower();
 		}
-		int p = basePower + zf.getTemporaryPowerBonus();
+		int p = basePower + zf.getTemporaryPowerBonus() + zf.getLevelUpDeployPowerBonus();
 		if (zf.getNinjaSwapPowerPenalty() > 0) {
 			p -= zf.getNinjaSwapPowerPenalty();
 		}
@@ -4365,8 +4504,11 @@ public class CpuBattleEngine {
 			if (id == SPEC_777_ID && zf.getSpec777RolledPower() > 0) {
 				out.add(new BattlePowerModifierDto(SPEC_777_ID, "（出目" + zf.getSpec777RolledPower() + "）"));
 			}
-			if (zf.getTemporaryPowerBonus() != 0) {
+			if (zf.getLevelUpDeployPowerBonus() != 0) {
 				out.add(new BattlePowerModifierDto(null, "レベルアップ（配置）"));
+			}
+			if (zf.getTemporaryPowerBonus() != 0) {
+				out.add(new BattlePowerModifierDto(null, "配置時の一時加算（カード効果等）"));
 			}
 			if (zf.getNinjaSwapPowerPenalty() > 0) {
 				out.add(new BattlePowerModifierDto(NINJA_ID, "（忍者・入れ替え−2）"));
@@ -4384,8 +4526,11 @@ public class CpuBattleEngine {
 		boolean passivesSuppressedByOpponentGarakutaLeg = opponentGarakutaSuppressesFighterPassives(ownerIsHuman, st,
 				defs);
 
-		if (zf.getTemporaryPowerBonus() != 0) {
+		if (zf.getLevelUpDeployPowerBonus() != 0) {
 			out.add(new BattlePowerModifierDto(null, "レベルアップ（配置）"));
+		}
+		if (zf.getTemporaryPowerBonus() != 0) {
+			out.add(new BattlePowerModifierDto(null, "配置時の一時加算（カード効果等）"));
 		}
 
 		if (zf.getNinjaSwapPowerPenalty() > 0) {
@@ -4872,7 +5017,37 @@ public class CpuBattleEngine {
 
 	private void resolveNinjaSwappedDeployEffects(CpuBattleState st, Map<Short, CardDefinition> defs, Random rnd,
 			boolean pendingOnHumanSlot, boolean pendingOnCpuSlot) {
-		ZoneFighter z = pendingOnHumanSlot ? st.getHumanBattle() : st.getCpuBattle();
+		ZoneFighter z;
+		boolean onHumanSlot;
+		if (pendingOnHumanSlot) {
+			z = st.getHumanBattle();
+			onHumanSlot = true;
+		} else if (pendingOnCpuSlot) {
+			z = st.getCpuBattle();
+			onHumanSlot = false;
+		} else {
+			// pending とゾーンの instanceId が一瞬ずれる等で両方 false でも、入れ替え後メインはどちらかにいるはず
+			PendingEffect pe = st.getPendingEffect();
+			String mid = pe != null ? pe.getMainInstanceId() : null;
+			z = null;
+			onHumanSlot = false;
+			if (mid != null) {
+				ZoneFighter hz = st.getHumanBattle();
+				if (hz != null && hz.getMain() != null && mid.equals(hz.getMain().getInstanceId())) {
+					z = hz;
+					onHumanSlot = true;
+				} else {
+					ZoneFighter cz = st.getCpuBattle();
+					if (cz != null && cz.getMain() != null && mid.equals(cz.getMain().getInstanceId())) {
+						z = cz;
+						onHumanSlot = false;
+					}
+				}
+			}
+			if (z == null) {
+				return;
+			}
+		}
 		if (z == null || z.getMain() == null) {
 			return;
 		}
@@ -4881,11 +5056,11 @@ public class CpuBattleEngine {
 		if (d == null) {
 			return;
 		}
-		if (pendingOnHumanSlot) {
+		if (onHumanSlot) {
 			applyDeployHuman(st, d, defs, dm);
-		} else if (pendingOnCpuSlot && st.isPvp()) {
+		} else if (st.isPvp()) {
 			applyDeployHumanAsCpuSide(st, d, defs, dm);
-		} else if (pendingOnCpuSlot) {
+		} else {
 			applyDeployCpu(st, d, defs, rnd != null ? rnd : new Random(), dm);
 		}
 	}
@@ -4902,6 +5077,7 @@ public class CpuBattleEngine {
 	/**
 	 * フェザリアの回収対象: 〈フィールド〉を除く自分のファイターで「種族：カーバンクル」、かつ「フェザリア」カード自身は除く。
 	 * バトルゾーンのコスト下に重なっているインスタンスはレスト一覧に残っていてもレスト扱いにしない（シャイニ等と同じ）。
+	 * 種族判定はカード定義のみ（SPEC-666 等の {@link BattleCard#getBattleTribeOverride()} は対象外。上書き後もカーバンクルとして回収できる）。
 	 */
 	private static boolean isFezariaPickableCarbuncleInRest(BattleCard c, ZoneFighter ownBattle,
 			Map<Short, CardDefinition> defs) {
@@ -4918,7 +5094,7 @@ public class CpuBattleEngine {
 		if (!isNonFieldFighterCardDef(d)) {
 			return false;
 		}
-		return CardAttributes.hasAttribute(d, c, "CARBUNCLE");
+		return CardAttributes.hasAttribute(d, "CARBUNCLE");
 	}
 
 	private boolean restContainsFezariaPickableCarbuncle(List<BattleCard> rest, ZoneFighter ownBattle,
@@ -6574,7 +6750,9 @@ public class CpuBattleEngine {
 		if (st != null && weaponDepotFieldActive(st) && isMachineFighterForWeaponDepotCost(d, deployedMain)) {
 			base = 1;
 		}
-		int handAdj = deployedMain != null ? deployedMain.getHandDeployCostModifier() : 0;
+		int handAdj = deployedMain != null
+				? deployedMain.getHandDeployCostModifier() + deployedMain.getDeathbounceHandCostStacks()
+				: 0;
 		if (deployedMain != null && deployedMain.isBlankEffects()) {
 			return Math.max(0, base + mechanicExtraCost + handAdj);
 		}
@@ -6885,7 +7063,8 @@ public class CpuBattleEngine {
 								assignBattleZoneMain(z, pickedMain, sim2);
 								z.setCostUnder(paid);
 								z.setCostPayCardCount(needCards);
-								applyCrystakulBonusesToDeployedZone(sim2, z, deployBonus, forHuman);
+								int levelUpDeployCan = luRest * 2 + luSt * 2;
+								applyCrystakulBonusesToDeployedZone(sim2, z, deployBonus, levelUpDeployCan, forHuman);
 								retireOwnBattleZoneBeforeNewDeploy(sim2, forHuman, false, defs);
 								if (forHuman) sim2.setHumanBattle(z);
 								else sim2.setCpuBattle(z);

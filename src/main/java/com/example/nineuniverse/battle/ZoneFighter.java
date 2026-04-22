@@ -11,7 +11,12 @@ public class ZoneFighter implements Serializable {
 	private List<BattleCard> costUnder = new ArrayList<>();
 	/** costUnder の先頭から何枚が「配置コストのカード支払い」か（レベルアップで下に重ねた枚数は含まない） */
 	private int costPayCardCount;
-	/** この配置でレベルアップ等により一時的に加算した強さ（ターン終了でリセット） */
+	/**
+	 * レベルアップ（レスト捨て・ストーン消費）のみによる配置時の強さ加算。
+	 * 〈神秘の大樹 スカイア〉の「カード効果由来の相手ターン持続」には含めず、ターン境界で必ずリセットする。
+	 */
+	private int levelUpDeployPowerBonus;
+	/** カード効果・特性コスト分など、レベルアップ分を除いた配置時の一時加算（ターン終了でリセット。スカイア下のエルフは相手ターンまで持続し得る） */
 	private int temporaryPowerBonus;
 	/**
 	 * 忍者: コストと入れ替えたあとメインになったファイターに適用する強さ減少（通常 0 または 2）。

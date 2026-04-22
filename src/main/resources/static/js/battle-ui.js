@@ -3852,8 +3852,15 @@
 
 			const grid = el('div', 'battle-pay-modal__cardgrid');
 			const ids = pc.optionInstanceIds || [];
-			const pickHand = pc.cpuSlotChooses ? (st.cpuHand || []) : (st.humanHand || []);
-			const pickRest = pc.cpuSlotChooses ? (st.cpuRest || []) : (st.humanRest || []);
+			/*
+			 * PvP ではゲスト視点で swap 済みのため「自分の手札」は常に humanHand（相手は cpuHand）。
+			 * 応答中の pendingChoice では viewerMayRespond が true のとき、選択元は自分側ゾーンのみを見る。
+			 * （旧: cpuSlotChooses だけ見てゲストが cpuHand＝ホストの手札を探し、墓守神父等が対人で不発になっていた）
+			 */
+			const pickFromMyZones =
+				pc.viewerMayRespond === true || (!battleIsPvp && !pc.cpuSlotChooses);
+			const pickHand = pickFromMyZones ? st.humanHand || [] : st.cpuHand || [];
+			const pickRest = pickFromMyZones ? st.humanRest || [] : st.cpuRest || [];
 			ids.forEach(function (inst) {
 				let card = null;
 				pickHand.forEach(function (c) { if (c.instanceId === inst) card = c; });

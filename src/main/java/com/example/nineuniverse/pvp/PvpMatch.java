@@ -8,6 +8,8 @@ public class PvpMatch {
 	private final String id;
 	private final long hostUserId;
 	private final long hostDeckId;
+	/** この部屋に参加できるゲスト（フレンド招待）。ホスト本人は不可。 */
+	private final long invitedGuestUserId;
 	private Long guestUserId;
 	private Long guestDeckId;
 	private CpuBattleState state;

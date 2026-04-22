@@ -5,9 +5,11 @@ import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.service.AnnouncementRewardService;
 import com.example.nineuniverse.service.AnnouncementRewardService.BulkGemClaimResult;
 import com.example.nineuniverse.service.AnnouncementRewardService.ClaimOutcome;
+import com.example.nineuniverse.service.FriendService;
 import com.example.nineuniverse.service.MissionService;
 import com.example.nineuniverse.service.PackService;
 import com.example.nineuniverse.service.PackService.PackType;
+import com.example.nineuniverse.service.PvpFriendInviteService;
 import com.example.nineuniverse.service.TimePackGaugeService;
 import jakarta.servlet.http.HttpSession;
 import java.time.LocalDate;
@@ -30,6 +32,8 @@ public class HomeController {
 	private final AnnouncementRewardService announcementRewardService;
 	private final TimePackGaugeService timePackGaugeService;
 	private final PackService packService;
+	private final FriendService friendService;
+	private final PvpFriendInviteService pvpFriendInviteService;
 
 	@GetMapping({"/", "/home"})
 	public String home(Model model) {
@@ -97,6 +101,9 @@ public class HomeController {
 		boolean listPlatformApr2026 = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_START);
+		boolean listFriendPvpUpdate2026 = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -117,6 +124,7 @@ public class HomeController {
 		model.addAttribute("announcementListFieldDisplaySettingsBonus", listFieldDisplaySettingsBonus);
 		model.addAttribute("announcementListDenzirionGarakutaFusionFix", listDenzirionGarakutaFusionFix);
 		model.addAttribute("announcementListPlatformApr2026", listPlatformApr2026);
+		model.addAttribute("announcementListFriendPvpUpdate2026", listFriendPvpUpdate2026);
 
 		Set<String> claimedKeys = announcementRewardService.findClaimedKeys(uid);
 
@@ -346,6 +354,17 @@ public class HomeController {
 				!platformApr2026AnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_START));
 		model.addAttribute("platformApr2026AnnouncementGemAmount", GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_GEMS);
 
+		boolean friendPvpUpdateAnnClaimed = claimedKeys.contains(GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_KEY);
+		boolean friendPvpUpdateAnnInWindow = announcementRewardService.isWithinFriendPvpUpdateAnnouncementWindow(today);
+		model.addAttribute("friendPvpUpdateAnnouncementClaimed", friendPvpUpdateAnnClaimed);
+		model.addAttribute("friendPvpUpdateAnnouncementClaimable",
+				friendPvpUpdateAnnInWindow && !friendPvpUpdateAnnClaimed);
+		model.addAttribute("friendPvpUpdateAnnouncementExpiredUnclaimed",
+				!friendPvpUpdateAnnClaimed && today.isAfter(GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_LAST_DAY));
+		model.addAttribute("friendPvpUpdateAnnouncementFutureUnclaimed",
+				!friendPvpUpdateAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_START));
+		model.addAttribute("friendPvpUpdateAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_GEMS);
+
 		int announcementBulkClaimableGemTotal = 0;
 		if (listPerfLight && perfInWindow && !perfClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PERF_LIGHT_GEMS;
@@ -407,6 +426,9 @@ public class HomeController {
 		if (listPlatformApr2026 && platformApr2026AnnInWindow && !platformApr2026AnnClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_GEMS;
 		}
+		if (listFriendPvpUpdate2026 && friendPvpUpdateAnnInWindow && !friendPvpUpdateAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_GEMS;
+		}
 		model.addAttribute("announcementBulkClaimableGemTotal", announcementBulkClaimableGemTotal);
 		model.addAttribute("announcementAnyGemClaimable", announcementBulkClaimableGemTotal > 0);
 
@@ -436,6 +458,8 @@ public class HomeController {
 		var fresh = appUserMapper.findById(uid);
 		model.addAttribute("user", fresh);
 		model.addAttribute("missionHasUnclaimedReward", missionService.hasUnclaimedMissionRewards(uid));
+		model.addAttribute("friendHubPendingInbound", friendService.countPendingInbound(uid) > 0);
+		model.addAttribute("pvpHubPendingInbound", pvpFriendInviteService.countPendingInbound(uid) > 0);
 		return "home";
 	}
 
@@ -447,7 +471,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_PERF_LIGHT_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimPerfLightBonus(uid);
@@ -468,7 +492,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_TIME_PACK_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimTimePackAnnouncementBonus(uid);
@@ -489,7 +513,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_BALANCE_UI_MISSION_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimBalanceUiMissionBonus(uid);
@@ -510,7 +534,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_PACK_RATES_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimPackRatesAnnouncementBonus(uid);
@@ -532,7 +556,7 @@ public class HomeController {
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_PACK_RESULT_DRAW_AGAIN_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimPackResultDrawAgainAnnouncementBonus(uid);
@@ -553,7 +577,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_CAPTAIN_TEXT_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimCaptainTextAnnouncementBonus(uid);
@@ -574,7 +598,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_MISSION_FIX_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimMissionFixAnnouncementBonus(uid);
@@ -595,7 +619,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_CARD_TEXT_FIX_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimCardTextFixAnnouncementBonus(uid);
@@ -616,7 +640,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_SAMURAI_FIX_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimSamuraiFixAnnouncementBonus(uid);
@@ -637,7 +661,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimPackMissionBonusFixAnnouncementBonus(uid);
@@ -658,7 +682,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_30_USERS_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claim30UsersAnnouncementBonus(uid);
@@ -679,7 +703,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_KAENRYU_STATUS_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimKaenryuStatusAnnouncementBonus(uid);
@@ -700,7 +724,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_SAMURAI_STATUS_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimSamuraiStatusAnnouncementBonus(uid);
@@ -721,7 +745,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_DENZIRION_FIX_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimDenzirionFixAnnouncementBonus(uid);
@@ -742,7 +766,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimNinjaDarkDragonFixAnnouncementBonus(uid);
@@ -763,7 +787,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimWeaponDepotDenzirionFixAnnouncementBonus(uid);
@@ -784,7 +808,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimFieldDisplaySettingsBonusAnnouncementBonus(uid);
@@ -805,7 +829,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimDenzirionGarakutaFusionFixAnnouncementBonus(uid);
@@ -826,13 +850,34 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimPlatformApr2026AnnouncementBonus(uid);
 		switch (outcome) {
 			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
 					GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/friend-pvp-update/claim")
+	public String claimFriendPvpUpdateAnnouncement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimFriendPvpUpdateAnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_GEMS + "ジェムを受け取りました。");
 			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
 			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
 		}
@@ -847,7 +892,7 @@ public class HomeController {
 		var u = appUserMapper.findById(uid);
 		if (!GameConstants.shouldListAnnouncementForUser(
 				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_START)) {
-			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
 			return "redirect:/home";
 		}
 		ClaimOutcome outcome = announcementRewardService.claimMajorUpdateAnnouncementBonus(uid);
@@ -877,9 +922,9 @@ public class HomeController {
 				uid, today, zone, u != null ? u.getCreatedAt() : null);
 		if (result.claimedCount() > 0) {
 			ra.addFlashAttribute("flashAnnouncementSuccess",
-					"お知らせのジェムを一括で受け取りました（合計 " + result.totalGems() + "ジェム、" + result.claimedCount() + "件）。");
+					"おしらせのジェムを一括で受け取りました（合計 " + result.totalGems() + "ジェム、" + result.claimedCount() + "件）。");
 		} else {
-			ra.addFlashAttribute("flashAnnouncementSuccess", "いま受け取れるジェムのお知らせはありませんでした。");
+			ra.addFlashAttribute("flashAnnouncementSuccess", "いま受け取れるジェムのおしらせはありませんでした。");
 		}
 		return "redirect:/home";
 	}

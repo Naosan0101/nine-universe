@@ -28,6 +28,7 @@
                data-field-display-settings-bonus-claimable=${fieldDisplaySettingsBonusAnnouncementClaimable and announcementListFieldDisplaySettingsBonus},
                data-denzirion-garakuta-fusion-fix-claimable=${denzirionGarakutaFusionFixAnnouncementClaimable and announcementListDenzirionGarakutaFusionFix},
                data-platform-apr-2026-claimable=${platformApr2026AnnouncementClaimable and announcementListPlatformApr2026},
+               data-friend-pvp-update-claimable=${friendPvpUpdateAnnouncementClaimable and announcementListFriendPvpUpdate2026},
                data-major-update-login-popup=${majorUpdateLoginPopupShow},
                data-user-id=${user.id}">
 <header class="topbar">
@@ -49,13 +50,13 @@
      aria-labelledby="announcement-modal-title"
      aria-hidden="true">
 	<div class="announcement-modal__panel" role="document">
-		<h2 id="announcement-modal-title" class="announcement-modal__heading">お知らせ</h2>
+		<h2 id="announcement-modal-title" class="announcement-modal__heading">おしらせ</h2>
 
 		<article class="announcement-modal__card"
 		         th:if="${announcementListPerfLight and (perfLightAnnouncementClaimable or perfLightAnnouncementClaimed or perfLightAnnouncementExpiredUnclaimed or perfLightAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
-					<p class="announcement-modal__card-text">「お知らせ」の追加、処理動作の軽量化をしました。</p>
+					<p class="announcement-modal__card-text">「おしらせ」の追加、処理動作の軽量化をしました。</p>
 				</div>
 				<aside class="announcement-modal__mailbox-aside">
 					<span th:if="${perfLightAnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
@@ -290,7 +291,7 @@
 					<p class="announcement-modal__card-text">・新カードパック「スタンダードパック2」「宝石の秘境パック」「鉄面の艦隊パック」の追加にともない、新たなカード38枚の追加。</p>
 					<p class="announcement-modal__card-text">・CPU対戦の拡張</p>
 					<p class="announcement-modal__card-text">・各種UIの見直し。</p>
-					<p class="announcement-modal__card-text muted">※内容の詳細は「開く」から確認できます。このお知らせはいつでも開けます。</p>
+					<p class="announcement-modal__card-text muted">※内容の詳細は「開く」から確認できます。このおしらせはいつでも開けます。</p>
 				</div>
 				<aside class="announcement-modal__mailbox-aside">
 					<span th:if="${majorUpdateAnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
@@ -460,6 +461,30 @@
 			</div>
 		</article>
 
+		<article class="announcement-modal__card"
+		         th:if="${announcementListFriendPvpUpdate2026 and (friendPvpUpdateAnnouncementClaimable or friendPvpUpdateAnnouncementClaimed or friendPvpUpdateAnnouncementExpiredUnclaimed or friendPvpUpdateAnnouncementFutureUnclaimed)}">
+			<div class="announcement-modal__mailbox">
+				<div class="announcement-modal__mailbox-body">
+					<p class="announcement-modal__card-text">・「フレンド」を追加しました。</p>
+					<p class="announcement-modal__card-text">・「だれかと対戦」を更新しました。</p>
+				</div>
+				<aside class="announcement-modal__mailbox-aside">
+					<span th:if="${friendPvpUpdateAnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
+					<form th:if="${friendPvpUpdateAnnouncementClaimable}"
+					      th:action="@{/home/announcements/friend-pvp-update/claim}"
+					      method="post"
+					      class="announcement-modal__gem-form">
+						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+						<button type="submit" class="btn btn--primary announcement-modal__gem-btn"
+						        th:text="|${friendPvpUpdateAnnouncementGemAmount}ジェム|">5ジェム</button>
+					</form>
+					<p th:if="${friendPvpUpdateAnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
+					<p th:if="${friendPvpUpdateAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
+					<p th:if="${friendPvpUpdateAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
+				</aside>
+			</div>
+		</article>
+
 		<div th:replace="~{fragments/announcement-captain-text :: card}"></div>
 		<div th:replace="~{fragments/announcement-kaenryu-status :: card}"></div>
 		<div th:replace="~{fragments/announcement-samurai-status :: card}"></div>
@@ -495,7 +520,7 @@
 				<p class="announcement-modal__card-text">・新カードパック「スタンダードパック2」「宝石の秘境パック」「鉄面の艦隊パック」の追加にともない、新たなカード38枚の追加。</p>
 				<p class="announcement-modal__card-text">・CPU対戦の拡張</p>
 				<p class="announcement-modal__card-text">・各種UIの見直し。</p>
-				<p class="announcement-modal__card-text operator-message__gap muted">このお知らせは「お知らせ」のところからいつでも確認することができます。</p>
+				<p class="announcement-modal__card-text operator-message__gap muted">このおしらせは「おしらせ」のところからいつでも確認することができます。</p>
 			</div>
 		</article>
 		<div class="major-update-modal__actions">
@@ -671,13 +696,13 @@
 				<a class="btn btn--ghost home-hero__cta" th:href="@{/decks}">デッキ編集</a>
 				<button type="button"
 				        class="btn btn--ghost home-hero__announce topbar__announce"
-				        th:classappend="${(perfLightAnnouncementClaimable and announcementListPerfLight) or (timePackAnnouncementClaimable and announcementListTimePack) or (balanceUiMissionAnnouncementClaimable and announcementListBalanceUiMission) or (packRatesAnnouncementClaimable and announcementListPackRates) or (packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain) or (captainTextAnnouncementClaimable and announcementListCaptainText) or (missionFixAnnouncementClaimable and announcementListMissionFix) or (cardTextFixAnnouncementClaimable and announcementListCardTextFix) or (samuraiFixAnnouncementClaimable and announcementListSamuraiFix) or (packMissionBonusFixAnnouncementClaimable and announcementListPackMissionBonusFix) or (celebrate30UsersAnnouncementClaimable and announcementList30Users) or (kaenryuStatusAnnouncementClaimable and announcementListKaenryuStatus) or (samuraiStatusAnnouncementClaimable and announcementListSamuraiStatus) or (majorUpdateAnnouncementClaimable and announcementListMajorUpdate) or (denzirionFixAnnouncementClaimable and announcementListDenzirionFix) or (ninjaDarkDragonFixAnnouncementClaimable and announcementListNinjaDarkDragonFix) or (weaponDepotDenzirionFixAnnouncementClaimable and announcementListWeaponDepotDenzirionFix) or (fieldDisplaySettingsBonusAnnouncementClaimable and announcementListFieldDisplaySettingsBonus) or (denzirionGarakutaFusionFixAnnouncementClaimable and announcementListDenzirionGarakutaFusionFix) or (platformApr2026AnnouncementClaimable and announcementListPlatformApr2026) or (timePackAvailablePacks != null and timePackAvailablePacks > 0)} ? ' topbar__announce--highlight' : ''"
+				        th:classappend="${(perfLightAnnouncementClaimable and announcementListPerfLight) or (timePackAnnouncementClaimable and announcementListTimePack) or (balanceUiMissionAnnouncementClaimable and announcementListBalanceUiMission) or (packRatesAnnouncementClaimable and announcementListPackRates) or (packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain) or (captainTextAnnouncementClaimable and announcementListCaptainText) or (missionFixAnnouncementClaimable and announcementListMissionFix) or (cardTextFixAnnouncementClaimable and announcementListCardTextFix) or (samuraiFixAnnouncementClaimable and announcementListSamuraiFix) or (packMissionBonusFixAnnouncementClaimable and announcementListPackMissionBonusFix) or (celebrate30UsersAnnouncementClaimable and announcementList30Users) or (kaenryuStatusAnnouncementClaimable and announcementListKaenryuStatus) or (samuraiStatusAnnouncementClaimable and announcementListSamuraiStatus) or (majorUpdateAnnouncementClaimable and announcementListMajorUpdate) or (denzirionFixAnnouncementClaimable and announcementListDenzirionFix) or (ninjaDarkDragonFixAnnouncementClaimable and announcementListNinjaDarkDragonFix) or (weaponDepotDenzirionFixAnnouncementClaimable and announcementListWeaponDepotDenzirionFix) or (fieldDisplaySettingsBonusAnnouncementClaimable and announcementListFieldDisplaySettingsBonus) or (denzirionGarakutaFusionFixAnnouncementClaimable and announcementListDenzirionGarakutaFusionFix) or (platformApr2026AnnouncementClaimable and announcementListPlatformApr2026) or (friendPvpUpdateAnnouncementClaimable and announcementListFriendPvpUpdate2026) or (timePackAvailablePacks != null and timePackAvailablePacks > 0)} ? ' topbar__announce--highlight' : ''"
 				        id="announcement-open"
 				        aria-haspopup="dialog"
 				        aria-controls="announcement-modal">
 					<span class="topbar__announce-label">
 						<span class="topbar__announce-dot" id="announcement-unread-dot" hidden aria-hidden="true"></span>
-						お知らせ
+						おしらせ
 					</span>
 				</button>
 			</div>
@@ -685,35 +710,43 @@
 	</section>
 
 	<main class="home-grid--primary" aria-label="メニュー">
+		<!-- 1行目: カードパック → だれかと対戦 → ひとりで対戦 → デッキを作成 -->
 		<a class="tile tile--featured tile--home-primary" th:href="@{/pack}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="12" height="16" rx="1"/><rect x="8" y="3" width="12" height="16" rx="1"/></svg></span>
 			<span class="tile__label">カードパックを購入</span>
 			<span class="tile__hint">新たなファイターを仲間に</span>
+		</a>
+		<a class="tile tile--home-primary" th:href="@{/battle/pvp}">
+			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 5v8l-8 5-8-5V8l8-5z"/><line x1="12" y1="8" x2="12" y2="21"/></svg></span>
+			<span class="tile__label" th:classappend="${pvpHubPendingInbound} ? ' tile__label--notify' : ''">
+				<span class="tile__mission-dot" th:if="${pvpHubPendingInbound}" aria-hidden="true"></span>
+				だれかと対戦
+			</span>
+			<span class="tile__hint">フレンドと対人戦</span>
 		</a>
 		<a class="tile tile--home-primary" th:href="@{/battle/cpu}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M7 5l10 14M17 5L7 19"/></svg></span>
 			<span class="tile__label">ひとりで対戦</span>
 			<span class="tile__hint">CPUとバトル</span>
 		</a>
-		<a class="tile tile--home-primary" th:href="@{/battle/pvp}">
-			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 5v8l-8 5-8-5V8l8-5z"/><line x1="12" y1="8" x2="12" y2="21"/></svg></span>
-			<span class="tile__label">みんなで対戦</span>
-			<span class="tile__hint">対人戦で腕試し</span>
-		</a>
 		<a class="tile tile--home-primary" th:href="@{/decks}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="8" height="5" rx="0.8"/><rect x="3" y="12" width="8" height="7" rx="0.8"/><rect x="13" y="5" width="8" height="14" rx="0.8"/></svg></span>
 			<span class="tile__label">デッキを作成</span>
 			<span class="tile__hint">バトルの準備</span>
 		</a>
+		<!-- 2行目: ライブラリ → フレンド → ミッション → カードリサイクル -->
 		<a class="tile tile--home-primary" th:href="@{/library}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="14" y2="16"/></svg></span>
 			<span class="tile__label">ライブラリ</span>
 			<span class="tile__hint">すべてのカードを確認</span>
 		</a>
-		<a class="tile tile--home-primary" th:href="@{/recycle}">
-			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M6 7V5a1 1 0 011-1h10a1 1 0 011 1v2"/><path d="M9 11v6M15 11v6"/><path d="M8 21h8l1-7H7l1 7z"/></svg></span>
-			<span class="tile__label">カードリサイクル</span>
-			<span class="tile__hint">余剰カードを交換</span>
+		<a class="tile tile--home-primary" th:href="@{/friends}">
+			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+			<span class="tile__label" th:classappend="${friendHubPendingInbound} ? ' tile__label--notify' : ''">
+				<span class="tile__mission-dot" th:if="${friendHubPendingInbound}" aria-hidden="true"></span>
+				フレンド
+			</span>
+			<span class="tile__hint">フレンドを登録</span>
 		</a>
 		<a class="tile tile--home-primary" th:href="@{/missions}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></span>
@@ -722,6 +755,11 @@
 				ミッション
 			</span>
 			<span class="tile__hint">ジェムを獲得</span>
+		</a>
+		<a class="tile tile--home-primary" th:href="@{/recycle}">
+			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M6 7V5a1 1 0 011-1h10a1 1 0 011 1v2"/><path d="M9 11v6M15 11v6"/><path d="M8 21h8l1-7H7l1 7z"/></svg></span>
+			<span class="tile__label">カードリサイクル</span>
+			<span class="tile__hint">余剰カードを交換</span>
 		</a>
 	</main>
 
@@ -817,6 +855,7 @@
 		var fieldDisplaySettingsBonus = document.body.getAttribute('data-field-display-settings-bonus-claimable') === 'true';
 		var denzirionGarakutaFusionFix = document.body.getAttribute('data-denzirion-garakuta-fusion-fix-claimable') === 'true';
 		var platformApr2026 = document.body.getAttribute('data-platform-apr-2026-claimable') === 'true';
+		var friendPvpUpdate = document.body.getAttribute('data-friend-pvp-update-claimable') === 'true';
 		var ack = '';
 		try {
 			ack = localStorage.getItem('nu_ann_ack') || '';
@@ -824,7 +863,7 @@
 			ack = '';
 		}
 		var unseen = epoch !== '' && ack !== epoch;
-		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || cardTextFix || samuraiFix || packMissionBonusFix || celebrate30 || kaenryuStatus || samuraiStatus || majorUpdate || denzirionFix || ninjaDarkDragonFix || weaponDepotDenzirionFix || fieldDisplaySettingsBonus || denzirionGarakutaFusionFix || platformApr2026 || unseen;
+		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || cardTextFix || samuraiFix || packMissionBonusFix || celebrate30 || kaenryuStatus || samuraiStatus || majorUpdate || denzirionFix || ninjaDarkDragonFix || weaponDepotDenzirionFix || fieldDisplaySettingsBonus || denzirionGarakutaFusionFix || platformApr2026 || friendPvpUpdate || unseen;
 		dot.hidden = !show;
 		dot.setAttribute('aria-hidden', show ? 'false' : 'true');
 	}

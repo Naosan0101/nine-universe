@@ -3,7 +3,9 @@ package com.example.nineuniverse.service;
 import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.domain.CardDefinition;
 import com.example.nineuniverse.domain.CardIdCount;
+import com.example.nineuniverse.domain.DeckEntry;
 import com.example.nineuniverse.domain.LibraryCardView;
+import com.example.nineuniverse.domain.UserCollectionRow;
 import com.example.nineuniverse.card.CardAttributes;
 import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.repository.DeckEntryMapper;
@@ -14,6 +16,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.Random;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -54,7 +57,7 @@ public class RecycleService {
 		for (CardDefinition c : cardCatalogService.all()) {
 			int owned = qty.getOrDefault(c.getId(), 0);
 			int inDecks = deck.getOrDefault(c.getId(), 0);
-			int recyclable = Math.max(0, owned - inDecks);
+			int recyclable = Math.max(0, owned);
 			LibraryCardView v = libraryService.viewForCardDefinition(c);
 			v.setQuantity(owned);
 			v.setOwned(owned > 0);
@@ -76,18 +79,21 @@ public class RecycleService {
 	}
 
 	/**
-	 * 各カードについてコレクション上 {@code max(2, デッキ枚数)} 枚を残し、それを超える分をリサイクルする。
+	 * 各カードについてコレクション上 2 枚を残し、それを超える分をリサイクルする。
+	 * デッキにしかない分は {@link #recycleCards} 側で枠の差し替えにより処理する。
 	 */
 	@Transactional
 	public int recycleSurplusKeepingTwoPerCard(long userId) {
 		Map<Short, Integer> req = new HashMap<>();
 		for (RecycleInventoryLine line : recycleInventory(userId)) {
 			int owned = line.getOwned();
-			int inDecks = line.getInDecks();
-			int keep = Math.max(2, inDecks);
-			int toRecycle = Math.max(0, owned - keep);
+			int toRecycle = Math.max(0, owned - 2);
 			if (toRecycle > 0) {
-				short cardId = line.getCard().getId();
+				Short idObj = line.getCard().getId();
+				if (idObj == null) {
+					continue;
+				}
+				short cardId = idObj;
 				req.put(cardId, toRecycle);
 			}
 		}
@@ -103,13 +109,19 @@ public class RecycleService {
 			throw new IllegalArgumentException("リサイクルする枚数を指定してください。");
 		}
 		Map<Short, CardDefinition> catalog = cardCatalogService.mapById();
-		Map<Short, Integer> deck = new HashMap<>();
+		Map<Short, Integer> ownedCounts = new HashMap<>();
+		for (UserCollectionRow row : userCollectionMapper.findByUserId(userId)) {
+			if (row.getCardId() != null && row.getQuantity() != null && row.getQuantity() > 0) {
+				ownedCounts.put(row.getCardId(), row.getQuantity());
+			}
+		}
+		Map<Short, Integer> deckCounts = new HashMap<>();
 		for (CardIdCount cc : deckEntryMapper.countCardsInUserDecks(userId)) {
-			deck.put(cc.getCardId(), cc.getCopies());
+			deckCounts.put(cc.getCardId(), cc.getCopies());
 		}
 		int totalCrystal = 0;
 		List<int[]> ops = new ArrayList<>();
-		for (Map.Entry<Short, Integer> e : requested.entrySet()) {
+		for (Map.Entry<Short, Integer> e : new TreeMap<>(requested).entrySet()) {
 			if (e.getKey() == null || e.getValue() == null) {
 				continue;
 			}
@@ -122,13 +134,28 @@ public class RecycleService {
 			if (def == null) {
 				throw new IllegalArgumentException("不明なカードです。");
 			}
-			Integer ownedObj = userCollectionMapper.findQuantity(userId, cardId);
-			int owned = ownedObj != null ? ownedObj : 0;
-			int inD = deck.getOrDefault(cardId, 0);
-			int recyclable = Math.max(0, owned - inD);
-			if (q > recyclable) {
+			int owned = ownedCounts.getOrDefault(cardId, 0);
+			if (q > owned) {
 				throw new IllegalArgumentException(
-						(def.getName() != null ? def.getName() : "カード") + " はデッキを除いて最大 " + recyclable + " 枚までリサイクルできます。");
+						(def.getName() != null ? def.getName() : "カード") + " は所持 " + owned + " 枚のため、最大 " + owned + " 枚までリサイクルできます。");
+			}
+			int inD = deckCounts.getOrDefault(cardId, 0);
+			int notInDecks = Math.max(0, owned - inD);
+			int fromDeck = Math.max(0, q - notInDecks);
+			for (int i = 0; i < fromDeck; i++) {
+				DeckEntry slot = deckEntryMapper.findFirstSlotByUserAndCard(userId, cardId);
+				if (slot == null || slot.getDeckId() == null || slot.getSlot() == null) {
+					throw new IllegalStateException("リサイクル処理に失敗しました（デッキ枠が見つかりません）。");
+				}
+				short replacement = pickReplacementCardId(slot.getDeckId(), cardId, ownedCounts, deckCounts);
+				if (replacement <= 0) {
+					throw new IllegalArgumentException(
+							"デッキに入っているカードをクリスタルに変換するには、デッキに入れていない余剰の別カードが少なくとも1枚必要です。"
+									+ "デッキ編集で該当カードを他のカードと入れ替えてから、再度お試しください。");
+				}
+				deckEntryMapper.updateSlotCard(slot.getDeckId(), slot.getSlot(), replacement);
+				deckCounts.merge(cardId, -1, Integer::sum);
+				deckCounts.merge(replacement, 1, Integer::sum);
 			}
 			totalCrystal += crystalPerRarity(def.getRarity()) * q;
 			ops.add(new int[] { cardId, q });
@@ -144,9 +171,38 @@ public class RecycleService {
 				throw new IllegalStateException("リサイクル処理に失敗しました（所持枚数が足りません）。");
 			}
 			userCollectionMapper.deleteZeroQuantityRow(userId, cardId);
+			ownedCounts.merge(cardId, -q, Integer::sum);
 		}
 		appUserMapper.addRecycleCrystalDelta(userId, totalCrystal);
 		return totalCrystal;
+	}
+
+	/**
+	 * デッキ {@code deckId} の1枠を、{@code recyclingCardId} 以外のカードで埋める。
+	 * 「所持 − 全デッキ枚数」が1以上かつ、そのデッキ内では同一カード2枚まで、を満たすID最小のカードを選ぶ。
+	 */
+	private short pickReplacementCardId(
+			long deckId,
+			short recyclingCardId,
+			Map<Short, Integer> ownedCounts,
+			Map<Short, Integer> deckCounts) {
+		List<CardDefinition> defs = new ArrayList<>(cardCatalogService.all());
+		defs.sort(Comparator.comparingInt(CardDefinition::getId));
+		for (CardDefinition d : defs) {
+			short id = d.getId();
+			if (id == recyclingCardId) {
+				continue;
+			}
+			int spare = ownedCounts.getOrDefault(id, 0) - deckCounts.getOrDefault(id, 0);
+			if (spare < 1) {
+				continue;
+			}
+			if (deckEntryMapper.countInDeck(deckId, id) >= 2) {
+				continue;
+			}
+			return id;
+		}
+		return 0;
 	}
 
 	@Transactional

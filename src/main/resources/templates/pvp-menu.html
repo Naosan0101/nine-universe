@@ -3,37 +3,64 @@
 <head>
 	<meta charset="UTF-8"/>
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
-	<title>対人戦 — ナインユニバース</title>
+	<title>だれかと対戦 — ナインユニバース</title>
 	<link rel="stylesheet" th:href="@{/css/app.css(v=${assetVersion})}"/>
 </head>
-<body class="page">
+<body class="page page--theme-arcane">
 <header class="topbar">
-	<h1 class="game-title">対人戦</h1>
+	<h1 class="game-title">だれかと対戦</h1>
 	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
 </header>
 
-<div class="container">
+<div class="container stack pvp-menu-page">
+	<p class="ok" th:if="${flashPvpInfo}" th:text="${flashPvpInfo}"></p>
 	<p class="error" th:if="${error}" th:text="${error}"></p>
 
-	<section class="panel measure">
-		<p class="muted" style="margin:0;">
-			ホストが部屋を作成し、表示されたURLをもう一人のプレイヤーに渡してください。相手が参加するとバトルが始まります。
-		</p>
+	<section class="panel pvp-menu-page__section" th:if="${pvpPendingInbound != null && !pvpPendingInbound.isEmpty()}">
+		<h2 class="pvp-menu-page__heading">届いた対戦申し込み</h2>
+		<ul class="pvp-menu-page__list">
+			<li th:each="row : ${pvpPendingInbound}" class="pvp-menu-page__row">
+				<span class="pvp-menu-page__name" th:text="${row.counterpartDisplayName}">ユーザー</span>
+				<a class="btn btn--primary"
+				   th:href="@{/battle/pvp/invite/{id}/join(id=${row.inviteId})}">デッキを選んで承諾</a>
+			</li>
+		</ul>
+	</section>
+
+	<section class="panel pvp-menu-page__section" th:if="${pvpPendingOutbound != null && !pvpPendingOutbound.isEmpty()}">
+		<h2 class="pvp-menu-page__heading">送った対戦申し込み（承諾待ち）</h2>
+		<ul class="pvp-menu-page__list">
+			<li th:each="row : ${pvpPendingOutbound}" class="pvp-menu-page__row">
+				<span th:text="${row.counterpartDisplayName}">ユーザー</span>
+				<a class="btn btn--ghost" th:href="@{/battle/pvp/room/{id}(id=${row.matchId})}">待機画面へ</a>
+			</li>
+		</ul>
+	</section>
+
+	<section class="panel pvp-menu-page__section">
+		<h2 class="pvp-menu-page__heading">フレンドに対戦を申し込む</h2>
+		<p class="muted pvp-menu-page__lead">フレンドは「フレンド」から登録できます。申し込みは相手のこの画面に通知されます。</p>
+		<p th:if="${friends == null || friends.isEmpty()}" class="muted">フレンドがいません。</p>
+		<form th:if="${decks != null && !decks.isEmpty() && friends != null && !friends.isEmpty()}"
+		      th:action="@{/battle/pvp/challenge}" method="post" class="stack panel panel--narrow">
+			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+			<label>相手のフレンド
+				<select name="friendUserId" required>
+					<option th:each="f : ${friends}" th:value="${f.friendUserId}" th:text="${f.displayLabel}">フレンド</option>
+				</select>
+			</label>
+			<label>使うデッキ
+				<select name="deckId" required>
+					<option th:each="d : ${decks}" th:value="${d.id}" th:text="${d.name}">デッキ</option>
+				</select>
+			</label>
+			<button type="submit" class="btn btn--primary">対戦を申し込む</button>
+		</form>
 	</section>
 
 	<p th:if="${decks == null || decks.isEmpty()}" class="muted">
 		デッキがありません。先にデッキを8枚作成してください。
 	</p>
-
-	<form th:if="${decks != null && !decks.isEmpty()}" th:action="@{/battle/pvp/room}" method="post" class="stack panel panel--narrow">
-		<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-		<label>使うデッキ
-			<select name="deckId" required>
-				<option th:each="d : ${decks}" th:value="${d.id}" th:text="${d.name}">デッキ</option>
-			</select>
-		</label>
-		<button type="submit" class="btn btn--primary">対戦部屋を作成</button>
-	</form>
 </div>
 <script th:src="@{/js/battle-deck-select.js(v=${assetVersion})}"></script>
 <th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>

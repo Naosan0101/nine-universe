@@ -150,7 +150,7 @@
 	<div class="library-detail-modal__panel recycle-surplus-modal__panel" role="dialog" aria-modal="true" aria-labelledby="recycle-complete-modal-title">
 		<button type="button" class="library-detail-modal__close" data-recycle-complete-close aria-label="閉じる">×</button>
 		<h2 id="recycle-complete-modal-title" class="recycle-surplus-modal__title">クリスタルに変換</h2>
-		<p class="recycle-surplus-modal__body">選択したカードをクリスタルに変換します。よろしいですか？</p>
+		<p class="recycle-surplus-modal__body">選択したカードをクリスタルに変換します。デッキに入っている枚数は、所持の余剰カードで枠が自動的に埋め替わります。よろしいですか？</p>
 		<p class="muted recycle-surplus-modal__crystal">獲得クリスタル：<strong id="recycle-complete-modal-crystal">0</strong></p>
 		<div class="recycle-surplus-modal__actions">
 			<button type="button" class="btn btn--ghost" data-recycle-complete-no>いいえ</button>
@@ -170,6 +170,7 @@
 	     th:data-rarity="${line.card.rarity}"
 	     th:data-rarity-label="${line.card.rarityLabel}"
 	     th:data-qty="${line.owned}"
+	     th:data-in-decks="${line.inDecks}"
 	     th:data-recyclable="${line.recyclable}"
 	     th:data-crystal="${line.crystalPerCard}"
 	     th:data-name="${line.card.name}"

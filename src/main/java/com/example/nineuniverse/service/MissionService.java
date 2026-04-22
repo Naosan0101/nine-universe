@@ -27,7 +27,7 @@ public class MissionService {
 	private static final String[][] DAILY_POOL = {
 			{"D_CPU_WIN_L1", "「ひとりで対戦」でレベル1のCPUに1回勝利する", "1"},
 			{"D_CPU_WIN_L2", "「ひとりで対戦」でレベル2のCPUに1回勝利する", "1"},
-			{"D_PVP", "「みんなで対戦」を1回する", "1"},
+			{"D_PVP", "「だれかと対戦」を1回する", "1"},
 			{"D_PACK", "パックを2回引く", "2"},
 			{"D_BONUS", "ボーナスパックを1回開封する", "1"},
 	};
@@ -35,7 +35,7 @@ public class MissionService {
 	private static final String[][] WEEKLY_POOL = {
 			{"W_CPU_WIN_L2", "「ひとりで対戦」でレベル2のCPUに5回勝利する", "5"},
 			{"W_CPU_WIN_L3", "「ひとりで対戦」でレベル3のCPUに5回勝利する", "5"},
-			{"W_PVP", "「みんなで対戦」を10回する", "10"},
+			{"W_PVP", "「だれかと対戦」を10回する", "10"},
 			{"W_PACK", "パックを10回引く", "10"},
 			{"W_BONUS", "ボーナスパックを6回開封する", "6"},
 	};

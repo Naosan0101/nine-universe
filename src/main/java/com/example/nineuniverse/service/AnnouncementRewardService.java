@@ -20,7 +20,7 @@ public class AnnouncementRewardService {
 	private final AppUserMapper appUserMapper;
 
 	/**
-	 * ホーム画面などで「複数のお知らせの受け取り済み判定」をまとめて行う用途。
+	 * ホーム画面などで「複数のおしらせの受け取り済み判定」をまとめて行う用途。
 	 * （個別 exists の多重発行を避ける）
 	 */
 	public Set<String> findClaimedKeys(long userId) {
@@ -99,7 +99,7 @@ public class AnnouncementRewardService {
 		return isWithinPerfLightWindow(LocalDate.now(ZoneId.systemDefault()));
 	}
 
-	/** 時間パックお知らせの受け取り可能期間（開始日〜終了日を含む）。 */
+	/** 時間パックおしらせの受け取り可能期間（開始日〜終了日を含む）。 */
 	public boolean isWithinTimePackAnnouncementWindow(LocalDate today) {
 		if (today.isBefore(GameConstants.ANNOUNCEMENT_TIME_PACK_START)) {
 			return false;
@@ -233,6 +233,13 @@ public class AnnouncementRewardService {
 		return !today.isAfter(GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_LAST_DAY);
 	}
 
+	public boolean isWithinFriendPvpUpdateAnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_LAST_DAY);
+	}
+
 	public enum ClaimOutcome {
 		SUCCESS,
 		ALREADY_CLAIMED,
@@ -241,8 +248,8 @@ public class AnnouncementRewardService {
 	}
 
 	/**
-	 * 個別の「お知らせ」受け取りと同条件で、ジェム配布のあるお知らせをまとめて受け取る。
-	 * 対象外のお知らせはスキップし、SUCCESS だった件数と合計ジェムのみを返す。
+	 * 個別の「おしらせ」受け取りと同条件で、ジェム配布のあるおしらせをまとめて受け取る。
+	 * 対象外のおしらせはスキップし、SUCCESS だった件数と合計ジェムのみを返す。
 	 */
 	@Transactional
 	public BulkGemClaimResult claimAllEligibleAnnouncementGems(
@@ -387,6 +394,13 @@ public class AnnouncementRewardService {
 				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_START)) {
 			if (claimPlatformApr2026AnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
 				totalGems += GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_START)) {
+			if (claimFriendPvpUpdateAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_GEMS;
 				claimed++;
 			}
 		}
@@ -734,6 +748,23 @@ public class AnnouncementRewardService {
 			return ClaimOutcome.ALREADY_CLAIMED;
 		}
 		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_PLATFORM_APR_2026_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimFriendPvpUpdateAnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_GEMS);
 		return ClaimOutcome.SUCCESS;
 	}
 

@@ -29,10 +29,13 @@ public class PvpBattleService {
 
 	private final Map<String, PvpMatch> matches = new ConcurrentHashMap<>();
 
-	public PvpMatch createWaitingRoom(long hostUserId, long hostDeckId) {
+	public PvpMatch createWaitingRoom(long hostUserId, long hostDeckId, long invitedGuestUserId) {
 		deckService.requireDeck(hostUserId, hostDeckId);
+		if (invitedGuestUserId == hostUserId) {
+			throw new IllegalArgumentException("自分自身とは対戦できません");
+		}
 		String id = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-		var m = new PvpMatch(id, hostUserId, hostDeckId);
+		var m = new PvpMatch(id, hostUserId, hostDeckId, invitedGuestUserId);
 		matches.put(id, m);
 		return m;
 	}
@@ -49,6 +52,9 @@ public class PvpBattleService {
 			}
 			if (m.getHostUserId() == guestUserId) {
 				throw new IllegalStateException("自分の部屋には参加できません");
+			}
+			if (guestUserId != m.getInvitedGuestUserId()) {
+				throw new IllegalStateException("この対戦は招待された相手のみが参加できます");
 			}
 			deckService.requireDeck(guestUserId, guestDeckId);
 			m.setGuestUserId(guestUserId);

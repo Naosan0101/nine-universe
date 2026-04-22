@@ -22,7 +22,8 @@
       "main.js",
       "preload.js",
       "package.json",
-      "build-resources/icon.png"
+      "build-resources/icon.png",
+      "build-resources/アイコン01.PNG"
     ],
     "win": {
       "icon": "build-resources/icon.png",

@@ -1,6 +1,7 @@
 package com.example.nineuniverse.web;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Locale;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -25,8 +26,23 @@ public class GlobalThymeleafModelAdvice {
 	}
 
 	@ModelAttribute("webDesktopMigrationNoticeEnabled")
-	public boolean webDesktopMigrationNoticeEnabled() {
-		return webDesktopMigrationNoticeEnabled;
+	public boolean webDesktopMigrationNoticeEnabled(HttpServletRequest request) {
+		if (!this.webDesktopMigrationNoticeEnabled) {
+			return false;
+		}
+		return !isLocalHostRequest(request);
+	}
+
+	private static boolean isLocalHostRequest(HttpServletRequest request) {
+		String serverName = request.getServerName();
+		if (serverName == null || serverName.isBlank()) {
+			return false;
+		}
+		String h = serverName.trim().toLowerCase(Locale.ROOT);
+		return "localhost".equals(h)
+				|| "127.0.0.1".equals(h)
+				|| "::1".equals(h)
+				|| "0:0:0:0:0:0:0:1".equals(h);
 	}
 
 	@ModelAttribute("webDesktopMigrationInstallerHref")

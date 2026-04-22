@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>フレンド — ナインユニバース</title>
+	<link rel="stylesheet" th:href="@{/css/app.css(v=${assetVersion})}"/>
+</head>
+<body class="page page--theme-arcane">
+<header class="topbar">
+	<h1 class="game-title">フレンド</h1>
+	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
+</header>
+
+<div class="container stack friends-page">
+	<p class="ok" th:if="${flashFriendSuccess}" th:text="${flashFriendSuccess}"></p>
+	<p class="error" th:if="${flashFriendError}" th:text="${flashFriendError}"></p>
+
+	<section class="panel friends-page__section">
+		<h2 class="friends-page__heading">フレンドを登録</h2>
+		<p class="muted friends-page__lead">相手がここで承諾すると、下のフレンドリストに表示されます。</p>
+		<form th:action="@{/friends/request}" method="post" class="stack friends-page__form">
+			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+			<label class="friends-page__label">相手のユーザーID
+				<input type="text" name="targetUsername" required autocomplete="username" maxlength="64"
+				       placeholder="例: taro"/>
+			</label>
+			<button type="submit" class="btn btn--primary friends-page__submit-btn">申請を送る</button>
+		</form>
+	</section>
+
+	<section class="panel friends-page__section" th:if="${pendingInbound != null && !pendingInbound.isEmpty()}">
+		<h2 class="friends-page__heading">届いたフレンド申請</h2>
+		<ul class="friends-page__list">
+			<li th:each="row : ${pendingInbound}" class="friends-page__row">
+				<span class="friends-page__name" th:text="${row.fromDisplayName}">ユーザー</span>
+				<div class="friends-page__actions">
+					<form th:action="@{/friends/accept}" method="post" class="inline">
+						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+						<input type="hidden" name="requestId" th:value="${row.requestId}"/>
+						<button type="submit" class="btn btn--primary">承諾</button>
+					</form>
+					<form th:action="@{/friends/reject}" method="post" class="inline">
+						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+						<input type="hidden" name="requestId" th:value="${row.requestId}"/>
+						<button type="submit" class="btn btn--ghost">拒否</button>
+					</form>
+				</div>
+			</li>
+		</ul>
+	</section>
+
+	<section class="panel friends-page__section">
+		<h2 class="friends-page__heading">フレンドリスト</h2>
+		<p class="muted" th:if="${friends == null || friends.isEmpty()}">まだフレンドがいません。</p>
+		<ul class="friends-page__list" th:if="${friends != null && !friends.isEmpty()}">
+			<li th:each="f : ${friends}" class="friends-page__row friends-page__row--plain">
+				<span class="friends-page__name" th:text="${f.displayLabel}">名前</span>
+			</li>
+		</ul>
+	</section>
+</div>
+<th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
+</body>
+</html>

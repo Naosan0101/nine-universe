@@ -44,31 +44,22 @@ tasks.named('bootJar') {
 }
 
 /**
- * Electron の NSIS 成果物を JAR に同梱（BOOT-INF/classes/static/downloads/nine-universe-setup-0.1.0.exe）。
- * ソースが無い場合はディレクトリのみ用意（ダウンロードは 404。リリース前に electron のパッケージを実行すること）。
+ * Electron の NSIS 成果物を processResources 出力へコピー（bootRun / IDE / bootJar いずれも classpath: static/downloads/ に載る）。
+ * 無い場合はスキップ（ダウンロードは 404。リリース前に electron のパッケージを実行すること）。
  */
 def desktopInstallerSource = file("${rootDir}/electron/dist-installer/Nine Universe Setup 0.1.0.exe")
-def desktopInstallerStage = layout.buildDirectory.dir('desktop-installer-for-jar')
-tasks.register('copyDesktopInstaller') {
-	outputs.dir(desktopInstallerStage)
+tasks.named('processResources', Copy) {
 	doLast {
-		def root = desktopInstallerStage.get().asFile
-		project.delete(root)
-		def downloads = new File(root, 'static/downloads')
-		downloads.mkdirs()
-		if (desktopInstallerSource.isFile()) {
-			java.nio.file.Files.copy(
-					desktopInstallerSource.toPath(),
-					new File(downloads, 'nine-universe-setup-0.1.0.exe').toPath(),
-					java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+		if (!desktopInstallerSource.isFile()) {
+			return
 		}
-	}
-}
-tasks.named('bootJar', Jar) {
-	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-	dependsOn('copyDesktopInstaller')
-	from(desktopInstallerStage) {
-		into 'BOOT-INF/classes'
+		def destDir = file("${layout.buildDirectory.get()}/resources/main/static/downloads")
+		destDir.mkdirs()
+		def dest = new File(destDir, 'nine-universe-setup-0.1.0.exe')
+		java.nio.file.Files.copy(
+				desktopInstallerSource.toPath(),
+				dest.toPath(),
+				java.nio.file.StandardCopyOption.REPLACE_EXISTING)
 	}
 }
 

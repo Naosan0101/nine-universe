@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.nineuniverse.repository.FriendRequestMapper">
+
+	<insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+		INSERT INTO friend_request (from_user_id, to_user_id, status)
+		VALUES (#{fromUserId}, #{toUserId}, #{status})
+	</insert>
+
+	<select id="findById" resultType="com.example.nineuniverse.domain.FriendRequest">
+		SELECT id, from_user_id AS fromUserId, to_user_id AS toUserId, status, created_at AS createdAt
+		FROM friend_request WHERE id = #{id}
+	</select>
+
+	<select id="findPendingInboundForUser" resultType="com.example.nineuniverse.domain.FriendInboundNotice">
+		SELECT fr.id AS requestId,
+		       fr.from_user_id AS fromUserId,
+		       COALESCE(NULLIF(TRIM(u.display_name), ''), u.username) AS fromDisplayName
+		FROM friend_request fr
+		JOIN app_user u ON u.id = fr.from_user_id
+		WHERE fr.to_user_id = #{toUserId} AND fr.status = 'PENDING'
+		ORDER BY fr.id DESC
+	</select>
+
+	<select id="countPendingInboundForUser" resultType="int">
+		SELECT COUNT(*)::int FROM friend_request
+		WHERE to_user_id = #{toUserId} AND status = 'PENDING'
+	</select>
+
+	<select id="findPendingFromTo" resultType="com.example.nineuniverse.domain.FriendRequest">
+		SELECT id, from_user_id AS fromUserId, to_user_id AS toUserId, status, created_at AS createdAt
+		FROM friend_request
+		WHERE from_user_id = #{fromUserId} AND to_user_id = #{toUserId} AND status = 'PENDING'
+	</select>
+
+	<update id="updateStatus">
+		UPDATE friend_request SET status = #{status} WHERE id = #{id}
+	</update>
+
+	<delete id="deletePendingBetween">
+		DELETE FROM friend_request
+		WHERE status = 'PENDING'
+		  AND ((from_user_id = #{userA} AND to_user_id = #{userB})
+		       OR (from_user_id = #{userB} AND to_user_id = #{userA}))
+	</delete>
+</mapper>

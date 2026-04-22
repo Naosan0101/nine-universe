@@ -3,17 +3,22 @@ const fs = require('fs');
 const { app, BrowserWindow, Menu, ipcMain } = require('electron');
 
 /**
- * インストール後のウィンドウ／タスクバー用。アセットはアイコン01.PNG と同じ画像を build-resources/icon.png にコピーして同梱。
- * （Setup.exe のアイコンは package.json の nsis.installerIcon で Electron 既定の ICO を使用）
+ * ウィンドウ／タスクバー用。icon.png はアイコン01.PNG と同一画像（ASCII 名で electron-builder / Windows の埋め込み互換）。
+ * （Setup.exe のアイコンは package.json の nsis.installerIcon で別 ICO を使用）
  */
 function appIconPath() {
-	var p = path.join(__dirname, 'build-resources', 'icon.png');
-	try {
-		if (fs.existsSync(p)) {
-			return p;
+	var candidates = [
+		path.join(__dirname, 'build-resources', 'icon.png'),
+		path.join(__dirname, 'build-resources', 'アイコン01.PNG'),
+	];
+	for (var i = 0; i < candidates.length; i++) {
+		try {
+			if (fs.existsSync(candidates[i])) {
+				return candidates[i];
+			}
+		} catch (e) {
+			/* ignore */
 		}
-	} catch (e) {
-		/* ignore */
 	}
 	return undefined;
 }
@@ -34,6 +39,97 @@ try {
 
 /** 本番は nine-universe.jp。開発時は環境変数で上書き可能。 */
 const START_URL = process.env.NINE_UNIVERSE_URL || 'https://nine-universe.jp';
+
+/** preload の initialFullscreenPreference と同じ（localStorage 未設定時の既定） */
+const INITIAL_FULLSCREEN_DEFAULT = process.env.NINE_UNIVERSE_START_FULLSCREEN !== '0';
+
+/**
+ * executeJavaScript の戻り値は環境によって boolean ではなく文字列等になることがある。
+ * !!want だと "false" が truthy になり、OFF 希望でもフルスクリーンが掛かり続ける。
+ */
+function wantFullscreenFromPageSyncResult(raw) {
+	if (raw === true || raw === 'true' || raw === 1 || raw === '1') {
+		return true;
+	}
+	if (raw === false || raw === 'false' || raw === 0 || raw === '0') {
+		return false;
+	}
+	return INITIAL_FULLSCREEN_DEFAULT;
+}
+
+function browserWindowFromIpcSender(sender) {
+	if (!sender || sender.isDestroyed()) {
+		return null;
+	}
+	let w = BrowserWindow.fromWebContents(sender);
+	if (w && !w.isDestroyed()) {
+		return w;
+	}
+	/* fromWebContents が null になる事例へのフォールバック（単一ウィンドウ想定） */
+	try {
+		w = BrowserWindow.getFocusedWindow();
+		if (w && !w.isDestroyed()) {
+			return w;
+		}
+	} catch (_) {
+		/* ignore */
+	}
+	try {
+		const all = BrowserWindow.getAllWindows();
+		for (var i = 0; i < all.length; i++) {
+			if (all[i] && !all[i].isDestroyed()) {
+				return all[i];
+			}
+		}
+	} catch (_) {
+		/* ignore */
+	}
+	return null;
+}
+
+/**
+ * ページ遷移のたびに OS がフルスクリーンを外すことがあるため、読み込み完了後に main 側で再同期する。
+ * data: 等の非 HTTP ページではスキップ（接続エラー画面など）。
+ */
+function syncBrowserWindowFullscreenFromStorage(win) {
+	if (!win || win.isDestroyed()) {
+		return;
+	}
+	const wc = win.webContents;
+	if (!wc || wc.isDestroyed()) {
+		return;
+	}
+	var url = '';
+	try {
+		url = String(wc.getURL() || '');
+	} catch (_) {
+		return;
+	}
+	if (!url || url.startsWith('data:') || url.startsWith('about:')) {
+		return;
+	}
+	var defLit = INITIAL_FULLSCREEN_DEFAULT ? 'true' : 'false';
+	var js =
+		'(function(){try{var v=localStorage.getItem("nu_fullscreen_mode");' +
+		'if(v==="0"||v==="false")return false;if(v==="1"||v==="true")return true;' +
+		'}catch(e){}return ' +
+		defLit +
+		';})()';
+	wc.executeJavaScript(js, true)
+		.then(function (want) {
+			if (!win || win.isDestroyed()) {
+				return;
+			}
+			var flag = wantFullscreenFromPageSyncResult(want);
+			/*
+			 * POST→302（ログイン直後など）では isFullScreen() が実表示とずれたまま true を返し、
+			 * 「既にフルスクリーン」と誤判定して setFullScreen(true) がスキップされることがある。
+			 * did-finish-load 経由はページあたり1回なので、ここでは常に希望どおり適用する。
+			 */
+			win.setFullScreen(flag);
+		})
+		.catch(function () {});
+}
 
 /**
  * 開発で最初からウィンドウ表示にしたいときは NINE_UNIVERSE_START_FULLSCREEN=0（preload の初期希望と一致）。
@@ -79,6 +175,7 @@ function createWindow() {
 		height: 800,
 		minWidth: 360,
 		minHeight: 640,
+		fullscreenable: true,
 		autoHideMenuBar: true,
 		backgroundColor: '#0f1118',
 		webPreferences: {
@@ -92,6 +189,13 @@ function createWindow() {
 		winOpts.icon = icon;
 	}
 	const win = new BrowserWindow(winOpts);
+
+	win.webContents.on('did-finish-load', function () {
+		/* DOMContentLoaded より後。遷移直後に外れたフルスクリーンを希望どおり戻す */
+		setImmediate(function () {
+			syncBrowserWindowFullscreenFromStorage(win);
+		});
+	});
 
 	win.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
 		if (!isMainFrame) {
@@ -112,9 +216,40 @@ ipcMain.handle('nu-quit-app', () => {
 });
 
 ipcMain.handle('nu-set-fullscreen', (event, on) => {
-	const w = BrowserWindow.fromWebContents(event.sender);
-	if (w && !w.isDestroyed()) {
-		w.setFullScreen(!!on);
+	const w = browserWindowFromIpcSender(event.sender);
+	if (!w || w.isDestroyed()) {
+		return;
+	}
+	const flag = !!on;
+	/*
+	 * isFullScreen() が実表示とずれていると、解除時に「既にウィンドウ」と誤判定して
+	 * setFullScreen(false) がスキップされる（設定で OFF にしてもフルスクリーンのまま）。
+	 * did-finish-load の sync と同様、OFF は常に適用する。
+	 * ON 側は従来どおり差分があるときだけ呼び、Windows での過剰呼び出しを避ける。
+	 */
+	if (!flag) {
+		const wasFs = w.isFullScreen();
+		w.setFullScreen(false);
+		/* 非同期で状態が追いつかない環境向けに再試行。Windows では解除後に最大化だけ残ることもある。 */
+		setImmediate(function () {
+			if (!w || w.isDestroyed()) {
+				return;
+			}
+			if (w.isFullScreen()) {
+				w.setFullScreen(false);
+			}
+			if (process.platform === 'win32' && wasFs && w.isMaximized()) {
+				try {
+					w.unmaximize();
+				} catch (_) {
+					/* ignore */
+				}
+			}
+		});
+		return;
+	}
+	if (w.isFullScreen() !== flag) {
+		w.setFullScreen(flag);
 	}
 });
 

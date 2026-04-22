@@ -1,15 +1,19 @@
 package com.example.nineuniverse.web;
 
 import com.example.nineuniverse.GameConstants;
-import com.example.nineuniverse.service.DeckService;
 import com.example.nineuniverse.domain.AppUser;
+import com.example.nineuniverse.domain.PvpFriendInvite;
 import com.example.nineuniverse.domain.UserDisplayNames;
 import com.example.nineuniverse.repository.AppUserMapper;
+import com.example.nineuniverse.service.DeckService;
+import com.example.nineuniverse.service.FriendService;
 import com.example.nineuniverse.service.NicknameEpithetService;
 import com.example.nineuniverse.service.PvpBattleService;
+import com.example.nineuniverse.service.PvpFriendInviteService;
 import com.example.nineuniverse.web.dto.CpuBattleChoiceRequest;
 import com.example.nineuniverse.web.dto.CpuBattleCommitRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -30,23 +34,36 @@ import java.util.Map;
 public class PvpController {
 
 	private final PvpBattleService pvpBattleService;
+	private final PvpFriendInviteService pvpFriendInviteService;
+	private final FriendService friendService;
 	private final DeckService deckService;
 	private final AppUserMapper appUserMapper;
 	private final NicknameEpithetService nicknameEpithetService;
+
+	/** ログイン中ページのポーリング用: 届いている対戦申し込み件数 */
+	@GetMapping(value = "/pending-inbound.json", produces = MediaType.APPLICATION_JSON_VALUE)
+	@ResponseBody
+	public Map<String, Integer> pendingInboundPoll() {
+		int count = pvpFriendInviteService.countPendingInbound(CurrentUser.require().getId());
+		return Map.of("count", count);
+	}
 
 	@GetMapping
 	public String menu(Model model) {
 		long uid = CurrentUser.require().getId();
 		model.addAttribute("decks", deckService.listDecks(uid));
+		model.addAttribute("friends", friendService.listFriends(uid));
+		model.addAttribute("pvpPendingInbound", pvpFriendInviteService.listPendingInbound(uid));
+		model.addAttribute("pvpPendingOutbound", pvpFriendInviteService.listPendingOutbound(uid));
 		return "pvp-menu";
 	}
 
-	@PostMapping("/room")
-	public String createRoom(@RequestParam long deckId, RedirectAttributes ra) {
+	@PostMapping("/challenge")
+	public String sendChallenge(@RequestParam long friendUserId, @RequestParam long deckId, RedirectAttributes ra) {
 		try {
 			long uid = CurrentUser.require().getId();
-			var m = pvpBattleService.createWaitingRoom(uid, deckId);
-			return "redirect:/battle/pvp/room/" + m.getId();
+			var created = pvpFriendInviteService.createInvite(uid, friendUserId, deckId);
+			return "redirect:/battle/pvp/room/" + created.matchId();
 		} catch (Exception e) {
 			ra.addFlashAttribute("error", e.getMessage());
 			return "redirect:/battle/pvp";
@@ -62,45 +79,84 @@ public class PvpController {
 			return "redirect:/battle/pvp";
 		}
 		if (m.getHostUserId() != uid) {
-			return "redirect:/battle/pvp/join/" + id;
+			ra.addFlashAttribute("error", "この待機画面はホストのみが開けます");
+			return "redirect:/battle/pvp";
 		}
 		if (pvpBattleService.isStarted(id)) {
 			return "redirect:/battle/pvp/play/" + id;
 		}
 		model.addAttribute("matchId", id);
+		Long inviteId = pvpFriendInviteService.findPendingInviteIdForChallengerRoom(id, uid);
+		model.addAttribute("pvpInviteId", inviteId);
 		return "pvp-wait";
 	}
 
-	@GetMapping("/join/{id}")
-	public String joinForm(@PathVariable String id, Model model, RedirectAttributes ra) {
-		long uid = CurrentUser.require().getId();
-		var m = pvpBattleService.get(id);
-		if (m == null) {
-			ra.addFlashAttribute("error", "対戦が見つかりません");
-			return "redirect:/battle/pvp";
-		}
-		if (m.getHostUserId() == uid) {
-			return "redirect:/battle/pvp/room/" + id;
-		}
-		if (pvpBattleService.isStarted(id)) {
-			ra.addFlashAttribute("error", "すでに対戦が始まっています");
-			return "redirect:/battle/pvp";
-		}
-		model.addAttribute("matchId", id);
-		model.addAttribute("decks", deckService.listDecks(uid));
-		return "pvp-join";
-	}
-
-	@PostMapping("/join/{id}")
-	public String join(@PathVariable String id, @RequestParam long deckId, RedirectAttributes ra) {
+	@PostMapping("/invite/cancel")
+	public String cancelInvite(@RequestParam long inviteId, RedirectAttributes ra) {
 		try {
-			long uid = CurrentUser.require().getId();
-			pvpBattleService.join(id, uid, deckId);
-			return "redirect:/battle/pvp/play/" + id;
+			pvpFriendInviteService.cancelInvite(inviteId, CurrentUser.require().getId());
+			ra.addFlashAttribute("flashPvpInfo", "対戦申し込みを取り消しました。");
 		} catch (Exception e) {
 			ra.addFlashAttribute("error", e.getMessage());
-			return "redirect:/battle/pvp/join/" + id;
 		}
+		return "redirect:/battle/pvp";
+	}
+
+	@GetMapping("/invite/{inviteId}/join")
+	public String inviteJoinForm(@PathVariable long inviteId, Model model, RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		PvpFriendInvite inv = pvpFriendInviteService.findPendingInviteForOpponent(inviteId, uid);
+		if (inv == null) {
+			ra.addFlashAttribute("error", "招待が見つかりません");
+			return "redirect:/battle/pvp";
+		}
+		if (pvpBattleService.get(inv.getMatchId()) == null) {
+			ra.addFlashAttribute("error", "この招待はすでに取り消されています");
+			return "redirect:/battle/pvp";
+		}
+		if (pvpBattleService.isStarted(inv.getMatchId())) {
+			return "redirect:/battle/pvp/play/" + inv.getMatchId();
+		}
+		model.addAttribute("inviteId", inviteId);
+		model.addAttribute("matchId", inv.getMatchId());
+		model.addAttribute("challengerName", resolveDisplayName(inv.getChallengerUserId()));
+		model.addAttribute("decks", deckService.listDecks(uid));
+		return "pvp-invite-join";
+	}
+
+	@PostMapping("/invite/{inviteId}/join")
+	public String inviteJoinSubmit(@PathVariable long inviteId, @RequestParam long deckId, RedirectAttributes ra) {
+		try {
+			long uid = CurrentUser.require().getId();
+			PvpFriendInvite inv = pvpFriendInviteService.findPendingInviteForOpponent(inviteId, uid);
+			if (inv == null) {
+				ra.addFlashAttribute("error", "招待が見つかりません");
+				return "redirect:/battle/pvp";
+			}
+			String matchId = inv.getMatchId();
+			pvpFriendInviteService.acceptInvite(inviteId, uid, deckId);
+			return "redirect:/battle/pvp/play/" + matchId;
+		} catch (Exception e) {
+			ra.addFlashAttribute("error", e.getMessage());
+			return "redirect:/battle/pvp/invite/" + inviteId + "/join";
+		}
+	}
+
+	@PostMapping("/invite/{inviteId}/decline")
+	public String inviteDecline(@PathVariable long inviteId, RedirectAttributes ra) {
+		try {
+			pvpFriendInviteService.declineInvite(inviteId, CurrentUser.require().getId());
+			ra.addFlashAttribute("flashPvpInfo", "対戦申し込みを断りました。");
+		} catch (Exception e) {
+			ra.addFlashAttribute("error", e.getMessage());
+		}
+		return "redirect:/battle/pvp";
+	}
+
+	@GetMapping("/join/{id}")
+	public String legacyJoinRedirect(@SuppressWarnings("unused") @PathVariable String id, RedirectAttributes ra) {
+		ra.addFlashAttribute("error", "URLからの参加はできません。「だれかと対戦」から招待を承諾してください。");
+		return "redirect:/battle/pvp";
 	}
 
 	@GetMapping("/play/{id}")
@@ -121,7 +177,8 @@ public class PvpController {
 			if (m.getHostUserId() == uid) {
 				return "redirect:/battle/pvp/room/" + id;
 			}
-			return "redirect:/battle/pvp/join/" + id;
+			ra.addFlashAttribute("error", "対戦がまだ始まっていません。招待を承諾してください。");
+			return "redirect:/battle/pvp";
 		}
 		model.addAttribute("matchId", id);
 		model.addAttribute("cardBack", GameConstants.cardBackUrl());
@@ -165,20 +222,25 @@ public class PvpController {
 		return "pvp-play";
 	}
 
+	private String resolveDisplayName(long userId) {
+		AppUser u = appUserMapper.findById(userId);
+		return UserDisplayNames.effectiveDisplayName(u);
+	}
+
 	@GetMapping("/api/{id}/ready")
 	@ResponseBody
 	public Map<String, Object> ready(@PathVariable String id) {
 		long uid = CurrentUser.require().getId();
 		var m = pvpBattleService.get(id);
 		if (m == null) {
-			return Map.of("started", false, "ok", false);
+			return Map.of("started", false, "ok", false, "gone", true);
 		}
 		try {
 			pvpBattleService.requireParticipant(m, uid);
 		} catch (Exception e) {
 			return Map.of("started", false, "ok", false);
 		}
-		return Map.of("started", pvpBattleService.isStarted(id), "ok", true);
+		return Map.of("started", pvpBattleService.isStarted(id), "ok", true, "gone", false);
 	}
 
 	@GetMapping(value = "/api/{id}/state", produces = "application/json")
@@ -242,7 +304,9 @@ public class PvpController {
 	public ResponseEntity<?> apiTimeout(@PathVariable String id) {
 		try {
 			var dto = pvpBattleService.timeoutTick(id, CurrentUser.require().getId());
-			if (dto == null) return ResponseEntity.notFound().build();
+			if (dto == null) {
+				return ResponseEntity.notFound().build();
+			}
 			return ResponseEntity.ok(dto);
 		} catch (Exception e) {
 			return ResponseEntity.badRequest().build();

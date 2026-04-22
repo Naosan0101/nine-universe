@@ -194,7 +194,7 @@ public final class GameConstants {
 	/** ウィークリーミッション1件あたり（デイリーの約2倍） */
 	public static final int MISSION_WEEKLY_REWARD_COINS = 6;
 
-	/** お知らせ配布（処理軽量化リリース記念）の識別子。 */
+	/** おしらせ配布（処理軽量化リリース記念）の識別子。 */
 	public static final String ANNOUNCEMENT_PERF_LIGHT_KEY = "perf_light_2026_04";
 
 	public static final int ANNOUNCEMENT_PERF_LIGHT_GEMS = 10;
@@ -208,7 +208,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_PERF_LIGHT_LAST_DAY =
 			ANNOUNCEMENT_PERF_LIGHT_START.plusDays(30 - 1);
 
-	/** お知らせ配布（時間パックゲージ実装のお知らせ） */
+	/** おしらせ配布（時間パックゲージ実装のおしらせ） */
 	public static final String ANNOUNCEMENT_TIME_PACK_KEY = "time_pack_gauge_2026_04";
 
 	public static final int ANNOUNCEMENT_TIME_PACK_GEMS = 10;
@@ -218,7 +218,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_TIME_PACK_LAST_DAY =
 			ANNOUNCEMENT_TIME_PACK_START.plusDays(30 - 1);
 
-	/** お知らせ配布（UI・ミッション見直し＆カードバランス調整） */
+	/** おしらせ配布（UI・ミッション見直し＆カードバランス調整） */
 	public static final String ANNOUNCEMENT_BALANCE_UI_MISSION_KEY = "balance_ui_mission_2026_04";
 
 	public static final int ANNOUNCEMENT_BALANCE_UI_MISSION_GEMS = 10;
@@ -228,7 +228,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_BALANCE_UI_MISSION_LAST_DAY =
 			ANNOUNCEMENT_BALANCE_UI_MISSION_START.plusDays(30 - 1);
 
-	/** お知らせ配布（カードパック排出率調整） */
+	/** おしらせ配布（カードパック排出率調整） */
 	public static final String ANNOUNCEMENT_PACK_RATES_KEY = "pack_rates_2026_04";
 
 	public static final int ANNOUNCEMENT_PACK_RATES_GEMS = 3;
@@ -238,7 +238,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_PACK_RATES_LAST_DAY =
 			ANNOUNCEMENT_PACK_RATES_START.plusDays(30 - 1);
 
-	/** お知らせ配布（パック結果「もう一度引く」ボタン追加） */
+	/** おしらせ配布（パック結果「もう一度引く」ボタン追加） */
 	public static final String ANNOUNCEMENT_PACK_RESULT_DRAW_AGAIN_KEY = "pack_result_draw_again_2026_04";
 
 	public static final int ANNOUNCEMENT_PACK_RESULT_DRAW_AGAIN_GEMS = 5;
@@ -248,7 +248,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_PACK_RESULT_DRAW_AGAIN_LAST_DAY =
 			ANNOUNCEMENT_PACK_RESULT_DRAW_AGAIN_START.plusDays(30 - 1);
 
-	/** お知らせ配布（「隊長」カードのテキスト修正） */
+	/** おしらせ配布（「隊長」カードのテキスト修正） */
 	public static final String ANNOUNCEMENT_CAPTAIN_TEXT_KEY = "captain_text_2026_04";
 
 	public static final int ANNOUNCEMENT_CAPTAIN_TEXT_GEMS = 5;
@@ -258,7 +258,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_CAPTAIN_TEXT_LAST_DAY =
 			ANNOUNCEMENT_CAPTAIN_TEXT_START.plusDays(30 - 1);
 
-	/** お知らせ配布（ミッション達成不具合の修正） */
+	/** おしらせ配布（ミッション達成不具合の修正） */
 	public static final String ANNOUNCEMENT_MISSION_FIX_KEY = "mission_fix_2026_04";
 
 	public static final int ANNOUNCEMENT_MISSION_FIX_GEMS = 5;
@@ -268,7 +268,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_MISSION_FIX_LAST_DAY =
 			ANNOUNCEMENT_MISSION_FIX_START.plusDays(30 - 1);
 
-	/** お知らせ配布（カード効果テキスト修正: ダークドラゴン/エルフの巫女/ウッドエルフ） */
+	/** おしらせ配布（カード効果テキスト修正: ダークドラゴン/エルフの巫女/ウッドエルフ） */
 	public static final String ANNOUNCEMENT_CARD_TEXT_FIX_KEY = "card_text_fix_2026_04";
 
 	public static final int ANNOUNCEMENT_CARD_TEXT_FIX_GEMS = 5;
@@ -278,7 +278,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_CARD_TEXT_FIX_LAST_DAY =
 			ANNOUNCEMENT_CARD_TEXT_FIX_START.plusDays(30 - 1);
 
-	/** お知らせ配布（サムライ効果不具合の修正） */
+	/** おしらせ配布（サムライ効果不具合の修正） */
 	public static final String ANNOUNCEMENT_SAMURAI_FIX_KEY = "samurai_fix_2026_04";
 
 	public static final int ANNOUNCEMENT_SAMURAI_FIX_GEMS = 3;
@@ -288,7 +288,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_SAMURAI_FIX_LAST_DAY =
 			ANNOUNCEMENT_SAMURAI_FIX_START.plusDays(30 - 1);
 
-	/** お知らせ配布（「カードパックを引く」ミッションでボーナスパックがカウントされない不具合の修正） */
+	/** おしらせ配布（「カードパックを引く」ミッションでボーナスパックがカウントされない不具合の修正） */
 	public static final String ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_KEY = "pack_mission_bonus_fix_2026_04";
 
 	public static final int ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_GEMS = 5;
@@ -298,7 +298,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_LAST_DAY =
 			ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_START.plusDays(30 - 1);
 
-	/** お知らせ配布（祝！ユーザー登録者数30人突破！） */
+	/** おしらせ配布（祝！ユーザー登録者数30人突破！） */
 	public static final String ANNOUNCEMENT_30_USERS_KEY = "celebrate_30_users_2026_04";
 
 	public static final int ANNOUNCEMENT_30_USERS_GEMS = 20;
@@ -308,7 +308,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_30_USERS_LAST_DAY =
 			ANNOUNCEMENT_30_USERS_START.plusDays(30 - 1);
 
-	/** お知らせ配布（「火炎竜」のステータス修正） */
+	/** おしらせ配布（「火炎竜」のステータス修正） */
 	public static final String ANNOUNCEMENT_KAENRYU_STATUS_KEY = "kaenryu_status_2026_04";
 
 	public static final int ANNOUNCEMENT_KAENRYU_STATUS_GEMS = 3;
@@ -318,7 +318,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_KAENRYU_STATUS_LAST_DAY =
 			ANNOUNCEMENT_KAENRYU_STATUS_START.plusDays(30 - 1);
 
-	/** お知らせ配布（「サムライ」のステータス修正） */
+	/** おしらせ配布（「サムライ」のステータス修正） */
 	public static final String ANNOUNCEMENT_SAMURAI_STATUS_KEY = "samurai_status_2026_04";
 
 	public static final int ANNOUNCEMENT_SAMURAI_STATUS_GEMS = 3;
@@ -328,7 +328,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_SAMURAI_STATUS_LAST_DAY =
 			ANNOUNCEMENT_SAMURAI_STATUS_START.plusDays(30 - 1);
 
-	/** お知らせ配布（大型アップデート記念・30ジェム） */
+	/** おしらせ配布（大型アップデート記念・30ジェム） */
 	public static final String ANNOUNCEMENT_MAJOR_UPDATE_KEY = "major_update_2026_04";
 
 	public static final int ANNOUNCEMENT_MAJOR_UPDATE_GEMS = 30;
@@ -338,7 +338,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_MAJOR_UPDATE_LAST_DAY =
 			ANNOUNCEMENT_MAJOR_UPDATE_START.plusDays(30 - 1);
 
-	/** お知らせ配布（「磁力合体デンジリオン」効果不具合の修正） */
+	/** おしらせ配布（「磁力合体デンジリオン」効果不具合の修正） */
 	public static final String ANNOUNCEMENT_DENZIRION_FIX_KEY = "denzirion_fix_2026_04";
 
 	public static final int ANNOUNCEMENT_DENZIRION_FIX_GEMS = 3;
@@ -348,7 +348,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_DENZIRION_FIX_LAST_DAY =
 			ANNOUNCEMENT_DENZIRION_FIX_START.plusDays(30 - 1);
 
-	/** お知らせ配布（「忍者」で「ダークドラゴン」と入れ替わったときの進行不能の修正） */
+	/** おしらせ配布（「忍者」で「ダークドラゴン」と入れ替わったときの進行不能の修正） */
 	public static final String ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_KEY = "ninja_dark_dragon_fix_2026_04";
 
 	public static final int ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_GEMS = 3;
@@ -358,7 +358,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_LAST_DAY =
 			ANNOUNCEMENT_NINJA_DARK_DRAGON_FIX_START.plusDays(30 - 1);
 
-	/** お知らせ配布（「武器庫 VV-E4-PON」と「磁力合体デンジリオン」のコスト表示・隊長連動の修正） */
+	/** おしらせ配布（「武器庫 VV-E4-PON」と「磁力合体デンジリオン」のコスト表示・隊長連動の修正） */
 	public static final String ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_KEY = "weapon_depot_denzirion_fix_2026_04";
 
 	public static final int ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_GEMS = 3;
@@ -368,7 +368,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_LAST_DAY =
 			ANNOUNCEMENT_WEAPON_DEPOT_DENZIRION_FIX_START.plusDays(30 - 1);
 
-	/** お知らせ配布（〈フィールド〉無限ループ修正・表示名変更・ボーナスでスタンダードパック2） */
+	/** おしらせ配布（〈フィールド〉無限ループ修正・表示名変更・ボーナスでスタンダードパック2） */
 	public static final String ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_KEY = "field_display_settings_bonus_2026_04";
 
 	public static final int ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_GEMS = 10;
@@ -378,7 +378,7 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_LAST_DAY =
 			ANNOUNCEMENT_FIELD_DISPLAY_SETTINGS_BONUS_START.plusDays(30 - 1);
 
-	/** お知らせ配布（「磁力合体デンジリオン」に「ガラクタレッグ」が正しく合体するよう修正） */
+	/** おしらせ配布（「磁力合体デンジリオン」に「ガラクタレッグ」が正しく合体するよう修正） */
 	public static final String ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_KEY = "denzirion_garakuta_fusion_fix_2026_04";
 
 	public static final int ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_GEMS = 3;
@@ -389,7 +389,7 @@ public final class GameConstants {
 			ANNOUNCEMENT_DENZIRION_GARAKUTA_FUSION_FIX_START.plusDays(30 - 1);
 
 	/**
-	 * お知らせ配布（カードリサイクル・二つ名ガチャ・UI見直し・カード調整・アーサーアート更新・各種不具合修正のまとめ）
+	 * おしらせ配布（カードリサイクル・二つ名ガチャ・UI見直し・カード調整・アーサーアート更新・各種不具合修正のまとめ）
 	 */
 	public static final String ANNOUNCEMENT_PLATFORM_APR_2026_KEY = "platform_apr_2026_04_22";
 
@@ -400,22 +400,32 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_PLATFORM_APR_2026_LAST_DAY =
 			ANNOUNCEMENT_PLATFORM_APR_2026_START.plusDays(30 - 1);
 
+	/** おしらせ配布（「フレンド」追加・「だれかと対戦」更新） */
+	public static final String ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_KEY = "friend_pvp_dareka_update_2026_04_22";
+
+	public static final int ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_GEMS = 5;
+
+	public static final LocalDate ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_START = LocalDate.of(2026, 4, 22);
+
+	public static final LocalDate ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_LAST_DAY =
+			ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_START.plusDays(30 - 1);
+
 	/**
 	 * ログイン時ポップアップ「もう表示しない」用（ジェム受け取りとは別行）。
 	 */
 	public static final String ANNOUNCEMENT_MAJOR_UPDATE_POPUP_SUPPRESS_KEY = "major_update_popup_suppress_2026_04";
 
 	/**
-	 * お知らせモーダルで「新規ユーザー」に古い項目を出さないための判定。
+	 * おしらせモーダルで「新規ユーザー」に古い項目を出さないための判定。
 	 * 登録からこの日数以内を新規とみなし、{@link #announcementVisibleInNewUserWindow} と組み合わせる。
 	 */
 	public static final int ANNOUNCEMENT_NEW_USER_ACCOUNT_MAX_AGE_DAYS = 14;
 
-	/** 新規ユーザーには、開始日が「今日から遡ってこの日数以内」のお知らせだけを表示する。 */
+	/** 新規ユーザーには、開始日が「今日から遡ってこの日数以内」のおしらせだけを表示する。 */
 	public static final int ANNOUNCEMENT_NEW_USER_VISIBLE_LOOKBACK_DAYS = 14;
 
 	/**
-	 * 登録から {@link #ANNOUNCEMENT_NEW_USER_ACCOUNT_MAX_AGE_DAYS} 日以内なら、お知らせ一覧を直近分に制限する対象。
+	 * 登録から {@link #ANNOUNCEMENT_NEW_USER_ACCOUNT_MAX_AGE_DAYS} 日以内なら、おしらせ一覧を直近分に制限する対象。
 	 */
 	public static boolean isNewUserForAnnouncementList(LocalDate today, LocalDateTime createdAt, ZoneId zone) {
 		if (createdAt == null || zone == null) {
@@ -426,7 +436,7 @@ public final class GameConstants {
 	}
 
 	/**
-	 * 新規ユーザー向けお知らせの表示可否（開始日が直近 {@link #ANNOUNCEMENT_NEW_USER_VISIBLE_LOOKBACK_DAYS} 日以内）。
+	 * 新規ユーザー向けおしらせの表示可否（開始日が直近 {@link #ANNOUNCEMENT_NEW_USER_VISIBLE_LOOKBACK_DAYS} 日以内）。
 	 */
 	public static boolean announcementVisibleInNewUserWindow(LocalDate today, LocalDate announcementStart) {
 		if (today == null || announcementStart == null) {
@@ -436,7 +446,7 @@ public final class GameConstants {
 		return !announcementStart.isBefore(cutoff);
 	}
 
-	/** お知らせカードを出すか（既存ユーザーは常に候補を見る／新規は直近開始のものだけ）。 */
+	/** おしらせカードを出すか（既存ユーザーは常に候補を見る／新規は直近開始のものだけ）。 */
 	public static boolean shouldListAnnouncementForUser(
 			LocalDate today, LocalDateTime userCreatedAt, ZoneId zone, LocalDate announcementStart) {
 		if (!isNewUserForAnnouncementList(today, userCreatedAt, zone)) {
@@ -449,9 +459,9 @@ public final class GameConstants {
 	public static final long TIME_PACK_CYCLE_DURATION_MS = 12L * 60 * 60 * 1000;
 
 	/**
-	 * お知らせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
+	 * おしらせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
 	 */
-	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-22-1";
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-22-2";
 
 	/** リサイクル：レア度ごとに得るクリスタル（1枚あたり） */
 	public static final int RECYCLE_CRYSTAL_PER_CARD_C = 20;
