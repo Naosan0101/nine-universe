@@ -52,4 +52,16 @@
 		WHERE match_id = #{matchId} AND challenger_user_id = #{challengerUserId} AND status = 'PENDING'
 		LIMIT 1
 	</select>
+
+	<select id="findPendingInvitesCreatedBefore" resultType="com.example.nineuniverse.domain.PvpFriendInvite">
+		SELECT id, match_id AS matchId, challenger_user_id AS challengerUserId,
+		       opponent_user_id AS opponentUserId, status, created_at AS createdAt
+		FROM pvp_friend_invite
+		WHERE status = 'PENDING' AND created_at &lt; #{cutoff}
+	</select>
+
+	<update id="expireByIdIfPending">
+		UPDATE pvp_friend_invite SET status = 'EXPIRED'
+		WHERE id = #{id} AND status = 'PENDING' AND created_at &lt; #{cutoff}
+	</update>
 </mapper>

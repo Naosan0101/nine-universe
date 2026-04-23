@@ -31,11 +31,13 @@ public class UserSettingsService {
 			String displayNameRaw,
 			String cpuThinkSpeedRaw,
 			long epithetUpperId,
-			long epithetLowerId) {
+			long epithetLowerId,
+			boolean pvpInviteNotifyEnabled) {
 		String speed = normalizeCpuThinkSpeed(cpuThinkSpeedRaw);
 		String name = normalizeDisplayName(displayNameRaw);
 		nicknameEpithetService.validateEpithetSelection(userId, epithetUpperId, epithetLowerId);
-		int n = appUserMapper.updateProfileCpuAndEpithets(userId, name, speed, epithetUpperId, epithetLowerId);
+		int n = appUserMapper.updateProfileCpuAndEpithets(userId, name, speed, epithetUpperId, epithetLowerId,
+				pvpInviteNotifyEnabled);
 		if (n == 0) {
 			throw new IllegalStateException("ユーザーが見つかりません");
 		}
@@ -72,5 +74,6 @@ public class UserSettingsService {
 		sessionUser.setCpuThinkSpeed(fresh.getCpuThinkSpeed());
 		sessionUser.setSelectedEpithetUpperId(fresh.getSelectedEpithetUpperId());
 		sessionUser.setSelectedEpithetLowerId(fresh.getSelectedEpithetLowerId());
+		sessionUser.setPvpInviteNotifyEnabled(fresh.getPvpInviteNotifyEnabled());
 	}
 }

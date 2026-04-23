@@ -75,7 +75,7 @@
 
 	<section class="panel recycle-hub-section">
 		<h2 class="recycle-hub-section__title">クリスタルをジェムに交換</h2>
-		<p class="muted" style="margin-top:0"><span th:text="${crystalPerGem}">1000</span>クリスタルで1ジェムに交換できます。</p>
+		<p class="muted" style="margin-top:0"><span th:text="${crystalPerGem}">300</span>クリスタルで1ジェムに交換できます。</p>
 		<form th:action="@{/recycle/crystal-to-gems}" method="post">
 			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 			<button type="submit" class="btn btn--ghost">交換する</button>

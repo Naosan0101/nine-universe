@@ -44,12 +44,14 @@ public class PvpController {
 	@GetMapping(value = "/pending-inbound.json", produces = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseBody
 	public Map<String, Integer> pendingInboundPoll() {
+		pvpFriendInviteService.expireStalePendingInvites();
 		int count = pvpFriendInviteService.countPendingInbound(CurrentUser.require().getId());
 		return Map.of("count", count);
 	}
 
 	@GetMapping
 	public String menu(Model model) {
+		pvpFriendInviteService.expireStalePendingInvites();
 		long uid = CurrentUser.require().getId();
 		model.addAttribute("decks", deckService.listDecks(uid));
 		model.addAttribute("friends", friendService.listFriends(uid));
@@ -61,6 +63,7 @@ public class PvpController {
 	@PostMapping("/challenge")
 	public String sendChallenge(@RequestParam long friendUserId, @RequestParam long deckId, RedirectAttributes ra) {
 		try {
+			pvpFriendInviteService.expireStalePendingInvites();
 			long uid = CurrentUser.require().getId();
 			var created = pvpFriendInviteService.createInvite(uid, friendUserId, deckId);
 			return "redirect:/battle/pvp/room/" + created.matchId();
@@ -72,6 +75,7 @@ public class PvpController {
 
 	@GetMapping("/room/{id}")
 	public String hostRoom(@PathVariable String id, Model model, RedirectAttributes ra) {
+		pvpFriendInviteService.expireStalePendingInvites();
 		long uid = CurrentUser.require().getId();
 		var m = pvpBattleService.get(id);
 		if (m == null) {
@@ -104,6 +108,7 @@ public class PvpController {
 
 	@GetMapping("/invite/{inviteId}/join")
 	public String inviteJoinForm(@PathVariable long inviteId, Model model, RedirectAttributes ra) {
+		pvpFriendInviteService.expireStalePendingInvites();
 		long uid = CurrentUser.require().getId();
 		PvpFriendInvite inv = pvpFriendInviteService.findPendingInviteForOpponent(inviteId, uid);
 		if (inv == null) {
@@ -127,6 +132,7 @@ public class PvpController {
 	@PostMapping("/invite/{inviteId}/join")
 	public String inviteJoinSubmit(@PathVariable long inviteId, @RequestParam long deckId, RedirectAttributes ra) {
 		try {
+			pvpFriendInviteService.expireStalePendingInvites();
 			long uid = CurrentUser.require().getId();
 			PvpFriendInvite inv = pvpFriendInviteService.findPendingInviteForOpponent(inviteId, uid);
 			if (inv == null) {
@@ -230,6 +236,7 @@ public class PvpController {
 	@GetMapping("/api/{id}/ready")
 	@ResponseBody
 	public Map<String, Object> ready(@PathVariable String id) {
+		pvpFriendInviteService.expireStalePendingInvites();
 		long uid = CurrentUser.require().getId();
 		var m = pvpBattleService.get(id);
 		if (m == null) {

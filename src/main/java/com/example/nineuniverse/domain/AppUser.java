@@ -42,4 +42,7 @@ public class AppUser {
 	private Long selectedEpithetUpperId;
 	/** 表示用二つ名〈下の句〉 */
 	private Long selectedEpithetLowerId;
+
+	/** false のとき、届いた対戦申し込みのバナー・デスクトップ通知を出さない */
+	private Boolean pvpInviteNotifyEnabled;
 }

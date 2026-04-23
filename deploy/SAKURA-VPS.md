@@ -84,8 +84,9 @@ sudo -E bash ~/nine-universe-vps/setup-web-nginx.sh
 
 ### デスクトップインストーラを JAR に同梱する
 
-`bootJar` 実行時に **`electron/dist-installer/Nine Universe Setup 0.1.0.exe`** が存在すると、自動で  
-`BOOT-INF/classes/static/downloads/nine-universe-setup-0.1.0.exe` として JAR に入ります（`build.gradle` の `processResources` 終了時に `electron/dist-installer/...` からコピー）。  
+`bootJar` 実行時に **`electron/dist-installer/Nine Universe Setup 0.1.1.exe`** が存在すると、自動で  
+`BOOT-INF/classes/static/downloads/nine-universe-setup-0.1.1.exe` として JAR に入ります（`build.gradle` の `processResources` 終了時に `electron/dist-installer/...` からコピー）。  
+Mac 用は **`electron/dist-installer/nine-universe-0.1.1.dmg`**（推奨・手動リネーム可）または **`Nine Universe-0.1.1-universal.dmg`**（`npm run dist:mac` の既定名）が `dist-installer` または `electron/dist` にあれば、同じく `static/downloads/nine-universe-0.1.1.dmg` として JAR に入ります。  
 Electron のパッケージを先に実行してから `bootJar` してください。
 
 手元から VPS へ JAR を送るときは、ビルド込みで:

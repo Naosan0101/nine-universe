@@ -18,13 +18,22 @@
 						<p class="announcement-modal__card-text">これより先は、アプリ版を基準にアップデートをしていきます。</p>
 					</div>
 					<div class="web-desktop-migration-notice__stanza">
-						<p class="announcement-modal__card-text">以下のダウンロードリンクからインストーラーを入れて、実行していただければ、デスクトップに『ナインユニバース』が配置され、より遊びやすくなります！</p>
-						<p class="web-desktop-migration-notice__download">
-							<a class="btn btn--primary web-desktop-migration-notice__download-btn"
-							   th:href="${webDesktopMigrationInstallerHref}">ダウンロードはこちらから</a>
+						<p class="announcement-modal__card-text">以下から、お使いのパソコン（Windows または Mac）用のインストーラーを取得し、実行していただければ、デスクトップに『ナインユニバース』が配置され、より遊びやすくなります！</p>
+						<div class="web-desktop-migration-notice__download-row">
+							<p class="web-desktop-migration-notice__download">
+								<a class="btn btn--primary web-desktop-migration-notice__download-btn"
+								   th:href="${webDesktopMigrationInstallerHref}">Windows 用（.exe）</a>
+							</p>
+							<p class="web-desktop-migration-notice__download">
+								<a class="btn btn--primary web-desktop-migration-notice__download-btn"
+								   th:href="${webDesktopMigrationInstallerMacHref}">Mac 用（.dmg）</a>
+							</p>
+						</div>
+						<p class="announcement-modal__card-text muted web-desktop-migration-notice__browser-hint">
+							※ブラウザ（特に Google Chrome）によっては、初めて取得するファイルのため警告が表示されることがあります。当サイトの配布物です。画面右上のダウンロード一覧から、案内に従って保存を続行してください。
 						</p>
 						<p class="announcement-modal__card-text muted web-desktop-migration-notice__browser-hint">
-							※ブラウザ（特に Google Chrome）によっては、初めて取得する実行ファイルのため警告が表示されることがあります。当サイトのインストーラです。画面右上のダウンロード一覧から、案内に従って保存を続行してください。
+							※Mac では、初回起動時にセキュリティの確認が表示されることがあります。.dmg を開き、アプリを Applications に入れてからお試しください。
 						</p>
 					</div>
 					<div class="web-desktop-migration-notice__stanza">
@@ -49,6 +58,7 @@
 		</script>
 	</th:block>
 	<script th:src="@{/js/pvp-invite-banner.js(v=${assetVersion})}"
-	        th:attr="data-poll-url=@{/battle/pvp/pending-inbound.json},data-pvp-menu-url=@{/battle/pvp}"></script>
+	        th:attr="data-poll-url=@{/battle/pvp/pending-inbound.json},data-pvp-menu-url=@{/battle/pvp},data-pvp-invite-notify-enabled=${pvpInviteNotifyEnabled},data-pvp-notify-icon-url=@{/images/cards/desktop_icon_01.PNG}"></script>
 	<script th:replace="~{fragments/tab-fullscreen :: script}"></script>
+	<script th:replace="~{fragments/click-sparkle :: script}"></script>
 </th:block>

@@ -145,8 +145,9 @@ public class RecycleController {
 	public String crystalToGems(RedirectAttributes ra) {
 		long uid = CurrentUser.require().getId();
 		try {
-			recycleService.exchangeThousandCrystalForOneGem(uid);
-			ra.addFlashAttribute("recycleSuccess", "1000クリスタルを1ジェムに交換しました。");
+			recycleService.exchangeCrystalForOneGem(uid);
+			ra.addFlashAttribute("recycleSuccess",
+					GameConstants.RECYCLE_CRYSTAL_PER_GEM + "クリスタルを1ジェムに交換しました。");
 		} catch (IllegalArgumentException | IllegalStateException e) {
 			ra.addFlashAttribute("recycleError", e.getMessage());
 		}

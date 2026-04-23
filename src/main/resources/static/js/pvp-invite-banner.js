@@ -1,6 +1,7 @@
 /**
  * 届いている対戦申し込みをポーリングし、右下にバナーを出す。
  * クリックで「だれかと対戦」へ。× は今の件数まで非表示（新規が来たら再表示）。
+ * 設定で ON のとき、ブラウザのデスクトップ通知も送る（許可が必要）。
  */
 (function () {
 	if (window.__nuPvpInviteBannerLoaded) {
@@ -11,6 +12,10 @@
 	var sc = document.currentScript;
 	var pollUrl = sc && sc.dataset && sc.dataset.pollUrl ? String(sc.dataset.pollUrl) : '';
 	var pvpMenuUrl = sc && sc.dataset && sc.dataset.pvpMenuUrl ? String(sc.dataset.pvpMenuUrl) : '';
+	var rawNotify = sc && sc.dataset && sc.dataset.pvpInviteNotifyEnabled;
+	/* 属性省略時は従来どおり ON */
+	var notifyEnabled = rawNotify !== 'false';
+	var notifyIconUrl = sc && sc.dataset && sc.dataset.pvpNotifyIconUrl ? String(sc.dataset.pvpNotifyIconUrl) : '';
 	if (!pollUrl || !pvpMenuUrl) {
 		return;
 	}
@@ -20,6 +25,7 @@
 	var banner = null;
 	var closeBtn = null;
 	var pollTimer = null;
+	var lastPolledCount = null;
 
 	function pathForMatch() {
 		var p = window.location.pathname || '';
@@ -49,6 +55,63 @@
 		} catch (e) {
 			/* ignore */
 		}
+	}
+
+	function tryDesktopNotify(count) {
+		if (!notifyEnabled) {
+			return;
+		}
+		var title = 'ナインユニバース：対戦の申し込み';
+		var body = '「だれかと対戦」を開いて承諾してください。';
+		/* Electron シェルはメインプロセスのネイティブ通知（Windows のトースト等） */
+		if (
+			typeof window.nuElectron !== 'undefined' &&
+			window.nuElectron &&
+			typeof window.nuElectron.showPvpInviteDesktopNotification === 'function'
+		) {
+			try {
+				var p = window.nuElectron.showPvpInviteDesktopNotification(title, body);
+				if (p && typeof p.then === 'function') {
+					p.catch(function () {});
+				}
+			} catch (e) {
+				/* ignore */
+			}
+			return;
+		}
+		if (!('Notification' in window)) {
+			return;
+		}
+		function fire() {
+			if (Notification.permission !== 'granted') {
+				return;
+			}
+			try {
+				var opts = {
+					body: body,
+					tag: 'nu-pvp-invite',
+					renotify: true,
+				};
+				if (notifyIconUrl) {
+					opts.icon = notifyIconUrl;
+				}
+				new Notification(title, opts);
+			} catch (e) {
+				/* ignore */
+			}
+		}
+		if (Notification.permission === 'granted') {
+			fire();
+			return;
+		}
+		if (Notification.permission === 'denied') {
+			return;
+		}
+		Notification.requestPermission().then(function (p) {
+			if (p === 'granted') {
+				fire();
+			}
+		});
 	}
 
 	function ensureBannerEl() {
@@ -99,6 +162,9 @@
 	}
 
 	function showBanner(count) {
+		if (!notifyEnabled) {
+			return;
+		}
 		ensureBannerEl();
 		banner.setAttribute('data-nu-count', String(count));
 		banner.removeAttribute('hidden');
@@ -114,6 +180,10 @@
 	}
 
 	function syncVisibility(count) {
+		if (!notifyEnabled) {
+			hideBanner();
+			return;
+		}
 		if (isOnPvpSection()) {
 			hideBanner();
 			return;
@@ -152,6 +222,10 @@
 					return;
 				}
 				var c = Math.max(0, Math.floor(data.count));
+				if (lastPolledCount !== null && c > lastPolledCount && notifyEnabled) {
+					tryDesktopNotify(c);
+				}
+				lastPolledCount = c;
 				syncVisibility(c);
 			})
 			.catch(function () {

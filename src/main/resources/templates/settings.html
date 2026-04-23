@@ -85,10 +85,25 @@
 				<p class="muted settings-panel__hint">CPUが手を考えるはやさの設定です。対人戦には影響しません。</p>
 			</div>
 
+			<div class="settings-panel__field">
+				<div class="settings-panel__toggle-heading">
+					<span class="settings-panel__label" id="pvpInviteNotifyLabel">「だれかと対戦」の申し込み通知</span>
+					<button type="button" id="pvpInviteNotifySwitch" class="settings-toggle" role="switch"
+					        th:classappend="${user.pvpInviteNotifyEnabled == null || user.pvpInviteNotifyEnabled} ? ' settings-toggle--on' : ' settings-toggle--off'"
+					        th:attr="aria-checked=${user.pvpInviteNotifyEnabled == null || user.pvpInviteNotifyEnabled} ? 'true' : 'false'"
+					        aria-labelledby="pvpInviteNotifyLabel"></button>
+				</div>
+				<p class="muted settings-panel__hint">画面のバナーと、パソコン（ブラウザ／デスクトップアプリ）の通知で知らせます。ブラウザでは通知の許可が必要なことがあります。</p>
+				<p class="muted settings-panel__hint">OFF にすると、届いた対戦申し込みをバナーでもデスクトップ通知でも表示しません。</p>
+				<input type="hidden" name="pvpInviteNotify" id="pvpInviteNotifyHidden"
+				       th:value="${(user.pvpInviteNotifyEnabled == null || user.pvpInviteNotifyEnabled) ? 'true' : 'false'}"/>
+			</div>
+
 			<button type="submit" class="btn btn--primary settings-panel__save-btn">保存</button>
 		</form>
 	</section>
 </div>
+<script th:src="@{/js/settings-pvp-notify-toggle.js(v=${assetVersion})}"></script>
 <th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>

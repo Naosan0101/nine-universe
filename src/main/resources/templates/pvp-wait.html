@@ -14,7 +14,7 @@
 </header>
 
 <section class="panel panel--narrow" style="max-width:36rem">
-	<p>フレンドに対戦申し込みを送りました。相手が「だれかと対戦」からデッキを選んで承諾するとバトルが始まります。</p>
+	<p>フレンドに対戦申し込みを送りました。相手が「だれかと対戦」からデッキを選んで承諾するとバトルが始まります。相手が3分以内に承諾しない場合は、この部屋は自動的に閉じられます。</p>
 	<p class="muted" id="pvp-wait-status">接続確認中…</p>
 	<form th:if="${pvpInviteId != null}"
 	      th:action="@{/battle/pvp/invite/cancel}"
@@ -38,11 +38,13 @@
 			.then(function (r) { return r.json(); })
 			.then(function (j) {
 				if (j && j.started) {
-					window.location.href = contextPath + '/battle/pvp/play/' + encodeURIComponent(matchId);
+					window.setTimeout(function () {
+						window.location.href = contextPath + '/battle/pvp/play/' + encodeURIComponent(matchId);
+					}, 300);
 					return;
 				}
 				if (j && j.gone) {
-					if (statusEl) statusEl.textContent = '部屋が閉じられました（相手が断ったか、取り消されました）。';
+					if (statusEl) statusEl.textContent = '部屋が閉じられました（相手が断った・取り消された・または承諾の期限が過ぎました）。';
 					window.setTimeout(function () {
 						window.location.href = contextPath + '/battle/pvp';
 					}, 2200);

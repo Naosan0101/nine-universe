@@ -55,7 +55,8 @@ public interface AppUserMapper {
 			@Param("displayName") String displayName,
 			@Param("cpuThinkSpeed") String cpuThinkSpeed,
 			@Param("upperId") long upperId,
-			@Param("lowerId") long lowerId);
+			@Param("lowerId") long lowerId,
+			@Param("pvpInviteNotifyEnabled") boolean pvpInviteNotifyEnabled);
 
 	int addRecycleCrystalDelta(@Param("id") long id, @Param("delta") int delta);
 

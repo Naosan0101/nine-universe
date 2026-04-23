@@ -19,7 +19,7 @@ if ($Build) {
 
 if (-not $SshHost) {
 	Write-Host "Usage: .\scripts\vps\push-to-vps.ps1 -SshHost YOUR_VPS_IP [-SshUser ubuntu] [-Build]" -ForegroundColor Yellow
-	Write-Host "  -Build  Run gradlew bootJar first (bundles electron/dist-installer/Nine Universe Setup 0.1.0.exe when it exists)." -ForegroundColor DarkGray
+	Write-Host "  -Build  Run gradlew bootJar first (bundles electron/dist-installer/Nine Universe Setup 0.1.1.exe when it exists)." -ForegroundColor DarkGray
 	exit 1
 }
 

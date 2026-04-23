@@ -809,6 +809,8 @@
 		const pi = (piRaw || 'STD').trim().toUpperCase() || 'STD';
 		if (pi === 'WH') return ['風吹く丘パック', 'スタンダードパック1'];
 		if (pi === 'ET') return ['邪悪なる脅威パック', 'スタンダードパック1'];
+		if (pi === 'JU') return ['宝石の秘境パック', 'スタンダードパック2'];
+		if (pi === 'IF') return ['鉄面の艦隊パック', 'スタンダードパック2'];
 		return ['スタンダードパック1'];
 	}
 
@@ -876,7 +878,11 @@
 	function resolveDefByAbilityDeployCode(defs, abilityDeployCode, promptHint) {
 		if (!defs || !abilityDeployCode) return null;
 		const raw = String(abilityDeployCode);
-		const codesToTry = raw === 'SPEC0' || raw === 'SPEC1' ? ['SPEC1', 'SPEC0'] : [raw];
+		// サーバ側の剣闘士フォロー用コード → DB の abilityDeployCode は KENTOSHI
+		const primaryCode =
+			raw !== 'KENTOSHI' && raw.startsWith('KENTOSHI') ? 'KENTOSHI' : raw;
+		const codesToTry =
+			primaryCode === 'SPEC0' || primaryCode === 'SPEC1' ? ['SPEC1', 'SPEC0'] : [primaryCode];
 		const hint = promptHint != null ? String(promptHint) : '';
 		let fallback = null;
 		const keys = Object.keys(defs);
@@ -894,11 +900,31 @@
 		return fallback;
 	}
 
+	function normalizeBattlePowerModifier(mod) {
+		if (!mod || typeof mod !== 'object') {
+			return { sourceCardId: null, label: '' };
+		}
+		const id =
+			mod.sourceCardId != null
+				? mod.sourceCardId
+				: mod.source_card_id != null
+					? mod.source_card_id
+					: null;
+		const label =
+			mod.label != null ? String(mod.label) : mod.label_ja != null ? String(mod.label_ja) : '';
+		return { sourceCardId: id, label: label };
+	}
+
 	function parseBattlePowerContributorsFromHost(host) {
-		if (!host || !host.dataset || !host.dataset.battlePowerContributors) return [];
+		if (!host || !host.dataset) return [];
+		const raw =
+			host.dataset.battlePowerContributors ||
+			(typeof host.getAttribute === 'function' ? host.getAttribute('data-battle-power-contributors') : null);
+		if (!raw) return [];
 		try {
-			const v = JSON.parse(host.dataset.battlePowerContributors);
-			return Array.isArray(v) ? v : [];
+			const v = JSON.parse(raw);
+			if (!Array.isArray(v)) return [];
+			return v.map(normalizeBattlePowerModifier);
 		} catch (e) {
 			return [];
 		}
@@ -972,8 +998,17 @@
 
 	function setBattleZonePowerContributorsDataset(el, mods) {
 		if (!el || !el.dataset) return;
-		if (mods && mods.length) {
-			el.dataset.battlePowerContributors = JSON.stringify(mods);
+		const list = Array.isArray(mods)
+			? mods.map(normalizeBattlePowerModifier).filter(function (m) {
+					return (
+						m &&
+						(m.sourceCardId != null ||
+							(m.label != null && String(m.label).trim() !== ''))
+					);
+				})
+			: [];
+		if (list.length) {
+			el.dataset.battlePowerContributors = JSON.stringify(list);
 		} else {
 			delete el.dataset.battlePowerContributors;
 		}
@@ -1042,7 +1077,8 @@
 		const vw = window.innerWidth;
 		const vh = window.innerHeight;
 		popupEl.style.position = 'fixed';
-		popupEl.style.zIndex = '80';
+		/* #battle-pending-choice-modal (z-index 130) より前面 */
+		popupEl.style.zIndex = '140';
 		popupEl.style.left = '0';
 		popupEl.style.top = '0';
 		popupEl.style.visibility = 'hidden';
@@ -1959,11 +1995,18 @@
 					applyCurrentCostDisplay(shell, d, battleState, c);
 				}
 				applyBattleCardTipData(host, d);
+				if (battleState && d0 && !d0.fieldCard) {
+					const curPowR = previewHumanBattlePowerForHand(battleState, defs, d, 0, c);
+					setBattleZonePowerContributorsDataset(
+						host,
+						buildHandPowerModifierListForTooltip(battleState, defs, d0, c, d, 0, curPowR)
+					);
+				}
 				host.addEventListener('click', function (e) {
 					if (e.button !== 0) return;
 					e.preventDefault();
 					e.stopPropagation();
-					showBattleZoneDetailModal(d, [], battleState, c);
+					showBattleZoneDetailModal(d, parseBattlePowerContributorsFromHost(host), battleState, c);
 				});
 			} else {
 				const im = document.createElement('img');
@@ -2135,7 +2178,12 @@
 					e.preventDefault();
 					const dFull = lastDefsForTooltip ? zoneOrHandDetailDef(el, el.dataset.battleCardId) : d;
 					const bc = battleCardFromZoneHandOrRestEl(el);
-					showBattleZoneDetailModal(dFull || d, [], lastStateForHandPower, bc);
+					showBattleZoneDetailModal(
+						dFull || d,
+						parseBattlePowerContributorsFromHost(el),
+						lastStateForHandPower,
+						bc
+					);
 				}
 				return;
 			}
@@ -2245,12 +2293,19 @@
 					applyCurrentCostDisplay(shell, disp, o.battleState, c);
 				}
 				applyBattleCardTipData(cardHost, disp);
+				if (o.battleState && !d.fieldCard) {
+					const curPowRest = previewHumanBattlePowerForHand(o.battleState, defs, disp, 0, c);
+					setBattleZonePowerContributorsDataset(
+						cardHost,
+						buildHandPowerModifierListForTooltip(o.battleState, defs, d, c, disp, 0, curPowRest)
+					);
+				}
 				cardHost.addEventListener('dblclick', function (e) {
 					e.preventDefault();
 					e.stopPropagation();
 					clearTimeout(wrap._restListDelay);
 					wrap._restListDelay = null;
-					showBattleZoneDetailModal(disp, [], o.battleState, c);
+					showBattleZoneDetailModal(disp, parseBattlePowerContributorsFromHost(cardHost), o.battleState, c);
 				});
 			} else {
 				const im = document.createElement('img');
@@ -2311,8 +2366,8 @@
 					bonus += Number(nextElfOnlyBonus || 0);
 				}
 				if (Number(nextDeployCostBonusTimes || 0) > 0) {
-					const c = Number(d.cost != null ? d.cost : 0);
-					bonus += c * Number(nextDeployCostBonusTimes || 0);
+					const printedCost = Number(d.cost != null ? d.cost : 0);
+					bonus += printedCost * Number(nextDeployCostBonusTimes || 0);
 				}
 				bonus += 3 * Number(nextMechanicStacks || 0);
 				const curPow = lastStateForHandPower
@@ -2326,6 +2381,18 @@
 				focusWrap.appendChild(shell);
 				cardWrap.appendChild(focusWrap);
 				applyBattleCardTipData(cardWrap, d);
+				if (lastStateForHandPower) {
+					const hintMods = buildHandPowerModifierListForTooltip(
+						lastStateForHandPower,
+						defs,
+						dRaw,
+						c,
+						d,
+						bonus,
+						curPow
+					);
+					setBattleZonePowerContributorsDataset(cardWrap, hintMods);
+				}
 			} else {
 				cardWrap.appendChild(focusWrap);
 			}
@@ -2360,7 +2427,7 @@
 		NEMURY: 40,
 		/** ノクスクル（id=37 / STONIA：所持ストーン1つにつき強さ+1 / CpuBattleEngine） */
 		STONIA: 37,
-		/** シャイニ（常時：レストのカーバンクル種類×+2 / CpuBattleEngine.SHINY_ID） */
+		/** シャイニ（常時：レストのシャイニ以外のカーバンクル種類×+2 / CpuBattleEngine.SHINY_ID） */
 		SHINY: 31,
 		/** 磁力合体デンジリオン / CpuBattleEngine.DENZIRION_ID */
 		DENZIRION: 59,
@@ -2407,8 +2474,16 @@
 	}
 
 	/**
-	 * 薬売りデバフが自分ファイターにかかるか（CpuBattleEngine.fighterIgnoresKusuriDebuffDueToGarakutaLeg の否定）
+	 * 薬売り〈配置〉: サーバが保持する配置時ストーン数（相手ゾーンのスナップショット）。
+	 * デバフが自分ファイターにかかるかは kusuriDebuffAppliesToCardPreview（ガラクタレッグ等の否定）。
 	 */
+	function kusuriDeployDebuffFromOppBattleZone(oppBattle) {
+		if (!oppBattle) return 0;
+		const v = oppBattle.kusuriOpponentDebuffFromDeployStones;
+		return v != null ? Number(v) : 0;
+	}
+
+	/** CpuBattleEngine.fighterIgnoresKusuriDebuffDueToGarakutaLeg と同趣旨のプレビュー用判定 */
 	function kusuriDebuffAppliesToCardPreview(defs, mainDef, rest) {
 		if (!mainDef) return true;
 		const id = Number(mainDef.id);
@@ -2455,7 +2530,8 @@
 		}
 		if (Number(def.id) === PREVIEW_CARD_IDS.NEMURY) {
 			const defs = st && st.defs ? st.defs : {};
-			const disc = countAttributeInRest(st && st.humanRest ? st.humanRest : [], defs, 'CARBUNCLE');
+			const discountRest = deployPreviewUsesHumanSlotBonuses(st, handCard) ? st && st.humanRest : st && st.cpuRest;
+			const disc = countAttributeInRest(discountRest ? discountRest : [], defs, 'CARBUNCLE');
 			return Math.max(0, base - disc);
 		}
 		return base;
@@ -2562,7 +2638,7 @@
 	}
 
 	/**
-	 * CpuBattleEngine.countDistinctCarbuncleTypesInRest と同じ（レストの種族カーバンクルの種類数。
+	 * CpuBattleEngine.countDistinctCarbuncleTypesInRest と同じ（レストの「シャイニ」以外の種族カーバンクルの種類数。
 	 * 自分バトルに重なっている instance は除外）
 	 */
 	function countDistinctCarbuncleTypesInRestForPreview(defs, rest, ownBattleZone) {
@@ -2574,9 +2650,10 @@
 			const c = rest[i];
 			if (!c) continue;
 			if (c.instanceId != null && under[String(c.instanceId)]) continue;
+			const cid = Number(c.cardId);
+			if (cid === PREVIEW_CARD_IDS.SHINY) continue;
 			const d = resolveCardDef(defs, c.cardId);
 			if (!d || !hasCardAttributeResolved(d, c, 'CARBUNCLE')) continue;
-			const cid = Number(c.cardId);
 			if (seen[cid]) continue;
 			seen[cid] = true;
 			n++;
@@ -2706,6 +2783,119 @@
 		return oSeq < mSeq;
 	}
 
+	/**
+	 * 手札・ゾーン・レスト上のカードについて、「次の配置」ボーナス／メカニック重ねを
+	 * どちらのスロット（画面の自分＝humanHand 列／相手＝cpuHand 列）基準でプレビューするか。
+	 * CpuBattleState の human* / cpu* と一致させる（対人の視点入れ替え後も human＝自分）。
+	 */
+	function deployPreviewUsesHumanSlotBonuses(st, battleCard) {
+		if (!st) return true;
+		if (!battleCard || battleCard.instanceId == null || battleCard.instanceId === '') return true;
+		const want = String(battleCard.instanceId);
+		if ((st.cpuHand || []).some(function (c) {
+			return c && String(c.instanceId) === want;
+		})) {
+			return false;
+		}
+		if ((st.humanHand || []).some(function (c) {
+			return c && String(c.instanceId) === want;
+		})) {
+			return true;
+		}
+		if (st.humanBattle && st.humanBattle.main && String(st.humanBattle.main.instanceId) === want) {
+			return true;
+		}
+		if (st.cpuBattle && st.cpuBattle.main && String(st.cpuBattle.main.instanceId) === want) {
+			return false;
+		}
+		function zoneContainsInstance(z) {
+			if (!z || !z.main) return false;
+			if (String(z.main.instanceId) === want) return true;
+			const under = z.costUnder;
+			if (!Array.isArray(under)) return false;
+			return under.some(function (c) {
+				return c && String(c.instanceId) === want;
+			});
+		}
+		if (zoneContainsInstance(st.humanBattle)) return true;
+		if (zoneContainsInstance(st.cpuBattle)) return false;
+		if ((st.humanRest || []).some(function (c) {
+			return c && String(c.instanceId) === want;
+		})) {
+			return true;
+		}
+		if ((st.cpuRest || []).some(function (c) {
+			return c && String(c.instanceId) === want;
+		})) {
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * 手札・レスト上のカード用: 隊長ボーナス等と、プレビュー強さの残差（場・レスト・常時など）をツールチップ／詳細に出す。
+	 * deployBonus は renderHandCards と同じ（previewHumanBattlePowerForHand に渡す直前の合算）。
+	 */
+	function buildHandPowerModifierListForTooltip(st, defs, dRaw, c, d, deployBonus, curPow) {
+		const out = [];
+		if (!st || !c || !d || d.fieldCard) return out;
+		const base = Number(d.basePower != null ? d.basePower : 0);
+		const humanSlot = deployPreviewUsesHumanSlotBonuses(st, c);
+		const pending666 =
+			st.spec666NextHumanUndead === true || st.spec666NextHumanUndead === 'true';
+		if (humanSlot) {
+			const nb = Number(st.humanNextDeployBonus || 0);
+			if (nb > 0) {
+				out.push({ sourceCardId: null, label: '隊長（次の配置ボーナス +' + nb + '）' });
+			}
+			const elfOnly = Number(st.humanNextElfOnlyBonus || 0);
+			if (elfOnly > 0 && dRaw && hasCardAttributeForDeployPreview(dRaw, c, pending666, 'ELF')) {
+				out.push({ sourceCardId: null, label: '隊長（エルフ限定ボーナス +' + elfOnly + '）' });
+			}
+			const costTimes = Number(st.humanNextDeployCostBonusTimes || 0);
+			if (costTimes > 0 && dRaw) {
+				const ch = characteristicDeployCostForCaptainBonus(d, c, st);
+				if (ch > 0) {
+					out.push({ sourceCardId: null, label: '隊長（コストに応じたボーナス +' + ch * costTimes + '）' });
+				}
+			}
+			const mech = Number(st.humanNextMechanicStacks || 0);
+			if (mech > 0) {
+				out.push({ sourceCardId: null, label: 'メカニック（+' + 3 * mech + '）' });
+			}
+		} else {
+			const nb = Number(st.cpuNextDeployBonus || 0);
+			if (nb > 0) {
+				out.push({ sourceCardId: null, label: '相手・隊長（次の配置ボーナス +' + nb + '）' });
+			}
+			const elfOnly = Number(st.cpuNextElfOnlyBonus || 0);
+			if (elfOnly > 0 && dRaw && hasCardAttributeForDeployPreview(dRaw, c, st.spec666NextCpuUndead, 'ELF')) {
+				out.push({ sourceCardId: null, label: '相手・隊長（エルフ限定ボーナス +' + elfOnly + '）' });
+			}
+			const costTimes = Number(st.cpuNextDeployCostBonusTimes || 0);
+			if (costTimes > 0 && dRaw) {
+				const ch = characteristicDeployCostForCaptainBonus(d, c, st);
+				if (ch > 0) {
+					out.push({ sourceCardId: null, label: '相手・隊長（コストに応じたボーナス +' + ch * costTimes + '）' });
+				}
+			}
+			const mech = Number(st.cpuNextMechanicStacks || 0);
+			if (mech > 0) {
+				out.push({ sourceCardId: null, label: '相手・メカニック（+' + 3 * mech + '）' });
+			}
+		}
+		const explained = base + Number(deployBonus || 0);
+		const pv = Math.max(0, Math.floor(Number(curPow)));
+		if (pv !== explained) {
+			const delta = pv - explained;
+			out.push({
+				sourceCardId: null,
+				label: '場・レスト・効果など' + (delta > 0 ? '（+' + delta + '）' : '（' + delta + '）')
+			});
+		}
+		return out;
+	}
+
 	/** CpuBattleEngine: デンジリオン前列のレスト継承合算（ガラクタアームは枚数ぶん重複） */
 	function denzirionFusionPowerFromRest(st, defs, ownBattle, ownerIsHuman, restOverride) {
 		if (!st || !defs) return 0;
@@ -2731,12 +2921,14 @@
 
 	/**
 	 * ファイター・〈フィールド〉配置の必要コスト（CpuBattleEngine.effectiveDeployCost と同順）
-	 * ・〈フィールド〉: 武器庫の「コスト1」はマシン・ファイターのみ（〈フィールド〉は対象外）。手札補正・メカニック残機・ネムリィ割引を反映
+	 * ・〈フィールド〉: 武器庫の「コスト1」はマシン・ファイターのみ（〈フィールド〉は対象外）。手札補正・ネムリィ割引を反映（メカニックはファイターのみ）
 	 * ・ファイター: 武器庫・ネムリィ・メカニック残機・手札補正
 	 */
 	function effectiveFighterDeployCostFromState(def, st, handCard) {
 		if (!def) return 0;
-		const mechanic = Number(st && st.humanNextMechanicStacks != null ? st.humanNextMechanicStacks : 0);
+		const humanSlot = deployPreviewUsesHumanSlotBonuses(st, handCard);
+		const mechRaw = humanSlot ? st && st.humanNextMechanicStacks : st && st.cpuNextMechanicStacks;
+		const mechanic = def.fieldCard ? 0 : Number(mechRaw != null ? mechRaw : 0);
 		let handAdj = 0;
 		if (handCard && handCard.handDeployCostModifier != null) {
 			handAdj = Number(handCard.handDeployCostModifier);
@@ -2744,6 +2936,7 @@
 		const blank =
 			handCard && (handCard.blankEffects === true || handCard.blankEffects === 'true');
 		const printed = Number(def.cost != null ? def.cost : 0);
+		const discountRest = humanSlot ? st && st.humanRest : st && st.cpuRest;
 
 		if (def.fieldCard) {
 			if (blank) {
@@ -2752,7 +2945,7 @@
 			let core = printed;
 			if (Number(def.id) === PREVIEW_CARD_IDS.NEMURY) {
 				const defs = st && st.defs ? st.defs : {};
-				const disc = countAttributeInRest(st && st.humanRest ? st.humanRest : [], defs, 'CARBUNCLE');
+				const disc = countAttributeInRest(discountRest ? discountRest : [], defs, 'CARBUNCLE');
 				core = Math.max(0, printed - disc);
 			}
 			return Math.max(0, core + mechanic + handAdj);
@@ -2768,7 +2961,7 @@
 		let core = base;
 		if (Number(def.id) === PREVIEW_CARD_IDS.NEMURY) {
 			const defs = st && st.defs ? st.defs : {};
-			const disc = countAttributeInRest(st && st.humanRest ? st.humanRest : [], defs, 'CARBUNCLE');
+			const disc = countAttributeInRest(discountRest ? discountRest : [], defs, 'CARBUNCLE');
 			core = Math.max(0, base - disc);
 		}
 		return Math.max(0, core + mechanic + handAdj);
@@ -2776,17 +2969,22 @@
 
 	function computeHumanNextDeployBonusForDef(st, def, handCard) {
 		if (!st || !def) return 0;
-		let bonus = Number(st.humanNextDeployBonus || 0);
-		const elfOnly = Number(st.humanNextElfOnlyBonus || 0);
-		const p666 = !!(st.spec666NextHumanUndead === true || st.spec666NextHumanUndead === 'true');
+		const humanSlot = deployPreviewUsesHumanSlotBonuses(st, handCard);
+		let bonus = Number((humanSlot ? st.humanNextDeployBonus : st.cpuNextDeployBonus) || 0);
+		const elfOnly = Number((humanSlot ? st.humanNextElfOnlyBonus : st.cpuNextElfOnlyBonus) || 0);
+		const p666 = humanSlot
+			? !!(st.spec666NextHumanUndead === true || st.spec666NextHumanUndead === 'true')
+			: !!(st.spec666NextCpuUndead === true || st.spec666NextCpuUndead === 'true');
 		if (elfOnly > 0 && hasCardAttributeForDeployPreview(def, handCard, p666, 'ELF')) {
 			bonus += elfOnly;
 		}
-		const costTimes = Number(st.humanNextDeployCostBonusTimes || 0);
+		const costTimes = Number((humanSlot ? st.humanNextDeployCostBonusTimes : st.cpuNextDeployCostBonusTimes) || 0);
 		if (costTimes > 0) {
 			bonus += characteristicDeployCostForCaptainBonus(def, handCard, st) * costTimes;
 		}
-		bonus += 3 * Number(st.humanNextMechanicStacks || 0);
+		if (!def.fieldCard) {
+			bonus += 3 * Number((humanSlot ? st.humanNextMechanicStacks : st.cpuNextMechanicStacks) || 0);
+		}
 		return bonus;
 	}
 
@@ -2809,12 +3007,12 @@
 		}
 
 		// 以下は CpuBattleEngine.effectiveBattlePower 相当（自分視点）
-		// 薬売り（相手の常時）: 相手が薬売りを配置している間、自分ファイターは相手ストーン数ぶん弱体化
-		// ただし自分が竜王を配置している場合、相手の常時は無効
+		// 薬売り（相手の〈配置〉）: 相手が薬売りを配置したときのストーン数ぶん弱体化（スナップショット）
+		// ただし自分が竜王を配置している場合、相手の〈配置〉由来のこの効果は無効
 		if (!hasRyuohInHumanZone(st.humanBattle) && st.cpuBattle && st.cpuBattle.main) {
 			const oppDef = resolveCardDef(defs, st.cpuBattle.main.cardId);
 			if (oppDef && Number(oppDef.id) === PREVIEW_CARD_IDS.KUSURI && kusuriDebuffAppliesToCardPreview(defs, mainDef, st.humanRest)) {
-				p -= Number(st.cpuStones || 0);
+				p -= kusuriDeployDebuffFromOppBattleZone(st.cpuBattle);
 			}
 		}
 
@@ -2901,12 +3099,12 @@
 		const stonesAfterLevel = st.humanStones - (ui.levelUpStones | 0);
 		const simRest = simulateHumanRestAfterLevelUp(st, ui.levelUpDiscardIds);
 
-		// 薬売り（相手の常時）: 相手が薬売りを配置している間、自分ファイターは相手ストーン数ぶん弱体化
-		// ただし自分が竜王を配置している場合、相手の常時は無効
+		// 薬売り（相手の〈配置〉）: 相手が薬売りを配置したときのストーン数ぶん弱体化（スナップショット）
+		// ただし自分が竜王を配置している場合、相手の〈配置〉由来のこの効果は無効
 		if (!hasRyuohInHumanZone(st.humanBattle) && st.cpuBattle && st.cpuBattle.main) {
 			const oppDef = resolveCardDef(defs, st.cpuBattle.main.cardId);
 			if (oppDef && Number(oppDef.id) === PREVIEW_CARD_IDS.KUSURI && kusuriDebuffAppliesToCardPreview(defs, mainDef, simRest)) {
-				p -= Number(st.cpuStones || 0);
+				p -= kusuriDeployDebuffFromOppBattleZone(st.cpuBattle);
 			}
 		}
 
@@ -3045,20 +3243,30 @@
 		if (def.fieldCard) return;
 		const o = options || {};
 		let handCard = o.handCard;
-		if (!handCard && st && st.humanHand && instanceId) {
-			handCard = st.humanHand.find(function (x) {
-				return x && String(x.instanceId) === String(instanceId);
-			});
+		if (!handCard && st && instanceId) {
+			if (st.humanHand) {
+				handCard = st.humanHand.find(function (x) {
+					return x && String(x.instanceId) === String(instanceId);
+				});
+			}
+			if (!handCard && st.cpuHand) {
+				handCard = st.cpuHand.find(function (x) {
+					return x && String(x.instanceId) === String(instanceId);
+				});
+			}
 		}
 		const basePow = Number(def.basePower != null ? def.basePower : 0);
 		let bonus = 0;
 		if (o.includeNextDeployBonus) {
-			bonus += Number(st && st.humanNextDeployBonus || 0);
-			const elfOnly = Number(st && st.humanNextElfOnlyBonus || 0);
+			const humanSlot = deployPreviewUsesHumanSlotBonuses(st, handCard);
+			bonus += Number((humanSlot ? st && st.humanNextDeployBonus : st && st.cpuNextDeployBonus) || 0);
+			const elfOnly = Number((humanSlot ? st && st.humanNextElfOnlyBonus : st && st.cpuNextElfOnlyBonus) || 0);
 			if (elfOnly > 0 && hasCardAttribute(def.attribute, 'ELF')) bonus += elfOnly;
-			const costTimes = Number(st && st.humanNextDeployCostBonusTimes || 0);
+			const costTimes = Number(
+				(humanSlot ? st && st.humanNextDeployCostBonusTimes : st && st.cpuNextDeployCostBonusTimes) || 0
+			);
 			if (costTimes > 0) bonus += characteristicDeployCostForCaptainBonus(def, handCard, st) * costTimes;
-			bonus += 3 * Number(st && st.humanNextMechanicStacks != null ? st.humanNextMechanicStacks : 0);
+			bonus += 3 * Number((humanSlot ? st && st.humanNextMechanicStacks : st && st.cpuNextMechanicStacks) || 0);
 		}
 		const curPow = st ? previewHumanBattlePowerForHand(st, defs, def, bonus, handCard) : (basePow + bonus);
 		applyCurrentPowerDisplay(shellRoot, basePow, curPow);
@@ -3215,7 +3423,8 @@
 				wrap.appendChild(chrome);
 			}
 			applyBattleCardTipData(wrap, d);
-			setBattleZonePowerContributorsDataset(wrap, zone.powerModifiers);
+			const zoneModsRaw = zone.powerModifiers != null ? zone.powerModifiers : zone.power_modifiers;
+			setBattleZonePowerContributorsDataset(wrap, zoneModsRaw);
 			box.appendChild(wrap);
 		}
 		box.appendChild(el('p', 'muted', '強さ: ' + String(power)));
@@ -3950,7 +4159,9 @@
 
 	function showBattleZoneDetailModal(def, powerContributors, battleState, battleCard) {
 		if (!def) return;
-		const contributors = Array.isArray(powerContributors) ? powerContributors : [];
+		const contributors = Array.isArray(powerContributors)
+			? powerContributors.map(normalizeBattlePowerModifier)
+			: [];
 		const stCost = battleState != null ? battleState : lastStateForHandPower;
 		hideBattleCardTooltip();
 		hideBattleDeckTooltip();
@@ -3977,6 +4188,39 @@
 		left.appendChild(face);
 		if (stCost && battleCard && !def.fieldCard) {
 			applyCurrentCostDisplay(face, def, stCost, battleCard);
+			const inst = battleCard.instanceId;
+			let inZone = false;
+			if (
+				inst != null &&
+				stCost.humanBattle &&
+				stCost.humanBattle.main &&
+				String(stCost.humanBattle.main.instanceId) === String(inst)
+			) {
+				inZone = true;
+				applyCurrentPowerDisplay(
+					face,
+					Number(def.basePower != null ? def.basePower : 0),
+					Number(stCost.humanBattlePower)
+				);
+			} else if (
+				inst != null &&
+				stCost.cpuBattle &&
+				stCost.cpuBattle.main &&
+				String(stCost.cpuBattle.main.instanceId) === String(inst)
+			) {
+				inZone = true;
+				applyCurrentPowerDisplay(
+					face,
+					Number(def.basePower != null ? def.basePower : 0),
+					Number(stCost.cpuBattlePower)
+				);
+			}
+			if (!inZone && lastDefsForTooltip) {
+				applyCurrentPowerDisplayToBattleCardFace(stCost, lastDefsForTooltip, face, inst, def, {
+					handCard: battleCard,
+					includeNextDeployBonus: true
+				});
+			}
 		}
 
 		right.appendChild(el('h3', 'battle-zone-detail-modal__name', def.name || '—'));
@@ -3996,12 +4240,78 @@
 			costDisplay = String(Math.max(0, Math.floor(Number(effectiveFighterDeployCostFromState(def, stCost, battleCard)))));
 		}
 		stats.appendChild(statRow('コスト', costDisplay));
-		stats.appendChild(
-			statRow('強さ', def.fieldCard ? '—' : String(def.basePower != null ? def.basePower : '—'))
-		);
+		let powerShown = def.fieldCard ? '—' : String(def.basePower != null ? def.basePower : '—');
+		if (!def.fieldCard && stCost && battleCard && lastDefsForTooltip) {
+			const inst = battleCard.instanceId;
+			const basePow = Number(def.basePower != null ? def.basePower : 0);
+			if (
+				inst != null &&
+				stCost.humanBattle &&
+				stCost.humanBattle.main &&
+				String(stCost.humanBattle.main.instanceId) === String(inst)
+			) {
+				powerShown = String(Math.max(0, Math.floor(Number(stCost.humanBattlePower))));
+			} else if (
+				inst != null &&
+				stCost.cpuBattle &&
+				stCost.cpuBattle.main &&
+				String(stCost.cpuBattle.main.instanceId) === String(inst)
+			) {
+				powerShown = String(Math.max(0, Math.floor(Number(stCost.cpuBattlePower))));
+			} else {
+				const humanSlot = deployPreviewUsesHumanSlotBonuses(stCost, battleCard);
+				let bonus = 0;
+				bonus += Number((humanSlot ? stCost.humanNextDeployBonus : stCost.cpuNextDeployBonus) || 0);
+				const elfOnly = Number((humanSlot ? stCost.humanNextElfOnlyBonus : stCost.cpuNextElfOnlyBonus) || 0);
+				if (elfOnly > 0 && hasCardAttribute(def.attribute, 'ELF')) bonus += elfOnly;
+				const costTimes = Number(
+					(humanSlot ? stCost.humanNextDeployCostBonusTimes : stCost.cpuNextDeployCostBonusTimes) || 0
+				);
+				if (costTimes > 0) {
+					bonus += characteristicDeployCostForCaptainBonus(def, battleCard, stCost) * costTimes;
+				}
+				bonus += 3 * Number((humanSlot ? stCost.humanNextMechanicStacks : stCost.cpuNextMechanicStacks) || 0);
+				const pv = previewHumanBattlePowerForHand(stCost, lastDefsForTooltip, def, bonus, battleCard);
+				powerShown = String(Math.max(0, Math.floor(Number(pv))));
+			}
+		}
+		stats.appendChild(statRow('強さ', powerShown));
 		stats.appendChild(statRow('★', String(def.rarity != null ? def.rarity : '—')));
 		stats.appendChild(statRow('収録パック', packSourcesForInitial(def.packInitial).join('\n')));
 		right.appendChild(stats);
+
+		const baseCostNum = Math.max(0, Math.floor(Number(def.cost != null ? def.cost : 0)));
+		const effCostNum =
+			stCost && battleCard
+				? Math.max(0, Math.floor(Number(effectiveFighterDeployCostFromState(def, stCost, battleCard))))
+				: baseCostNum;
+		const handAdj =
+			battleCard && battleCard.handDeployCostModifier != null
+				? Number(battleCard.handDeployCostModifier)
+				: 0;
+		if (!def.fieldCard && stCost && battleCard && (effCostNum !== baseCostNum || handAdj !== 0)) {
+			right.appendChild(el('p', 'battle-zone-detail-modal__label', 'コストの変動要因'));
+			const costWrap = el('div', 'battle-zone-detail-modal__power-sources');
+			if (handAdj !== 0) {
+				costWrap.appendChild(
+					el(
+						'div',
+						'battle-zone-detail-modal__power-line',
+						'手札中の効果: 印字コストに ' + (handAdj > 0 ? '+' : '') + handAdj
+					)
+				);
+			}
+			if (effCostNum !== baseCostNum) {
+				costWrap.appendChild(
+					el(
+						'div',
+						'battle-zone-detail-modal__power-line muted',
+						'実効コストは〈フィールド〉・隊長・ネムリィ・メカニック等のルールを反映した値です。'
+					)
+				);
+			}
+			right.appendChild(costWrap);
+		}
 
 		right.appendChild(el('p', 'battle-zone-detail-modal__label', '効果'));
 		const ability = el('div', 'battle-zone-detail-modal__ability');
@@ -4032,7 +4342,8 @@
 			const defs = lastDefsForTooltip;
 			contributors.forEach(function (mod) {
 				const line = el('div', 'battle-zone-detail-modal__power-line');
-				const id = mod && mod.sourceCardId != null ? mod.sourceCardId : mod && mod.sourceCardId === 0 ? 0 : null;
+				const id =
+					mod && mod.sourceCardId != null ? mod.sourceCardId : mod && mod.sourceCardId === 0 ? 0 : null;
 				const srcDef = id != null && defs ? resolveCardDef(defs, id) : null;
 				const text = formatBattlePowerContributorText(defs, mod);
 				if (srcDef) {
@@ -4835,7 +5146,12 @@
 				const d = cid ? zoneOrHandDetailDef(handBtn, cid) : null;
 				if (d) {
 					e.preventDefault();
-					showBattleZoneDetailModal(d, [], lastStateForHandPower, battleCardFromZoneHandOrRestEl(handBtn));
+					showBattleZoneDetailModal(
+						d,
+						parseBattlePowerContributorsFromHost(handBtn),
+						lastStateForHandPower,
+						battleCardFromZoneHandOrRestEl(handBtn)
+					);
 				}
 			}
 		});

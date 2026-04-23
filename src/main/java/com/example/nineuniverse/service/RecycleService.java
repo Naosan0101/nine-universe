@@ -378,7 +378,7 @@ public class RecycleService {
 	 * 固定レート（{@link GameConstants#RECYCLE_CRYSTAL_PER_GEM}）のクリスタルを1ジェムに交換する（1回につき1ジェム）。
 	 */
 	@Transactional
-	public void exchangeThousandCrystalForOneGem(long userId) {
+	public void exchangeCrystalForOneGem(long userId) {
 		int n = appUserMapper.subtractRecycleCrystalIfEnough(userId, GameConstants.RECYCLE_CRYSTAL_PER_GEM);
 		if (n != 1) {
 			throw new IllegalArgumentException(

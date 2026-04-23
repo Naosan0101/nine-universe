@@ -240,6 +240,34 @@ public class AnnouncementRewardService {
 		return !today.isAfter(GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_LAST_DAY);
 	}
 
+	public boolean isWithinApr232026BundleAnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_APR_23_2026_BUNDLE_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_APR_23_2026_BUNDLE_LAST_DAY);
+	}
+
+	public boolean isWithinMechanicPvpPreviewFixAnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_LAST_DAY);
+	}
+
+	public boolean isWithinKentoshiFixAnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_KENTOSHI_FIX_2026_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_KENTOSHI_FIX_2026_LAST_DAY);
+	}
+
+	public boolean isWithinKusuriFixAnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_LAST_DAY);
+	}
+
 	public enum ClaimOutcome {
 		SUCCESS,
 		ALREADY_CLAIMED,
@@ -401,6 +429,34 @@ public class AnnouncementRewardService {
 				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_START)) {
 			if (claimFriendPvpUpdateAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
 				totalGems += GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_APR_23_2026_BUNDLE_START)) {
+			if (claimApr232026BundleAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_APR_23_2026_BUNDLE_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_START)) {
+			if (claimMechanicPvpPreviewFixAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_KENTOSHI_FIX_2026_START)) {
+			if (claimKentoshiFixAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_KENTOSHI_FIX_2026_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_START)) {
+			if (claimKusuriFixAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_GEMS;
 				claimed++;
 			}
 		}
@@ -765,6 +821,75 @@ public class AnnouncementRewardService {
 			return ClaimOutcome.ALREADY_CLAIMED;
 		}
 		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimApr232026BundleAnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_APR_23_2026_BUNDLE_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_APR_23_2026_BUNDLE_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_APR_23_2026_BUNDLE_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_APR_23_2026_BUNDLE_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimMechanicPvpPreviewFixAnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(
+				userId, GameConstants.ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimKentoshiFixAnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_KENTOSHI_FIX_2026_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_KENTOSHI_FIX_2026_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_KENTOSHI_FIX_2026_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_KENTOSHI_FIX_2026_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimKusuriFixAnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_GEMS);
 		return ClaimOutcome.SUCCESS;
 	}
 

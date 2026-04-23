@@ -13,7 +13,8 @@
 		       time_pack_bonus_bank AS timePackBonusBank,
 		       starter_gift_standard1_remaining AS starterGiftStandard1Remaining,
 		       selected_epithet_upper_id AS selectedEpithetUpperId,
-		       selected_epithet_lower_id AS selectedEpithetLowerId
+		       selected_epithet_lower_id AS selectedEpithetLowerId,
+		       pvp_invite_notify_enabled AS pvpInviteNotifyEnabled
 		FROM app_user WHERE username = #{username}
 	</select>
 
@@ -28,7 +29,8 @@
 		       time_pack_bonus_bank AS timePackBonusBank,
 		       starter_gift_standard1_remaining AS starterGiftStandard1Remaining,
 		       selected_epithet_upper_id AS selectedEpithetUpperId,
-		       selected_epithet_lower_id AS selectedEpithetLowerId
+		       selected_epithet_lower_id AS selectedEpithetLowerId,
+		       pvp_invite_notify_enabled AS pvpInviteNotifyEnabled
 		FROM app_user WHERE id = #{id}
 	</select>
 
@@ -106,7 +108,8 @@
 		SET display_name = #{displayName},
 		    cpu_think_speed = #{cpuThinkSpeed},
 		    selected_epithet_upper_id = #{upperId},
-		    selected_epithet_lower_id = #{lowerId}
+		    selected_epithet_lower_id = #{lowerId},
+		    pvp_invite_notify_enabled = #{pvpInviteNotifyEnabled}
 		WHERE id = #{id}
 	</update>
 

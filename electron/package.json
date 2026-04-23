@@ -1,6 +1,6 @@
 {
   "name": "nine-universe-desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Dedicated window shell for nine-universe.jp (Steam / desktop)",
   "main": "main.js",
   "private": true,
@@ -10,23 +10,27 @@
     "start:local": "cross-env NINE_UNIVERSE_URL=http://127.0.0.1:8080 NINE_UNIVERSE_START_FULLSCREEN=0 electron .",
     "dist": "electron-builder --win --x64",
     "dist:dir": "electron-builder --win --x64 --dir",
+    "dist:mac": "electron-builder --mac",
+    "dist:mac:desktop": "npm run dist:mac && node ./scripts/copy-built-dmg-to-desktop.cjs",
+    "dist:mac:dir": "electron-builder --mac --dir",
     "desktop-shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/desktop-shortcut.ps1"
   },
   "build": {
     "appId": "jp.nine-universe.desktop",
     "productName": "Nine Universe",
     "directories": {
-      "output": "dist"
+      "output": "dist-installer"
     },
     "files": [
       "main.js",
       "preload.js",
       "package.json",
       "build-resources/icon.png",
-      "build-resources/アイコン01.PNG"
+      "build-resources/アイコン01.PNG",
+      "build-resources/desktop_icon_01.PNG"
     ],
     "win": {
-      "icon": "build-resources/icon.png",
+      "icon": "build-resources/desktop_icon_01.PNG",
       "signAndEditExecutable": false,
       "target": [
         {
@@ -39,6 +43,18 @@
           "target": "dir",
           "arch": [
             "x64"
+          ]
+        }
+      ]
+    },
+    "mac": {
+      "icon": "build-resources/icon.png",
+      "category": "public.app-category.games",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
           ]
         }
       ]

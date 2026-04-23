@@ -39,7 +39,7 @@
 
 	<section class="panel pvp-menu-page__section">
 		<h2 class="pvp-menu-page__heading">フレンドに対戦を申し込む</h2>
-		<p class="muted pvp-menu-page__lead">フレンドは「フレンド」から登録できます。申し込みは相手のこの画面に通知されます。</p>
+		<p class="muted pvp-menu-page__lead">フレンドは「フレンド」から登録できます。申し込みは相手のこの画面に通知されます。相手が3分以内に承諾しない場合は、申し込みと待機ルームは自動的に取り消されます。</p>
 		<p th:if="${friends == null || friends.isEmpty()}" class="muted">フレンドがいません。</p>
 		<form th:if="${decks != null && !decks.isEmpty() && friends != null && !friends.isEmpty()}"
 		      th:action="@{/battle/pvp/challenge}" method="post" class="stack panel panel--narrow">

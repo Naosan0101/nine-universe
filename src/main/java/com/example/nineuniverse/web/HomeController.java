@@ -14,6 +14,7 @@ import com.example.nineuniverse.service.TimePackGaugeService;
 import jakarta.servlet.http.HttpSession;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -36,7 +37,7 @@ public class HomeController {
 	private final PvpFriendInviteService pvpFriendInviteService;
 
 	@GetMapping({"/", "/home"})
-	public String home(Model model) {
+	public String home(Model model, HttpSession session) {
 		long uid = CurrentUser.require().getId();
 		ZoneId zone = ZoneId.systemDefault();
 		LocalDate today = LocalDate.now(zone);
@@ -104,6 +105,18 @@ public class HomeController {
 		boolean listFriendPvpUpdate2026 = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_START);
+		boolean listApr23Bundle2026 = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_APR_23_2026_BUNDLE_START);
+		boolean listMechanicPvpPreviewFix2026 = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_START);
+		boolean listKentoshiFix2026 = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_KENTOSHI_FIX_2026_START);
+		boolean listKusuriFix2026 = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -125,6 +138,10 @@ public class HomeController {
 		model.addAttribute("announcementListDenzirionGarakutaFusionFix", listDenzirionGarakutaFusionFix);
 		model.addAttribute("announcementListPlatformApr2026", listPlatformApr2026);
 		model.addAttribute("announcementListFriendPvpUpdate2026", listFriendPvpUpdate2026);
+		model.addAttribute("announcementListApr23Bundle2026", listApr23Bundle2026);
+		model.addAttribute("announcementListMechanicPvpPreviewFix2026", listMechanicPvpPreviewFix2026);
+		model.addAttribute("announcementListKentoshiFix2026", listKentoshiFix2026);
+		model.addAttribute("announcementListKusuriFix2026", listKusuriFix2026);
 
 		Set<String> claimedKeys = announcementRewardService.findClaimedKeys(uid);
 
@@ -365,6 +382,53 @@ public class HomeController {
 				!friendPvpUpdateAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_START));
 		model.addAttribute("friendPvpUpdateAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_GEMS);
 
+		boolean apr23BundleAnnClaimed = claimedKeys.contains(GameConstants.ANNOUNCEMENT_APR_23_2026_BUNDLE_KEY);
+		boolean apr23BundleAnnInWindow = announcementRewardService.isWithinApr232026BundleAnnouncementWindow(today);
+		model.addAttribute("apr23BundleAnnouncementClaimed", apr23BundleAnnClaimed);
+		model.addAttribute("apr23BundleAnnouncementClaimable",
+				apr23BundleAnnInWindow && !apr23BundleAnnClaimed);
+		model.addAttribute("apr23BundleAnnouncementExpiredUnclaimed",
+				!apr23BundleAnnClaimed && today.isAfter(GameConstants.ANNOUNCEMENT_APR_23_2026_BUNDLE_LAST_DAY));
+		model.addAttribute("apr23BundleAnnouncementFutureUnclaimed",
+				!apr23BundleAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_APR_23_2026_BUNDLE_START));
+		model.addAttribute("apr23BundleAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_APR_23_2026_BUNDLE_GEMS);
+
+		boolean mechanicPvpPreviewFixAnnClaimed =
+				claimedKeys.contains(GameConstants.ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_KEY);
+		boolean mechanicPvpPreviewFixAnnInWindow =
+				announcementRewardService.isWithinMechanicPvpPreviewFixAnnouncementWindow(today);
+		model.addAttribute("mechanicPvpPreviewFixAnnouncementClaimed", mechanicPvpPreviewFixAnnClaimed);
+		model.addAttribute("mechanicPvpPreviewFixAnnouncementClaimable",
+				mechanicPvpPreviewFixAnnInWindow && !mechanicPvpPreviewFixAnnClaimed);
+		model.addAttribute("mechanicPvpPreviewFixAnnouncementExpiredUnclaimed",
+				!mechanicPvpPreviewFixAnnClaimed
+						&& today.isAfter(GameConstants.ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_LAST_DAY));
+		model.addAttribute("mechanicPvpPreviewFixAnnouncementFutureUnclaimed",
+				!mechanicPvpPreviewFixAnnClaimed
+						&& today.isBefore(GameConstants.ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_START));
+		model.addAttribute("mechanicPvpPreviewFixAnnouncementGemAmount",
+				GameConstants.ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_GEMS);
+
+		boolean kentoshiFixAnnClaimed = claimedKeys.contains(GameConstants.ANNOUNCEMENT_KENTOSHI_FIX_2026_KEY);
+		boolean kentoshiFixAnnInWindow = announcementRewardService.isWithinKentoshiFixAnnouncementWindow(today);
+		model.addAttribute("kentoshiFixAnnouncementClaimed", kentoshiFixAnnClaimed);
+		model.addAttribute("kentoshiFixAnnouncementClaimable", kentoshiFixAnnInWindow && !kentoshiFixAnnClaimed);
+		model.addAttribute("kentoshiFixAnnouncementExpiredUnclaimed",
+				!kentoshiFixAnnClaimed && today.isAfter(GameConstants.ANNOUNCEMENT_KENTOSHI_FIX_2026_LAST_DAY));
+		model.addAttribute("kentoshiFixAnnouncementFutureUnclaimed",
+				!kentoshiFixAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_KENTOSHI_FIX_2026_START));
+		model.addAttribute("kentoshiFixAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_KENTOSHI_FIX_2026_GEMS);
+
+		boolean kusuriFixAnnClaimed = claimedKeys.contains(GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_KEY);
+		boolean kusuriFixAnnInWindow = announcementRewardService.isWithinKusuriFixAnnouncementWindow(today);
+		model.addAttribute("kusuriFixAnnouncementClaimed", kusuriFixAnnClaimed);
+		model.addAttribute("kusuriFixAnnouncementClaimable", kusuriFixAnnInWindow && !kusuriFixAnnClaimed);
+		model.addAttribute("kusuriFixAnnouncementExpiredUnclaimed",
+				!kusuriFixAnnClaimed && today.isAfter(GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_LAST_DAY));
+		model.addAttribute("kusuriFixAnnouncementFutureUnclaimed",
+				!kusuriFixAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_START));
+		model.addAttribute("kusuriFixAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_GEMS);
+
 		int announcementBulkClaimableGemTotal = 0;
 		if (listPerfLight && perfInWindow && !perfClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PERF_LIGHT_GEMS;
@@ -429,6 +493,18 @@ public class HomeController {
 		if (listFriendPvpUpdate2026 && friendPvpUpdateAnnInWindow && !friendPvpUpdateAnnClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_GEMS;
 		}
+		if (listApr23Bundle2026 && apr23BundleAnnInWindow && !apr23BundleAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_APR_23_2026_BUNDLE_GEMS;
+		}
+		if (listMechanicPvpPreviewFix2026 && mechanicPvpPreviewFixAnnInWindow && !mechanicPvpPreviewFixAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_GEMS;
+		}
+		if (listKentoshiFix2026 && kentoshiFixAnnInWindow && !kentoshiFixAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_KENTOSHI_FIX_2026_GEMS;
+		}
+		if (listKusuriFix2026 && kusuriFixAnnInWindow && !kusuriFixAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_GEMS;
+		}
 		model.addAttribute("announcementBulkClaimableGemTotal", announcementBulkClaimableGemTotal);
 		model.addAttribute("announcementAnyGemClaimable", announcementBulkClaimableGemTotal > 0);
 
@@ -460,6 +536,21 @@ public class HomeController {
 		model.addAttribute("missionHasUnclaimedReward", missionService.hasUnclaimedMissionRewards(uid));
 		model.addAttribute("friendHubPendingInbound", friendService.countPendingInbound(uid) > 0);
 		model.addAttribute("pvpHubPendingInbound", pvpFriendInviteService.countPendingInbound(uid) > 0);
+
+		Object epU = session.getAttribute(PackController.SESSION_HOME_BONUS_EPITHET_UPPER);
+		Object epL = session.getAttribute(PackController.SESSION_HOME_BONUS_EPITHET_LOWER);
+		if (epU instanceof String || epL instanceof String) {
+			session.removeAttribute(PackController.SESSION_HOME_BONUS_EPITHET_UPPER);
+			session.removeAttribute(PackController.SESSION_HOME_BONUS_EPITHET_LOWER);
+			model.addAttribute("homeBonusEpithetReveal", true);
+			model.addAttribute("homeBonusEpithetUpper", epU instanceof String ? (String) epU : "");
+			model.addAttribute("homeBonusEpithetLower", epL instanceof String ? (String) epL : "");
+		} else {
+			model.addAttribute("homeBonusEpithetReveal", false);
+			model.addAttribute("homeBonusEpithetUpper", "");
+			model.addAttribute("homeBonusEpithetLower", "");
+		}
+
 		return "home";
 	}
 
@@ -884,6 +975,91 @@ public class HomeController {
 		return "redirect:/home";
 	}
 
+	@PostMapping("/home/announcements/apr-23-2026-bundle/claim")
+	public String claimApr232026BundleAnnouncement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_APR_23_2026_BUNDLE_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimApr232026BundleAnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_APR_23_2026_BUNDLE_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/mechanic-pvp-preview-fix/claim")
+	public String claimMechanicPvpPreviewFixAnnouncement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimMechanicPvpPreviewFixAnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/kentoshi-fix/claim")
+	public String claimKentoshiFixAnnouncement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_KENTOSHI_FIX_2026_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimKentoshiFixAnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_KENTOSHI_FIX_2026_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/kusuri-fix/claim")
+	public String claimKusuriFixAnnouncement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimKusuriFixAnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
 	@PostMapping("/home/announcements/major-update/claim")
 	public String claimMajorUpdateAnnouncement(RedirectAttributes ra) {
 		long uid = CurrentUser.require().getId();
@@ -936,11 +1112,40 @@ public class HomeController {
 		try {
 			PackType choice = parseBonusPackChoiceParam(pack0);
 			var outcome = timePackGaugeService.claimOneBonusPackFromGauge(uid, choice);
+			var fresh = appUserMapper.findById(uid);
+			int bank = fresh != null && fresh.getTimePackBonusBank() != null ? Math.max(0, fresh.getTimePackBonusBank()) : 0;
+			var gauge = timePackGaugeService.snapshotForUser(uid);
+			boolean canOpenAnother = gauge.availablePacks() + bank > 0;
+
+			if (choice == PackType.BONUS_EPITHET_GACHA) {
+				session.removeAttribute(PackController.SESSION_PACK_OPENING_SLOTS);
+				session.setAttribute("pack_last_pulled_ids", List.of());
+				session.removeAttribute(PackController.SESSION_PACK_LAST_EPITHET_RESULTS);
+				session.removeAttribute(PackController.SESSION_PACK_RESULT_FROM_BONUS_PACK);
+				session.removeAttribute(PackController.SESSION_PACK_AFTER_OPEN_REDIRECT);
+				var epithets = outcome.epithetResults();
+				if (!epithets.isEmpty()) {
+					var r = epithets.get(0);
+					session.setAttribute(PackController.SESSION_HOME_BONUS_EPITHET_UPPER, r.upperGained());
+					session.setAttribute(PackController.SESSION_HOME_BONUS_EPITHET_LOWER, r.lowerGained());
+				}
+				StringBuilder to = new StringBuilder("redirect:/home?showBonusEpithet=1");
+				if (canOpenAnother) {
+					to.append("&openTimePackChoice=1");
+				}
+				return to.toString();
+			}
+
 			session.setAttribute("pack_last_pulled_ids", outcome.flatCardIds());
 			session.setAttribute(PackController.SESSION_PACK_OPENING_SLOTS, outcome.openingSlots());
 			session.setAttribute(PackController.SESSION_PACK_LAST_EPITHET_RESULTS, outcome.epithetResults());
 			session.setAttribute("pack_last_type", choice.name());
 			session.setAttribute(PackController.SESSION_PACK_RESULT_FROM_BONUS_PACK, Boolean.TRUE);
+			if (canOpenAnother) {
+				session.setAttribute(PackController.SESSION_PACK_AFTER_OPEN_REDIRECT, "/home?openTimePackChoice=1");
+			} else {
+				session.removeAttribute(PackController.SESSION_PACK_AFTER_OPEN_REDIRECT);
+			}
 			return "redirect:/pack/opening";
 		} catch (IllegalStateException | IllegalArgumentException e) {
 			ra.addFlashAttribute("flashTimePackError", e.getMessage());

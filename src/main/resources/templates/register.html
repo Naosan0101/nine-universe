@@ -5,6 +5,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<title>Nine Universe — 新規登録</title>
 	<link rel="stylesheet" th:href="@{/css/app.css(v=${assetVersion})}"/>
+	<th:block th:replace="~{fragments/desktop-app-update-gate :: head-meta}"></th:block>
 </head>
 <body class="page page--auth">
 <div class="auth-card">
@@ -22,7 +23,25 @@
 		<button type="submit" class="btn btn--primary">登録</button>
 	</form>
 	<p><a th:href="@{/login}">ログインへ</a></p>
+	<div class="auth-quit-app-wrap" id="auth-quit-app-wrap" hidden>
+		<button type="button" class="btn btn--ghost auth-quit-app-btn" id="auth-quit-app-btn">ゲームを終了する</button>
+	</div>
 </div>
 <script th:replace="~{fragments/tab-fullscreen :: script}"></script>
+<script th:replace="~{fragments/click-sparkle :: script}"></script>
+<script>
+(function () {
+	var wrap = document.getElementById('auth-quit-app-wrap');
+	var btn = document.getElementById('auth-quit-app-btn');
+	if (!wrap || !btn) return;
+	if (typeof window.nuElectron !== 'undefined' && window.nuElectron && typeof window.nuElectron.quitApp === 'function') {
+		wrap.hidden = false;
+		btn.addEventListener('click', function () {
+			window.nuElectron.quitApp();
+		});
+	}
+})();
+</script>
+<th:block th:replace="~{fragments/desktop-app-update-gate :: overlay}"></th:block>
 </body>
 </html>

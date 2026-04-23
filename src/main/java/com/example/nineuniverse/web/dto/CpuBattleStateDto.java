@@ -36,6 +36,11 @@ public record CpuBattleStateDto(
 		int humanNextElfOnlyBonus,
 		int humanNextDeployCostBonusTimes,
 		int humanNextMechanicStacks,
+		/** 相手スロット（画面下段の相手側）の次の配置ボーナス系。クライアントは相手手札のコスト・強さプレビューに使う */
+		int cpuNextDeployBonus,
+		int cpuNextElfOnlyBonus,
+		int cpuNextDeployCostBonusTimes,
+		int cpuNextMechanicStacks,
 		String lastMessage,
 		boolean gameOver,
 		boolean humanWon,

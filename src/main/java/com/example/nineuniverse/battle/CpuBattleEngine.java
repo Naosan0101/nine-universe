@@ -97,6 +97,12 @@ public class CpuBattleEngine {
 	private static final int FEZARIA_OPTIONAL_STONE_COST = 3;
 	/** クリスタクル〈配置〉: 次の配置に与える強さ（次の相手ターン終了まで） */
 	private static final int CRYSTAKUL_NEXT_DEPLOY_POWER = 3;
+	/** 剣闘士: 双方に手札があるとき、先に捨てる側の選択（相手の続きと連鎖する） */
+	private static final String KENTOSHI_PAIR_FIRST_DEPLOY_CODE = "KENTOSHI_PAIR";
+	/** 剣闘士: 片側のみ手札があるときのその1枚の選択（連鎖しない） */
+	private static final String KENTOSHI_SOLO_DEPLOY_CODE = "KENTOSHI_SOLO";
+	/** 剣闘士: 相手側の手札1枚選択（{@link #KENTOSHI_PAIR_FIRST_DEPLOY_CODE} の直後のみ） */
+	private static final String KENTOSHI_OPPONENT_FOLLOWUP_DEPLOY_CODE = "KENTOSHI_OPP";
 
 	/**
 	 * レベルアップでレストへ捨てられるカード枚数の上限（配置するファイターを手札に残すため、手札枚数−1）。
@@ -1444,6 +1450,28 @@ public class CpuBattleEngine {
 					st.getHumanRest().add(c);
 					st.addLog("手札を1枚レストへ");
 				}
+				if (c != null && KENTOSHI_PAIR_FIRST_DEPLOY_CODE.equals(pc.getAbilityDeployCode())
+						&& !st.getCpuHand().isEmpty()) {
+					if (st.isPvp()) {
+						List<String> opts = new ArrayList<>();
+						for (BattleCard x : st.getCpuHand()) {
+							opts.add(x.getInstanceId());
+						}
+						st.setPendingChoice(new PendingChoice(
+								ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
+								"剣闘士（捨てるカードを選択）",
+								false,
+								KENTOSHI_OPPONENT_FOLLOWUP_DEPLOY_CODE,
+								0,
+								opts,
+								true));
+						st.setPhase(BattlePhase.HUMAN_CHOICE);
+						st.setLastMessage("選択してください");
+						return;
+					}
+					kentoshiAiDiscardOneFromHand(st.getCpuHand(), st.getCpuRest(), defs);
+					st.addLog("剣闘士: " + cpuSlotActorLogLabel(st) + "も手札を1枚レストへ");
+				}
 			}
 			case SELECT_ONE_UNDEAD_FIGHTER_FROM_HAND_FOR_COST -> {
 				if (pickedInstanceIds == null || pickedInstanceIds.size() != 1) {
@@ -1451,6 +1479,9 @@ public class CpuBattleEngine {
 				}
 				String gpPick = pickedInstanceIds.get(0);
 				if (pc.getOptionInstanceIds() == null || !pc.getOptionInstanceIds().contains(gpPick)) {
+					return;
+				}
+				if (findByInstanceId(st.getCpuHand(), gpPick) != null) {
 					return;
 				}
 				BattleCard gpc = findByInstanceId(st.getHumanHand(), gpPick);
@@ -1808,6 +1839,23 @@ public class CpuBattleEngine {
 					st.getCpuRest().add(c);
 					st.addLog("手札を1枚レストへ");
 				}
+				if (c != null && KENTOSHI_PAIR_FIRST_DEPLOY_CODE.equals(pc.getAbilityDeployCode())
+						&& !st.getHumanHand().isEmpty()) {
+					List<String> opts = new ArrayList<>();
+					for (BattleCard x : st.getHumanHand()) {
+						opts.add(x.getInstanceId());
+					}
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
+							"剣闘士（捨てるカードを選択）",
+							true,
+							KENTOSHI_OPPONENT_FOLLOWUP_DEPLOY_CODE,
+							0,
+							opts));
+					st.setPhase(BattlePhase.HUMAN_CHOICE);
+					st.setLastMessage("選択してください");
+					return;
+				}
 			}
 			case SELECT_ONE_UNDEAD_FIGHTER_FROM_HAND_FOR_COST -> {
 				if (pickedInstanceIds == null || pickedInstanceIds.size() != 1) {
@@ -1815,6 +1863,9 @@ public class CpuBattleEngine {
 				}
 				String gpPickG = pickedInstanceIds.get(0);
 				if (pc.getOptionInstanceIds() == null || !pc.getOptionInstanceIds().contains(gpPickG)) {
+					return;
+				}
+				if (findByInstanceId(st.getHumanHand(), gpPickG) != null) {
 					return;
 				}
 				BattleCard gpcg = findByInstanceId(st.getCpuHand(), gpPickG);
@@ -3066,12 +3117,16 @@ public class CpuBattleEngine {
 		nz.setSpec777RolledPower(z.getSpec777RolledPower());
 		nz.setBotBikeMechanicPowerBonus(z.getBotBikeMechanicPowerBonus());
 		nz.setBattleMainLineSeq(z.getBattleMainLineSeq());
+		nz.setKusuriOpponentDebuffFromDeployStones(z.getKusuriOpponentDebuffFromDeployStones());
 		return nz;
 	}
 
 	private void assignBattleZoneMain(ZoneFighter z, BattleCard main, CpuBattleState st) {
 		z.setMain(main);
 		z.setBattleMainLineSeq(st.takeNextBattleMainLineSeq());
+		if (main == null || main.getCardId() != KUSURI_ID) {
+			z.setKusuriOpponentDebuffFromDeployStones(0);
+		}
 	}
 
 	private CpuBattleState copyStateForCpuSim(CpuBattleState st) {
@@ -4321,13 +4376,12 @@ public class CpuBattleEngine {
 		}
 		p += zf.getBotBikeMechanicPowerBonus();
 
-		// 薬売り（常時）: 自分が所持しているストーン1つにつき、相手のファイター強さ-1（薬売りがバトルゾーンにいる間）
+		// 薬売り〈配置〉: 配置時点の所持ストーン数ぶん、相手ファイター強さ-1（スナップショット）
 		if (!suppressOpponentEffects) {
 			ZoneFighter oppZone = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
 			if (oppZone != null && oppZone.getMain() != null && oppZone.getMain().getCardId() == KUSURI_ID
 					&& !fighterIgnoresKusuriDebuffDueToGarakutaLeg(zf, st, ownerIsHuman, defs)) {
-				int debuff = ownerIsHuman ? st.getCpuStones() : st.getHumanStones();
-				p -= debuff;
+				p -= oppZone.getKusuriOpponentDebuffFromDeployStones();
 			}
 		}
 
@@ -4556,16 +4610,16 @@ public class CpuBattleEngine {
 		}
 
 		if (zf.getBotBikeMechanicPowerBonus() > 0) {
-			out.add(new BattlePowerModifierDto(BOT_BIKE_ID, "（メカニック・次の相手ターン終了まで+2）"));
+			out.add(new BattlePowerModifierDto(BOT_BIKE_ID, "（メカニック・次の相手ターン終了まで+3）"));
 		}
 
 		if (!suppressOpponentEffects) {
 			ZoneFighter oppZone = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
 			if (oppZone != null && oppZone.getMain() != null && oppZone.getMain().getCardId() == KUSURI_ID
 					&& !fighterIgnoresKusuriDebuffDueToGarakutaLeg(zf, st, ownerIsHuman, defs)) {
-				int debuff = ownerIsHuman ? st.getCpuStones() : st.getHumanStones();
+				int debuff = oppZone.getKusuriOpponentDebuffFromDeployStones();
 				if (debuff > 0) {
-					out.add(new BattlePowerModifierDto(KUSURI_ID, "（相手の薬売り・ストーン" + debuff + "）"));
+					out.add(new BattlePowerModifierDto(KUSURI_ID, "（相手の薬売り・配置時ストーン" + debuff + "）"));
 				}
 			}
 		}
@@ -4641,6 +4695,9 @@ public class CpuBattleEngine {
 			Set<Short> seen = new HashSet<>();
 			for (BattleCard c : rest) {
 				if (isTuckedUnderOwnFighter(zf, c)) {
+					continue;
+				}
+				if (c.getCardId() == SHINY_ID) {
 					continue;
 				}
 				if (CardAttributes.hasAttribute(defs.get(c.getCardId()), c, "CARBUNCLE") && seen.add(c.getCardId())) {
@@ -4761,7 +4818,7 @@ public class CpuBattleEngine {
 	}
 
 	/**
-	 * 薬売りの「相手ファイター強さ−1／ストーン」は、ガラクタレッグの〈常時〉対象外。
+	 * 薬売り〈配置〉の「相手ファイター強さ−1／配置時ストーン」は、ガラクタレッグの〈常時〉対象外。
 	 * 前列がガラクタレッグのほか、磁力合体デンジリオンがレストのガラクタレッグの〈常時〉を継承している場合も同様。
 	 */
 	private static boolean fighterIgnoresKusuriDebuffDueToGarakutaLeg(ZoneFighter zf, CpuBattleState st,
@@ -4921,12 +4978,24 @@ public class CpuBattleEngine {
 		CardDefinition ghost = new CardDefinition();
 		ghost.setName(oppFighter.getName());
 		ghost.setAbilityDeployCode(code);
+		CardDefinition deployAbilityDef = ghost;
+		// 忍者は「メインが忍者」のときだけ入れ替える実装のため、ミラージュ本体のままではコピー時に入れ替わらない。コピーとして入れ替え後メインの〈配置〉を解決する。
+		if ("NINJA".equals(code)) {
+			if (applyNinjaPhysicalSwap(st, defs, mirageOwnerIsHuman, true)) {
+				ZoneFighter zf = mirageOwnerIsHuman ? st.getHumanBattle() : st.getCpuBattle();
+				BattleCard zm = zf != null ? zf.getMain() : null;
+				CardDefinition swappedMainDef = zm != null ? defs.get(zm.getCardId()) : null;
+				if (swappedMainDef != null) {
+					deployAbilityDef = swappedMainDef;
+				}
+			}
+		}
 		if (mirageOwnerIsHuman) {
-			applyDeployHuman(st, ghost, defs, null);
+			applyDeployHuman(st, deployAbilityDef, defs, null);
 		} else if (st.isPvp()) {
-			applyDeployHumanAsCpuSide(st, ghost, defs, null);
+			applyDeployHumanAsCpuSide(st, deployAbilityDef, defs, null);
 		} else {
-			applyDeployCpu(st, ghost, defs, rnd != null ? rnd : new Random(), null);
+			applyDeployCpu(st, deployAbilityDef, defs, rnd != null ? rnd : new Random(), null);
 		}
 	}
 
@@ -4972,12 +5041,26 @@ public class CpuBattleEngine {
 	 * @return コストにカードがあり実際に入れ替えた場合 true（入れ替え先の〈配置〉を別途解決）
 	 */
 	private boolean applyNinjaPhysicalSwap(CpuBattleState st, Map<Short, CardDefinition> defs, boolean humanHost) {
+		return applyNinjaPhysicalSwap(st, defs, humanHost, false);
+	}
+
+	/**
+	 * 忍者の入れ替え。{@code mirageMirrorCopiedNinja} が true のときは、メインがミラージュクルでも相手忍者の〈配置〉コピーとして入れ替える。
+	 *
+	 * @return コストにカードがあり実際に入れ替えた場合 true（入れ替え先の〈配置〉を別途解決）
+	 */
+	private boolean applyNinjaPhysicalSwap(CpuBattleState st, Map<Short, CardDefinition> defs, boolean humanHost,
+			boolean mirageMirrorCopiedNinja) {
 		ZoneFighter z = humanHost ? st.getHumanBattle() : st.getCpuBattle();
 		if (z == null || z.getMain() == null) {
 			return false;
 		}
 		CardDefinition mainDef = defs.get(z.getMain().getCardId());
-		if (mainDef == null || mainDef.getAbilityDeployCode() == null || !"NINJA".equals(mainDef.getAbilityDeployCode())) {
+		boolean mainIsNinja = mainDef != null && mainDef.getAbilityDeployCode() != null
+				&& "NINJA".equals(mainDef.getAbilityDeployCode());
+		boolean mainIsMirageCopyingNinja = mirageMirrorCopiedNinja && mainDef != null
+				&& mainDef.getAbilityDeployCode() != null && "MIRAJUKUL".equals(mainDef.getAbilityDeployCode());
+		if (!mainIsNinja && !mainIsMirageCopyingNinja) {
 			return false;
 		}
 		if (z.getCostPayCardCount() > 0 && !z.getCostUnder().isEmpty()) {
@@ -5077,7 +5160,7 @@ public class CpuBattleEngine {
 	/**
 	 * フェザリアの回収対象: 〈フィールド〉を除く自分のファイターで「種族：カーバンクル」、かつ「フェザリア」カード自身は除く。
 	 * バトルゾーンのコスト下に重なっているインスタンスはレスト一覧に残っていてもレスト扱いにしない（シャイニ等と同じ）。
-	 * 種族判定はカード定義のみ（SPEC-666 等の {@link BattleCard#getBattleTribeOverride()} は対象外。上書き後もカーバンクルとして回収できる）。
+	 * 種族は {@link CardAttributes#hasAttribute(CardDefinition, BattleCard, String)}（SPEC-666 等の上書きを反映。アンデッドのみのカードは回収不可）。
 	 */
 	private static boolean isFezariaPickableCarbuncleInRest(BattleCard c, ZoneFighter ownBattle,
 			Map<Short, CardDefinition> defs) {
@@ -5094,7 +5177,7 @@ public class CpuBattleEngine {
 		if (!isNonFieldFighterCardDef(d)) {
 			return false;
 		}
-		return CardAttributes.hasAttribute(d, "CARBUNCLE");
+		return CardAttributes.hasAttribute(d, c, "CARBUNCLE");
 	}
 
 	private boolean restContainsFezariaPickableCarbuncle(List<BattleCard> rest, ZoneFighter ownBattle,
@@ -5110,7 +5193,9 @@ public class CpuBattleEngine {
 		return false;
 	}
 
-	/** シャイニ: レストの「種族：カーバンクル」カードの種類数（同じカードIDの重複は1種類） */
+	/**
+	 * シャイニ: レストの「シャイニ」以外の「種族：カーバンクル」カードの種類数（同じカードIDの重複は1種類）。
+	 */
 	private int countDistinctCarbuncleTypesInRest(ZoneFighter ownBattle, List<BattleCard> rest,
 			Map<Short, CardDefinition> defs) {
 		if (rest == null || defs == null) {
@@ -5119,6 +5204,9 @@ public class CpuBattleEngine {
 		Set<Short> kinds = new HashSet<>();
 		for (BattleCard c : rest) {
 			if (c == null || isTuckedUnderOwnFighter(ownBattle, c)) {
+				continue;
+			}
+			if (c.getCardId() == SHINY_ID) {
 				continue;
 			}
 			if (CardAttributes.hasAttribute(defs.get(c.getCardId()), c, "CARBUNCLE")) {
@@ -5316,6 +5404,8 @@ public class CpuBattleEngine {
 				code = "BELIEVER";
 			} else if (d != null && isHalfElfCardDefinition(d)) {
 				code = "HALF_ELF";
+			} else if (d != null && d.getId() != null && d.getId() == KUSURI_ID) {
+				code = "KUSURI";
 			} else {
 				return;
 			}
@@ -5341,6 +5431,14 @@ public class CpuBattleEngine {
 			}
 			case "KOSAKUIN" -> {
 				// 用心棒（旧: 工作員）に変更されたため効果なし
+			}
+			case "KUSURI" -> {
+				ZoneFighter zb = st.getHumanBattle();
+				if (zb != null && zb.getMain() != null && zb.getMain().getCardId() == KUSURI_ID) {
+					int n = st.getHumanStones();
+					zb.setKusuriOpponentDebuffFromDeployStones(n);
+					st.addLog("薬売り: 配置時の所持ストーン" + n + "のぶん、相手ファイターの強さ−" + n);
+				}
 			}
 			case "KAGAKUSHA" -> {
 				if (st.getHumanBattle() != null && st.getCpuBattle() != null) {
@@ -5419,14 +5517,14 @@ public class CpuBattleEngine {
 				ZoneFighter zb = st.getHumanBattle();
 				if (zb != null && zb.getMain() != null && zb.getMain().getCardId() == BOT_BIKE_ID
 						&& zoneCostIncludesMechanicFighter(zb, defs)) {
-					zb.setBotBikeMechanicPowerBonus(2);
-					st.addLog("ボットバイク: 次の相手ターン終了まで強さ+2");
+					zb.setBotBikeMechanicPowerBonus(3);
+					st.addLog("ボットバイク: 次の相手ターン終了まで強さ+3");
 				}
 			}
 			case "KINOKO" -> {
 				List<String> pixieOpts = new ArrayList<>();
 				for (BattleCard c : st.getHumanRest()) {
-					if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "ELF")) {
+					if (CardAttributes.hasAttribute(defs.get(c.getCardId()), c, "ELF")) {
 						pixieOpts.add(c.getInstanceId());
 					}
 				}
@@ -5574,23 +5672,36 @@ public class CpuBattleEngine {
 				}
 			}
 			case "KENTOSHI" -> {
-				// 配置者（人間スロット）は手札があれば選んで捨てる。相手は手札があれば自動で1枚捨てる。
+				// お互い手札から1枚ずつ選んでレストへ（片側のみならその側だけ。相手は後続の保留または CPU の簡易選択）
 				boolean hadHumanHand = !st.getHumanHand().isEmpty();
 				boolean hadCpuHand = !st.getCpuHand().isEmpty();
 				if (hadHumanHand) {
 					List<String> opts = new ArrayList<>();
 					for (BattleCard c : st.getHumanHand()) opts.add(c.getInstanceId());
+					String ability = hadCpuHand ? KENTOSHI_PAIR_FIRST_DEPLOY_CODE : KENTOSHI_SOLO_DEPLOY_CODE;
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
 							"剣闘士（捨てるカードを選択）",
 							true,
-							"KENTOSHI",
+							ability,
 							0,
 							opts
 					));
-				}
-				if (hadCpuHand) {
-					discardRightmost(st.getCpuHand(), st.getCpuRest());
+				} else if (hadCpuHand) {
+					if (st.isPvp()) {
+						List<String> opts = new ArrayList<>();
+						for (BattleCard c : st.getCpuHand()) opts.add(c.getInstanceId());
+						st.setPendingChoice(new PendingChoice(
+								ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
+								"剣闘士（捨てるカードを選択）",
+								false,
+								KENTOSHI_SOLO_DEPLOY_CODE,
+								0,
+								opts,
+								true));
+					} else {
+						kentoshiAiDiscardOneFromHand(st.getCpuHand(), st.getCpuRest(), defs);
+					}
 				}
 				if (hadHumanHand && hadCpuHand) {
 					st.addLog("剣闘士: お互い手札を1枚レストへ");
@@ -5765,6 +5876,8 @@ public class CpuBattleEngine {
 				code = "BELIEVER";
 			} else if (d != null && isHalfElfCardDefinition(d)) {
 				code = "HALF_ELF";
+			} else if (d != null && d.getId() != null && d.getId() == KUSURI_ID) {
+				code = "KUSURI";
 			} else {
 				return;
 			}
@@ -5787,6 +5900,14 @@ public class CpuBattleEngine {
 							List.of(),
 							true
 					));
+				}
+			}
+			case "KUSURI" -> {
+				ZoneFighter zb = st.getCpuBattle();
+				if (zb != null && zb.getMain() != null && zb.getMain().getCardId() == KUSURI_ID) {
+					int n = st.getCpuStones();
+					zb.setKusuriOpponentDebuffFromDeployStones(n);
+					st.addLog("薬売り: 配置時の所持ストーン" + n + "のぶん、相手ファイターの強さ−" + n);
 				}
 			}
 			case "KAGAKUSHA" -> {
@@ -5866,14 +5987,14 @@ public class CpuBattleEngine {
 				ZoneFighter zb = st.getCpuBattle();
 				if (zb != null && zb.getMain() != null && zb.getMain().getCardId() == BOT_BIKE_ID
 						&& zoneCostIncludesMechanicFighter(zb, defs)) {
-					zb.setBotBikeMechanicPowerBonus(2);
-					st.addLog("ボットバイク: 次の相手ターン終了まで強さ+2");
+					zb.setBotBikeMechanicPowerBonus(3);
+					st.addLog("ボットバイク: 次の相手ターン終了まで強さ+3");
 				}
 			}
 			case "KINOKO" -> {
 				List<String> pixieGuestOpts = new ArrayList<>();
 				for (BattleCard c : st.getCpuRest()) {
-					if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "ELF")) {
+					if (CardAttributes.hasAttribute(defs.get(c.getCardId()), c, "ELF")) {
 						pixieGuestOpts.add(c.getInstanceId());
 					}
 				}
@@ -6030,24 +6151,32 @@ public class CpuBattleEngine {
 				}
 			}
 			case "KENTOSHI" -> {
-				// ゲストが配置: 配置者は cpu 手札から選ぶ（0枚なら選択なし）。ホストは手札があれば自動で1枚捨てる。
+				// ゲストが配置: 手札があればゲストから選び、相手（ホスト）がまだ手札があれば続けてホストが選ぶ
 				boolean hadGuestHand = !st.getCpuHand().isEmpty();
 				boolean hadHostHand = !st.getHumanHand().isEmpty();
 				if (hadGuestHand) {
 					List<String> opts = new ArrayList<>();
 					for (BattleCard c : st.getCpuHand()) opts.add(c.getInstanceId());
+					String ability = hadHostHand ? KENTOSHI_PAIR_FIRST_DEPLOY_CODE : KENTOSHI_SOLO_DEPLOY_CODE;
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
 							"剣闘士（捨てるカードを選択）",
 							false,
-							"KENTOSHI",
+							ability,
 							0,
 							opts,
 							true
 					));
-				}
-				if (hadHostHand) {
-					discardRightmost(st.getHumanHand(), st.getHumanRest());
+				} else if (hadHostHand) {
+					List<String> opts = new ArrayList<>();
+					for (BattleCard c : st.getHumanHand()) opts.add(c.getInstanceId());
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
+							"剣闘士（捨てるカードを選択）",
+							true,
+							KENTOSHI_SOLO_DEPLOY_CODE,
+							0,
+							opts));
 				}
 				if (hadGuestHand && hadHostHand) {
 					st.addLog("剣闘士: お互い手札を1枚レストへ");
@@ -6222,6 +6351,8 @@ public class CpuBattleEngine {
 				code = "BELIEVER";
 			} else if (d != null && isHalfElfCardDefinition(d)) {
 				code = "HALF_ELF";
+			} else if (d != null && d.getId() != null && d.getId() == KUSURI_ID) {
+				code = "KUSURI";
 			} else {
 				return;
 			}
@@ -6251,23 +6382,23 @@ public class CpuBattleEngine {
 				}
 			}
 			case "KENTOSHI" -> {
-				// CPUが出した場合：人間は手札があれば選んで捨てる。CPUは手札があれば自動で1枚捨てる。
+				// あなたが先に選び、CPU は人間の選択のあとに簡易 AI で捨てる（両方手札がある場合）
 				boolean hadHumanHand = !st.getHumanHand().isEmpty();
 				boolean hadCpuHand = !st.getCpuHand().isEmpty();
 				if (hadHumanHand) {
 					List<String> opts = new ArrayList<>();
 					for (BattleCard c : st.getHumanHand()) opts.add(c.getInstanceId());
+					String ability = hadCpuHand ? KENTOSHI_PAIR_FIRST_DEPLOY_CODE : KENTOSHI_SOLO_DEPLOY_CODE;
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
 							"剣闘士（捨てるカードを選択）",
 							true,
-							"KENTOSHI",
+							ability,
 							0,
 							opts
 					));
-				}
-				if (hadCpuHand) {
-					discardRightmost(st.getCpuHand(), st.getCpuRest());
+				} else if (hadCpuHand) {
+					kentoshiAiDiscardOneFromHand(st.getCpuHand(), st.getCpuRest(), defs);
 				}
 				if (hadHumanHand && hadCpuHand) {
 					st.addLog("剣闘士: お互い手札を1枚レストへ");
@@ -6316,6 +6447,14 @@ public class CpuBattleEngine {
 			}
 			case "KOSAKUIN" -> {
 				// 用心棒（旧: 工作員）に変更されたため効果なし
+			}
+			case "KUSURI" -> {
+				ZoneFighter zb = st.getCpuBattle();
+				if (zb != null && zb.getMain() != null && zb.getMain().getCardId() == KUSURI_ID) {
+					int n = st.getCpuStones();
+					zb.setKusuriOpponentDebuffFromDeployStones(n);
+					st.addLog("CPU薬売り: 配置時の所持ストーン" + n + "のぶん、相手ファイターの強さ−" + n);
+				}
 			}
 			case "KAGAKUSHA" -> {
 				if (st.getHumanBattle() != null && st.getCpuBattle() != null) {
@@ -6406,14 +6545,14 @@ public class CpuBattleEngine {
 				ZoneFighter zb = st.getCpuBattle();
 				if (zb != null && zb.getMain() != null && zb.getMain().getCardId() == BOT_BIKE_ID
 						&& zoneCostIncludesMechanicFighter(zb, defs)) {
-					zb.setBotBikeMechanicPowerBonus(2);
-					st.addLog("CPUボットバイク: 次の相手ターン終了まで強さ+2");
+					zb.setBotBikeMechanicPowerBonus(3);
+					st.addLog("CPUボットバイク: 次の相手ターン終了まで強さ+3");
 				}
 			}
 			case "KINOKO" -> {
 				for (int i = st.getCpuRest().size() - 1; i >= 0; i--) {
 					BattleCard c = st.getCpuRest().get(i);
-					if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "ELF")) {
+					if (CardAttributes.hasAttribute(defs.get(c.getCardId()), c, "ELF")) {
 						st.getCpuRest().remove(i);
 						st.getCpuHand().add(0, c);
 						st.addLog("CPUピクシー: エルフを手札へ");
@@ -6746,6 +6885,10 @@ public class CpuBattleEngine {
 		if (d == null) {
 			return 0;
 		}
+		// メカニックは「バトルゾーンに配置するファイター」のみ（〈フィールド〉のコスト・強さ加算はしない）
+		if (isFieldCard(d)) {
+			mechanicExtraCost = 0;
+		}
 		int base = d.getCost() != null ? d.getCost() : 0;
 		if (st != null && weaponDepotFieldActive(st) && isMachineFighterForWeaponDepotCost(d, deployedMain)) {
 			base = 1;
@@ -6900,10 +7043,66 @@ public class CpuBattleEngine {
 		}
 	}
 
-	/** CPU の簡易処理用（プレイヤーのレベルアップ捨てルールとは無関係）。 */
-	private void discardRightmost(List<BattleCard> hand, List<BattleCard> rest) {
-		if (!hand.isEmpty()) {
-			rest.add(hand.remove(hand.size() - 1));
+	/**
+	 * 剣闘士（CPU 側）: ランダムではなく、弱いファイター・安いフィールドを優先してレストへ1枚送る。
+	 */
+	private void kentoshiAiDiscardOneFromHand(List<BattleCard> hand, List<BattleCard> rest,
+			Map<Short, CardDefinition> defs) {
+		if (hand == null || hand.isEmpty() || defs == null) {
+			return;
+		}
+		List<BattleCard> fighters = new ArrayList<>();
+		List<BattleCard> fields = new ArrayList<>();
+		for (BattleCard c : hand) {
+			CardDefinition d = defs.get(c.getCardId());
+			if (d == null) {
+				continue;
+			}
+			if (isFieldCard(d)) {
+				fields.add(c);
+			} else {
+				fighters.add(c);
+			}
+		}
+		BattleCard pick = null;
+		if (!fighters.isEmpty()) {
+			int bestBp = Integer.MAX_VALUE;
+			int bestDiscardRr = Integer.MIN_VALUE;
+			for (BattleCard c : fighters) {
+				CardDefinition d = defs.get(c.getCardId());
+				int bp = d != null && d.getBasePower() != null ? d.getBasePower() : 0;
+				int rr = d != null ? rarityRank(d.getRarity()) : 0;
+				boolean better = bp < bestBp
+						|| (bp == bestBp && rr > bestDiscardRr)
+						|| (bp == bestBp && rr == bestDiscardRr && pick != null && c.getInstanceId() != null
+								&& pick.getInstanceId() != null
+								&& c.getInstanceId().compareTo(pick.getInstanceId()) < 0);
+				if (pick == null || better) {
+					bestBp = bp;
+					bestDiscardRr = rr;
+					pick = c;
+				}
+			}
+		} else if (!fields.isEmpty()) {
+			int bestCost = Integer.MAX_VALUE;
+			for (BattleCard c : fields) {
+				CardDefinition d = defs.get(c.getCardId());
+				int cst = d != null && d.getCost() != null ? d.getCost() : 0;
+				boolean better = cst < bestCost
+						|| (cst == bestCost && pick != null && c.getInstanceId() != null && pick.getInstanceId() != null
+								&& c.getInstanceId().compareTo(pick.getInstanceId()) < 0);
+				if (pick == null || better) {
+					bestCost = cst;
+					pick = c;
+				}
+			}
+		}
+		if (pick == null) {
+			pick = hand.get(0);
+		}
+		BattleCard removed = removeByInstanceId(hand, pick.getInstanceId());
+		if (removed != null) {
+			rest.add(removed);
 		}
 	}
 
@@ -7018,6 +7217,9 @@ public class CpuBattleEngine {
 					for (BattleCard main : new ArrayList<>(simHand)) {
 						CardDefinition mainDef = defs.get(main.getCardId());
 						if (mainDef == null) continue;
+						if (isFieldCard(mainDef)) {
+							continue;
+						}
 						List<BattleCard> discountRest = forHuman ? st.getHumanRest() : st.getCpuRest();
 						int mechStacks = forHuman ? sim.getHumanNextMechanicStacks() : sim.getCpuNextMechanicStacks();
 						int cost = effectiveDeployCost(mainDef, main, defs, discountRest, mechStacks, st);

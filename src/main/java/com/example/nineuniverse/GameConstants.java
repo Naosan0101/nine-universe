@@ -410,6 +410,46 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_LAST_DAY =
 			ANNOUNCEMENT_FRIEND_PVP_UPDATE_2026_START.plusDays(30 - 1);
 
+	/** おしらせ配布（バランス・UI・不具合修正まとめ 2026-04-23） */
+	public static final String ANNOUNCEMENT_APR_23_2026_BUNDLE_KEY = "apr_23_2026_balance_ui_bundle";
+
+	public static final int ANNOUNCEMENT_APR_23_2026_BUNDLE_GEMS = 15;
+
+	public static final LocalDate ANNOUNCEMENT_APR_23_2026_BUNDLE_START = LocalDate.of(2026, 4, 23);
+
+	public static final LocalDate ANNOUNCEMENT_APR_23_2026_BUNDLE_LAST_DAY =
+			ANNOUNCEMENT_APR_23_2026_BUNDLE_START.plusDays(30 - 1);
+
+	/** おしらせ配布（「メカニック」等の対人バトル表示・プレビュー修正） */
+	public static final String ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_KEY = "mechanic_pvp_preview_fix_2026_04_23";
+
+	public static final int ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_GEMS = 3;
+
+	public static final LocalDate ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_START = LocalDate.of(2026, 4, 23);
+
+	public static final LocalDate ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_LAST_DAY =
+			ANNOUNCEMENT_MECHANIC_PVP_PREVIEW_FIX_2026_START.plusDays(30 - 1);
+
+	/** おしらせ配布（「剣闘士」〈配置〉をテキスト通りの挙動に修正） */
+	public static final String ANNOUNCEMENT_KENTOSHI_FIX_2026_KEY = "kentoshi_deploy_fix_2026_04_24";
+
+	public static final int ANNOUNCEMENT_KENTOSHI_FIX_2026_GEMS = 3;
+
+	public static final LocalDate ANNOUNCEMENT_KENTOSHI_FIX_2026_START = LocalDate.of(2026, 4, 24);
+
+	public static final LocalDate ANNOUNCEMENT_KENTOSHI_FIX_2026_LAST_DAY =
+			ANNOUNCEMENT_KENTOSHI_FIX_2026_START.plusDays(30 - 1);
+
+	/** おしらせ配布（「薬売り」〈配置〉の効果修正） */
+	public static final String ANNOUNCEMENT_KUSURI_FIX_2026_KEY = "kusuri_effect_fix_2026_04_25";
+
+	public static final int ANNOUNCEMENT_KUSURI_FIX_2026_GEMS = 3;
+
+	public static final LocalDate ANNOUNCEMENT_KUSURI_FIX_2026_START = LocalDate.of(2026, 4, 25);
+
+	public static final LocalDate ANNOUNCEMENT_KUSURI_FIX_2026_LAST_DAY =
+			ANNOUNCEMENT_KUSURI_FIX_2026_START.plusDays(30 - 1);
+
 	/**
 	 * ログイン時ポップアップ「もう表示しない」用（ジェム受け取りとは別行）。
 	 */
@@ -461,7 +501,7 @@ public final class GameConstants {
 	/**
 	 * おしらせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
 	 */
-	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-22-2";
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-26";
 
 	/** リサイクル：レア度ごとに得るクリスタル（1枚あたり） */
 	public static final int RECYCLE_CRYSTAL_PER_CARD_C = 20;
@@ -469,8 +509,8 @@ public final class GameConstants {
 	public static final int RECYCLE_CRYSTAL_PER_CARD_EP = 500;
 	public static final int RECYCLE_CRYSTAL_PER_CARD_REG = 1500;
 
-	/** 1000クリスタルで1ジェムに変換 */
-	public static final int RECYCLE_CRYSTAL_PER_GEM = 1000;
+	/** 300クリスタルで1ジェムに変換 */
+	public static final int RECYCLE_CRYSTAL_PER_GEM = 300;
 
 	public static final int RECYCLE_SHOP_LEGENDARY_PICK_CRYSTAL = 10000;
 	public static final int RECYCLE_SHOP_LEGENDARY_PACK_CRYSTAL = 5000;

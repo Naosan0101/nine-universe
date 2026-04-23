@@ -49,19 +49,20 @@
 
 	const PACK_JA = {
 		STD: 'スタンダードパック1',
+		STD2: 'スタンダードパック2',
 		WH: '風吹く丘パック',
 		ET: '邪悪なる脅威パック',
 		JU: '宝石の秘境パック',
 		IF: '鉄面の艦隊パック'
 	};
 
-	// WH/ET はスタンダードからも排出。JU/IF は専用パック表記。
+	// WH/ET はスタンダード1からも排出。JU/IF はスタンダード2からも排出。
 	function packSourcesForInitial(piRaw) {
 		const pi = (piRaw || 'STD').trim().toUpperCase() || 'STD';
-		if (pi === 'WH') return ['風吹く丘パック', 'スタンダードパック1'];
-		if (pi === 'ET') return ['邪悪なる脅威パック', 'スタンダードパック1'];
-		if (pi === 'JU') return [PACK_JA.JU];
-		if (pi === 'IF') return [PACK_JA.IF];
+		if (pi === 'WH') return [PACK_JA.WH, PACK_JA.STD];
+		if (pi === 'ET') return [PACK_JA.ET, PACK_JA.STD];
+		if (pi === 'JU') return [PACK_JA.JU, PACK_JA.STD2];
+		if (pi === 'IF') return [PACK_JA.IF, PACK_JA.STD2];
 		return [PACK_JA.STD];
 	}
 

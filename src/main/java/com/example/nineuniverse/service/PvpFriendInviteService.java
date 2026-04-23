@@ -3,6 +3,8 @@ package com.example.nineuniverse.service;
 import com.example.nineuniverse.domain.PvpFriendInvite;
 import com.example.nineuniverse.domain.PvpInviteNotice;
 import com.example.nineuniverse.repository.PvpFriendInviteMapper;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -12,6 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class PvpFriendInviteService {
+
+	/** 相手が承諾しないまま経過したら招待と待機ルームを無効化するまでの時間 */
+	public static final Duration PENDING_INVITE_TTL = Duration.ofMinutes(3);
 
 	public record PvpInviteCreated(long inviteId, String matchId) {
 	}
@@ -86,7 +91,7 @@ public class PvpFriendInviteService {
 		}
 		if (pvpBattleService.get(inv.getMatchId()) == null) {
 			pvpFriendInviteMapper.updateStatus(inviteId, "DECLINED");
-			throw new IllegalStateException("招待の有効期限が切れたか、相手が取り消しました");
+			throw new IllegalStateException("招待の有効期限が切れたか、相手が取り消しました（承諾は申し込みから3分以内に行ってください）");
 		}
 		pvpBattleService.join(inv.getMatchId(), opponentUserId, opponentDeckId);
 		pvpFriendInviteMapper.updateStatus(inviteId, "ACCEPTED");
@@ -116,5 +121,19 @@ public class PvpFriendInviteService {
 		}
 		pvpBattleService.removeMatch(inv.getMatchId());
 		pvpFriendInviteMapper.updateStatus(inviteId, "CANCELLED");
+	}
+
+	/**
+	 * 作成から {@link #PENDING_INVITE_TTL} を過ぎた保留招待を EXPIRED にし、対応する待機ルームをメモリから削除する。
+	 */
+	@Transactional
+	public void expireStalePendingInvites() {
+		Instant cutoff = Instant.now().minus(PENDING_INVITE_TTL);
+		for (PvpFriendInvite row : pvpFriendInviteMapper.findPendingInvitesCreatedBefore(cutoff)) {
+			int n = pvpFriendInviteMapper.expireByIdIfPending(row.getId(), cutoff);
+			if (n == 1) {
+				pvpBattleService.removeMatch(row.getMatchId());
+			}
+		}
 	}
 }

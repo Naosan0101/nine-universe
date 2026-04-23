@@ -9,7 +9,8 @@
 	<meta name="card_plate_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|"/>
 	<meta name="card_data_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardDataUrl}|"/>
 </head>
-<body class="page page--pack-result">
+<body class="page page--pack-result"
+      th:data-pack-bonus-auto-next-url="${packResultBonusAutoAdvance} ? @{/home(openTimePackChoice=1)} : _">
 <header class="topbar">
 	<h1 class="game-title">結果</h1>
 	<div class="pack-result__actions" th:unless="${packResultFromBonusPack or (lastPackType != null and #strings.startsWith(lastPackType,'RECYCLE_'))}">
@@ -24,7 +25,8 @@
 		<a class="btn btn--ghost" th:href="@{/recycle}">カードリサイクルに戻る</a>
 	</div>
 	<div class="pack-result__actions" th:if="${packResultFromBonusPack}">
-		<a class="btn btn--ghost" th:href="@{/home}">ホームに戻る</a>
+		<p th:if="${packResultBonusAutoAdvance}" class="pack-result__bonus-next-hint muted">まもなく次のボーナスパックの選択に進みます。</p>
+		<a class="btn btn--ghost" th:href="@{/home}" id="pack-result-bonus-home">ホームに戻る</a>
 	</div>
 </header>
 
@@ -105,6 +107,23 @@
 <script th:src="@{/js/card-spark.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/card-face-layer.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/library.js(v=${assetVersion})}"></script>
+<script>
+	(function () {
+		var body = document.body;
+		var url = body.getAttribute('data-pack-bonus-auto-next-url');
+		if (!url) return;
+		var delayMs = 1500;
+		var t = setTimeout(function () {
+			window.location.href = url;
+		}, delayMs);
+		var home = document.getElementById('pack-result-bonus-home');
+		if (home) {
+			home.addEventListener('click', function () {
+				clearTimeout(t);
+			});
+		}
+	})();
+</script>
 <th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>

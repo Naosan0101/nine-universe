@@ -1,9 +1,19 @@
 const path = require('path');
 const fs = require('fs');
-const { app, BrowserWindow, Menu, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, Notification } = require('electron');
+
+/* Windows でトースト通知にアプリ名を正しく出す（package.json の build.appId と一致） */
+if (process.platform === 'win32') {
+	try {
+		app.setAppUserModelId('jp.nine-universe.desktop');
+	} catch (_) {
+		/* ignore */
+	}
+}
 
 /**
- * ウィンドウ／タスクバー用。icon.png はアイコン01.PNG と同一画像（ASCII 名で electron-builder / Windows の埋め込み互換）。
+ * ウィンドウ／タスクバー用（BrowserWindow）。デスクトップ／exe 埋め込みは package.json の build.win.icon（desktop_icon_01.PNG＝Web 静的の cards/desktop_icon_01.PNG と同一画像）。
+ * icon.png はアイコン01.PNG と同一画像（ASCII 名でランタイム読み込み互換）。
  * （Setup.exe のアイコンは package.json の nsis.installerIcon で別 ICO を使用）
  */
 function appIconPath() {
@@ -213,6 +223,32 @@ function createWindow() {
 
 ipcMain.handle('nu-quit-app', () => {
 	app.quit();
+});
+
+ipcMain.handle('nu-show-pvp-invite-notification', (event, payload) => {
+	if (!Notification.isSupported()) {
+		return false;
+	}
+	var title =
+		payload && typeof payload.title === 'string' && payload.title.trim()
+			? payload.title.trim()
+			: 'ナインユニバース：対戦の申し込み';
+	var body =
+		payload && typeof payload.body === 'string' && payload.body.trim()
+			? payload.body.trim()
+			: '「だれかと対戦」を開いて承諾してください。';
+	var icon = appIconPath();
+	try {
+		var opts = { title: title, body: body };
+		if (icon) {
+			opts.icon = icon;
+		}
+		var n = new Notification(opts);
+		n.show();
+		return true;
+	} catch (_) {
+		return false;
+	}
 });
 
 ipcMain.handle('nu-set-fullscreen', (event, on) => {

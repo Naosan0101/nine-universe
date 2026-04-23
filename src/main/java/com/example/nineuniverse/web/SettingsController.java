@@ -48,10 +48,12 @@ public class SettingsController {
 			@RequestParam(value = "cpuThinkSpeed", required = false) String cpuThinkSpeed,
 			@RequestParam("epithetUpperId") long epithetUpperId,
 			@RequestParam("epithetLowerId") long epithetLowerId,
+			@RequestParam(value = "pvpInviteNotify", defaultValue = "false") boolean pvpInviteNotify,
 			RedirectAttributes ra) {
 		long uid = CurrentUser.require().getId();
 		try {
-			userSettingsService.updateProfileAndEpithets(uid, displayName, cpuThinkSpeed, epithetUpperId, epithetLowerId);
+			userSettingsService.updateProfileAndEpithets(uid, displayName, cpuThinkSpeed, epithetUpperId, epithetLowerId,
+					pvpInviteNotify);
 			Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 			if (auth != null && auth.getPrincipal() instanceof AccountUserDetails d) {
 				userSettingsService.refreshUserInMemory(d.getUser(), uid);

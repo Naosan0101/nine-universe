@@ -44,22 +44,82 @@ tasks.named('bootJar') {
 }
 
 /**
- * Electron の NSIS 成果物を processResources 出力へコピー（bootRun / IDE / bootJar いずれも classpath: static/downloads/ に載る）。
- * 無い場合はスキップ（ダウンロードは 404。リリース前に electron のパッケージを実行すること）。
+ * Electron の成果物を processResources 出力へコピー（bootRun / IDE / bootJar いずれも classpath: static/downloads/ に載る）。
+ * 無い場合はスキップ（該当ダウンロードは 404。リリース前に electron のパッケージを実行すること）。
  */
-def desktopInstallerSource = file("${rootDir}/electron/dist-installer/Nine Universe Setup 0.1.0.exe")
+def desktopInstallerWinSource = file("${rootDir}/electron/dist-installer/Nine Universe Setup 0.1.1.exe")
+def macInstallerCandidates = [
+		file("${rootDir}/electron/dist-installer/nine-universe-0.1.1.dmg"),
+		file("${rootDir}/electron/dist-installer/Nine Universe-0.1.1-universal.dmg"),
+		file("${rootDir}/electron/dist/Nine Universe-0.1.1-universal.dmg"),
+]
+
 tasks.named('processResources', Copy) {
 	doLast {
-		if (!desktopInstallerSource.isFile()) {
-			return
-		}
 		def destDir = file("${layout.buildDirectory.get()}/resources/main/static/downloads")
 		destDir.mkdirs()
-		def dest = new File(destDir, 'nine-universe-setup-0.1.0.exe')
-		java.nio.file.Files.copy(
-				desktopInstallerSource.toPath(),
-				dest.toPath(),
-				java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+		if (desktopInstallerWinSource.isFile()) {
+			def destWin = new File(destDir, 'nine-universe-setup-0.1.1.exe')
+			java.nio.file.Files.copy(
+					desktopInstallerWinSource.toPath(),
+					destWin.toPath(),
+					java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+		}
+		def macSource = macInstallerCandidates.find { it.isFile() }
+		if (macSource != null) {
+			def destMac = new File(destDir, 'nine-universe-0.1.1.dmg')
+			java.nio.file.Files.copy(
+					macSource.toPath(),
+					destMac.toPath(),
+					java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+		}
+	}
+}
+
+/**
+ * electron/dist-installer にある Windows セットアップ .exe をデスクトップへ、Mac .dmg を
+ * デスクトップの「Mac用インストーラー」フォルダへコピーする。
+ * Mac の .dmg は macOS 上で {@code cd electron && npm run dist:mac}（または {@code npm run dist:mac:desktop}）で生成すること。
+ */
+def resolveUserDesktopDir() {
+	def home = System.getProperty('user.home')
+	def candidates = [new File(home, 'Desktop'), new File(home, 'デスクトップ')]
+	return candidates.find { it.isDirectory() }
+}
+
+tasks.register('copyDesktopInstallersToDesktop') {
+	group = 'distribution'
+	description = 'Copies Windows setup to Desktop; Mac .dmg into Desktop/Mac用インストーラー/.'
+	doLast {
+		def desktop = resolveUserDesktopDir()
+		if (desktop == null) {
+			logger.lifecycle('copyDesktopInstallersToDesktop: Desktop folder not found (Desktop / デスクトップ).')
+			return
+		}
+		if (desktopInstallerWinSource.isFile()) {
+			def destWin = new File(desktop, desktopInstallerWinSource.name)
+			java.nio.file.Files.copy(
+					desktopInstallerWinSource.toPath(),
+					destWin.toPath(),
+					java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+			logger.lifecycle("copyDesktopInstallersToDesktop: Windows -> ${destWin}")
+		} else {
+			logger.lifecycle("copyDesktopInstallersToDesktop: skip Windows (missing ${desktopInstallerWinSource})")
+		}
+		def macDir = new File(desktop, 'Mac用インストーラー')
+		macDir.mkdirs()
+		def macSource = macInstallerCandidates.find { it.isFile() }
+		if (macSource != null) {
+			def destMac = new File(macDir, 'nine-universe-0.1.1.dmg')
+			java.nio.file.Files.copy(
+					macSource.toPath(),
+					destMac.toPath(),
+					java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+			logger.lifecycle("copyDesktopInstallersToDesktop: Mac -> ${destMac}")
+		} else {
+			logger.lifecycle("copyDesktopInstallersToDesktop: Mac folder ready (empty until .dmg exists): ${macDir}")
+			logger.lifecycle('copyDesktopInstallersToDesktop: build .dmg on macOS: cd electron && npm run dist:mac:desktop')
+		}
 	}
 }
 

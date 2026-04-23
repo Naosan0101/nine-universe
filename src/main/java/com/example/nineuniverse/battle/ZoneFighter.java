@@ -24,7 +24,7 @@ public class ZoneFighter implements Serializable {
 	 */
 	private int ninjaSwapPowerPenalty;
 	/**
-	 * ボットバイク: 配置コストに「メカニック」が含まれた場合の強さ+2（次の相手ターン終了まで）。
+	 * ボットバイク: 配置コストに「メカニック」が含まれた場合の強さ+3（次の相手ターン終了まで）。
 	 * {@link CpuBattleEngine#beginTurnGainStone} で 0 に戻す。
 	 */
 	private int botBikeMechanicPowerBonus;
@@ -41,4 +41,8 @@ public class ZoneFighter implements Serializable {
 	 * 0 は未設定（旧データ互換）。
 	 */
 	private int battleMainLineSeq;
+	/**
+	 * 薬売り〈配置〉: 配置した時点の配置側の所持ストーン数。相手ファイターの強さからこの値を減らす（メインが薬売りでないときは 0）。
+	 */
+	private int kusuriOpponentDebuffFromDeployStones;
 }

@@ -170,6 +170,10 @@ public class CpuBattleService {
 				st.getHumanNextElfOnlyBonus(),
 				st.getHumanNextDeployCostBonusTimes(),
 				st.getHumanNextMechanicStacks(),
+				st.getCpuNextDeployBonus(),
+				st.getCpuNextElfOnlyBonus(),
+				st.getCpuNextDeployCostBonusTimes(),
+				st.getCpuNextMechanicStacks(),
 				st.getLastMessage(),
 				st.isGameOver(),
 				st.isHumanWon(),
@@ -317,7 +321,7 @@ public class CpuBattleService {
 		var under = z.getCostUnder().stream().map(CpuBattleService::toBattleCardDto).toList();
 		List<BattlePowerModifierDto> mods = powerModifiers != null ? powerModifiers : List.of();
 		return new ZoneFighterDto(main, under, z.getTemporaryPowerBonus() + z.getLevelUpDeployPowerBonus(), mods,
-				z.getSpec777RolledPower(), z.getBattleMainLineSeq());
+				z.getSpec777RolledPower(), z.getBattleMainLineSeq(), z.getKusuriOpponentDebuffFromDeployStones());
 	}
 
 	private void maybeNotifyCpuWinMission(CpuBattleState st) {

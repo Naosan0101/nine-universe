@@ -5,6 +5,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<title>Nine Universe — ログイン</title>
 	<link rel="stylesheet" th:href="@{/css/app.css(v=${assetVersion})}"/>
+	<th:block th:replace="~{fragments/desktop-app-update-gate :: head-meta}"></th:block>
 </head>
 <body class="page page--auth">
 <div class="auth-card">
@@ -28,6 +29,7 @@
 	</div>
 </div>
 <script th:replace="~{fragments/tab-fullscreen :: script}"></script>
+<script th:replace="~{fragments/click-sparkle :: script}"></script>
 <script>
 (function () {
 	var wrap = document.getElementById('auth-quit-app-wrap');
@@ -41,5 +43,6 @@
 	}
 })();
 </script>
+<th:block th:replace="~{fragments/desktop-app-update-gate :: overlay}"></th:block>
 </body>
 </html>

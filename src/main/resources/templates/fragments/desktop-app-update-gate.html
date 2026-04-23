@@ -1,0 +1,110 @@
+<th:block xmlns:th="http://www.thymeleaf.org" th:fragment="head-meta">
+	<th:block th:if="${desktopClientUpdateGateActive}">
+		<meta name="nu_desktop_minimum_version" th:content="${desktopClientMinimumVersion}"/>
+	</th:block>
+</th:block>
+<th:block xmlns:th="http://www.thymeleaf.org" th:fragment="overlay">
+	<th:block th:if="${desktopClientUpdateGateActive}">
+		<aside id="desktop-app-update-gate"
+		       class="web-desktop-migration-notice"
+		       hidden
+		       role="dialog"
+		       aria-modal="true"
+		       aria-labelledby="desktop-app-update-gate-title">
+			<div class="web-desktop-migration-notice__inner" role="document">
+				<h2 id="desktop-app-update-gate-title" class="web-desktop-migration-notice__title">アプリを更新してください</h2>
+				<div class="web-desktop-migration-notice__body">
+					<div class="web-desktop-migration-notice__stanza">
+						<p class="announcement-modal__card-text">
+							ご利用中のデスクトップ版は、サーバーが要求するバージョンより古いため、このままではログインできません。
+						</p>
+						<p class="announcement-modal__card-text muted">
+							この端末のアプリのバージョン: <strong id="desktop-app-update-gate-client-ver">—</strong>
+							／ 必要なバージョン以上: <strong th:text="${desktopClientMinimumVersion}">0.0.0</strong>
+						</p>
+					</div>
+					<div class="web-desktop-migration-notice__stanza">
+						<p class="announcement-modal__card-text">
+							以下から最新のインストーラーを取得し、上書きインストール（または一度アンインストールしてから再インストール）を行ってください。
+						</p>
+						<div class="web-desktop-migration-notice__download-row">
+							<p class="web-desktop-migration-notice__download" th:if="${desktopClientUpdateInstallerWinHref != null and !desktopClientUpdateInstallerWinHref.isEmpty()}">
+								<a class="btn btn--primary web-desktop-migration-notice__download-btn"
+								   th:href="${desktopClientUpdateInstallerWinHref}">Windows 用（.exe）</a>
+							</p>
+							<p class="web-desktop-migration-notice__download" th:if="${desktopClientUpdateInstallerMacHref != null and !desktopClientUpdateInstallerMacHref.isEmpty()}">
+								<a class="btn btn--primary web-desktop-migration-notice__download-btn"
+								   th:href="${desktopClientUpdateInstallerMacHref}">Mac 用（.dmg）</a>
+							</p>
+						</div>
+						<p class="announcement-modal__card-text muted web-desktop-migration-notice__browser-hint">
+							※インストール後はこのウィンドウを閉じ、新しく起動したアプリから再度ログインしてください。
+						</p>
+						<p class="announcement-modal__card-text muted web-desktop-migration-notice__browser-hint">
+							※ブラウザ版ではなく、デスクトップ版（専用アプリ）で表示されています。
+						</p>
+					</div>
+				</div>
+			</div>
+		</aside>
+		<script>
+			(function () {
+				function semverParts(v) {
+					var m = String(v == null ? '' : v).trim().match(/^(\d+)\.(\d+)\.(\d+)/);
+					if (!m) {
+						return [0, 0, 0];
+					}
+					return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10)];
+				}
+				/** true iff a &lt; b (major.minor.patch の先頭3数のみ比較) */
+				function semverLessThan(a, b) {
+					var pa = semverParts(a);
+					var pb = semverParts(b);
+					for (var i = 0; i < 3; i++) {
+						if (pa[i] !== pb[i]) {
+							return pa[i] < pb[i];
+						}
+					}
+					return false;
+				}
+				var meta = document.querySelector('meta[name="nu_desktop_minimum_version"]');
+				var minV = meta && meta.getAttribute('content');
+				if (!minV || !String(minV).trim()) {
+					return;
+				}
+				minV = String(minV).trim();
+				var neu = window.nuElectron;
+				if (!neu) {
+					return;
+				}
+				var clientV = typeof neu.appVersion === 'string' && neu.appVersion.trim()
+					? neu.appVersion.trim()
+					: '0.0.0';
+				var label = document.getElementById('desktop-app-update-gate-client-ver');
+				if (label) {
+					label.textContent = clientV;
+				}
+				if (!semverLessThan(clientV, minV)) {
+					return;
+				}
+				var el = document.getElementById('desktop-app-update-gate');
+				if (!el) {
+					return;
+				}
+				el.removeAttribute('hidden');
+				document.documentElement.classList.add('nu-has-desktop-app-update-gate');
+				document.querySelectorAll('form').forEach(function (f) {
+					f.addEventListener(
+						'submit',
+						function (ev) {
+							if (document.documentElement.classList.contains('nu-has-desktop-app-update-gate')) {
+								ev.preventDefault();
+							}
+						},
+						true
+					);
+				});
+			})();
+		</script>
+	</th:block>
+</th:block>

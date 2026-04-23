@@ -5,6 +5,7 @@ import com.example.nineuniverse.domain.CardDefinition;
 import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.service.LibraryService;
 import com.example.nineuniverse.service.PackService;
+import com.example.nineuniverse.service.TimePackGaugeService;
 import com.example.nineuniverse.service.PackService.PackType;
 import com.example.nineuniverse.web.dto.PackOpeningSessionSlot;
 import com.example.nineuniverse.web.dto.PackOpeningSlotView;
@@ -48,6 +49,10 @@ public class PackController {
 	/** 結果画面用：ボーナス二つ名の獲得一覧（{@link com.example.nineuniverse.service.NicknameEpithetService.EpithetGachaResult} のリスト） */
 	public static final String SESSION_PACK_LAST_EPITHET_RESULTS = "pack_last_epithet_results";
 
+	/** ホーム表示用：ボーナス二つ名ガチャの獲得テキスト（開封演出を挟まずポップアップで見せる） */
+	public static final String SESSION_HOME_BONUS_EPITHET_UPPER = "home_bonus_epithet_upper";
+	public static final String SESSION_HOME_BONUS_EPITHET_LOWER = "home_bonus_epithet_lower";
+
 	private static final List<PackRarityRateRow> PACK_RARITY_RATES = List.of(
 			new PackRarityRateRow("レジェンダリー", "2%"),
 			new PackRarityRateRow("エピック", "10%"),
@@ -57,6 +62,7 @@ public class PackController {
 	private final PackService packService;
 	private final AppUserMapper appUserMapper;
 	private final LibraryService libraryService;
+	private final TimePackGaugeService timePackGaugeService;
 
 	/** クラスパス走査用。実ファイルは NFD のため {@link Normalizer#normalize} で揃える。 */
 	private static String packArtClasspathRel(String logicalNfcFileName) {
@@ -322,6 +328,13 @@ public class PackController {
 		Object bonusObj = session.getAttribute(SESSION_PACK_RESULT_FROM_BONUS_PACK);
 		boolean fromBonusPack = Boolean.TRUE.equals(bonusObj);
 		model.addAttribute("packResultFromBonusPack", fromBonusPack);
+		boolean bonusAutoAdvance = false;
+		if (fromBonusPack && fresh != null) {
+			int bank = fresh.getTimePackBonusBank() != null ? Math.max(0, fresh.getTimePackBonusBank()) : 0;
+			var gauge = timePackGaugeService.snapshotForUser(uid);
+			bonusAutoAdvance = gauge.availablePacks() + bank > 0;
+		}
+		model.addAttribute("packResultBonusAutoAdvance", bonusAutoAdvance);
 		session.removeAttribute(SESSION_PACK_RESULT_FROM_BONUS_PACK);
 		return "pack-result";
 	}
