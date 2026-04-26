@@ -39,3 +39,6 @@ out/
 ### Node (Electron desktop shell) ###
 electron/node_modules/
 electron/dist/
+# インストーラ成果物（履歴に入れると 100MB 制限に抵触する）
+electron/dist-installer/
+electron/out-installer-*/
