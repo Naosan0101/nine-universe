@@ -22,6 +22,7 @@
 			th:data-passive-help="${c.passiveHelp != null ? c.passiveHelp : ''}"
 			th:data-layer-base="${c.layerBasePath}"
 			th:data-layer-portrait="${c.layerPortraitPath}"
+			th:data-layer-portrait-alt="${c.layerPortraitPathAlt != null && !c.layerPortraitPathAlt.isBlank() ? c.layerPortraitPathAlt : ''}"
 			th:data-layer-frame="${c.layerFramePath}"
 			th:data-layer-bar="${c.barImagePath}">
 		<div class="library-card__inner">

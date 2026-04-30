@@ -64,18 +64,18 @@ public class PackController {
 	private final LibraryService libraryService;
 	private final TimePackGaugeService timePackGaugeService;
 
-	/** クラスパス走査用。実ファイルは NFD のため {@link Normalizer#normalize} で揃える。 */
-	private static String packArtClasspathRel(String logicalNfcFileName) {
-		return "static/images/cards/" + Normalizer.normalize(logicalNfcFileName, Normalizer.Form.NFD);
+	/** クラスパス走査用。パック絵は NFC ファイル名で {@code static/images/cards/} に配置。 */
+	private static String packArtClasspathRel(String logicalFileName) {
+		return "static/images/cards/" + Normalizer.normalize(logicalFileName.trim(), Normalizer.Form.NFC);
 	}
 
 	private static final List<String> PACK_ART_CLASSPATH_FILES = List.of(
-			packArtClasspathRel("スタンダードパック1.PNG"),
-			packArtClasspathRel("風吹く丘パック.PNG"),
-			packArtClasspathRel("邪悪なる脅威パック.PNG"),
-			packArtClasspathRel("スタンダードパック2.PNG"),
-			packArtClasspathRel("宝石の秘境パック.PNG"),
-			packArtClasspathRel("鉄面の艦隊パック.PNG"));
+			packArtClasspathRel(GameConstants.PACK_ART_FILE_STANDARD_1),
+			packArtClasspathRel(GameConstants.PACK_ART_FILE_WINDY_HILL),
+			packArtClasspathRel(GameConstants.PACK_ART_FILE_EVIL_THREAT),
+			packArtClasspathRel(GameConstants.PACK_ART_FILE_STANDARD_2),
+			packArtClasspathRel(GameConstants.PACK_ART_FILE_JEWEL_UTOPIA),
+			packArtClasspathRel(GameConstants.PACK_ART_FILE_IRON_FLEET));
 
 	private static final String CARD_BACK_CLASSPATH = "static/images/cards/card-back.PNG";
 
@@ -101,13 +101,6 @@ public class PackController {
 		long uid = CurrentUser.require().getId();
 		var fresh = appUserMapper.findById(uid);
 		model.addAttribute("packArtCacheKey", PACK_ART_CACHE_KEY);
-		model.addAttribute("standardPackImage", GameConstants.packArtImageUrl("スタンダードパック1.PNG"));
-		model.addAttribute("windyHillPackImage", GameConstants.packArtImageUrl("風吹く丘パック.PNG"));
-		model.addAttribute("evilThreatPackImage", GameConstants.packArtImageUrl("邪悪なる脅威パック.PNG"));
-		// 新パック（画像が未実装でも購入画面が崩れないよう、存在しない場合は onerror で非表示）
-		model.addAttribute("standard2PackImage", GameConstants.packArtImageUrl("スタンダードパック2.PNG"));
-		model.addAttribute("jewelUtopiaPackImage", GameConstants.packArtImageUrl("宝石の秘境パック.PNG"));
-		model.addAttribute("ironFleetPackImage", GameConstants.packArtImageUrl("鉄面の艦隊パック.PNG"));
 		model.addAttribute("gems", fresh != null && fresh.getCoins() != null ? fresh.getCoins() : 0);
 		int starterGift = fresh != null && fresh.getStarterGiftStandard1Remaining() != null
 				? fresh.getStarterGiftStandard1Remaining()
@@ -120,6 +113,12 @@ public class PackController {
 		model.addAttribute("standard2PackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.STANDARD_2)));
 		model.addAttribute("jewelUtopiaPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.JEWEL_UTOPIA)));
 		model.addAttribute("ironFleetPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.IRON_FLEET)));
+		model.addAttribute("packBuyArtStandard1", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_1));
+		model.addAttribute("packBuyArtWindyHill", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_WINDY_HILL));
+		model.addAttribute("packBuyArtEvilThreat", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_EVIL_THREAT));
+		model.addAttribute("packBuyArtStandard2", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_2));
+		model.addAttribute("packBuyArtJewelUtopia", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_JEWEL_UTOPIA));
+		model.addAttribute("packBuyArtIronFleet", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_IRON_FLEET));
 		return "pack-buy";
 	}
 

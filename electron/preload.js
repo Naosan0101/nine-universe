@@ -28,4 +28,6 @@ contextBridge.exposeInMainWorld('nuElectron', {
 	initialFullscreenPreference: initialFullscreenPreference,
 	/** サーバーの {@code app.desktop-client.minimum-version} と照合（ログイン前ゲート） */
 	appVersion: readPackageJsonVersion(),
+	/** ログイン後: サーバの最新版より古ければ「更新があります」ダイアログ（main が shell.openExternal） */
+	checkDesktopUpdate: () => ipcRenderer.invoke('nu-check-desktop-update'),
 });

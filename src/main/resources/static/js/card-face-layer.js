@@ -134,6 +134,11 @@
 				img.src = fallbackSrc;
 				return;
 			}
+			if (img.dataset && img.dataset.portraitAlt && img.dataset.portraitNormTried !== 'true') {
+				img.dataset.portraitNormTried = 'true';
+				img.src = img.dataset.portraitAlt;
+				return;
+			}
 			hideBrokenImg(img);
 		}
 		img.addEventListener('error', handleError);
@@ -220,7 +225,7 @@
 	}
 
 	/**
-	 * @param {object} card — layerBase(Path), layerBar(Path), layerFrame(Path), attribute, rarity, rarityLabel,
+	 * @param {object} card — layerBase(Path), layerPortrait(Path), layerPortraitPathAlt（任意）, layerBar(Path), layerFrame(Path), attribute, rarity, rarityLabel,
 	 *   cost, basePower または power, name, attributeLabelLines または attrLines, attributeLabelJa,
 	 *   abilityBlocks または ability（文字列）
 	 * @param {object} [options]
@@ -237,6 +242,7 @@
 
 		const layerBase = card.layerBasePath || card.layerBase || '';
 		const layerPortrait = card.layerPortraitPath || card.layerPortrait || '';
+		const layerPortraitAlt = card.layerPortraitPathAlt || card.layerPortraitAlt || '';
 		const layerBar = card.layerBarPath || card.layerBar || '';
 		const layerFrame = card.layerFramePath || card.layerFrame || '';
 
@@ -275,7 +281,14 @@
 
 		pushLayer('base', layerBase, plateFb);
 		if (layerPortrait) {
-			pushLayer('portrait', layerPortrait, '');
+			const im = document.createElement('img');
+			im.className = 'card-face__layer-img card-face__layer-img--portrait';
+			im.alt = '';
+			im.src = absPath(layerPortrait, cp) || '';
+			if (layerPortraitAlt) {
+				im.dataset.portraitAlt = absPath(layerPortraitAlt, cp);
+			}
+			stack.appendChild(im);
 		}
 		if (layerBar) {
 			pushLayer('bar', layerBar, '');

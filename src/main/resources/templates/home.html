@@ -451,12 +451,10 @@
 					<p class="announcement-modal__card-text">・「アーサー」のアートワークを更新しました。</p>
 					<p class="announcement-modal__card-text">・CPUが「忍者」を使用する際のロジックを見直しました。</p>
 					<th:block th:if="${webDesktopMigrationInstallerHref != null and !webDesktopMigrationInstallerHref.isEmpty()}">
-						<p class="announcement-modal__card-text">・デスクトップアプリのインストーラは以下から取得できます（Intel / Apple シリコンの Mac 向けは同一の .dmg です）。</p>
+						<p class="announcement-modal__card-text">・デスクトップアプリのインストーラは以下から取得できます（Windows 用）。</p>
 						<div class="announcement-modal__installer-download-row">
 							<a class="btn btn--primary announcement-modal__installer-download-btn"
 							   th:href="${webDesktopMigrationInstallerHref}">Windows 用（.exe）</a>
-							<a class="btn btn--primary announcement-modal__installer-download-btn"
-							   th:href="${webDesktopMigrationInstallerMacHref}">Mac 用（.dmg）</a>
 						</div>
 					</th:block>
 				</div>
@@ -743,7 +741,7 @@
 						<div class="time-pack-choice-modal__cell">
 							<label class="time-pack-choice-modal__opt">
 								<input type="radio" name="pack0" value="STANDARD" checked="checked"/>
-								<img class="time-pack-choice-modal__img" th:src="|${standardPackImage}?v=${packArtCacheKey}|" alt="" onerror="this.hidden=true; this.removeAttribute('src');"/>
+								<img class="time-pack-choice-modal__img" th:src="|${contextPath != null ? contextPath : ''}${timePackChoiceArtStandard1}?v=${packArtCacheKey}|" alt="" onerror="this.hidden=true; this.removeAttribute('src');"/>
 								<span class="time-pack-choice-modal__name">スタンダードパック1（WH+ET）</span>
 							</label>
 							<button type="button" class="btn btn--ghost time-pack-choice-modal__detail" data-open-pack-detail="home-pack-detail-standard">詳細を見る</button>
@@ -751,7 +749,7 @@
 						<div class="time-pack-choice-modal__cell">
 							<label class="time-pack-choice-modal__opt">
 								<input type="radio" name="pack0" value="STANDARD_2"/>
-								<img class="time-pack-choice-modal__img" th:src="|${standard2PackImage}?v=${packArtCacheKey}|" alt="" onerror="this.hidden=true; this.removeAttribute('src');"/>
+								<img class="time-pack-choice-modal__img" th:src="|${contextPath != null ? contextPath : ''}${timePackChoiceArtStandard2}?v=${packArtCacheKey}|" alt="" onerror="this.hidden=true; this.removeAttribute('src');"/>
 								<span class="time-pack-choice-modal__name">スタンダードパック2（JU+IF）</span>
 							</label>
 							<button type="button" class="btn btn--ghost time-pack-choice-modal__detail" data-open-pack-detail="home-pack-detail-standard-2">詳細を見る</button>

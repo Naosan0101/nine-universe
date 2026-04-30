@@ -197,10 +197,15 @@ public class RecycleController {
 				case STANDARD_2 -> "スタンダードパック2（JU+IF）";
 				default -> t.name();
 			});
-			o.setPackArtImageUrl(switch (t) {
-				case STANDARD -> GameConstants.packArtImageUrl("スタンダードパック1.PNG");
-				case STANDARD_2 -> GameConstants.packArtImageUrl("スタンダードパック2.PNG");
-				default -> GameConstants.packArtImageUrl("スタンダードパック1.PNG");
+			o.setPackThumbKey(switch (t) {
+				case STANDARD -> "standard1";
+				case STANDARD_2 -> "standard2";
+				default -> "standard1";
+			});
+			o.setPackThumbUrl(switch (t) {
+				case STANDARD -> GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_1);
+				case STANDARD_2 -> GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_2);
+				default -> GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_1);
 			});
 			o.setPackDetailModalId(t == PackType.STANDARD ? "pack-detail-standard" : "pack-detail-standard-2");
 			list.add(o);

@@ -25,6 +25,7 @@
 			{
 				layerBase: c.layerBase,
 				layerPortrait: c.layerPortrait,
+				layerPortraitAlt: c.layerPortraitAlt,
 				layerBar: c.layerBar,
 				layerFrame: c.layerFrame,
 				attribute: c.attribute,
@@ -82,6 +83,7 @@
 			name: j.name,
 			layerBase: j.layerBase,
 			layerPortrait: j.layerPortrait,
+			layerPortraitAlt: j.layerPortraitAlt || '',
 			layerBar: j.layerBar,
 			layerFrame: j.layerFrame,
 			attribute: j.attribute,

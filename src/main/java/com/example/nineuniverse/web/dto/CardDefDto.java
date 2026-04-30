@@ -21,6 +21,8 @@ public record CardDefDto(
 		String layerBarPath,
 		String layerFramePath,
 		String layerPortraitPath,
+		/** 主 URL と異なる場合のみ（NFC ファイル名向け）。同一なら空 */
+		String layerPortraitPathAlt,
 		boolean fieldCard,
 		/** FIGHTER / FIELD（バトルUIの〈フィールド〉コスト計算などに使用） */
 		String cardKind,

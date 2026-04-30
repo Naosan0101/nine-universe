@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { app, BrowserWindow, Menu, ipcMain, Notification } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, Notification, session, shell, dialog } = require('electron');
 
 /* Windows でトースト通知にアプリ名を正しく出す（package.json の build.appId と一致） */
 if (process.platform === 'win32') {
@@ -47,8 +47,255 @@ try {
 	// ignore
 }
 
+/*
+ * デプロイ後に「1 回目の起動だけ古い HTML / 古い ?v= の CSS」が残るのを防ぐ（Chromium の HTTP キャッシュ無効）。
+ * 転送量は増える。ローカルでキャッシュを戻すときは NINE_UNIVERSE_ALLOW_HTTP_CACHE=1。
+ */
+if (process.env.NINE_UNIVERSE_ALLOW_HTTP_CACHE !== '1') {
+	try {
+		app.commandLine.appendSwitch('disable-http-cache');
+	} catch (_) {
+		// ignore
+	}
+}
+
 /** 本番は nine-universe.jp。開発時は環境変数で上書き可能。 */
 const START_URL = process.env.NINE_UNIVERSE_URL || 'https://nine-universe.jp';
+
+/** サーバの JAR 差し替え（assetVersion 変化）を検知してウィンドウを取り直す間隔 */
+const ASSET_VERSION_POLL_INTERVAL_MS = 3 * 60 * 1000;
+
+var assetPollTimer = null;
+var lastKnownAssetVersion = null;
+
+function assetVersionEndpointUrl() {
+	try {
+		return new URL('/api/client-asset-version', START_URL).href;
+	} catch (e) {
+		return null;
+	}
+}
+
+/** 初回 loadURL 用。同一 URL のメモリ／ディスクキャッシュを避ける（サーバは無視してよいクエリ）。 */
+function coldStartNavigationUrl() {
+	try {
+		var u = new URL(START_URL);
+		u.searchParams.set('_nu_cold', String(Date.now()));
+		return u.href;
+	} catch (e) {
+		return START_URL;
+	}
+}
+
+function fetchRemoteAssetVersion() {
+	var u = assetVersionEndpointUrl();
+	if (!u) {
+		return Promise.resolve(null);
+	}
+	return fetch(u, { cache: 'no-store', method: 'GET' })
+		.then(function (res) {
+			if (!res.ok) {
+				return null;
+			}
+			return res.text();
+		})
+		.then(function (text) {
+			if (text == null) {
+				return null;
+			}
+			var t = String(text).trim();
+			return t.length ? t : null;
+		})
+		.catch(function () {
+			return null;
+		});
+}
+
+function maybeReloadForNewAssetVersion(win, remote) {
+	if (!win || win.isDestroyed() || !remote) {
+		return;
+	}
+	var wc = win.webContents;
+	if (!wc || wc.isDestroyed()) {
+		return;
+	}
+	try {
+		var url = String(wc.getURL() || '');
+		if (url.startsWith('data:') || url.startsWith('about:')) {
+			return;
+		}
+	} catch (e) {
+		return;
+	}
+	if (lastKnownAssetVersion === null) {
+		lastKnownAssetVersion = remote;
+		return;
+	}
+	if (remote !== lastKnownAssetVersion) {
+		lastKnownAssetVersion = remote;
+		wc.reloadIgnoringCache();
+	}
+}
+
+function startAssetVersionPolling(win) {
+	if (assetPollTimer) {
+		clearInterval(assetPollTimer);
+		assetPollTimer = null;
+	}
+	var poll = function () {
+		if (!win || win.isDestroyed()) {
+			return;
+		}
+		fetchRemoteAssetVersion().then(function (v) {
+			maybeReloadForNewAssetVersion(win, v);
+		});
+	};
+	assetPollTimer = setInterval(poll, ASSET_VERSION_POLL_INTERVAL_MS);
+}
+
+/* --- デスクトップ更新案内（ログイン後に preload から IPC） --- */
+var dismissedDesktopInstallerForLatest = null;
+var desktopUpdateDialogOpen = false;
+var lastDesktopUpdateCheckAt = 0;
+const DESKTOP_UPDATE_CHECK_THROTTLE_MS = 20 * 1000;
+
+function desktopClientUpdateEndpointUrl() {
+	try {
+		return new URL('/api/desktop-client-update', START_URL).href;
+	} catch (e) {
+		return null;
+	}
+}
+
+function semverParts(s) {
+	var p = String(s || '0').split('.');
+	var a = parseInt(p[0], 10);
+	var b = parseInt(p[1], 10);
+	var c = parseInt(p[2], 10);
+	return [isFinite(a) ? a : 0, isFinite(b) ? b : 0, isFinite(c) ? c : 0];
+}
+
+/** @returns {-1|0|1} */
+function compareSemver(a, b) {
+	var pa = semverParts(a);
+	var pb = semverParts(b);
+	for (var i = 0; i < 3; i++) {
+		if (pa[i] < pb[i]) {
+			return -1;
+		}
+		if (pa[i] > pb[i]) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+function resolveWindowForDesktopUpdate(win) {
+	if (win && !win.isDestroyed()) {
+		return win;
+	}
+	try {
+		var f = BrowserWindow.getFocusedWindow();
+		if (f && !f.isDestroyed()) {
+			return f;
+		}
+	} catch (e) {
+		/* ignore */
+	}
+	try {
+		var all = BrowserWindow.getAllWindows();
+		for (var i = 0; i < all.length; i++) {
+			if (all[i] && !all[i].isDestroyed()) {
+				return all[i];
+			}
+		}
+	} catch (e2) {
+		/* ignore */
+	}
+	return null;
+}
+
+async function maybeOfferDesktopUpdate(win) {
+	if (desktopUpdateDialogOpen) {
+		return;
+	}
+	var now = Date.now();
+	if (now - lastDesktopUpdateCheckAt < DESKTOP_UPDATE_CHECK_THROTTLE_MS) {
+		return;
+	}
+	lastDesktopUpdateCheckAt = now;
+
+	var parent = resolveWindowForDesktopUpdate(win);
+	if (!parent) {
+		return;
+	}
+
+	var ep = desktopClientUpdateEndpointUrl();
+	if (!ep) {
+		return;
+	}
+
+	var res;
+	try {
+		res = await fetch(ep, { cache: 'no-store', method: 'GET' });
+	} catch (e) {
+		return;
+	}
+	if (!res.ok) {
+		return;
+	}
+	var data;
+	try {
+		data = await res.json();
+	} catch (e) {
+		return;
+	}
+	var latest = typeof data.latestVersion === 'string' ? data.latestVersion.trim() : '';
+	var installerUrl = typeof data.installerUrl === 'string' ? data.installerUrl.trim() : '';
+	if (!latest || !installerUrl) {
+		return;
+	}
+	if (installerUrl.indexOf('http://') !== 0 && installerUrl.indexOf('https://') !== 0) {
+		return;
+	}
+
+	var current = app.getVersion();
+	if (compareSemver(current, latest) >= 0) {
+		dismissedDesktopInstallerForLatest = null;
+		return;
+	}
+	if (dismissedDesktopInstallerForLatest === latest) {
+		return;
+	}
+
+	desktopUpdateDialogOpen = true;
+	try {
+		var r = await dialog.showMessageBox(parent, {
+			type: 'info',
+			title: 'Nine Universe',
+			message: 'アプリの更新があります。',
+			detail:
+				'現在のバージョン: ' +
+				current +
+				'\n最新のバージョン: ' +
+				latest +
+				'\n\n「ダウンロード」を選ぶと、インストーラの取得先を既定のブラウザで開きます。取得後、インストーラを実行して更新してください。',
+			buttons: ['ダウンロード', '後で'],
+			defaultId: 0,
+			cancelId: 1,
+			noLink: true,
+		});
+		if (r.response === 0) {
+			await shell.openExternal(installerUrl);
+		} else {
+			dismissedDesktopInstallerForLatest = latest;
+		}
+	} catch (e) {
+		/* ignore */
+	} finally {
+		desktopUpdateDialogOpen = false;
+	}
+}
 
 /** preload の initialFullscreenPreference と同じ（localStorage 未設定時の既定） */
 const INITIAL_FULLSCREEN_DEFAULT = process.env.NINE_UNIVERSE_START_FULLSCREEN !== '0';
@@ -178,7 +425,7 @@ ul{padding-left:1.2rem;margin:0.5rem 0}
 	win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(body));
 }
 
-function createWindow() {
+async function createWindow() {
 	var icon = appIconPath();
 	var winOpts = {
 		width: 1280,
@@ -200,11 +447,30 @@ function createWindow() {
 	}
 	const win = new BrowserWindow(winOpts);
 
+	var assetPollStarted = false;
+
+	win.on('closed', function () {
+		if (assetPollTimer) {
+			clearInterval(assetPollTimer);
+			assetPollTimer = null;
+		}
+		lastKnownAssetVersion = null;
+	});
+
 	win.webContents.on('did-finish-load', function () {
 		/* DOMContentLoaded より後。遷移直後に外れたフルスクリーンを希望どおり戻す */
 		setImmediate(function () {
 			syncBrowserWindowFullscreenFromStorage(win);
 		});
+		if (!assetPollStarted) {
+			assetPollStarted = true;
+			fetchRemoteAssetVersion().then(function (v) {
+				if (v) {
+					lastKnownAssetVersion = v;
+				}
+				startAssetVersionPolling(win);
+			});
+		}
 	});
 
 	win.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
@@ -218,89 +484,167 @@ function createWindow() {
 		loadConnectionErrorPage(win, validatedURL, errorDescription);
 	});
 
-	win.loadURL(START_URL);
+	try {
+		await win.webContents.session.clearCache();
+	} catch (_) {
+		/* ignore */
+	}
+	win.loadURL(coldStartNavigationUrl(), {
+		extraHeaders: 'pragma: no-cache\ncache-control: no-cache\n',
+	});
 }
 
-ipcMain.handle('nu-quit-app', () => {
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
 	app.quit();
-});
-
-ipcMain.handle('nu-show-pvp-invite-notification', (event, payload) => {
-	if (!Notification.isSupported()) {
-		return false;
-	}
-	var title =
-		payload && typeof payload.title === 'string' && payload.title.trim()
-			? payload.title.trim()
-			: 'ナインユニバース：対戦の申し込み';
-	var body =
-		payload && typeof payload.body === 'string' && payload.body.trim()
-			? payload.body.trim()
-			: '「だれかと対戦」を開いて承諾してください。';
-	var icon = appIconPath();
-	try {
-		var opts = { title: title, body: body };
-		if (icon) {
-			opts.icon = icon;
-		}
-		var n = new Notification(opts);
-		n.show();
-		return true;
-	} catch (_) {
-		return false;
-	}
-});
-
-ipcMain.handle('nu-set-fullscreen', (event, on) => {
-	const w = browserWindowFromIpcSender(event.sender);
-	if (!w || w.isDestroyed()) {
-		return;
-	}
-	const flag = !!on;
-	/*
-	 * isFullScreen() が実表示とずれていると、解除時に「既にウィンドウ」と誤判定して
-	 * setFullScreen(false) がスキップされる（設定で OFF にしてもフルスクリーンのまま）。
-	 * did-finish-load の sync と同様、OFF は常に適用する。
-	 * ON 側は従来どおり差分があるときだけ呼び、Windows での過剰呼び出しを避ける。
-	 */
-	if (!flag) {
-		const wasFs = w.isFullScreen();
-		w.setFullScreen(false);
-		/* 非同期で状態が追いつかない環境向けに再試行。Windows では解除後に最大化だけ残ることもある。 */
-		setImmediate(function () {
+} else {
+	app.on('second-instance', function (event, commandLine, workingDirectory) {
+		var wins = BrowserWindow.getAllWindows();
+		for (var i = 0; i < wins.length; i++) {
+			var w = wins[i];
 			if (!w || w.isDestroyed()) {
-				return;
+				continue;
 			}
-			if (w.isFullScreen()) {
-				w.setFullScreen(false);
+			if (w.isMinimized()) {
+				w.restore();
 			}
-			if (process.platform === 'win32' && wasFs && w.isMaximized()) {
-				try {
-					w.unmaximize();
-				} catch (_) {
-					/* ignore */
-				}
+			w.focus();
+			try {
+				w.webContents.reloadIgnoringCache();
+			} catch (e) {
+				/* ignore */
 			}
-		});
-		return;
-	}
-	if (w.isFullScreen() !== flag) {
-		w.setFullScreen(flag);
-	}
-});
-
-app.whenReady().then(() => {
-	Menu.setApplicationMenu(null);
-	createWindow();
-	app.on('activate', () => {
-		if (BrowserWindow.getAllWindows().length === 0) {
-			createWindow();
 		}
 	});
-});
 
-app.on('window-all-closed', () => {
-	if (process.platform !== 'darwin') {
-		app.quit();
-	}
-});
+	ipcMain.handle('nu-quit-app', (event) => {
+		/*
+		 * app.quit() だけだと、Windows ＋ ネイティブフルスクリーン等で
+		 * ウィンドウ終了待ちに留まりプロセスが残ることがある。
+		 * ユーザー明示の「終了」は即時に落とす。
+		 */
+		var senderWin = null;
+		try {
+			senderWin = BrowserWindow.fromWebContents(event.sender);
+		} catch (_) {
+			senderWin = null;
+		}
+		if (senderWin && !senderWin.isDestroyed()) {
+			try {
+				senderWin.setFullScreen(false);
+			} catch (_) {
+				/* ignore */
+			}
+		}
+		setImmediate(function () {
+			try {
+				var all = BrowserWindow.getAllWindows();
+				for (var i = 0; i < all.length; i++) {
+					var bw = all[i];
+					if (bw && !bw.isDestroyed()) {
+						bw.destroy();
+					}
+				}
+			} catch (_) {
+				/* ignore */
+			}
+			app.exit(0);
+		});
+	});
+
+	ipcMain.handle('nu-check-desktop-update', async function (event) {
+		var win = null;
+		try {
+			win = BrowserWindow.fromWebContents(event.sender);
+		} catch (e) {
+			win = null;
+		}
+		await maybeOfferDesktopUpdate(win);
+		return { ok: true };
+	});
+
+	ipcMain.handle('nu-show-pvp-invite-notification', (event, payload) => {
+		if (!Notification.isSupported()) {
+			return false;
+		}
+		var title =
+			payload && typeof payload.title === 'string' && payload.title.trim()
+				? payload.title.trim()
+				: 'ナインユニバース：対戦の申し込み';
+		var body =
+			payload && typeof payload.body === 'string' && payload.body.trim()
+				? payload.body.trim()
+				: '「だれかと対戦」を開いて承諾してください。';
+		var icon = appIconPath();
+		try {
+			var opts = { title: title, body: body };
+			if (icon) {
+				opts.icon = icon;
+			}
+			var n = new Notification(opts);
+			n.show();
+			return true;
+		} catch (_) {
+			return false;
+		}
+	});
+
+	ipcMain.handle('nu-set-fullscreen', (event, on) => {
+		const w = browserWindowFromIpcSender(event.sender);
+		if (!w || w.isDestroyed()) {
+			return;
+		}
+		const flag = !!on;
+		/*
+		 * isFullScreen() が実表示とずれていると、解除時に「既にウィンドウ」と誤判定して
+		 * setFullScreen(false) がスキップされる（設定で OFF にしてもフルスクリーンのまま）。
+		 * did-finish-load の sync と同様、OFF は常に適用する。
+		 * ON 側は従来どおり差分があるときだけ呼び、Windows での過剰呼び出しを避ける。
+		 */
+		if (!flag) {
+			const wasFs = w.isFullScreen();
+			w.setFullScreen(false);
+			/* 非同期で状態が追いつかない環境向けに再試行。Windows では解除後に最大化だけ残ることもある。 */
+			setImmediate(function () {
+				if (!w || w.isDestroyed()) {
+					return;
+				}
+				if (w.isFullScreen()) {
+					w.setFullScreen(false);
+				}
+				if (process.platform === 'win32' && wasFs && w.isMaximized()) {
+					try {
+						w.unmaximize();
+					} catch (_) {
+						/* ignore */
+					}
+				}
+			});
+			return;
+		}
+		if (w.isFullScreen() !== flag) {
+			w.setFullScreen(flag);
+		}
+	});
+
+	app.whenReady().then(async () => {
+		Menu.setApplicationMenu(null);
+		try {
+			await session.defaultSession.clearCache();
+		} catch (_) {
+			/* ignore */
+		}
+		await createWindow();
+		app.on('activate', async () => {
+			if (BrowserWindow.getAllWindows().length === 0) {
+				await createWindow();
+			}
+		});
+	});
+
+	app.on('window-all-closed', () => {
+		if (process.platform !== 'darwin') {
+			app.quit();
+		}
+	});
+}

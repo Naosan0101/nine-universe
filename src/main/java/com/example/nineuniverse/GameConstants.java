@@ -10,7 +10,10 @@ import java.util.Set;
 import org.springframework.web.util.UriUtils;
 
 /**
- * 静的画像 URL（{@code /images/cards/…}）。参照時は NFD に正規化しリソース名と一致させる。拡張子は {@code .PNG} / {@code .JPEG} にそろえる。
+ * 静的画像 URL（{@code /images/cards/…}）。レイヤー素材（基盤・基礎データなど）は NFD に正規化（Git / macOS 由来 JAR エントリと一致）。
+ * キャライラストの主 URL も NFD（{@link #encCardFile}）で、リポジトリ上のファイル名と一致させる。
+ * Windows でのみ NFC 名のファイルを置いた場合は {@link #cardFacePortraitLayerPathAltNfc}（主 URL と異なるときだけ）を併用する。
+ * 拡張子は {@code .PNG} / {@code .JPEG} にそろえる。
  */
 public final class GameConstants {
 	public static final String CARD_ASSET_DIR = "/images/cards/";
@@ -92,9 +95,7 @@ public final class GameConstants {
 	}
 
 	/**
-	 * キャライラスト（DB {@code image_file} または「カード名.PNG」）。
-	 * クラスパス上の実ファイル名に合わせ {@link #encCardFile}（NFD URL）を使う。
-	 * NFC 名のみのファイルは読めないため、素材はリポジトリで NFD に揃えるかファイル名を DB と揃える。
+	 * キャライラスト（DB {@code image_file} または「カード名.PNG」）。{@link #encCardFile}（NFD）でリポジトリ資産と一致。
 	 */
 	public static String cardPortraitPath(String imageFile) {
 		if (imageFile == null || imageFile.isBlank()) {
@@ -103,11 +104,7 @@ public final class GameConstants {
 		return encCardFile(imageFile);
 	}
 
-	/**
-	 * カード面のイラスト層（①基盤と種族バーの間）。素材は {@code カード名.PNG}（または DB の image_file）。
-	 * 種族: 人間・エルフ・アンデッド・ドラゴン・エルフアンデッド・カーバンクル（カード名とファイル名を一致させる）。
-	 */
-	public static String namedTribePortraitLayerPath(String attribute, String cardName) {
+	private static String namedTribePortraitLayerPathInternal(String attribute, String cardName, boolean nfdUrl) {
 		if (attribute == null || cardName == null) {
 			return "";
 		}
@@ -124,7 +121,23 @@ public final class GameConstants {
 		if (n.isEmpty()) {
 			return "";
 		}
-		return encCardFile(n + ".PNG");
+		return nfdUrl ? encCardFile(n + ".PNG") : encCardFileNfc(n + ".PNG");
+	}
+
+	/**
+	 * カード面のイラスト層（①基盤と種族バーの間）。素材は {@code カード名.PNG}（または DB の image_file）。
+	 * 種族: 人間・エルフ・アンデッド・ドラゴン・エルフアンデッド・カーバンクル（カード名とファイル名を一致させる）。
+	 */
+	public static String namedTribePortraitLayerPath(String attribute, String cardName) {
+		return namedTribePortraitLayerPathInternal(attribute, cardName, true);
+	}
+
+	private static String portraitFileUrl(String imageFile, boolean nfdUrl) {
+		if (imageFile == null || imageFile.isBlank()) {
+			return "";
+		}
+		String t = imageFile.trim();
+		return nfdUrl ? encCardFile(t) : encCardFileNfc(t);
 	}
 
 	/**
@@ -138,24 +151,41 @@ public final class GameConstants {
 	 * カード面のイラスト層 URL。
 	 * <p>単一種族は通常 {@link #namedTribePortraitLayerPath}（カード名.PNG）を優先。
 	 * {@link #PORTRAIT_USE_DB_IMAGE_FILE_IDS} のみ {@code image_file} を優先（静的ファイル名がカード名と異なる場合）。
-	 * その URL は {@link #encCardFileNfc}（NFC）で組む。Windows 資産のファイル名が NFC のとき {@link #cardPortraitPath}（NFD）だと 404 になるため。
 	 */
 	public static String cardFacePortraitLayerPath(String attribute, String cardName, String imageFile, Short cardId) {
+		return cardFacePortraitLayerPathInternal(attribute, cardName, imageFile, cardId, true);
+	}
+
+	/**
+	 * 主 URL（{@link #cardFacePortraitLayerPath}）が NFD のとき、ローカルで NFC 名のみ置いた場合の予備 URL。
+	 * 主と同じ文字列なら空（クライアントは data 属性を付けない）。
+	 */
+	public static String cardFacePortraitLayerPathAltNfc(String attribute, String cardName, String imageFile, Short cardId) {
+		String primary = cardFacePortraitLayerPathInternal(attribute, cardName, imageFile, cardId, true);
+		String alt = cardFacePortraitLayerPathInternal(attribute, cardName, imageFile, cardId, false);
+		if (alt.isBlank() || alt.equals(primary)) {
+			return "";
+		}
+		return alt;
+	}
+
+	private static String cardFacePortraitLayerPathInternal(
+			String attribute, String cardName, String imageFile, Short cardId, boolean nfdUrl) {
 		String img = imageFile != null ? imageFile.trim() : "";
 		if (cardId != null
 				&& PORTRAIT_USE_DB_IMAGE_FILE_IDS.contains(cardId)
 				&& !img.isEmpty()
 				&& !img.equalsIgnoreCase("__missing__.PNG")) {
-			return encCardFileNfc(imageFile);
+			return encCardFileNfc(imageFile.trim());
 		}
-		String named = namedTribePortraitLayerPath(attribute, cardName);
+		String named = namedTribePortraitLayerPathInternal(attribute, cardName, nfdUrl);
 		if (named != null && !named.isBlank()) {
 			return named;
 		}
 		if (!img.isEmpty() && !img.equalsIgnoreCase("__missing__.PNG")) {
-			return cardPortraitPath(imageFile);
+			return portraitFileUrl(imageFile, nfdUrl);
 		}
-		return cardPortraitPath(imageFile);
+		return portraitFileUrl(imageFile, nfdUrl);
 	}
 
 	/** ASCII 名に統一（Git が NFD の「カードうら.PNG」だと URL 解決が環境で不一致になりやすい）。 */
@@ -172,11 +202,24 @@ public final class GameConstants {
 	}
 
 	/**
-	 * 購入一覧など、{@code /images/cards/} 配下のパックアート用。
-	 * リポジトリ上のファイル名（Git 由来は NFD になりやすい）と一致させるため {@link #encCardFile} を使う。
+	 * パック絵の実ファイル名（略称なし・{@code static/images/cards/} 上のベース名＋{@code .PNG}）。
 	 */
-	public static String packArtImageUrl(String filename) {
-		return encCardFile(filename);
+	public static final String PACK_ART_FILE_STANDARD_1 = "スタンダードパック1.PNG";
+	public static final String PACK_ART_FILE_WINDY_HILL = "風吹く丘パック.PNG";
+	public static final String PACK_ART_FILE_EVIL_THREAT = "邪悪なる脅威パック.PNG";
+	public static final String PACK_ART_FILE_STANDARD_2 = "スタンダードパック2.PNG";
+	public static final String PACK_ART_FILE_JEWEL_UTOPIA = "宝石の秘境パック.PNG";
+	public static final String PACK_ART_FILE_IRON_FLEET = "鉄面の艦隊パック.PNG";
+
+	/**
+	 * パック絵（{@code static/images/cards/〇〇パック.PNG}）を {@code /images/cards/…} で返す URL。
+	 * {@link #encCardFile} と同一規則（{@link com.example.nineuniverse.web.CardImageStaticResourceConfig} の Unicode フォールバック対象）。
+	 */
+	public static String packArtImageWebPath(String logicalFilenameWithExtension) {
+		if (logicalFilenameWithExtension == null || logicalFilenameWithExtension.isBlank()) {
+			return "";
+		}
+		return encCardFile(logicalFilenameWithExtension.trim());
 	}
 
 	/** 新規登録直後の所持ジェム（初回ホームでウェルカムボーナス） */

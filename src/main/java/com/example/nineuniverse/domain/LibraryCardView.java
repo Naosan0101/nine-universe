@@ -35,6 +35,8 @@ public class LibraryCardView {
 	private String layerBasePath;
 	/** キャライラスト（DB image_file、レイヤー用） */
 	private String layerPortraitPath;
+	/** 主 URL が 404 のとき試す予備（NFC 名のファイル用）。主と同じなら空 */
+	private String layerPortraitPathAlt = "";
 	private String layerFramePath;
 	/** DB のヘルプ文（モーダル用 data 属性など） */
 	private String deployHelp;

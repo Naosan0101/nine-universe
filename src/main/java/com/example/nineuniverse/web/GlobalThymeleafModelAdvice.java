@@ -19,10 +19,6 @@ public class GlobalThymeleafModelAdvice {
 	@Value("${app.web-desktop-migration-notice.installer-absolute-url:}")
 	private String webDesktopMigrationInstallerAbsoluteUrl;
 
-	/** 空でなければ Mac 用リンクをこの絶対 URL に差し替え。未設定時は {@code /downloads/nine-universe-0.1.1.dmg}。 */
-	@Value("${app.web-desktop-migration-notice.installer-mac-absolute-url:}")
-	private String webDesktopMigrationInstallerMacAbsoluteUrl;
-
 	/**
 	 * 非空のとき、デスクトップアプリの {@code appVersion} がこれ未満ならログイン前に全画面で更新を促す（Electron のみ）。
 	 * 例: {@code 0.1.1}。空のときは無効。
@@ -83,14 +79,6 @@ public class GlobalThymeleafModelAdvice {
 		return resolveWindowsInstallerHref(request);
 	}
 
-	@ModelAttribute("webDesktopMigrationInstallerMacHref")
-	public String webDesktopMigrationInstallerMacHref(HttpServletRequest request) {
-		if (!webDesktopMigrationNoticeEnabled(request)) {
-			return "";
-		}
-		return resolveMacInstallerHref(request);
-	}
-
 	@ModelAttribute("desktopClientUpdateGateActive")
 	public boolean desktopClientUpdateGateActive() {
 		return desktopMinimumVersionProperty != null && !desktopMinimumVersionProperty.isBlank();
@@ -115,14 +103,6 @@ public class GlobalThymeleafModelAdvice {
 		return resolveWindowsInstallerHref(request);
 	}
 
-	@ModelAttribute("desktopClientUpdateInstallerMacHref")
-	public String desktopClientUpdateInstallerMacHref(HttpServletRequest request) {
-		if (!desktopClientUpdateGateActive()) {
-			return "";
-		}
-		return resolveMacInstallerHref(request);
-	}
-
 	private String resolveWindowsInstallerHref(HttpServletRequest request) {
 		if (webDesktopMigrationInstallerAbsoluteUrl != null && !webDesktopMigrationInstallerAbsoluteUrl.isBlank()) {
 			return webDesktopMigrationInstallerAbsoluteUrl.trim();
@@ -130,14 +110,5 @@ public class GlobalThymeleafModelAdvice {
 		String cp = request.getContextPath();
 		String prefix = (cp == null || cp.isEmpty()) ? "" : cp;
 		return prefix + "/downloads/nine-universe-setup-0.1.1.exe";
-	}
-
-	private String resolveMacInstallerHref(HttpServletRequest request) {
-		if (webDesktopMigrationInstallerMacAbsoluteUrl != null && !webDesktopMigrationInstallerMacAbsoluteUrl.isBlank()) {
-			return webDesktopMigrationInstallerMacAbsoluteUrl.trim();
-		}
-		String cp = request.getContextPath();
-		String prefix = (cp == null || cp.isEmpty()) ? "" : cp;
-		return prefix + "/downloads/nine-universe-0.1.1.dmg";
 	}
 }

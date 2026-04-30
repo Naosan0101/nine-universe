@@ -165,6 +165,7 @@
 	     th:data-img="${line.card.imagePath}"
 	     th:data-layer-base="${line.card.layerBasePath}"
 	     th:data-layer-portrait="${line.card.layerPortraitPath}"
+	     th:data-layer-portrait-alt="${line.card.layerPortraitPathAlt != null && !line.card.layerPortraitPathAlt.isBlank() ? line.card.layerPortraitPathAlt : ''}"
 	     th:data-layer-bar="${line.card.barImagePath}"
 	     th:data-layer-frame="${line.card.layerFramePath}"
 	     th:data-rarity="${line.card.rarity}"

@@ -139,6 +139,7 @@
 	     th:data-img="${c.imagePath}"
 	     th:data-layer-base="${c.layerBasePath}"
 	     th:data-layer-portrait="${c.layerPortraitPath}"
+	     th:data-layer-portrait-alt="${c.layerPortraitPathAlt != null && !c.layerPortraitPathAlt.isBlank() ? c.layerPortraitPathAlt : ''}"
 	     th:data-layer-bar="${c.barImagePath}"
 	     th:data-layer-frame="${c.layerFramePath}"
 	     th:data-rarity="${c.rarity}"

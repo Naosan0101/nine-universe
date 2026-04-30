@@ -29,7 +29,7 @@
 					<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 					<input type="hidden" name="standardPack" th:value="${opt.packTypeParam}"/>
 					<button type="submit" class="pack-buy__item recycle-pack-pick__submit" th:attr="aria-label=${opt.displayName} + ' で開封'">
-						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${opt.packArtImageUrl}?v=${packArtCacheKey}|"
+						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${opt.packThumbUrl}?v=${packArtCacheKey}|"
 						     th:alt="${opt.displayName}" onerror="this.hidden=true; this.removeAttribute('src');"/>
 						<span class="pack-buy__label" th:text="${opt.displayName}">スタンダードパック</span>
 					</button>

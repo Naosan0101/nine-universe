@@ -248,6 +248,7 @@
 			img: staticUrl(el.dataset.img || ''),
 			layerBase: el.dataset.layerBase || '',
 			layerPortrait: el.dataset.layerPortrait || '',
+			layerPortraitAlt: el.dataset.layerPortraitAlt || '',
 			layerBar: el.dataset.layerBar || '',
 			layerFrame: el.dataset.layerFrame || '',
 			rarity: (el.dataset.rarity || 'C').trim(),
@@ -432,6 +433,7 @@
 			{
 				layerBase: c.layerBase,
 				layerPortrait: c.layerPortrait,
+				layerPortraitAlt: c.layerPortraitAlt,
 				layerBar: c.layerBar,
 				layerFrame: c.layerFrame,
 				attribute: c.attribute,
@@ -677,6 +679,15 @@
 			modalLayerBase.src = staticUrl(c.layerBase) || plateFbFull;
 		}
 		if (modalLayerPortrait) {
+			delete modalLayerPortrait.dataset.fallbackWired;
+			delete modalLayerPortrait.dataset.fallbackTried;
+			delete modalLayerPortrait.dataset.portraitNormTried;
+			const pAlt = (c.layerPortraitAlt || '').trim();
+			if (pAlt) {
+				modalLayerPortrait.dataset.portraitAlt = staticUrl(pAlt);
+			} else {
+				delete modalLayerPortrait.dataset.portraitAlt;
+			}
 			applyOnceImgFallback(modalLayerPortrait, '');
 			const pu = staticUrl(c.layerPortrait);
 			if (pu) {

@@ -7,8 +7,10 @@ import lombok.Data;
 public class RecycleStandardPackOption {
 	private String packTypeParam;
 	private String displayName;
-	/** {@link com.example.nineuniverse.GameConstants#packArtImageUrl} 相当の相対URL */
-	private String packArtImageUrl;
+	/** 互換・デバッグ用（ASCII）。表示は {@link #packThumbUrl} を使用。 */
+	private String packThumbKey;
+	/** パック絵サムネ URL（{@code /images/cards/…}、クエリ {@code v} はキャッシュバスター用） */
+	private String packThumbUrl;
 	/** パック購入画面と同じ詳細モーダル（{@code data-open-pack-detail} 用の id） */
 	private String packDetailModalId;
 }

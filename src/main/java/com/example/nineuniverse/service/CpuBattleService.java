@@ -241,6 +241,7 @@ public class CpuBattleService {
 									GameConstants.cardLayerBarPath(d.getAttribute()),
 									isField ? GameConstants.CARD_LAYER_DATA_FIELD : GameConstants.CARD_LAYER_DATA,
 									GameConstants.cardFacePortraitLayerPath(d.getAttribute(), d.getName(), d.getImageFile(), d.getId()),
+									GameConstants.cardFacePortraitLayerPathAltNfc(d.getAttribute(), d.getName(), d.getImageFile(), d.getId()),
 									isField,
 									d.getCardKind(),
 									CardFaceAbilityFormatter.blocksForCardId(d.getId()).stream()

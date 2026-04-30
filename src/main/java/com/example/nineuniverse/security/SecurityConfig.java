@@ -41,7 +41,7 @@ public class SecurityConfig {
 		int validitySeconds = Math.clamp(rememberMeTokenValiditySeconds, 3_600, 60 * 60 * 24 * 30);
 		http
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/login", "/register", "/how-to-play", "/css/**", "/js/**", "/images/**", "/downloads/**", "/error").permitAll()
+						.requestMatchers("/login", "/register", "/how-to-play", "/css/**", "/js/**", "/images/**", "/pack-art/**", "/downloads/**", "/error", "/api/client-asset-version", "/api/desktop-client-update").permitAll()
 						.anyRequest().authenticated())
 				.formLogin(form -> form
 						.loginPage("/login")

@@ -16,8 +16,9 @@
 		<img class="card-face__layer-img card-face__layer-img--portrait"
 		     th:if="${c.layerPortraitPath != null && !c.layerPortraitPath.isBlank()}"
 		     th:src="|${cp != null ? cp : ''}${c.layerPortraitPath}|"
+		     th:attr="data-portrait-alt=(${c.layerPortraitPathAlt != null && !c.layerPortraitPathAlt.isBlank()} ? |${cp != null ? cp : ''}${c.layerPortraitPathAlt}| : _)"
 		     alt=""
-		     onerror="this.hidden=true; this.removeAttribute('src');"/>
+		     th:onerror="|if(this.dataset.portraitAlt){if(!this.dataset.portraitNormTried){this.dataset.portraitNormTried='1';this.src=this.dataset.portraitAlt;return;}}this.hidden=true;this.removeAttribute('src');|"/>
 		<img class="card-face__layer-img card-face__layer-img--bar"
 		     th:if="${c.barImagePath != null && !c.barImagePath.isBlank()}"
 		     th:src="|${cp != null ? cp : ''}${c.barImagePath}|"

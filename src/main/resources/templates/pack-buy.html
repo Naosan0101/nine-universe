@@ -40,7 +40,7 @@
 		<div class="pack-buy__grid">
 			<div class="pack-buy__cell">
 				<button type="button" class="pack-buy__item" data-pack-type="STANDARD" data-pack-name="スタンダードパック1（WH+ET）" data-pack-cost="3">
-					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${standardPackImage}?v=${packArtCacheKey}|" alt="スタンダードパック1（WH+ET）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtStandard1}?v=${packArtCacheKey}|" alt="スタンダードパック1（WH+ET）" onerror="this.hidden=true; this.removeAttribute('src');"/>
 					<span class="pack-buy__label">スタンダードパック1（WH+ET）</span>
 					<span class="pack-buy__price" aria-label="価格3ジェム"><span class="pack-buy__price-num">3</span><span class="pack-buy__price-unit">ジェム</span></span>
 				</button>
@@ -48,7 +48,7 @@
 			</div>
 			<div class="pack-buy__cell">
 				<button type="button" class="pack-buy__item" data-pack-type="WINDY_HILL" data-pack-name="風吹く丘パック（WH）" data-pack-cost="4">
-					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${windyHillPackImage}?v=${packArtCacheKey}|" alt="風吹く丘パック（WH）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtWindyHill}?v=${packArtCacheKey}|" alt="風吹く丘パック（WH）" onerror="this.hidden=true; this.removeAttribute('src');"/>
 					<span class="pack-buy__label">風吹く丘パック（WH）</span>
 					<span class="pack-buy__price" aria-label="価格4ジェム"><span class="pack-buy__price-num">4</span><span class="pack-buy__price-unit">ジェム</span></span>
 				</button>
@@ -56,7 +56,7 @@
 			</div>
 			<div class="pack-buy__cell">
 				<button type="button" class="pack-buy__item" data-pack-type="EVIL_THREAT" data-pack-name="邪悪なる脅威パック（ET）" data-pack-cost="5">
-					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${evilThreatPackImage}?v=${packArtCacheKey}|" alt="邪悪なる脅威パック（ET）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtEvilThreat}?v=${packArtCacheKey}|" alt="邪悪なる脅威パック（ET）" onerror="this.hidden=true; this.removeAttribute('src');"/>
 					<span class="pack-buy__label">邪悪なる脅威パック（ET）</span>
 					<span class="pack-buy__price" aria-label="価格5ジェム"><span class="pack-buy__price-num">5</span><span class="pack-buy__price-unit">ジェム</span></span>
 				</button>
@@ -64,7 +64,7 @@
 			</div>
 			<div class="pack-buy__cell">
 				<button type="button" class="pack-buy__item" data-pack-type="STANDARD_2" data-pack-name="スタンダードパック2（JU+IF）" data-pack-cost="3">
-					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${standard2PackImage}?v=${packArtCacheKey}|" alt="スタンダードパック2（JU+IF）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtStandard2}?v=${packArtCacheKey}|" alt="スタンダードパック2（JU+IF）" onerror="this.hidden=true; this.removeAttribute('src');"/>
 					<span class="pack-buy__label">スタンダードパック2（JU+IF）</span>
 					<span class="pack-buy__price" aria-label="価格3ジェム"><span class="pack-buy__price-num">3</span><span class="pack-buy__price-unit">ジェム</span></span>
 				</button>
@@ -72,7 +72,7 @@
 			</div>
 			<div class="pack-buy__cell">
 				<button type="button" class="pack-buy__item" data-pack-type="JEWEL_UTOPIA" data-pack-name="宝石の秘境パック（JU）" data-pack-cost="4">
-					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${jewelUtopiaPackImage}?v=${packArtCacheKey}|" alt="宝石の秘境パック（JU）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtJewelUtopia}?v=${packArtCacheKey}|" alt="宝石の秘境パック（JU）" onerror="this.hidden=true; this.removeAttribute('src');"/>
 					<span class="pack-buy__label">宝石の秘境パック（JU）</span>
 					<span class="pack-buy__price" aria-label="価格4ジェム"><span class="pack-buy__price-num">4</span><span class="pack-buy__price-unit">ジェム</span></span>
 				</button>
@@ -80,7 +80,7 @@
 			</div>
 			<div class="pack-buy__cell">
 				<button type="button" class="pack-buy__item" data-pack-type="IRON_FLEET" data-pack-name="鉄面の艦隊パック（IF）" data-pack-cost="5">
-					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${ironFleetPackImage}?v=${packArtCacheKey}|" alt="鉄面の艦隊パック（IF）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtIronFleet}?v=${packArtCacheKey}|" alt="鉄面の艦隊パック（IF）" onerror="this.hidden=true; this.removeAttribute('src');"/>
 					<span class="pack-buy__label">鉄面の艦隊パック（IF）</span>
 					<span class="pack-buy__price" aria-label="価格5ジェム"><span class="pack-buy__price-num">5</span><span class="pack-buy__price-unit">ジェム</span></span>
 				</button>

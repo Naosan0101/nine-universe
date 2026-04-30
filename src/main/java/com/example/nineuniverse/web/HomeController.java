@@ -517,8 +517,8 @@ public class HomeController {
 		model.addAttribute("timePackCycleStartEpochMs", gauge.cycleStartEpochMilli());
 		model.addAttribute("timePackDurationMs", gauge.durationMs());
 		model.addAttribute("packArtCacheKey", PackController.getPackArtCacheKey());
-		model.addAttribute("standardPackImage", GameConstants.packArtImageUrl("スタンダードパック1.PNG"));
-		model.addAttribute("standard2PackImage", GameConstants.packArtImageUrl("スタンダードパック2.PNG"));
+		model.addAttribute("timePackChoiceArtStandard1", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_1));
+		model.addAttribute("timePackChoiceArtStandard2", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_2));
 		model.addAttribute("packRarityRates", PackController.getPackRarityRatesForView());
 		model.addAttribute("standardPackPreview", PackController.buildPackPreviewLines(packService, PackType.STANDARD));
 		model.addAttribute("standard2PackPreview", PackController.buildPackPreviewLines(packService, PackType.STANDARD_2));

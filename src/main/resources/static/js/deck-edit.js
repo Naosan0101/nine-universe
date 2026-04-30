@@ -475,6 +475,7 @@
 			img: staticUrl(el.dataset.img || ''),
 			layerBase: el.dataset.layerBase || '',
 			layerPortrait: el.dataset.layerPortrait || '',
+			layerPortraitAlt: el.dataset.layerPortraitAlt || '',
 			layerBar: el.dataset.layerBar || '',
 			layerFrame: el.dataset.layerFrame || '',
 			rarity: (el.dataset.rarity || 'C').trim(),
@@ -602,6 +603,7 @@
 			{
 				layerBase: c.layerBase,
 				layerPortrait: c.layerPortrait,
+				layerPortraitAlt: c.layerPortraitAlt,
 				layerBar: c.layerBar,
 				layerFrame: c.layerFrame,
 				attribute: c.attribute,

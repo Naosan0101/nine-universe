@@ -73,6 +73,7 @@ public class DeckController {
 		m.put("name", v.getName());
 		m.put("layerBase", v.getLayerBasePath());
 		m.put("layerPortrait", v.getLayerPortraitPath());
+		m.put("layerPortraitAlt", v.getLayerPortraitPathAlt() != null ? v.getLayerPortraitPathAlt() : "");
 		m.put("layerBar", v.getBarImagePath());
 		m.put("layerFrame", v.getLayerFramePath());
 		m.put("attribute", v.getAttribute());

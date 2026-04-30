@@ -418,6 +418,15 @@
 			modalLayerBase.src = staticUrl(d.layerBase) || plateFbFull;
 		}
 		if (modalLayerPortrait) {
+			delete modalLayerPortrait.dataset.fallbackWired;
+			delete modalLayerPortrait.dataset.fallbackTried;
+			delete modalLayerPortrait.dataset.portraitNormTried;
+			const pAlt = (d.layerPortraitAlt || '').trim();
+			if (pAlt) {
+				modalLayerPortrait.dataset.portraitAlt = staticUrl(pAlt);
+			} else {
+				delete modalLayerPortrait.dataset.portraitAlt;
+			}
 			applyOnceImgFallback(modalLayerPortrait, '');
 			const pu = staticUrl(d.layerPortrait);
 			if (pu) {
