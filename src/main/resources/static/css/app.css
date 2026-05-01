@@ -609,6 +609,57 @@ html:has(.page--single-screen-hub) body {
 
 .topbar__meta { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; justify-content: flex-end; }
 
+.topbar__auth-actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+}
+
+/* ホーム: アプリ終了確認（デスクトップは nuElectron.quitApp） */
+.nu-home-quit-modal[hidden] {
+	display: none !important;
+}
+.nu-home-quit-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 95;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+	background: rgba(0, 0, 0, 0.78);
+	overscroll-behavior: contain;
+}
+.nu-home-quit-modal__panel {
+	width: 100%;
+	max-width: min(380px, 100%);
+	padding: 1.5rem 1.35rem 1.35rem;
+	border-radius: 14px;
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	background:
+		radial-gradient(900px 260px at 20% 0%, rgba(74, 125, 255, 0.12), transparent 60%),
+		radial-gradient(700px 240px at 80% 0%, rgba(201, 162, 39, 0.1), transparent 60%),
+		linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
+		var(--panel);
+	box-shadow: var(--shadow-lg);
+	text-align: center;
+}
+.nu-home-quit-modal__title {
+	margin: 0 0 1.15rem;
+	font-size: 1.12rem;
+	font-weight: 700;
+	line-height: 1.45;
+	color: var(--text);
+}
+.nu-home-quit-modal__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 0.65rem 0.85rem;
+}
+
 .topbar__announce {
 	position: relative;
 	font-weight: 600;
