@@ -288,6 +288,84 @@ function isAllowedInstallerOpenExternalUrl(href) {
 	}
 }
 
+/** ページが渡す URL と GET /api/desktop-client-update の installerUrl を照合する（パス形式の差で forbidden にならないように） */
+function normalizeInstallerUrlForCompare(href) {
+	try {
+		var u = new URL(String(href).trim());
+		u.hash = '';
+		var p = (u.pathname || '').replace(/\\/g, '/');
+		if (p.length > 1 && p.endsWith('/')) {
+			u.pathname = p.slice(0, -1);
+		}
+		return u.href;
+	} catch (e) {
+		return '';
+	}
+}
+
+function isLoopbackHostname(h) {
+	var x = String(h || '').toLowerCase();
+	return x === 'localhost' || x === '127.0.0.1' || x === '[::1]' || x === '::1';
+}
+
+/** localhost と 127.0.0.1 の差で origin がずれても、同一パスなら同一インストーラとみなす */
+function sameInstallerPathIgnoringLoopbackAlias(a, b) {
+	try {
+		var ua = new URL(a);
+		var ub = new URL(b);
+		var pa = (ua.pathname || '').replace(/\\/g, '/').toLowerCase();
+		var pb = (ub.pathname || '').replace(/\\/g, '/').toLowerCase();
+		if (pa !== pb) {
+			return false;
+		}
+		if (ua.protocol !== ub.protocol) {
+			return false;
+		}
+		if (ua.port !== ub.port) {
+			return false;
+		}
+		if (isLoopbackHostname(ua.hostname) && isLoopbackHostname(ub.hostname)) {
+			return true;
+		}
+		return ua.origin === ub.origin;
+	} catch (e) {
+		return false;
+	}
+}
+
+/**
+ * 厳格ルールに合わないが、自サーバ API が返した installerUrl と同一なら許可（CDN パスやクエリ差の取りこぼし防止）。
+ */
+async function isSanctionedInstallerOpenUrl(href) {
+	if (isAllowedInstallerOpenExternalUrl(href)) {
+		return true;
+	}
+	if (!isSafeRemoteInstallerUrl(href)) {
+		return false;
+	}
+	var payload = await fetchDesktopClientUpdatePayload();
+	if (!payload || !payload.installerUrl) {
+		return false;
+	}
+	var a = normalizeInstallerUrlForCompare(href);
+	var b = normalizeInstallerUrlForCompare(payload.installerUrl);
+	if (a && b && a === b) {
+		return true;
+	}
+	try {
+		var ua = new URL(href);
+		var ub = new URL(payload.installerUrl);
+		var pa = (ua.pathname || '').replace(/\\/g, '/');
+		var pb = (ub.pathname || '').replace(/\\/g, '/');
+		if (ua.origin === ub.origin && pa === pb) {
+			return true;
+		}
+	} catch (e) {
+		/* fall through */
+	}
+	return sameInstallerPathIgnoringLoopbackAlias(href, payload.installerUrl);
+}
+
 async function fetchDesktopUpdateInfoForRenderer() {
 	var current = app.getVersion();
 	var payload = await fetchDesktopClientUpdatePayload();
@@ -777,7 +855,8 @@ if (!gotSingleInstanceLock) {
 		} catch (e) {
 			return { ok: false, error: 'bad_url' };
 		}
-		if (!isAllowedInstallerOpenExternalUrl(u.href)) {
+		var ok = await isSanctionedInstallerOpenUrl(u.href);
+		if (!ok) {
 			return { ok: false, error: 'forbidden' };
 		}
 		try {
