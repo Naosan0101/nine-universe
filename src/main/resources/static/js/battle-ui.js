@@ -2035,7 +2035,7 @@
 				im.src = absUrl(cardBack);
 				im.alt = '裏';
 				im.loading = 'eager';
-				im.decoding = 'auto';
+				im.decoding = 'sync';
 				host.appendChild(im);
 			}
 			grid.appendChild(host);
@@ -2262,7 +2262,7 @@
 			im.alt = '';
 			im.className = 'deck-stack__back';
 			im.loading = 'eager';
-			im.decoding = 'auto';
+			im.decoding = 'sync';
 			const fromTop = n - 1 - i;
 			im.style.left = fromTop * offsetPx + 'px';
 			im.style.top = fromTop * offsetPx + 'px';
@@ -2338,7 +2338,7 @@
 				im.alt = '裏';
 				im.className = 'deck-stack__back';
 				im.loading = 'eager';
-				im.decoding = 'auto';
+				im.decoding = 'sync';
 				cardHost.appendChild(im);
 			}
 			pile.appendChild(cardHost);
@@ -2362,7 +2362,7 @@
 				im.src = absUrl(cardBack);
 				im.alt = '裏';
 				im.loading = 'eager';
-				im.decoding = 'auto';
+				im.decoding = 'sync';
 				wrap.appendChild(im);
 			}
 			return wrap;
@@ -3402,7 +3402,7 @@
 					im.src = absUrl(cardBack);
 					im.alt = '';
 					im.loading = 'eager';
-					im.decoding = 'auto';
+					im.decoding = 'sync';
 					im.style.position = 'absolute';
 					im.style.width = '34px';
 					im.style.height = '48px';
@@ -4443,9 +4443,10 @@
 		if (battleTopActionsEl && battleTopActionsEl.parentNode) {
 			battleTopActionsEl.parentNode.removeChild(battleTopActionsEl);
 		}
-		app.innerHTML = '';
 		hideBattleCardTooltip();
 		hideBattleDeckTooltip();
+		/* innerHTML クリア→追記だとその間に空フレームが挟まり白っぽく見える。組み立ててから一括差し替え */
+		const mountFrag = document.createDocumentFragment();
 
 		// Top "thinking" banner (fixed-ish inside app)
 		if (st.phase === 'CPU_THINKING' || st.phase === 'OPPONENT_TURN') {
@@ -4455,10 +4456,10 @@
 			b.style.zIndex = '20';
 			b.style.marginBottom = '10px';
 			b.textContent = st.phase === 'OPPONENT_TURN' ? '相手の操作中…' : '考え中...';
-			app.appendChild(b);
+			mountFrag.appendChild(b);
 		}
 
-		app.appendChild(el('p', 'battle-msg', st.lastMessage || '—'));
+		mountFrag.appendChild(el('p', 'battle-msg', st.lastMessage || '—'));
 
 		const oppTop = el('section', 'battle-row battle-row--opp battle-band battle-band--opp');
 		{
@@ -4499,7 +4500,7 @@
 
 			oppTop.appendChild(inner);
 		}
-		app.appendChild(oppTop);
+		mountFrag.appendChild(oppTop);
 
 		const zonesRow = el('section', 'battle-row battle-row--zones-split');
 		{
@@ -4545,7 +4546,7 @@
 
 			zonesRow.appendChild(zonesWrap);
 		}
-		app.appendChild(zonesRow);
+		mountFrag.appendChild(zonesRow);
 
 		const you = el('section', 'battle-row battle-row--you battle-band battle-band--you');
 		{
@@ -4582,7 +4583,9 @@
 
 			you.appendChild(inner);
 		}
-		app.appendChild(you);
+		mountFrag.appendChild(you);
+
+		app.replaceChildren(mountFrag);
 
 		updateBattleFieldBackdrop(st.activeField, st.defs);
 
