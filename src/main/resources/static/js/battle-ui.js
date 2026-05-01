@@ -74,6 +74,95 @@
 		return contextPath + p;
 	}
 
+	/** render で DOM を捨てる前にレイヤー img を退避し、同一インスタンスでは作り直さず差し替える */
+	const battleLayerImgPool = new Map();
+
+	function normalizeBattleImgUrl(u) {
+		if (u == null || u === '') return '';
+		try {
+			return String(u).split('#')[0];
+		} catch (e) {
+			return '';
+		}
+	}
+
+	function poolKeyBattleLayer(animKey, suffix) {
+		return String(animKey || '') + '\t' + String(suffix || '');
+	}
+
+	function harvestBattleCardLayerImages(root) {
+		if (!root || !root.querySelectorAll) return;
+		root.querySelectorAll('[data-anim-key]').forEach(function (host) {
+			const animKey = host.getAttribute('data-anim-key');
+			if (!animKey) return;
+			const face = host.querySelector('.card-face.card-face--layered');
+			if (!face) return;
+			const stack = face.querySelector('.card-face__stack');
+			if (!stack) return;
+			stack.querySelectorAll('img.card-face__layer-img').forEach(function (img) {
+				if (!(img instanceof HTMLImageElement)) return;
+				const cls = img.className || '';
+				let suffix = '';
+				if (cls.indexOf('card-face__layer-img--portrait') >= 0) suffix = 'portrait';
+				else if (cls.indexOf('card-face__layer-img--base') >= 0) suffix = 'base';
+				else if (cls.indexOf('card-face__layer-img--bar') >= 0) suffix = 'bar';
+				else if (cls.indexOf('card-face__layer-img--frame') >= 0) suffix = 'frame';
+				if (!suffix) return;
+				img.remove();
+				battleLayerImgPool.set(poolKeyBattleLayer(animKey, suffix), img);
+			});
+		});
+	}
+
+	function expectedBattleCardLayerSrcs(d) {
+		if (!d) return { base: '', portrait: '', bar: '', frame: '' };
+		const cp = contextPath || '';
+		function absP(p) {
+			if (p == null || p === '') return '';
+			const s = String(p);
+			if (s.startsWith('http://') || s.startsWith('https://')) return s;
+			return cp + s;
+		}
+		const layerBase = d.layerBasePath || d.layerBase || '';
+		const layerPortrait = d.layerPortraitPath || d.layerPortrait || '';
+		const layerBar = d.layerBarPath || d.layerBar || '';
+		const layerFrame = d.layerFramePath || d.layerFrame || '';
+		return {
+			base: normalizeBattleImgUrl(absP(layerBase) || plateFbFull || ''),
+			portrait: normalizeBattleImgUrl(absP(layerPortrait) || ''),
+			bar: normalizeBattleImgUrl(absP(layerBar) || ''),
+			frame: normalizeBattleImgUrl(absP(layerFrame) || dataFbFull || '')
+		};
+	}
+
+	function attachCachedBattleCardLayerImages(faceRoot, animKey, d) {
+		if (!faceRoot || !animKey || !d) return;
+		const stack = faceRoot.querySelector('.card-face__stack');
+		if (!stack) return;
+		const want = expectedBattleCardLayerSrcs(d);
+		['portrait', 'base', 'bar', 'frame'].forEach(function (suffix) {
+			const expected = want[suffix];
+			if (suffix === 'portrait' && !expected) return;
+			if ((suffix === 'bar' || suffix === 'frame') && !expected) return;
+			const key = poolKeyBattleLayer(animKey, suffix);
+			const pooled = battleLayerImgPool.get(key);
+			if (!pooled) return;
+			const cur = stack.querySelector('img.card-face__layer-img--' + suffix);
+			if (!cur || !(cur instanceof HTMLImageElement)) return;
+			const pooledSrc = normalizeBattleImgUrl(pooled.currentSrc || pooled.src || '');
+			if (pooledSrc !== normalizeBattleImgUrl(expected)) {
+				battleLayerImgPool.delete(key);
+				return;
+			}
+			cur.replaceWith(pooled);
+			battleLayerImgPool.delete(key);
+		});
+	}
+
+	function discardUnusedBattleLayerImages() {
+		battleLayerImgPool.clear();
+	}
+
 	function cssEscapeForBgUrl(u) {
 		return String(u).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 	}
@@ -703,7 +792,7 @@
 	}
 
 	/** CardDefDto → card-face-layer.js（ライブラリと同一テンプレート） */
-	function buildBattleCardFaceShell(d, variant) {
+	function buildBattleCardFaceShell(d, variant, reuseAnimKey) {
 		if (typeof buildLibraryCardFace !== 'function') {
 			const err = document.createElement('p');
 			err.className = 'muted';
@@ -716,6 +805,9 @@
 			dataFallback: dataFbFull,
 			extraRootClasses: 'battle-layered battle-layered--' + variant
 		});
+		if (reuseAnimKey) {
+			attachCachedBattleCardLayerImages(face, reuseAnimKey, d);
+		}
 		wireLibraryCardFaceImages(face, plateFbFull, dataFbFull);
 		applyLibraryCardFaceSpark(face, d.rarity);
 		return wrapLibraryCardInner(face);
@@ -2303,11 +2395,16 @@
 			cardHost.style.top = fromTop * offsetPx + 'px';
 			cardHost.style.zIndex = String(i + 1);
 			if (c.instanceId != null) cardHost.dataset.battleInstanceId = String(c.instanceId);
+			if (c.instanceId != null) cardHost.dataset.animKey = 'card:' + String(c.instanceId);
 
 			if (d) {
 				// 表向き（レスト専用サイズは CSS で）
 				const disp = cardDefForBattleFace(d, c, defs);
-				const shell = buildBattleCardFaceShell(disp, 'rest');
+				const shell = buildBattleCardFaceShell(
+					disp,
+					'rest',
+					c.instanceId != null ? 'card:' + String(c.instanceId) : undefined
+				);
 				cardHost.appendChild(shell);
 				if (o.battleState && !d.fieldCard) {
 					applyCurrentCostDisplay(shell, disp, o.battleState, c);
@@ -2379,7 +2476,7 @@
 			const focusWrap = el('div', 'hand-card__card-focus', null);
 			focusWrap.dataset.animKey = 'card:' + c.instanceId;
 			if (d) {
-				const shell = buildBattleCardFaceShell(d, 'hand');
+				const shell = buildBattleCardFaceShell(d, 'hand', 'card:' + String(c.instanceId));
 				const basePow = Number(d.basePower != null ? d.basePower : 0);
 				let bonus = Number(nextDeployBonus || 0);
 				if (Number(nextElfOnlyBonus || 0) > 0 && hasCardAttributeForDeployPreview(dRaw, c, pending666, 'ELF')) {
@@ -3335,7 +3432,11 @@
 		}
 		const dForFace = rem > 0 ? defWithTimedFieldTurnOverlay(d, st) : d;
 		const wrap = el('div', 'library-card battle-zone-card battle-field-card', null);
-		const shell = buildBattleCardFaceShell(dForFace, opponentZone ? 'hand' : 'zone');
+		const shell = buildBattleCardFaceShell(
+			dForFace,
+			opponentZone ? 'hand' : 'zone',
+			'field:' + String(dto.instanceId)
+		);
 		if (opponentZone) {
 			const faceMount = el('div', 'hand-card__card-focus battle-zone-card__opp-face', null);
 			faceMount.dataset.animKey = 'field:' + dto.instanceId;
@@ -3420,7 +3521,11 @@
 				wrap.style.overflow = 'visible';
 				wrap.appendChild(stack);
 			}
-			const shell = buildBattleCardFaceShell(d, opponentZone ? 'hand' : 'zone');
+			const shell = buildBattleCardFaceShell(
+				d,
+				opponentZone ? 'hand' : 'zone',
+				'card:' + String(zone.main.instanceId)
+			);
 			applyCurrentPowerDisplay(shell, Number(d.basePower || 0), power);
 			maybeSparkPowerIncrease(shell, zone.main.instanceId, power);
 			if (opts.battleState && d && !d.fieldCard) {
@@ -3688,6 +3793,7 @@
 		if (selDef) {
 			if (selDef.fieldCard) {
 				const previewWrap = el('div', 'library-card battle-control--levelup__preview-card');
+				/* プレビューはメインの手札より先に構築されるため、レイヤープールは使わない（手札の再利用を奪わない） */
 				const shell = buildBattleCardFaceShell(selDef, 'hand');
 				previewWrap.appendChild(shell);
 				applyBattleCardTipData(previewWrap, selDef);
@@ -4433,6 +4539,7 @@
 		if (battleTopActionsEl && battleTopActionsEl.parentNode) {
 			battleTopActionsEl.parentNode.removeChild(battleTopActionsEl);
 		}
+		harvestBattleCardLayerImages(app);
 		app.innerHTML = '';
 		hideBattleCardTooltip();
 		hideBattleDeckTooltip();
@@ -4779,6 +4886,7 @@
 			showChoiceModal(st);
 		}
 
+		discardUnusedBattleLayerImages();
 		syncTurnChangeNotice(st);
 		syncUnwinnableDeployNotice(st);
 		scheduleBattleZoom();
