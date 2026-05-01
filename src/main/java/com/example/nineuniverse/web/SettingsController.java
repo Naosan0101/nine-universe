@@ -59,6 +59,7 @@ public class SettingsController {
 				userSettingsService.refreshUserInMemory(d.getUser(), uid);
 			}
 			ra.addFlashAttribute("flashSettingsSuccess", "設定を保存しました。");
+			return "redirect:/home";
 		} catch (IllegalArgumentException e) {
 			ra.addFlashAttribute("flashSettingsError", e.getMessage());
 		} catch (IllegalStateException e) {

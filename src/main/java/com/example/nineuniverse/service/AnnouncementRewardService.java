@@ -268,6 +268,13 @@ public class AnnouncementRewardService {
 		return !today.isAfter(GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_LAST_DAY);
 	}
 
+	public boolean isWithinCardDisplayServerOps202605AnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_LAST_DAY);
+	}
+
 	public enum ClaimOutcome {
 		SUCCESS,
 		ALREADY_CLAIMED,
@@ -457,6 +464,13 @@ public class AnnouncementRewardService {
 				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_START)) {
 			if (claimKusuriFixAnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
 				totalGems += GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_START)) {
+			if (claimCardDisplayServerOps202605AnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_GEMS;
 				claimed++;
 			}
 		}
@@ -890,6 +904,24 @@ public class AnnouncementRewardService {
 			return ClaimOutcome.ALREADY_CLAIMED;
 		}
 		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimCardDisplayServerOps202605AnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(
+				userId, GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_GEMS);
 		return ClaimOutcome.SUCCESS;
 	}
 

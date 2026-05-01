@@ -117,6 +117,9 @@ public class HomeController {
 		boolean listKusuriFix2026 = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_START);
+		boolean listCardDisplayServerOps202605 = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -142,6 +145,7 @@ public class HomeController {
 		model.addAttribute("announcementListMechanicPvpPreviewFix2026", listMechanicPvpPreviewFix2026);
 		model.addAttribute("announcementListKentoshiFix2026", listKentoshiFix2026);
 		model.addAttribute("announcementListKusuriFix2026", listKusuriFix2026);
+		model.addAttribute("announcementListCardDisplayServerOps202605", listCardDisplayServerOps202605);
 
 		Set<String> claimedKeys = announcementRewardService.findClaimedKeys(uid);
 
@@ -429,6 +433,26 @@ public class HomeController {
 				!kusuriFixAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_START));
 		model.addAttribute("kusuriFixAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_GEMS);
 
+		boolean cardDisplayServerOps202605AnnClaimed =
+				claimedKeys.contains(GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_KEY);
+		boolean cardDisplayServerOps202605AnnInWindow =
+				announcementRewardService.isWithinCardDisplayServerOps202605AnnouncementWindow(today);
+		model.addAttribute("cardDisplayServerOps202605AnnouncementClaimed", cardDisplayServerOps202605AnnClaimed);
+		model.addAttribute(
+				"cardDisplayServerOps202605AnnouncementClaimable",
+				cardDisplayServerOps202605AnnInWindow && !cardDisplayServerOps202605AnnClaimed);
+		model.addAttribute(
+				"cardDisplayServerOps202605AnnouncementExpiredUnclaimed",
+				!cardDisplayServerOps202605AnnClaimed
+						&& today.isAfter(GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_LAST_DAY));
+		model.addAttribute(
+				"cardDisplayServerOps202605AnnouncementFutureUnclaimed",
+				!cardDisplayServerOps202605AnnClaimed
+						&& today.isBefore(GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_START));
+		model.addAttribute(
+				"cardDisplayServerOps202605AnnouncementGemAmount",
+				GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_GEMS);
+
 		int announcementBulkClaimableGemTotal = 0;
 		if (listPerfLight && perfInWindow && !perfClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PERF_LIGHT_GEMS;
@@ -504,6 +528,9 @@ public class HomeController {
 		}
 		if (listKusuriFix2026 && kusuriFixAnnInWindow && !kusuriFixAnnClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_GEMS;
+		}
+		if (listCardDisplayServerOps202605 && cardDisplayServerOps202605AnnInWindow && !cardDisplayServerOps202605AnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_GEMS;
 		}
 		model.addAttribute("announcementBulkClaimableGemTotal", announcementBulkClaimableGemTotal);
 		model.addAttribute("announcementAnyGemClaimable", announcementBulkClaimableGemTotal > 0);
@@ -1054,6 +1081,27 @@ public class HomeController {
 		switch (outcome) {
 			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
 					GameConstants.ANNOUNCEMENT_KUSURI_FIX_2026_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/card-display-server-ops-2026-05/claim")
+	public String claimCardDisplayServerOps202605Announcement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimCardDisplayServerOps202605AnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_GEMS + "ジェムを受け取りました。");
 			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
 			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
 		}

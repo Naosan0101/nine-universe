@@ -27,10 +27,10 @@
       "package.json",
       "build-resources/icon.png",
       "build-resources/アイコン01.PNG",
-      "build-resources/desktop_icon_01.PNG"
+      "build-resources/desktop_01.PNG"
     ],
     "win": {
-      "icon": "build-resources/desktop_icon_01.PNG",
+      "icon": "build-resources/desktop_01.PNG",
       "signAndEditExecutable": false,
       "target": [
         {

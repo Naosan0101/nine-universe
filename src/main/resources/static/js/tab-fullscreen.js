@@ -1,7 +1,8 @@
 /**
  * localStorage（nu_fullscreen_mode）でフルスクリーン希望を保存。未設定時は ON。
  * ブラウザでは Fullscreen API、Electron では BrowserWindow#setFullScreen を使う。
- * ページ遷移後はブラウザ仕様によりフルスクリーンは解除されます。
+ * ブラウザのみ: ページ遷移後は Fullscreen API が解除されます（初回クリックで再取得）。
+ * Electron: メインプロセスが遷移ごとに BrowserWindow#setFullScreen を再同期します。
  */
 (function () {
 	/* 同一 HTML に script が二重に入った場合の二重 init（設定トグルが連打される等）を防ぐ */
@@ -138,11 +139,21 @@
 		});
 	}
 
+	function onPageshowReapplyElectronFs() {
+		if (!isElectronShell()) {
+			return;
+		}
+		window.nuElectron.setFullScreen(readPreferred()).catch(function () {});
+	}
+
 	function init() {
 		wireSettingsSwitch();
 		applyPreferredFullscreen();
 		if (readPreferred() && !isElectronShell() && !isFullscreen()) {
 			bindBrowserFullscreenFirstGesture();
+		}
+		if (isElectronShell()) {
+			window.addEventListener('pageshow', onPageshowReapplyElectronFs, false);
 		}
 	}
 

@@ -272,10 +272,9 @@
 			const im = document.createElement('img');
 			im.className = 'card-face__layer-img card-face__layer-img--' + classSuffix;
 			im.alt = '';
+			im.loading = 'lazy';
+			im.decoding = 'async';
 			im.src = absPath(url, cp) || fallback || '';
-			if (classSuffix === 'frame') {
-				im.setAttribute('fetchpriority', 'high');
-			}
 			stack.appendChild(im);
 		}
 
@@ -284,6 +283,8 @@
 			const im = document.createElement('img');
 			im.className = 'card-face__layer-img card-face__layer-img--portrait';
 			im.alt = '';
+			im.loading = 'lazy';
+			im.decoding = 'async';
 			im.src = absPath(layerPortrait, cp) || '';
 			if (layerPortraitAlt) {
 				im.dataset.portraitAlt = absPath(layerPortraitAlt, cp);

@@ -493,6 +493,17 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_KUSURI_FIX_2026_LAST_DAY =
 			ANNOUNCEMENT_KUSURI_FIX_2026_START.plusDays(30 - 1);
 
+	/** おしらせ配布（カード表示の修正・サーバー環境の整備） */
+	public static final String ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_KEY =
+			"card_display_server_ops_2026_05_01";
+
+	public static final int ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_GEMS = 15;
+
+	public static final LocalDate ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_START = LocalDate.of(2026, 5, 1);
+
+	public static final LocalDate ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_LAST_DAY =
+			ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_START.plusDays(30 - 1);
+
 	/**
 	 * ログイン時ポップアップ「もう表示しない」用（ジェム受け取りとは別行）。
 	 */
@@ -544,7 +555,7 @@ public final class GameConstants {
 	/**
 	 * おしらせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
 	 */
-	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-26";
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-05-01";
 
 	/** リサイクル：レア度ごとに得るクリスタル（1枚あたり） */
 	public static final int RECYCLE_CRYSTAL_PER_CARD_C = 20;

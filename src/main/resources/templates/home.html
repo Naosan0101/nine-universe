@@ -33,6 +33,7 @@
                data-mechanic-pvp-preview-fix-claimable=${mechanicPvpPreviewFixAnnouncementClaimable and announcementListMechanicPvpPreviewFix2026},
                data-kentoshi-fix-claimable=${kentoshiFixAnnouncementClaimable and announcementListKentoshiFix2026},
                data-kusuri-fix-claimable=${kusuriFixAnnouncementClaimable and announcementListKusuriFix2026},
+               data-card-display-server-ops-2026-05-claimable=${cardDisplayServerOps202605AnnouncementClaimable and announcementListCardDisplayServerOps202605},
                data-major-update-login-popup=${majorUpdateLoginPopupShow},
                data-user-id=${user.id},
                data-home-bonus-epithet-reveal=${homeBonusEpithetReveal},
@@ -49,6 +50,11 @@
 	</div>
 </header>
 
+<div class="container" style="padding-top:0.5rem" th:if="${flashSettingsSuccess} or ${flashSettingsError}">
+	<p class="ok" th:if="${flashSettingsSuccess}" th:text="${flashSettingsSuccess}">保存しました</p>
+	<p class="error" th:if="${flashSettingsError}" th:text="${flashSettingsError}">エラー</p>
+</div>
+
 <div id="announcement-modal"
      class="announcement-modal"
      hidden
@@ -59,7 +65,7 @@
 	<div class="announcement-modal__panel" role="document">
 		<h2 id="announcement-modal-title" class="announcement-modal__heading">おしらせ</h2>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026041401"
 		         th:if="${announcementListPerfLight and (perfLightAnnouncementClaimable or perfLightAnnouncementClaimed or perfLightAnnouncementExpiredUnclaimed or perfLightAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -82,7 +88,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026041402"
 		         th:if="${announcementListTimePack and (timePackAnnouncementClaimable or timePackAnnouncementClaimed or timePackAnnouncementExpiredUnclaimed or timePackAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -105,7 +111,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026041403"
 		         th:if="${announcementListBalanceUiMission and (balanceUiMissionAnnouncementClaimable or balanceUiMissionAnnouncementClaimed or balanceUiMissionAnnouncementExpiredUnclaimed or balanceUiMissionAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -129,7 +135,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026041404"
 		         th:if="${announcementListPackRates and (packRatesAnnouncementClaimable or packRatesAnnouncementClaimed or packRatesAnnouncementExpiredUnclaimed or packRatesAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -152,7 +158,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026041405"
 		         th:if="${announcementListPackResultDrawAgain and (packResultDrawAgainAnnouncementClaimable or packResultDrawAgainAnnouncementClaimed or packResultDrawAgainAnnouncementExpiredUnclaimed or packResultDrawAgainAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -175,7 +181,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026041407"
 		         th:if="${announcementListMissionFix and (missionFixAnnouncementClaimable or missionFixAnnouncementClaimed or missionFixAnnouncementExpiredUnclaimed or missionFixAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -198,7 +204,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026041408"
 		         th:if="${announcementListCardTextFix and (cardTextFixAnnouncementClaimable or cardTextFixAnnouncementClaimed or cardTextFixAnnouncementExpiredUnclaimed or cardTextFixAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -221,7 +227,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026041501"
 		         th:if="${announcementListSamuraiFix and (samuraiFixAnnouncementClaimable or samuraiFixAnnouncementClaimed or samuraiFixAnnouncementExpiredUnclaimed or samuraiFixAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -244,7 +250,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026041502"
 		         th:if="${announcementListPackMissionBonusFix and (packMissionBonusFixAnnouncementClaimable or packMissionBonusFixAnnouncementClaimed or packMissionBonusFixAnnouncementExpiredUnclaimed or packMissionBonusFixAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -267,7 +273,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026041601"
 		         th:if="${announcementList30Users and (celebrate30UsersAnnouncementClaimable or celebrate30UsersAnnouncementClaimed or celebrate30UsersAnnouncementExpiredUnclaimed or celebrate30UsersAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -290,7 +296,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026042001"
 		         th:if="${announcementListMajorUpdate and (majorUpdateAnnouncementClaimable or majorUpdateAnnouncementClaimed or majorUpdateAnnouncementExpiredUnclaimed or majorUpdateAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -318,7 +324,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026042002"
 		         th:if="${announcementListDenzirionFix and (denzirionFixAnnouncementClaimable or denzirionFixAnnouncementClaimed or denzirionFixAnnouncementExpiredUnclaimed or denzirionFixAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -341,7 +347,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026042003"
 		         th:if="${announcementListNinjaDarkDragonFix and (ninjaDarkDragonFixAnnouncementClaimable or ninjaDarkDragonFixAnnouncementClaimed or ninjaDarkDragonFixAnnouncementExpiredUnclaimed or ninjaDarkDragonFixAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -364,7 +370,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026042004"
 		         th:if="${announcementListWeaponDepotDenzirionFix and (weaponDepotDenzirionFixAnnouncementClaimable or weaponDepotDenzirionFixAnnouncementClaimed or weaponDepotDenzirionFixAnnouncementExpiredUnclaimed or weaponDepotDenzirionFixAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -387,7 +393,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026042101"
 		         th:if="${announcementListFieldDisplaySettingsBonus and (fieldDisplaySettingsBonusAnnouncementClaimable or fieldDisplaySettingsBonusAnnouncementClaimed or fieldDisplaySettingsBonusAnnouncementExpiredUnclaimed or fieldDisplaySettingsBonusAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -413,7 +419,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026042102"
 		         th:if="${announcementListDenzirionGarakutaFusionFix and (denzirionGarakutaFusionFixAnnouncementClaimable or denzirionGarakutaFusionFixAnnouncementClaimed or denzirionGarakutaFusionFixAnnouncementExpiredUnclaimed or denzirionGarakutaFusionFixAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -436,7 +442,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026042201"
 		         th:if="${announcementListPlatformApr2026 and (platformApr2026AnnouncementClaimable or platformApr2026AnnouncementClaimed or platformApr2026AnnouncementExpiredUnclaimed or platformApr2026AnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -477,7 +483,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026042202"
 		         th:if="${announcementListFriendPvpUpdate2026 and (friendPvpUpdateAnnouncementClaimable or friendPvpUpdateAnnouncementClaimed or friendPvpUpdateAnnouncementExpiredUnclaimed or friendPvpUpdateAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -501,7 +507,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026042301"
 		         th:if="${announcementListApr23Bundle2026 and (apr23BundleAnnouncementClaimable or apr23BundleAnnouncementClaimed or apr23BundleAnnouncementExpiredUnclaimed or apr23BundleAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -537,7 +543,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026042401"
 		         th:if="${announcementListKentoshiFix2026 and (kentoshiFixAnnouncementClaimable or kentoshiFixAnnouncementClaimed or kentoshiFixAnnouncementExpiredUnclaimed or kentoshiFixAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -560,7 +566,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026042501"
 		         th:if="${announcementListKusuriFix2026 and (kusuriFixAnnouncementClaimable or kusuriFixAnnouncementClaimed or kusuriFixAnnouncementExpiredUnclaimed or kusuriFixAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -583,7 +589,7 @@
 			</div>
 		</article>
 
-		<article class="announcement-modal__card"
+		<article class="announcement-modal__card" data-announce-sort="2026042302"
 		         th:if="${announcementListMechanicPvpPreviewFix2026 and (mechanicPvpPreviewFixAnnouncementClaimable or mechanicPvpPreviewFixAnnouncementClaimed or mechanicPvpPreviewFixAnnouncementExpiredUnclaimed or mechanicPvpPreviewFixAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
@@ -602,6 +608,30 @@
 					<p th:if="${mechanicPvpPreviewFixAnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
 					<p th:if="${mechanicPvpPreviewFixAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
 					<p th:if="${mechanicPvpPreviewFixAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
+				</aside>
+			</div>
+		</article>
+
+		<article class="announcement-modal__card" data-announce-sort="2026050101"
+		         th:if="${announcementListCardDisplayServerOps202605 and (cardDisplayServerOps202605AnnouncementClaimable or cardDisplayServerOps202605AnnouncementClaimed or cardDisplayServerOps202605AnnouncementExpiredUnclaimed or cardDisplayServerOps202605AnnouncementFutureUnclaimed)}">
+			<div class="announcement-modal__mailbox">
+				<div class="announcement-modal__mailbox-body">
+					<p class="announcement-modal__card-text">・カード表示の修正をしました。</p>
+					<p class="announcement-modal__card-text">・サーバー環境を整えました。</p>
+				</div>
+				<aside class="announcement-modal__mailbox-aside">
+					<span th:if="${cardDisplayServerOps202605AnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
+					<form th:if="${cardDisplayServerOps202605AnnouncementClaimable}"
+					      th:action="@{/home/announcements/card-display-server-ops-2026-05/claim}"
+					      method="post"
+					      class="announcement-modal__gem-form">
+						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+						<button type="submit" class="btn btn--primary announcement-modal__gem-btn"
+						        th:text="|${cardDisplayServerOps202605AnnouncementGemAmount}ジェム|">15ジェム</button>
+					</form>
+					<p th:if="${cardDisplayServerOps202605AnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
+					<p th:if="${cardDisplayServerOps202605AnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
+					<p th:if="${cardDisplayServerOps202605AnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
 				</aside>
 			</div>
 		</article>
@@ -835,7 +865,7 @@
 				<a class="btn btn--ghost home-hero__cta" th:href="@{/decks}">デッキ編集</a>
 				<button type="button"
 				        class="btn btn--ghost home-hero__announce topbar__announce"
-				        th:classappend="${(perfLightAnnouncementClaimable and announcementListPerfLight) or (timePackAnnouncementClaimable and announcementListTimePack) or (balanceUiMissionAnnouncementClaimable and announcementListBalanceUiMission) or (packRatesAnnouncementClaimable and announcementListPackRates) or (packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain) or (captainTextAnnouncementClaimable and announcementListCaptainText) or (missionFixAnnouncementClaimable and announcementListMissionFix) or (cardTextFixAnnouncementClaimable and announcementListCardTextFix) or (samuraiFixAnnouncementClaimable and announcementListSamuraiFix) or (packMissionBonusFixAnnouncementClaimable and announcementListPackMissionBonusFix) or (celebrate30UsersAnnouncementClaimable and announcementList30Users) or (kaenryuStatusAnnouncementClaimable and announcementListKaenryuStatus) or (samuraiStatusAnnouncementClaimable and announcementListSamuraiStatus) or (majorUpdateAnnouncementClaimable and announcementListMajorUpdate) or (denzirionFixAnnouncementClaimable and announcementListDenzirionFix) or (ninjaDarkDragonFixAnnouncementClaimable and announcementListNinjaDarkDragonFix) or (weaponDepotDenzirionFixAnnouncementClaimable and announcementListWeaponDepotDenzirionFix) or (fieldDisplaySettingsBonusAnnouncementClaimable and announcementListFieldDisplaySettingsBonus) or (denzirionGarakutaFusionFixAnnouncementClaimable and announcementListDenzirionGarakutaFusionFix) or (platformApr2026AnnouncementClaimable and announcementListPlatformApr2026) or (friendPvpUpdateAnnouncementClaimable and announcementListFriendPvpUpdate2026) or (apr23BundleAnnouncementClaimable and announcementListApr23Bundle2026) or (kentoshiFixAnnouncementClaimable and announcementListKentoshiFix2026) or (kusuriFixAnnouncementClaimable and announcementListKusuriFix2026) or (mechanicPvpPreviewFixAnnouncementClaimable and announcementListMechanicPvpPreviewFix2026) or (timePackAvailablePacks != null and timePackAvailablePacks > 0)} ? ' topbar__announce--highlight' : ''"
+				        th:classappend="${(perfLightAnnouncementClaimable and announcementListPerfLight) or (timePackAnnouncementClaimable and announcementListTimePack) or (balanceUiMissionAnnouncementClaimable and announcementListBalanceUiMission) or (packRatesAnnouncementClaimable and announcementListPackRates) or (packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain) or (captainTextAnnouncementClaimable and announcementListCaptainText) or (missionFixAnnouncementClaimable and announcementListMissionFix) or (cardTextFixAnnouncementClaimable and announcementListCardTextFix) or (samuraiFixAnnouncementClaimable and announcementListSamuraiFix) or (packMissionBonusFixAnnouncementClaimable and announcementListPackMissionBonusFix) or (celebrate30UsersAnnouncementClaimable and announcementList30Users) or (kaenryuStatusAnnouncementClaimable and announcementListKaenryuStatus) or (samuraiStatusAnnouncementClaimable and announcementListSamuraiStatus) or (majorUpdateAnnouncementClaimable and announcementListMajorUpdate) or (denzirionFixAnnouncementClaimable and announcementListDenzirionFix) or (ninjaDarkDragonFixAnnouncementClaimable and announcementListNinjaDarkDragonFix) or (weaponDepotDenzirionFixAnnouncementClaimable and announcementListWeaponDepotDenzirionFix) or (fieldDisplaySettingsBonusAnnouncementClaimable and announcementListFieldDisplaySettingsBonus) or (denzirionGarakutaFusionFixAnnouncementClaimable and announcementListDenzirionGarakutaFusionFix) or (platformApr2026AnnouncementClaimable and announcementListPlatformApr2026) or (friendPvpUpdateAnnouncementClaimable and announcementListFriendPvpUpdate2026) or (apr23BundleAnnouncementClaimable and announcementListApr23Bundle2026) or (kentoshiFixAnnouncementClaimable and announcementListKentoshiFix2026) or (kusuriFixAnnouncementClaimable and announcementListKusuriFix2026) or (mechanicPvpPreviewFixAnnouncementClaimable and announcementListMechanicPvpPreviewFix2026) or (cardDisplayServerOps202605AnnouncementClaimable and announcementListCardDisplayServerOps202605) or (timePackAvailablePacks != null and timePackAvailablePacks > 0)} ? ' topbar__announce--highlight' : ''"
 				        id="announcement-open"
 				        aria-haspopup="dialog"
 				        aria-controls="announcement-modal">
@@ -933,7 +963,31 @@
 	var openBtn = document.getElementById('announcement-open');
 	var closeBtn = document.getElementById('announcement-close');
 	if (!ann || !openBtn || !closeBtn) return;
+	/* data-announce-sort = GameConstants の各おしらせ開始日（YYYYMMDD + 同日内的な番号） */
+	function sortAnnouncementCardsInModal() {
+		var panel = ann.querySelector('.announcement-modal__panel');
+		if (!panel) return;
+		var insertPoint = panel.querySelector('.announcement-modal__flash');
+		if (!insertPoint) insertPoint = panel.querySelector('.announcement-modal__footer');
+		if (!insertPoint) return;
+		var cards = Array.prototype.slice.call(panel.querySelectorAll('article.announcement-modal__card'));
+		if (cards.length <= 1) return;
+		function sortKey(el) {
+			var raw = el.getAttribute('data-announce-sort');
+			if (raw == null || raw === '') return 9999999999;
+			var n = parseInt(raw, 10);
+			return isNaN(n) ? 9999999999 : n;
+		}
+		cards.sort(function (a, b) {
+			return sortKey(a) - sortKey(b);
+		});
+		for (var i = cards.length - 1; i >= 0; i--) {
+			panel.insertBefore(cards[i], insertPoint);
+			insertPoint = cards[i];
+		}
+	}
 	function openAnn() {
+		sortAnnouncementCardsInModal();
 		ann.hidden = false;
 		ann.setAttribute('aria-hidden', 'false');
 		document.body.style.overflow = 'hidden';
@@ -962,6 +1016,7 @@
 	document.addEventListener('keydown', function (e) {
 		if (e.key === 'Escape' && !ann.hidden) closeAnn();
 	});
+	sortAnnouncementCardsInModal();
 	/* 受け取り直後のフラッシュメッセージがあるときは自動で開く */
 	if (document.querySelector('.announcement-modal__flash')) {
 		openAnn();
@@ -999,6 +1054,7 @@
 		var mechanicPvpPreviewFix = document.body.getAttribute('data-mechanic-pvp-preview-fix-claimable') === 'true';
 		var kentoshiFix = document.body.getAttribute('data-kentoshi-fix-claimable') === 'true';
 		var kusuriFix = document.body.getAttribute('data-kusuri-fix-claimable') === 'true';
+		var cardDisplayServerOps202605 = document.body.getAttribute('data-card-display-server-ops-2026-05-claimable') === 'true';
 		var ack = '';
 		try {
 			ack = localStorage.getItem('nu_ann_ack') || '';
@@ -1006,7 +1062,7 @@
 			ack = '';
 		}
 		var unseen = epoch !== '' && ack !== epoch;
-		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || cardTextFix || samuraiFix || packMissionBonusFix || celebrate30 || kaenryuStatus || samuraiStatus || majorUpdate || denzirionFix || ninjaDarkDragonFix || weaponDepotDenzirionFix || fieldDisplaySettingsBonus || denzirionGarakutaFusionFix || platformApr2026 || friendPvpUpdate || apr23Bundle || kentoshiFix || kusuriFix || mechanicPvpPreviewFix || unseen;
+		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || cardTextFix || samuraiFix || packMissionBonusFix || celebrate30 || kaenryuStatus || samuraiStatus || majorUpdate || denzirionFix || ninjaDarkDragonFix || weaponDepotDenzirionFix || fieldDisplaySettingsBonus || denzirionGarakutaFusionFix || platformApr2026 || friendPvpUpdate || apr23Bundle || kentoshiFix || kusuriFix || mechanicPvpPreviewFix || cardDisplayServerOps202605 || unseen;
 		dot.hidden = !show;
 		dot.setAttribute('aria-hidden', show ? 'false' : 'true');
 	}

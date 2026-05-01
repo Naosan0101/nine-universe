@@ -31,14 +31,35 @@
 <script th:replace="~{fragments/click-sparkle :: script}"></script>
 <script>
 (function () {
-	var wrap = document.getElementById('auth-quit-app-wrap');
-	var btn = document.getElementById('auth-quit-app-btn');
-	if (!wrap || !btn) return;
-	if (typeof window.nuElectron !== 'undefined' && window.nuElectron && typeof window.nuElectron.quitApp === 'function') {
-		wrap.hidden = false;
+	function bindAuthQuit() {
+		var wrap = document.getElementById('auth-quit-app-wrap');
+		var btn = document.getElementById('auth-quit-app-btn');
+		if (!wrap || !btn) {
+			return;
+		}
+		var canQuitViaShell =
+			typeof window.nuElectron !== 'undefined' &&
+			window.nuElectron &&
+			typeof window.nuElectron.quitApp === 'function';
+		if (canQuitViaShell) {
+			wrap.hidden = false;
+		}
 		btn.addEventListener('click', function () {
-			window.nuElectron.quitApp();
+			if (window.nuElectron && typeof window.nuElectron.quitApp === 'function') {
+				window.nuElectron.quitApp();
+				return;
+			}
+			try {
+				window.close();
+			} catch (_) {
+				/* ignore */
+			}
 		});
+	}
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', bindAuthQuit);
+	} else {
+		bindAuthQuit();
 	}
 })();
 </script>

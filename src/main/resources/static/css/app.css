@@ -2789,6 +2789,11 @@ a:hover {
 	justify-content: center;
 }
 
+/* display:flex だけだと UA の [hidden] と競合し、非 Electron でボタンだけ見えることがある */
+.auth-quit-app-wrap[hidden] {
+	display: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.btn {
 		transition: none;

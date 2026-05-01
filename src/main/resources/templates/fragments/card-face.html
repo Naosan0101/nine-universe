@@ -12,23 +12,26 @@
 		     th:if="${c.layerBasePath != null && !c.layerBasePath.isBlank()}"
 		     th:src="|${cp != null ? cp : ''}${c.layerBasePath}|"
 		     alt=""
+		     loading="lazy" decoding="async"
 		     onerror="this.hidden=true; this.removeAttribute('src');"/>
 		<img class="card-face__layer-img card-face__layer-img--portrait"
 		     th:if="${c.layerPortraitPath != null && !c.layerPortraitPath.isBlank()}"
 		     th:src="|${cp != null ? cp : ''}${c.layerPortraitPath}|"
 		     th:attr="data-portrait-alt=(${c.layerPortraitPathAlt != null && !c.layerPortraitPathAlt.isBlank()} ? |${cp != null ? cp : ''}${c.layerPortraitPathAlt}| : _)"
 		     alt=""
+		     loading="lazy" decoding="async"
 		     th:onerror="|if(this.dataset.portraitAlt){if(!this.dataset.portraitNormTried){this.dataset.portraitNormTried='1';this.src=this.dataset.portraitAlt;return;}}this.hidden=true;this.removeAttribute('src');|"/>
 		<img class="card-face__layer-img card-face__layer-img--bar"
 		     th:if="${c.barImagePath != null && !c.barImagePath.isBlank()}"
 		     th:src="|${cp != null ? cp : ''}${c.barImagePath}|"
 		     alt=""
+		     loading="lazy" decoding="async"
 		     onerror="this.hidden=true; this.removeAttribute('src');"/>
 		<img class="card-face__layer-img card-face__layer-img--frame"
 		     th:if="${c.layerFramePath != null && !c.layerFramePath.isBlank()}"
 		     th:src="|${cp != null ? cp : ''}${c.layerFramePath}|"
 		     alt=""
-		     fetchpriority="high"
+		     loading="lazy" decoding="async"
 		     onerror="this.hidden=true; this.removeAttribute('src');"/>
 	</div>
 	<div class="card-face__layer card-face__datum">

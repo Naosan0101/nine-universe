@@ -17,7 +17,8 @@ function readPackageJsonVersion() {
 }
 
 contextBridge.exposeInMainWorld('nuElectron', {
-	quitApp: () => ipcRenderer.invoke('nu-quit-app'),
+	/** invoke の応答待ちより前に WebContents が破棄される端末向けに send（main は ipcMain.on） */
+	quitApp: () => ipcRenderer.send('nu-quit-app'),
 	setFullScreen: (on) => ipcRenderer.invoke('nu-set-fullscreen', !!on),
 	/** 対戦申し込みなど OS ネイティブのデスクトップ通知 */
 	showPvpInviteDesktopNotification: (title, body) =>

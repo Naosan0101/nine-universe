@@ -12,12 +12,13 @@ if (process.platform === 'win32') {
 }
 
 /**
- * ウィンドウ／タスクバー用（BrowserWindow）。デスクトップ／exe 埋め込みは package.json の build.win.icon（desktop_icon_01.PNG＝Web 静的の cards/desktop_icon_01.PNG と同一画像）。
+ * ウィンドウ／タスクバー用（BrowserWindow）。exe 埋め込み／ショートカット表示は package.json の build.win.icon（build-resources/desktop_01.PNG）。
  * icon.png はアイコン01.PNG と同一画像（ASCII 名でランタイム読み込み互換）。
  * （Setup.exe のアイコンは package.json の nsis.installerIcon で別 ICO を使用）
  */
 function appIconPath() {
 	var candidates = [
+		path.join(__dirname, 'build-resources', 'desktop_01.PNG'),
 		path.join(__dirname, 'build-resources', 'icon.png'),
 		path.join(__dirname, 'build-resources', 'アイコン01.PNG'),
 	];
@@ -384,8 +385,83 @@ function syncBrowserWindowFullscreenFromStorage(win) {
 			 * did-finish-load 経由はページあたり1回なので、ここでは常に希望どおり適用する。
 			 */
 			win.setFullScreen(flag);
+			if (!flag) {
+				/* ウィンドウ希望に切り替えた直後に遅延同期がフルスクリーンへ戻すのを防ぐ */
+				clearFullscreenResyncTimers(win);
+				setImmediate(function () {
+					if (!win || win.isDestroyed()) {
+						return;
+					}
+					if (win.isFullScreen()) {
+						win.setFullScreen(false);
+					}
+					unmaximizeIfNeededForWindowed(win);
+				});
+			}
 		})
 		.catch(function () {});
+}
+
+/** 連続遷移時は直前の遅延同期をキャンセルし、最後の遷移からの再適用だけ残す */
+var fullscreenResyncTimers = new WeakMap();
+
+function clearFullscreenResyncTimers(win) {
+	if (!win) {
+		return;
+	}
+	var prev = fullscreenResyncTimers.get(win);
+	if (prev && prev.length) {
+		for (var i = 0; i < prev.length; i++) {
+			try {
+				clearTimeout(prev[i]);
+			} catch (_) {
+				/* ignore */
+			}
+		}
+	}
+	fullscreenResyncTimers.delete(win);
+}
+
+/** フルスクリーン解除後も最大化だけ残るとリサイズできない（Windows で多い） */
+function unmaximizeIfNeededForWindowed(win) {
+	if (!win || win.isDestroyed() || process.platform !== 'win32') {
+		return;
+	}
+	try {
+		if (win.isMaximized()) {
+			win.unmaximize();
+		}
+	} catch (_) {
+		/* ignore */
+	}
+}
+
+/**
+ * 遷移直後は OS がフルスクリーンを外すタイミングが executeJavaScript より遅いことがあるため、
+ * 数回に分けて localStorage 希望を再適用する。
+ */
+function scheduleFullscreenSyncFromStorage(win) {
+	if (!win || win.isDestroyed()) {
+		return;
+	}
+	var prev = fullscreenResyncTimers.get(win);
+	if (prev && prev.length) {
+		for (var i = 0; i < prev.length; i++) {
+			try {
+				clearTimeout(prev[i]);
+			} catch (_) {
+				/* ignore */
+			}
+		}
+	}
+	function run() {
+		if (!win || win.isDestroyed()) {
+			return;
+		}
+		syncBrowserWindowFullscreenFromStorage(win);
+	}
+	var ids = [setTimeout(run, 0), setTimeout(run, 90), setTimeout(run, 240)];
+	fullscreenResyncTimers.set(win, ids);
 }
 
 /**
@@ -446,6 +522,14 @@ async function createWindow() {
 		winOpts.icon = icon;
 	}
 	const win = new BrowserWindow(winOpts);
+	/* localStorage 反映前の最初の一瞬から既定どおりフルスクリーン（OFF 希望は初回 load 後の同期で解除） */
+	if (INITIAL_FULLSCREEN_DEFAULT) {
+		try {
+			win.setFullScreen(true);
+		} catch (_) {
+			/* ignore */
+		}
+	}
 
 	/* インストーラ等: WebView 内で .exe を開かず、既定ブラウザでダウンロードさせる */
 	win.webContents.setWindowOpenHandler(function (details) {
@@ -475,6 +559,13 @@ async function createWindow() {
 		}
 	});
 
+	win.webContents.on('did-navigate', function (_event, url) {
+		if (!url || (!String(url).startsWith('http://') && !String(url).startsWith('https://'))) {
+			return;
+		}
+		scheduleFullscreenSyncFromStorage(win);
+	});
+
 	var assetPollStarted = false;
 
 	win.on('closed', function () {
@@ -487,9 +578,7 @@ async function createWindow() {
 
 	win.webContents.on('did-finish-load', function () {
 		/* DOMContentLoaded より後。遷移直後に外れたフルスクリーンを希望どおり戻す */
-		setImmediate(function () {
-			syncBrowserWindowFullscreenFromStorage(win);
-		});
+		scheduleFullscreenSyncFromStorage(win);
 		if (!assetPollStarted) {
 			assetPollStarted = true;
 			fetchRemoteAssetVersion().then(function (v) {
@@ -545,7 +634,7 @@ if (!gotSingleInstanceLock) {
 		}
 	});
 
-	ipcMain.handle('nu-quit-app', (event) => {
+	ipcMain.on('nu-quit-app', function (event) {
 		/*
 		 * app.quit() だけだと、Windows ＋ ネイティブフルスクリーン等で
 		 * ウィンドウ終了待ちに留まりプロセスが残ることがある。
@@ -564,7 +653,7 @@ if (!gotSingleInstanceLock) {
 				/* ignore */
 			}
 		}
-		setImmediate(function () {
+		function destroyAllAndExit() {
 			try {
 				var all = BrowserWindow.getAllWindows();
 				for (var i = 0; i < all.length; i++) {
@@ -576,8 +665,18 @@ if (!gotSingleInstanceLock) {
 			} catch (_) {
 				/* ignore */
 			}
-			app.exit(0);
-		});
+			try {
+				app.exit(0);
+			} catch (_) {
+				try {
+					process.exit(0);
+				} catch (_) {
+					/* ignore */
+				}
+			}
+		}
+		/* setImmediate より setTimeout(0) の方が Windows 上でコールバックが抜ける報告が少ない */
+		setTimeout(destroyAllAndExit, 0);
 	});
 
 	ipcMain.handle('nu-check-desktop-update', async function (event) {
@@ -627,10 +726,10 @@ if (!gotSingleInstanceLock) {
 		 * isFullScreen() が実表示とずれていると、解除時に「既にウィンドウ」と誤判定して
 		 * setFullScreen(false) がスキップされる（設定で OFF にしてもフルスクリーンのまま）。
 		 * did-finish-load の sync と同様、OFF は常に適用する。
-		 * ON 側は従来どおり差分があるときだけ呼び、Windows での過剰呼び出しを避ける。
+		 * ON も常に適用する（遷移直後の isFullScreen() 誤判定で掛からない件のため）。
 		 */
 		if (!flag) {
-			const wasFs = w.isFullScreen();
+			clearFullscreenResyncTimers(w);
 			w.setFullScreen(false);
 			/* 非同期で状態が追いつかない環境向けに再試行。Windows では解除後に最大化だけ残ることもある。 */
 			setImmediate(function () {
@@ -640,19 +739,15 @@ if (!gotSingleInstanceLock) {
 				if (w.isFullScreen()) {
 					w.setFullScreen(false);
 				}
-				if (process.platform === 'win32' && wasFs && w.isMaximized()) {
-					try {
-						w.unmaximize();
-					} catch (_) {
-						/* ignore */
-					}
-				}
+				unmaximizeIfNeededForWindowed(w);
 			});
 			return;
 		}
-		if (w.isFullScreen() !== flag) {
-			w.setFullScreen(flag);
-		}
+		/*
+		 * ON は常に適用する。遷移直後に実表示はウィンドウなのに isFullScreen() が true のまま残り、
+		 * 差分判定で setFullScreen(true) がスキップされるとクリックなど別イベントまで直らない。
+		 */
+		w.setFullScreen(true);
 	});
 
 	app.whenReady().then(async () => {
