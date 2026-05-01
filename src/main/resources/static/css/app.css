@@ -3179,6 +3179,14 @@ body.page--pack-opening.pack-opening--theme-epic-plus::after {
 		width: min(420px, 92vw);
 	}
 }
+/* 上記 img セレクタより詳細度を上げ、レイヤー img に width:clamp が当たって縦が潰れ上が欠けるのを防ぐ */
+.library-detail-modal__art-wrap .card-face.card-face--layered .card-face__stack img.card-face__layer-img {
+	width: 100%;
+	height: 100%;
+	max-width: none;
+	border-radius: 0;
+	box-shadow: none;
+}
 .library-detail-modal__name-label {
 	margin: 0 0 0.2rem;
 	font-size: 0.82rem;
@@ -5925,7 +5933,12 @@ body.battle-intro-is-running {
 	pointer-events: none;
 }
 .card-face__layer-img--base { z-index: 10; }
-.card-face__layer-img--portrait { z-index: 20; object-fit: contain; object-position: center center; }
+/* イラストのみ 5:7 と比率が違う素材があるため cover（contain だと上下に余白が出る） */
+.card-face__layer-img--portrait {
+	z-index: 20;
+	object-fit: cover;
+	object-position: center top;
+}
 .card-face__layer-img--bar { z-index: 30; }
 .card-face__layer-img--frame { z-index: 50; }
 
