@@ -15,7 +15,7 @@ public class GlobalThymeleafModelAdvice {
 	@Value("${app.web-desktop-migration-notice.enabled:true}")
 	private boolean webDesktopMigrationNoticeEnabled;
 
-	/** 空でなければポップアップのリンク先をこの絶対 URL に差し替え（CDN 等）。未設定時は {@code /downloads/nine-universe-setup-0.1.3.exe}。 */
+	/** 空でなければポップアップのリンク先をこの絶対 URL に差し替え（CDN 等）。未設定時は {@code /downloads/nine-universe-setup-0.1.4.exe}。 */
 	@Value("${app.web-desktop-migration-notice.installer-absolute-url:}")
 	private String webDesktopMigrationInstallerAbsoluteUrl;
 
@@ -114,6 +114,6 @@ public class GlobalThymeleafModelAdvice {
 		}
 		String cp = request.getContextPath();
 		String prefix = (cp == null || cp.isEmpty()) ? "" : cp;
-		return prefix + "/downloads/nine-universe-setup-0.1.3.exe";
+		return prefix + "/downloads/nine-universe-setup-0.1.4.exe";
 	}
 }

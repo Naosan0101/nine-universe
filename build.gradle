@@ -47,11 +47,11 @@ tasks.named('bootJar') {
  * Electron の成果物を processResources 出力へコピー（bootRun / IDE / bootJar いずれも classpath: static/downloads/ に載る）。
  * 無い場合はスキップ（該当ダウンロードは 404。リリース前に electron のパッケージを実行すること）。
  */
-def desktopInstallerWinSource = file("${rootDir}/electron/dist-installer/Nine Universe Setup 0.1.3.exe")
+def desktopInstallerWinSource = file("${rootDir}/electron/dist-installer/Nine Universe Setup 0.1.4.exe")
 def macInstallerCandidates = [
-		file("${rootDir}/electron/dist-installer/nine-universe-0.1.3.dmg"),
-		file("${rootDir}/electron/dist-installer/Nine Universe-0.1.3-universal.dmg"),
-		file("${rootDir}/electron/dist/Nine Universe-0.1.3-universal.dmg"),
+		file("${rootDir}/electron/dist-installer/nine-universe-0.1.4.dmg"),
+		file("${rootDir}/electron/dist-installer/Nine Universe-0.1.4-universal.dmg"),
+		file("${rootDir}/electron/dist/Nine Universe-0.1.4-universal.dmg"),
 ]
 
 tasks.named('processResources', Copy) {
@@ -59,7 +59,7 @@ tasks.named('processResources', Copy) {
 		def destDir = file("${layout.buildDirectory.get()}/resources/main/static/downloads")
 		destDir.mkdirs()
 		if (desktopInstallerWinSource.isFile()) {
-			def destWin = new File(destDir, 'nine-universe-setup-0.1.3.exe')
+			def destWin = new File(destDir, 'nine-universe-setup-0.1.4.exe')
 			java.nio.file.Files.copy(
 					desktopInstallerWinSource.toPath(),
 					destWin.toPath(),
@@ -67,7 +67,7 @@ tasks.named('processResources', Copy) {
 		}
 		def macSource = macInstallerCandidates.find { it.isFile() }
 		if (macSource != null) {
-			def destMac = new File(destDir, 'nine-universe-0.1.3.dmg')
+			def destMac = new File(destDir, 'nine-universe-0.1.4.dmg')
 			java.nio.file.Files.copy(
 					macSource.toPath(),
 					destMac.toPath(),
@@ -110,7 +110,7 @@ tasks.register('copyDesktopInstallersToDesktop') {
 		macDir.mkdirs()
 		def macSource = macInstallerCandidates.find { it.isFile() }
 		if (macSource != null) {
-			def destMac = new File(macDir, 'nine-universe-0.1.3.dmg')
+			def destMac = new File(macDir, 'nine-universe-0.1.4.dmg')
 			java.nio.file.Files.copy(
 					macSource.toPath(),
 					destMac.toPath(),

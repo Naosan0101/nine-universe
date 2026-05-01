@@ -16,6 +16,19 @@ function readPackageJsonVersion() {
 	}
 }
 
+/** パッケージ化後も main の app.getVersion() と一致させる（ファイル読みとズレる端末対策） */
+function readAppVersionFromMainSync() {
+	try {
+		var v = ipcRenderer.sendSync('nu-sync-app-version');
+		if (typeof v === 'string' && v.trim()) {
+			return v.trim();
+		}
+	} catch (e) {
+		/* ignore */
+	}
+	return null;
+}
+
 contextBridge.exposeInMainWorld('nuElectron', {
 	/** invoke の応答待ちより前に WebContents が破棄される端末向けに send（main は ipcMain.on） */
 	quitApp: () => ipcRenderer.send('nu-quit-app'),
@@ -28,7 +41,7 @@ contextBridge.exposeInMainWorld('nuElectron', {
 		}),
 	initialFullscreenPreference: initialFullscreenPreference,
 	/** サーバーの {@code app.desktop-client.minimum-version} と照合（ログイン前ゲート） */
-	appVersion: readPackageJsonVersion(),
+	appVersion: readAppVersionFromMainSync() || readPackageJsonVersion(),
 	/** サーバの任意更新情報（Web オーバーレイ用）。従来の checkDesktopUpdate と同一応答。 */
 	getDesktopUpdateInfo: () => ipcRenderer.invoke('nu-get-desktop-update-info'),
 	checkDesktopUpdate: () => ipcRenderer.invoke('nu-get-desktop-update-info'),

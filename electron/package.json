@@ -1,16 +1,16 @@
 {
   "name": "nine-universe-desktop",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Dedicated window shell for nine-universe.jp (Steam / desktop)",
   "main": "main.js",
   "private": true,
   "author": "Nine Universe",
   "scripts": {
-    "predist": "node ./scripts/ensure-win-codesign-cache.cjs",
+    "predist": "node ./scripts/ensure-win-codesign-cache.cjs && node ./scripts/png-to-win-ico.cjs",
     "start": "electron .",
     "start:local": "cross-env NINE_UNIVERSE_URL=http://127.0.0.1:8080 NINE_UNIVERSE_START_FULLSCREEN=0 electron .",
     "dist": "electron-builder --win --x64",
-    "dist:dir": "node ./scripts/ensure-win-codesign-cache.cjs && electron-builder --win --x64 --dir",
+    "dist:dir": "node ./scripts/ensure-win-codesign-cache.cjs && node ./scripts/png-to-win-ico.cjs && electron-builder --win --x64 --dir",
     "dist:mac": "electron-builder --mac",
     "dist:mac:desktop": "npm run dist:mac && node ./scripts/copy-built-dmg-to-desktop.cjs",
     "dist:mac:dir": "electron-builder --mac --dir",
@@ -28,10 +28,11 @@
       "package.json",
       "build-resources/icon.png",
       "build-resources/アイコン01.PNG",
-      "build-resources/desktop_01.PNG"
+      "build-resources/desktop_01.PNG",
+      "build-resources/app-win.ico"
     ],
     "win": {
-      "icon": "build-resources/desktop_01.PNG",
+      "icon": "build-resources/app-win.ico",
       "signAndEditExecutable": true,
       "target": [
         {
@@ -73,6 +74,7 @@
   "devDependencies": {
     "cross-env": "^7.0.3",
     "electron": "^34.0.0",
-    "electron-builder": "^26.0.0"
+    "electron-builder": "^26.0.0",
+    "png-to-ico": "^2.1.8"
   }
 }

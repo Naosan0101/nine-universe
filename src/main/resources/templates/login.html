@@ -24,8 +24,24 @@
 		<button type="submit" class="btn btn--primary">ログイン</button>
 	</form>
 	<p><a th:href="@{/register}">新規登録</a></p>
-	<div class="auth-quit-app-wrap" id="auth-quit-app-wrap" hidden>
-		<button type="button" class="btn btn--ghost auth-quit-app-btn" id="auth-quit-app-btn">ゲームを終了する</button>
+	<div class="auth-quit-app-wrap" id="auth-quit-app-wrap">
+		<button type="button" class="btn btn--danger auth-quit-app-btn" id="auth-quit-app-btn">終了</button>
+	</div>
+</div>
+
+<div id="nu-auth-quit-modal"
+     class="nu-home-quit-modal"
+     hidden
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="nu-auth-quit-title"
+     aria-hidden="true">
+	<div class="nu-home-quit-modal__panel" role="document">
+		<h2 id="nu-auth-quit-title" class="nu-home-quit-modal__title">ゲームを終了しますか？</h2>
+		<div class="nu-home-quit-modal__actions">
+			<button type="button" class="btn btn--ghost" id="nu-auth-quit-cancel">キャンセル</button>
+			<button type="button" class="btn btn--primary" id="nu-auth-quit-confirm">終了</button>
+		</div>
 	</div>
 </div>
 <script th:replace="~{fragments/tab-fullscreen :: script}"></script>
@@ -33,19 +49,56 @@
 <script>
 (function () {
 	function bindAuthQuit() {
-		var wrap = document.getElementById('auth-quit-app-wrap');
-		var btn = document.getElementById('auth-quit-app-btn');
-		if (!wrap || !btn) {
+		var openBtn = document.getElementById('auth-quit-app-btn');
+		var modal = document.getElementById('nu-auth-quit-modal');
+		var cancelBtn = document.getElementById('nu-auth-quit-cancel');
+		var confirmBtn = document.getElementById('nu-auth-quit-confirm');
+		if (!openBtn || !modal || !cancelBtn || !confirmBtn) {
 			return;
 		}
-		var canQuitViaShell =
-			typeof window.nuElectron !== 'undefined' &&
-			window.nuElectron &&
-			typeof window.nuElectron.quitApp === 'function';
-		if (canQuitViaShell) {
-			wrap.hidden = false;
+		var prevFocus = null;
+		function closeModal() {
+			modal.hidden = true;
+			modal.setAttribute('aria-hidden', 'true');
+			document.removeEventListener('keydown', onKeyDown);
+			if (prevFocus && typeof prevFocus.focus === 'function') {
+				try {
+					prevFocus.focus();
+				} catch (_) {
+					/* ignore */
+				}
+			}
+			prevFocus = null;
 		}
-		btn.addEventListener('click', function () {
+		function openModal() {
+			prevFocus = document.activeElement;
+			modal.hidden = false;
+			modal.setAttribute('aria-hidden', 'false');
+			document.addEventListener('keydown', onKeyDown);
+			try {
+				cancelBtn.focus();
+			} catch (_) {
+				/* ignore */
+			}
+		}
+		function onKeyDown(e) {
+			if (e.key === 'Escape') {
+				e.preventDefault();
+				closeModal();
+			}
+		}
+		openBtn.addEventListener('click', function () {
+			openModal();
+		});
+		cancelBtn.addEventListener('click', function () {
+			closeModal();
+		});
+		modal.addEventListener('click', function (e) {
+			if (e.target === modal) {
+				closeModal();
+			}
+		});
+		confirmBtn.addEventListener('click', function () {
 			if (window.nuElectron && typeof window.nuElectron.quitApp === 'function') {
 				window.nuElectron.quitApp();
 				return;
@@ -55,6 +108,7 @@
 			} catch (_) {
 				/* ignore */
 			}
+			closeModal();
 		});
 	}
 	if (document.readyState === 'loading') {

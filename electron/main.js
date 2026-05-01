@@ -215,8 +215,20 @@ async function fetchDesktopClientUpdatePayload() {
 	}
 	var latest = typeof data.latestVersion === 'string' ? data.latestVersion.trim() : '';
 	var installerUrl = typeof data.installerUrl === 'string' ? data.installerUrl.trim() : '';
-	if (!latest || !installerUrl) {
+	if (!latest) {
 		return null;
+	}
+	/* 例: 0.1.3（プレリリース接尾辞はフォールバック対象外） */
+	if (!/^\d+\.\d+\.\d+$/.test(latest)) {
+		return null;
+	}
+	/* installer-url が空でも、既定の /downloads/nine-universe-setup-{version}.exe を試す（ローカル開発の取りこぼし防止） */
+	if (!installerUrl) {
+		try {
+			installerUrl = new URL('/downloads/nine-universe-setup-' + latest + '.exe', START_URL).href;
+		} catch (e) {
+			return null;
+		}
 	}
 	if (installerUrl.indexOf('http://') !== 0 && installerUrl.indexOf('https://') !== 0) {
 		return null;
@@ -691,6 +703,15 @@ const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
 	app.quit();
 } else {
+	/* preload が package.json を読めない構成でも、exe と同じバージョンを返す（ログイン前ゲートの nuElectron.appVersion 用） */
+	ipcMain.on('nu-sync-app-version', function (event) {
+		try {
+			event.returnValue = app.getVersion();
+		} catch (e) {
+			event.returnValue = '';
+		}
+	});
+
 	app.on('second-instance', function (event, commandLine, workingDirectory) {
 		var wins = BrowserWindow.getAllWindows();
 		for (var i = 0; i < wins.length; i++) {
