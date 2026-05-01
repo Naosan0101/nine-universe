@@ -144,6 +144,8 @@
 		img.addEventListener('error', handleError);
 		function crushIfAlreadyBroken() {
 			try {
+				/* 未接続の img は load が走らず complete/naturalWidth が偽陽性になり得る（WebView・アプリ内ブラウザ） */
+				if (!img.isConnected) return;
 				if (img.complete && img.naturalWidth === 0) {
 					handleError();
 				}
@@ -154,6 +156,13 @@
 		crushIfAlreadyBroken();
 		setTimeout(crushIfAlreadyBroken, 0);
 		setTimeout(crushIfAlreadyBroken, 250);
+		img.addEventListener(
+			'load',
+			function () {
+				crushIfAlreadyBroken();
+			},
+			{ once: true }
+		);
 	}
 
 	function absPath(path, contextPath) {
