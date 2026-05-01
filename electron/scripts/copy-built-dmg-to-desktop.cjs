@@ -1,7 +1,7 @@
 /**
  * macOS で `npm run dist:mac` のあとに実行する。
  * electron-builder が dist-installer に出力した .dmg を
- * デスクトップの「Mac用インストーラー」フォルダ内へ nine-universe-0.1.1.dmg としてコピーする。
+ * デスクトップの「Mac用インストーラー」フォルダ内へ nine-universe-0.1.2.dmg としてコピーする。
  */
 'use strict';
 
@@ -11,7 +11,7 @@ const os = require('os');
 
 const electronRoot = path.resolve(__dirname, '..');
 const distInstaller = path.join(electronRoot, 'dist-installer');
-const destName = 'nine-universe-0.1.1.dmg';
+const destName = 'nine-universe-0.1.2.dmg';
 const macInstallerFolderName = 'Mac用インストーラー';
 
 function resolveDesktopDir() {

@@ -15,13 +15,13 @@ public class GlobalThymeleafModelAdvice {
 	@Value("${app.web-desktop-migration-notice.enabled:true}")
 	private boolean webDesktopMigrationNoticeEnabled;
 
-	/** 空でなければポップアップのリンク先をこの絶対 URL に差し替え（CDN 等）。未設定時は {@code /downloads/nine-universe-setup-0.1.1.exe}。 */
+	/** 空でなければポップアップのリンク先をこの絶対 URL に差し替え（CDN 等）。未設定時は {@code /downloads/nine-universe-setup-0.1.2.exe}。 */
 	@Value("${app.web-desktop-migration-notice.installer-absolute-url:}")
 	private String webDesktopMigrationInstallerAbsoluteUrl;
 
 	/**
 	 * 非空のとき、デスクトップアプリの {@code appVersion} がこれ未満ならログイン前に全画面で更新を促す（Electron のみ）。
-	 * 例: {@code 0.1.1}。空のときは無効。
+	 * 例: {@code 0.1.2}。空のときは無効。
 	 */
 	@Value("${app.desktop-client.minimum-version:}")
 	private String desktopMinimumVersionProperty;
@@ -109,6 +109,6 @@ public class GlobalThymeleafModelAdvice {
 		}
 		String cp = request.getContextPath();
 		String prefix = (cp == null || cp.isEmpty()) ? "" : cp;
-		return prefix + "/downloads/nine-universe-setup-0.1.1.exe";
+		return prefix + "/downloads/nine-universe-setup-0.1.2.exe";
 	}
 }

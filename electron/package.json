@@ -1,6 +1,6 @@
 {
   "name": "nine-universe-desktop",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Dedicated window shell for nine-universe.jp (Steam / desktop)",
   "main": "main.js",
   "private": true,
