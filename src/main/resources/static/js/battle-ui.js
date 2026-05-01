@@ -2035,7 +2035,7 @@
 				im.src = absUrl(cardBack);
 				im.alt = '裏';
 				im.loading = 'eager';
-				im.decoding = 'sync';
+				im.decoding = 'auto';
 				host.appendChild(im);
 			}
 			grid.appendChild(host);
@@ -2262,7 +2262,7 @@
 			im.alt = '';
 			im.className = 'deck-stack__back';
 			im.loading = 'eager';
-			im.decoding = 'sync';
+			im.decoding = 'auto';
 			const fromTop = n - 1 - i;
 			im.style.left = fromTop * offsetPx + 'px';
 			im.style.top = fromTop * offsetPx + 'px';
@@ -2338,7 +2338,7 @@
 				im.alt = '裏';
 				im.className = 'deck-stack__back';
 				im.loading = 'eager';
-				im.decoding = 'sync';
+				im.decoding = 'auto';
 				cardHost.appendChild(im);
 			}
 			pile.appendChild(cardHost);
@@ -2362,7 +2362,7 @@
 				im.src = absUrl(cardBack);
 				im.alt = '裏';
 				im.loading = 'eager';
-				im.decoding = 'sync';
+				im.decoding = 'auto';
 				wrap.appendChild(im);
 			}
 			return wrap;
@@ -3402,7 +3402,7 @@
 					im.src = absUrl(cardBack);
 					im.alt = '';
 					im.loading = 'eager';
-					im.decoding = 'sync';
+					im.decoding = 'auto';
 					im.style.position = 'absolute';
 					im.style.width = '34px';
 					im.style.height = '48px';

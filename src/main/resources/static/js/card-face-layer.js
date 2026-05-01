@@ -242,8 +242,8 @@
 		const dataFb = options.dataFallback || '';
 		const eagerImages = options.eagerImages === true;
 		const imgLoading = eagerImages ? 'eager' : 'lazy';
-		/* バトル等: async デコードだとレイヤーが後から載って白抜けしやすい。sync はキャッシュ済み画像では軽い */
-		const imgDecoding = eagerImages ? 'sync' : 'async';
+		/* sync は環境によってイラストが出ないことがあるため auto（eager は維持して読み込みは優先） */
+		const imgDecoding = eagerImages ? 'auto' : 'async';
 
 		const layerBase = card.layerBasePath || card.layerBase || '';
 		const layerPortrait = card.layerPortraitPath || card.layerPortrait || '';
