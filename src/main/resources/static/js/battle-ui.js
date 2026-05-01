@@ -714,7 +714,9 @@
 			contextPath: contextPath,
 			plateFallback: plateFbFull,
 			dataFallback: dataFbFull,
-			extraRootClasses: 'battle-layered battle-layered--' + variant
+			extraRootClasses: 'battle-layered battle-layered--' + variant,
+			/* バトルは render ごとに DOM を作り直すため lazy/async だとレイヤーが後から載ってちらつく */
+			eagerImages: true
 		});
 		wireLibraryCardFaceImages(face, plateFbFull, dataFbFull);
 		applyLibraryCardFaceSpark(face, d.rarity);
@@ -2032,6 +2034,8 @@
 				const im = document.createElement('img');
 				im.src = absUrl(cardBack);
 				im.alt = '裏';
+				im.loading = 'eager';
+				im.decoding = 'auto';
 				host.appendChild(im);
 			}
 			grid.appendChild(host);
@@ -2257,7 +2261,8 @@
 			im.src = absUrl(cardBack);
 			im.alt = '';
 			im.className = 'deck-stack__back';
-			im.decoding = 'async';
+			im.loading = 'eager';
+			im.decoding = 'auto';
 			const fromTop = n - 1 - i;
 			im.style.left = fromTop * offsetPx + 'px';
 			im.style.top = fromTop * offsetPx + 'px';
@@ -2332,7 +2337,8 @@
 				im.src = absUrl(cardBack);
 				im.alt = '裏';
 				im.className = 'deck-stack__back';
-				im.decoding = 'async';
+				im.loading = 'eager';
+				im.decoding = 'auto';
 				cardHost.appendChild(im);
 			}
 			pile.appendChild(cardHost);
@@ -2355,6 +2361,8 @@
 				const im = document.createElement('img');
 				im.src = absUrl(cardBack);
 				im.alt = '裏';
+				im.loading = 'eager';
+				im.decoding = 'auto';
 				wrap.appendChild(im);
 			}
 			return wrap;
@@ -3393,6 +3401,8 @@
 					const im = document.createElement('img');
 					im.src = absUrl(cardBack);
 					im.alt = '';
+					im.loading = 'eager';
+					im.decoding = 'auto';
 					im.style.position = 'absolute';
 					im.style.width = '34px';
 					im.style.height = '48px';
