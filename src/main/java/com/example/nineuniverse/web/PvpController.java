@@ -225,6 +225,9 @@ public class PvpController {
 			iAmFirst = iAmHost ? humanFirst : !humanFirst;
 		}
 		model.addAttribute("battleIntroIAmFirst", iAmFirst);
+		if (oppUid != null) {
+			model.addAttribute("pvpOpponentUserId", oppUid);
+		}
 		return "pvp-play";
 	}
 

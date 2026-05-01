@@ -28,11 +28,12 @@
 							以下から最新のインストーラーを取得し、上書きインストール（または一度アンインストールしてから再インストール）を行ってください。
 						</p>
 						<div class="web-desktop-migration-notice__download-row">
-							<p class="web-desktop-migration-notice__download" th:if="${desktopClientUpdateInstallerWinHref != null and !desktopClientUpdateInstallerWinHref.isEmpty()}">
-								<a class="btn btn--primary web-desktop-migration-notice__download-btn"
-								   th:href="${desktopClientUpdateInstallerWinHref}"
-								   target="_blank"
-								   rel="noopener noreferrer">Windows 用（.exe）</a>
+							<p class="web-desktop-migration-notice__download"
+							   th:if="${desktopClientUpdateInstallerWinAbsHref != null and !desktopClientUpdateInstallerWinAbsHref.isEmpty()}">
+								<button type="button"
+								        class="btn btn--primary web-desktop-migration-notice__download-btn"
+								        id="desktop-app-update-gate-download-btn"
+								        th:attr="data-installer-url=${desktopClientUpdateInstallerWinAbsHref}">Windows 用（.exe）</button>
 							</p>
 						</div>
 						<p class="announcement-modal__card-text muted web-desktop-migration-notice__browser-hint">
@@ -65,43 +66,122 @@
 					}
 					return false;
 				}
-				var meta = document.querySelector('meta[name="nu_desktop_minimum_version"]');
-				var minV = meta && meta.getAttribute('content');
-				if (!minV || !String(minV).trim()) {
-					return;
+				function bindGateDownloadButton() {
+					var btn = document.getElementById('desktop-app-update-gate-download-btn');
+					if (!btn || btn.dataset.nuDownloadBound === '1') {
+						return;
+					}
+					btn.dataset.nuDownloadBound = '1';
+					btn.addEventListener('click', function () {
+						var raw = btn.getAttribute('data-installer-url') || '';
+						var url = String(raw).trim();
+						if (!url) {
+							return;
+						}
+						var neu = window.nuElectron;
+						if (neu && typeof neu.openInstallerDownloadUrl === 'function') {
+							neu.openInstallerDownloadUrl(url).then(function (res) {
+								if (res && res.ok) {
+									return;
+								}
+								try {
+									window.open(url, '_blank', 'noopener,noreferrer');
+								} catch (_) {
+									/* ignore */
+								}
+							}).catch(function () {
+								try {
+									window.open(url, '_blank', 'noopener,noreferrer');
+								} catch (_) {
+									/* ignore */
+								}
+							});
+							return;
+						}
+						try {
+							window.open(url, '_blank', 'noopener,noreferrer');
+						} catch (_) {
+							/* ignore */
+						}
+					});
 				}
-				minV = String(minV).trim();
-				var neu = window.nuElectron;
-				if (!neu) {
-					return;
+				function applyUpdateGate(meta, minV, neu) {
+					var clientV =
+						typeof neu.appVersion === 'string' && neu.appVersion.trim()
+							? neu.appVersion.trim()
+							: '0.0.0';
+					var label = document.getElementById('desktop-app-update-gate-client-ver');
+					if (label) {
+						label.textContent = clientV;
+					}
+					if (!semverLessThan(clientV, minV)) {
+						return;
+					}
+					var el = document.getElementById('desktop-app-update-gate');
+					if (!el) {
+						return;
+					}
+					el.removeAttribute('hidden');
+					document.documentElement.classList.add('nu-has-desktop-app-update-gate');
+					bindGateDownloadButton();
+					document.querySelectorAll('form').forEach(function (f) {
+						if (f.dataset.nuUpdateGateSubmitGuard === '1') {
+							return;
+						}
+						f.dataset.nuUpdateGateSubmitGuard = '1';
+						f.addEventListener(
+							'submit',
+							function (ev) {
+								if (document.documentElement.classList.contains('nu-has-desktop-app-update-gate')) {
+									ev.preventDefault();
+								}
+							},
+							true
+						);
+					});
 				}
-				var clientV = typeof neu.appVersion === 'string' && neu.appVersion.trim()
-					? neu.appVersion.trim()
-					: '0.0.0';
-				var label = document.getElementById('desktop-app-update-gate-client-ver');
-				if (label) {
-					label.textContent = clientV;
+				function runUpdateGateAttempt() {
+					var meta = document.querySelector('meta[name="nu_desktop_minimum_version"]');
+					var minV = meta && meta.getAttribute('content');
+					if (!minV || !String(minV).trim()) {
+						return;
+					}
+					minV = String(minV).trim();
+					var neu = window.nuElectron;
+					if (!neu) {
+						return;
+					}
+					applyUpdateGate(meta, minV, neu);
 				}
-				if (!semverLessThan(clientV, minV)) {
-					return;
+				function scheduleUpdateGate() {
+					var maxTries = 40;
+					var delayMs = 50;
+					var n = 0;
+					function tick() {
+						var meta = document.querySelector('meta[name="nu_desktop_minimum_version"]');
+						var minV = meta && meta.getAttribute('content');
+						if (!minV || !String(minV).trim()) {
+							return;
+						}
+						minV = String(minV).trim();
+						if (window.nuElectron) {
+							applyUpdateGate(meta, minV, window.nuElectron);
+							return;
+						}
+						n += 1;
+						if (n < maxTries) {
+							setTimeout(tick, delayMs);
+						}
+					}
+					if (document.readyState === 'loading') {
+						document.addEventListener('DOMContentLoaded', function () {
+							setTimeout(tick, 0);
+						});
+					} else {
+						setTimeout(tick, 0);
+					}
 				}
-				var el = document.getElementById('desktop-app-update-gate');
-				if (!el) {
-					return;
-				}
-				el.removeAttribute('hidden');
-				document.documentElement.classList.add('nu-has-desktop-app-update-gate');
-				document.querySelectorAll('form').forEach(function (f) {
-					f.addEventListener(
-						'submit',
-						function (ev) {
-							if (document.documentElement.classList.contains('nu-has-desktop-app-update-gate')) {
-								ev.preventDefault();
-							}
-						},
-						true
-					);
-				});
+				scheduleUpdateGate();
 			})();
 		</script>
 	</th:block>

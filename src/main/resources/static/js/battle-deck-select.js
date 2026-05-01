@@ -2,11 +2,13 @@
  * バトル開始時のデッキ選択: 前回選んだデッキを先頭に並べ、送信時に localStorage へ保存する。
  * CPU バトル（/battle/cpu）では nu.lastCpuBattleDeckId / nu.lastCpuBattleLevel を使い、
  * PVP などでは従来どおり nu.lastBattleDeckId のみ。
+ * 「だれかと対戦」では直前の対戦相手（nu.lastPvpOpponentUserId）をフレンド一覧の先頭にする。
  */
 (function () {
 	var STORAGE_KEY_DECK_GENERIC = 'nu.lastBattleDeckId';
 	var STORAGE_KEY_DECK_CPU = 'nu.lastCpuBattleDeckId';
 	var STORAGE_KEY_CPU_LEVEL = 'nu.lastCpuBattleLevel';
+	var STORAGE_KEY_LAST_PVP_OPPONENT = 'nu.lastPvpOpponentUserId';
 
 	function deckStorageKeyForForm(form) {
 		return form && form.querySelector('input[name="cpuMode"]') ? STORAGE_KEY_DECK_CPU : STORAGE_KEY_DECK_GENERIC;
@@ -100,6 +102,31 @@
 		}
 	}
 
+	function moveLastPvpOpponentFirst(select) {
+		if (!select || !select.options.length) {
+			return;
+		}
+		var lastId = null;
+		try {
+			lastId = localStorage.getItem(STORAGE_KEY_LAST_PVP_OPPONENT);
+		} catch (e) {
+			return;
+		}
+		if (lastId == null || lastId === '' || !/^\d+$/.test(String(lastId))) {
+			return;
+		}
+		var opts = select.options;
+		for (var i = 0; i < opts.length; i++) {
+			if (String(opts[i].value) === String(lastId)) {
+				if (i > 0) {
+					select.insertBefore(opts[i], opts[0]);
+				}
+				select.value = lastId;
+				break;
+			}
+		}
+	}
+
 	function wireSaveCpuLevelOnSubmit(form, levelSelect) {
 		var cpuInput = form.querySelector('input[name="cpuMode"]');
 		if (!cpuInput || !levelSelect) {
@@ -130,6 +157,20 @@
 			if (form) {
 				wireSaveDeckOnSubmit(form, select, deckKey);
 			}
+		}
+
+		var friendSelects = document.querySelectorAll('select[name="friendUserId"]');
+		for (var fs = 0; fs < friendSelects.length; fs++) {
+			var fsel = friendSelects[fs];
+			var fform = fsel.closest('form');
+			if (!fform) {
+				continue;
+			}
+			var act = String(fform.getAttribute('action') || '');
+			if (act.indexOf('/battle/pvp/challenge') < 0) {
+				continue;
+			}
+			moveLastPvpOpponentFirst(fsel);
 		}
 
 		var cpuModeInputs = document.querySelectorAll('form input[name="cpuMode"]');

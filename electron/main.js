@@ -252,6 +252,42 @@ function isSafeRemoteInstallerUrl(urlStr) {
 	}
 }
 
+/**
+ * ログイン前ゲートの「インストーラ取得」用。任意の URL を開かせない。
+ * ホストは START_URL と同一、またはローカル開発用 localhost のみ。
+ */
+function isAllowedInstallerOpenExternalUrl(href) {
+	try {
+		var u = new URL(href);
+		var scheme = (u.protocol || '').toLowerCase();
+		if (scheme !== 'https:' && scheme !== 'http:') {
+			return false;
+		}
+		var h = (u.hostname || '').toLowerCase();
+		var startHost = new URL(START_URL).hostname.toLowerCase();
+		var hostOk = h === startHost || h === 'localhost' || h === '127.0.0.1';
+		if (!hostOk && startHost.length > 0) {
+			hostOk = h.endsWith('.' + startHost);
+		}
+		if (!hostOk) {
+			return false;
+		}
+		if (scheme === 'http:' && h !== 'localhost' && h !== '127.0.0.1') {
+			return false;
+		}
+		var path = (u.pathname || '').replace(/\\/g, '/').toLowerCase();
+		if (path.indexOf('/downloads/') === -1) {
+			return false;
+		}
+		if (!path.endsWith('.exe') && !path.endsWith('.dmg')) {
+			return false;
+		}
+		return true;
+	} catch (e) {
+		return false;
+	}
+}
+
 async function fetchDesktopUpdateInfoForRenderer() {
 	var current = app.getVersion();
 	var payload = await fetchDesktopClientUpdatePayload();
@@ -621,26 +657,44 @@ async function createWindow() {
 
 	/* インストーラ等: WebView 内で .exe を開かず、既定ブラウザでダウンロードさせる */
 	win.webContents.setWindowOpenHandler(function (details) {
-		var u = details.url;
-		if (u && (u.startsWith('http://') || u.startsWith('https://'))) {
-			try {
-				shell.openExternal(u);
-			} catch (e) {
-				/* ignore */
-			}
+		var raw = details.url;
+		if (!raw) {
 			return { action: 'deny' };
 		}
-		return { action: 'allow' };
+		var resolved;
+		try {
+			resolved = new URL(raw, START_URL).href;
+		} catch (e) {
+			return { action: 'deny' };
+		}
+		try {
+			var uo = new URL(resolved);
+			if (uo.protocol === 'https:' || uo.protocol === 'http:') {
+				try {
+					shell.openExternal(resolved);
+				} catch (e2) {
+					/* ignore */
+				}
+				return { action: 'deny' };
+			}
+		} catch (e3) {
+			/* ignore */
+		}
+		return { action: 'deny' };
 	});
 	win.webContents.on('will-navigate', function (event, url) {
 		if (!url) {
 			return;
 		}
 		try {
-			var u = String(url);
-			if (u.includes('/downloads/nine-universe-setup-') && u.toLowerCase().endsWith('.exe')) {
+			var resolved = new URL(String(url), START_URL).href;
+			var lower = resolved.toLowerCase();
+			if (
+				(lower.indexOf('/downloads/nine-universe-setup-') !== -1 && lower.endsWith('.exe')) ||
+				(lower.indexOf('/downloads/nine-universe-') !== -1 && lower.endsWith('.dmg'))
+			) {
 				event.preventDefault();
-				shell.openExternal(u);
+				shell.openExternal(resolved);
 			}
 		} catch (e) {
 			/* ignore */
@@ -709,6 +763,28 @@ if (!gotSingleInstanceLock) {
 			event.returnValue = app.getVersion();
 		} catch (e) {
 			event.returnValue = '';
+		}
+	});
+
+	ipcMain.handle('nu-open-installer-download-url', async function (_event, rawUrl) {
+		if (!rawUrl || typeof rawUrl !== 'string') {
+			return { ok: false, error: 'bad_url' };
+		}
+		var trimmed = rawUrl.trim();
+		var u;
+		try {
+			u = new URL(trimmed);
+		} catch (e) {
+			return { ok: false, error: 'bad_url' };
+		}
+		if (!isAllowedInstallerOpenExternalUrl(u.href)) {
+			return { ok: false, error: 'forbidden' };
+		}
+		try {
+			await shell.openExternal(u.href);
+			return { ok: true };
+		} catch (e2) {
+			return { ok: false, error: String((e2 && e2.message) || e2) };
 		}
 	});
 

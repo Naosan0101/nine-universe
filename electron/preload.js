@@ -53,6 +53,8 @@ contextBridge.exposeInMainWorld('nuElectron', {
 	 */
 	runDownloadedDesktopInstaller: (opts) =>
 		ipcRenderer.invoke('nu-run-downloaded-desktop-installer', opts && typeof opts === 'object' ? opts : {}),
+	/** 強制更新ゲート: 検証済み URL を OS の既定ブラウザで開き .exe/.dmg をダウンロードさせる */
+	openInstallerDownloadUrl: (url) => ipcRenderer.invoke('nu-open-installer-download-url', url),
 	onDesktopInstallerProgress: function (listener) {
 		if (typeof listener !== 'function') {
 			return function () {};

@@ -16,6 +16,8 @@
 	const dataFbFull = document.querySelector('meta[name="card_data_fallback"]')?.getAttribute('content') || '';
 	const pvpMatchId = document.querySelector('meta[name="pvp_match_id"]')?.getAttribute('content') || '';
 	const battleIsPvp = pvpMatchId.length > 0;
+	const pvpOpponentUserIdMeta =
+		document.querySelector('meta[name="pvp_opponent_user_id"]')?.getAttribute('content') || '';
 	const battleApiBase = battleIsPvp ? (contextPath + '/battle/pvp/api/' + encodeURIComponent(pvpMatchId)) : null;
 	const cpuThinkSpeedMeta = document.querySelector('meta[name="cpu_think_speed"]')?.getAttribute('content') || 'NORMAL';
 	function cpuThinkWaitMs() {
@@ -39,6 +41,21 @@
 		}
 		try {
 			localStorage.setItem(LAST_BATTLE_DECK_STORAGE_KEY, String(id).trim());
+		} catch (e) {
+			/* private mode 等 */
+		}
+	}
+
+	function persistLastPvpOpponentForMenu() {
+		if (!battleIsPvp) {
+			return;
+		}
+		var raw = String(pvpOpponentUserIdMeta || '').trim();
+		if (!raw || !/^\d+$/.test(raw)) {
+			return;
+		}
+		try {
+			localStorage.setItem('nu.lastPvpOpponentUserId', raw);
 		} catch (e) {
 			/* private mode 等 */
 		}
@@ -544,6 +561,7 @@
 		function doSurrender() {
 			surrenderGuard.submitting = true;
 			persistLastBattleDeckIdForMenu();
+			persistLastPvpOpponentForMenu();
 			teardownSurrenderConfirmModal();
 			try {
 				form.submit();
@@ -590,6 +608,7 @@
 		}
 		surrenderGuard.submitting = true;
 		persistLastBattleDeckIdForMenu();
+		persistLastPvpOpponentForMenu();
 		try {
 			form.submit();
 		} catch (_) {
@@ -663,6 +682,7 @@
 				/* ignore */
 			}
 		}
+		persistLastPvpOpponentForMenu();
 
 		const msg = st.lastMessage != null ? String(st.lastMessage) : '';
 		if (st.humanWon) {

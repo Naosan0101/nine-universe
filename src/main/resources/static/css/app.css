@@ -27,7 +27,12 @@ body {
 	background: radial-gradient(1200px 600px at 50% -10%, #1a2140 0%, var(--bg) 55%);
 	color: var(--text);
 	min-height: 100vh;
-	cursor: inherit;
+	/* inherit だけだと要素間を移動したフレームで既定カーソルが挟まることがある */
+	cursor: url('../images/cards/cursor_icon.PNG?v=20260423') 0 0, auto;
+}
+/* nu-native-select.js が付与。ラップ label のテキスト部で継承が途切れるのを防ぐ */
+label.nu-native-select__label-wrap {
+	cursor: url('../images/cards/cursor_icon.PNG?v=20260423') 0 0, auto;
 }
 
 input[type="text"],
@@ -55,6 +60,16 @@ summary,
 select,
 [role="button"] {
 	cursor: inherit;
+}
+/* プルダウン項目: inherit だけだと OS ネイティブのリストで既定カーソルになることがあるため明示 */
+option,
+optgroup {
+	cursor: url('../images/cards/cursor_icon.PNG?v=20260423') 0 0, auto;
+}
+/* クリック中も画像のまま（:active で UA が既定カーソルへ切り替えるのを抑止） */
+option:active,
+optgroup:active {
+	cursor: url('../images/cards/cursor_icon.PNG?v=20260423') 0 0, auto !important;
 }
 /* UA の :active で一瞬 default に戻るのを防ぎ、html の画像カーソルを維持する */
 a:any-link:active,
@@ -2761,6 +2776,143 @@ html.nu-has-desktop-app-update-gate body {
 		inset 0 1px 0 rgba(255, 255, 255, 0.06),
 		0 0 0 3px rgba(74, 125, 255, 0.18);
 	background: rgba(10, 12, 18, 0.92);
+}
+
+/* ---- カスタム select（nu-native-select.js）: OS リストを使わずゲーム用カーソルを維持 ---- */
+/* button / option は UA が pointer や default を当てるため inherit だけだと画像カーソルが外れる */
+.nu-native-select {
+	position: relative;
+	display: block;
+	width: 100%;
+	min-width: 0;
+	cursor: url('../images/cards/cursor_icon.PNG?v=20260423') 0 0, auto;
+}
+.nu-native-select__trigger {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+	width: 100%;
+	box-sizing: border-box;
+	text-align: left;
+	cursor: url('../images/cards/cursor_icon.PNG?v=20260423') 0 0, auto !important;
+	font: inherit;
+	color: inherit;
+}
+.nu-native-select__trigger::after {
+	content: "";
+	width: 0.45em;
+	height: 0.45em;
+	border-right: 2px solid currentColor;
+	border-bottom: 2px solid currentColor;
+	transform: rotate(45deg);
+	opacity: 0.55;
+	flex: 0 0 auto;
+	margin-left: 0.25rem;
+	margin-top: -0.2em;
+}
+.nu-native-select__list {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: calc(100% + 3px);
+	z-index: 5000;
+	max-height: min(42vh, 22rem);
+	overflow-y: auto;
+	padding: 0.25rem 0;
+	margin: 0;
+	border-radius: 10px;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	background: rgba(14, 16, 24, 0.98);
+	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+	cursor: url('../images/cards/cursor_icon.PNG?v=20260423') 0 0, auto;
+}
+.nu-native-select__option {
+	display: block;
+	width: 100%;
+	box-sizing: border-box;
+	text-align: left;
+	cursor: url('../images/cards/cursor_icon.PNG?v=20260423') 0 0, auto !important;
+	font: inherit;
+	color: var(--text);
+	padding: 0.48rem 0.65rem;
+	margin: 0;
+	border: none;
+	background: transparent;
+	border-radius: 6px;
+}
+.nu-native-select__trigger:active,
+.nu-native-select__option:active {
+	cursor: url('../images/cards/cursor_icon.PNG?v=20260423') 0 0, auto !important;
+}
+.nu-native-select__option:hover,
+.nu-native-select__option:focus-visible {
+	outline: none;
+	background: rgba(74, 125, 255, 0.22);
+	cursor: url('../images/cards/cursor_icon.PNG?v=20260423') 0 0, auto !important;
+}
+.stack .nu-native-select__trigger {
+	padding: 0.52rem 0.65rem;
+	border-radius: 10px;
+	border: 1px solid rgba(255, 255, 255, 0.16);
+	background: rgba(10, 12, 18, 0.78);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+	transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+.stack .nu-native-select.nu-native-select--open .nu-native-select__trigger {
+	outline: none;
+	border-color: rgba(74, 125, 255, 0.6);
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.06),
+		0 0 0 3px rgba(74, 125, 255, 0.18);
+	background: rgba(10, 12, 18, 0.92);
+}
+.settings-panel__form .nu-native-select {
+	max-width: 22rem;
+}
+.settings-panel__form .nu-native-select__trigger {
+	padding: 0.45rem 0.5rem;
+	border-radius: 10px;
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	background: rgba(0, 0, 0, 0.25);
+	font-size: 0.92rem;
+}
+.settings-panel__form .settings-panel__field--cpu-speed .nu-native-select {
+	max-width: 11rem;
+}
+.nu-native-select__real {
+	position: absolute !important;
+	width: 1px !important;
+	height: 1px !important;
+	padding: 0 !important;
+	margin: -1px !important;
+	overflow: hidden !important;
+	clip: rect(0, 0, 0, 0) !important;
+	clip-path: inset(50%) !important;
+	white-space: nowrap !important;
+	border: 0 !important;
+	opacity: 0 !important;
+	pointer-events: none !important;
+}
+.nu-native-select.nu-native-select--lib {
+	min-width: 14rem;
+}
+.nu-native-select.nu-native-select--lib .nu-native-select__trigger {
+	min-width: 14rem;
+	padding: 0.4rem 0.55rem;
+	border-radius: 8px;
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	background: #0c0e14;
+}
+.nu-native-select.nu-native-select--deck-lib {
+	min-width: 14rem;
+}
+.nu-native-select.nu-native-select--deck-lib .nu-native-select__trigger {
+	min-width: 14rem;
+	padding: 0.4rem 0.55rem;
+	border-radius: 8px;
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	background: #0c0e14;
 }
 
 /* Links: keep readable but game-like */

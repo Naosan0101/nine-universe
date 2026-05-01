@@ -5,6 +5,7 @@ import java.util.Locale;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /**
  * Thymeleaf 3.1+ では #request が既定で使えないため、JS 用にコンテキストパスをモデルへ渡す。
@@ -108,6 +109,17 @@ public class GlobalThymeleafModelAdvice {
 		return resolveWindowsInstallerHref(request);
 	}
 
+	/**
+	 * Electron の {@code shell.openExternal} 用。相対パスだけだと環境によってウィンドウが開かず失敗するため、常に絶対 URL を渡す。
+	 */
+	@ModelAttribute("desktopClientUpdateInstallerWinAbsHref")
+	public String desktopClientUpdateInstallerWinAbsHref(HttpServletRequest request) {
+		if (!desktopClientUpdateGateActive()) {
+			return "";
+		}
+		return resolveWindowsInstallerAbsoluteHref(request);
+	}
+
 	private String resolveWindowsInstallerHref(HttpServletRequest request) {
 		if (webDesktopMigrationInstallerAbsoluteUrl != null && !webDesktopMigrationInstallerAbsoluteUrl.isBlank()) {
 			return webDesktopMigrationInstallerAbsoluteUrl.trim();
@@ -115,5 +127,22 @@ public class GlobalThymeleafModelAdvice {
 		String cp = request.getContextPath();
 		String prefix = (cp == null || cp.isEmpty()) ? "" : cp;
 		return prefix + "/downloads/nine-universe-setup-0.1.4.exe";
+	}
+
+	private String resolveWindowsInstallerAbsoluteHref(HttpServletRequest request) {
+		String href = resolveWindowsInstallerHref(request);
+		if (href == null || href.isBlank()) {
+			return "";
+		}
+		String t = href.trim();
+		if (t.startsWith("http://") || t.startsWith("https://")) {
+			return t;
+		}
+		try {
+			String path = t.startsWith("/") ? t : "/" + t;
+			return ServletUriComponentsBuilder.fromRequest(request).replacePath(path).build().toUriString();
+		} catch (Exception e) {
+			return t;
+		}
 	}
 }

@@ -1,0 +1,8 @@
+<th:block xmlns:th="http://www.thymeleaf.org" th:fragment="scripts">
+	<script th:inline="javascript">
+		/*<![CDATA[*/
+		window.__NU_CURSOR_ICON_HREF = /*[[@{/images/cards/cursor_icon.PNG(v=20260423)}]]*/ '/images/cards/cursor_icon.PNG';
+		/*]]>*/
+	</script>
+	<script th:src="@{/js/nu-cursor-feedback.js(v=${assetVersion})}"></script>
+</th:block>
