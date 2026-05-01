@@ -144,8 +144,6 @@
 		img.addEventListener('error', handleError);
 		function crushIfAlreadyBroken() {
 			try {
-				/* 未接続の img は load が走らず complete/naturalWidth が偽陽性になり得る（WebView・アプリ内ブラウザ） */
-				if (!img.isConnected) return;
 				if (img.complete && img.naturalWidth === 0) {
 					handleError();
 				}
@@ -156,13 +154,6 @@
 		crushIfAlreadyBroken();
 		setTimeout(crushIfAlreadyBroken, 0);
 		setTimeout(crushIfAlreadyBroken, 250);
-		img.addEventListener(
-			'load',
-			function () {
-				crushIfAlreadyBroken();
-			},
-			{ once: true }
-		);
 	}
 
 	function absPath(path, contextPath) {
@@ -242,17 +233,12 @@
 	 * @param {string} [options.plateFallback] — card_plate_fallback のフル URL
 	 * @param {string} [options.dataFallback] — card_data_fallback のフル URL
 	 * @param {string} [options.extraRootClasses] — 例: card-face--mini-deck, battle-layered--hand
-	 * @param {boolean} [options.eagerImages] — true のとき lazy/async を使わず、再描画が多い画面（バトル等）のちらつきを抑える
 	 */
 	function buildLibraryCardFace(card, options) {
 		options = options || {};
 		const cp = options.contextPath != null ? options.contextPath : '';
 		const plateFb = options.plateFallback || '';
 		const dataFb = options.dataFallback || '';
-		const eagerImages = options.eagerImages === true;
-		const imgLoading = eagerImages ? 'eager' : 'lazy';
-		/* sync は環境によってイラストが出ないことがあるため auto（eager は維持して読み込みは優先） */
-		const imgDecoding = eagerImages ? 'auto' : 'async';
 
 		const layerBase = card.layerBasePath || card.layerBase || '';
 		const layerPortrait = card.layerPortraitPath || card.layerPortrait || '';
@@ -286,8 +272,8 @@
 			const im = document.createElement('img');
 			im.className = 'card-face__layer-img card-face__layer-img--' + classSuffix;
 			im.alt = '';
-			im.loading = imgLoading;
-			im.decoding = imgDecoding;
+			im.loading = 'lazy';
+			im.decoding = 'async';
 			im.src = absPath(url, cp) || fallback || '';
 			stack.appendChild(im);
 		}
@@ -297,8 +283,8 @@
 			const im = document.createElement('img');
 			im.className = 'card-face__layer-img card-face__layer-img--portrait';
 			im.alt = '';
-			im.loading = imgLoading;
-			im.decoding = imgDecoding;
+			im.loading = 'lazy';
+			im.decoding = 'async';
 			im.src = absPath(layerPortrait, cp) || '';
 			if (layerPortraitAlt) {
 				im.dataset.portraitAlt = absPath(layerPortraitAlt, cp);

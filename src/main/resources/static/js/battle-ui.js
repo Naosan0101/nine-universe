@@ -714,9 +714,7 @@
 			contextPath: contextPath,
 			plateFallback: plateFbFull,
 			dataFallback: dataFbFull,
-			extraRootClasses: 'battle-layered battle-layered--' + variant,
-			/* バトルは render ごとに DOM を作り直すため lazy/async だとレイヤーが後から載ってちらつく */
-			eagerImages: true
+			extraRootClasses: 'battle-layered battle-layered--' + variant
 		});
 		wireLibraryCardFaceImages(face, plateFbFull, dataFbFull);
 		applyLibraryCardFaceSpark(face, d.rarity);
@@ -2034,8 +2032,6 @@
 				const im = document.createElement('img');
 				im.src = absUrl(cardBack);
 				im.alt = '裏';
-				im.loading = 'eager';
-				im.decoding = 'auto';
 				host.appendChild(im);
 			}
 			grid.appendChild(host);
@@ -2261,8 +2257,7 @@
 			im.src = absUrl(cardBack);
 			im.alt = '';
 			im.className = 'deck-stack__back';
-			im.loading = 'eager';
-			im.decoding = 'auto';
+			im.decoding = 'async';
 			const fromTop = n - 1 - i;
 			im.style.left = fromTop * offsetPx + 'px';
 			im.style.top = fromTop * offsetPx + 'px';
@@ -2337,8 +2332,7 @@
 				im.src = absUrl(cardBack);
 				im.alt = '裏';
 				im.className = 'deck-stack__back';
-				im.loading = 'eager';
-				im.decoding = 'auto';
+				im.decoding = 'async';
 				cardHost.appendChild(im);
 			}
 			pile.appendChild(cardHost);
@@ -2361,8 +2355,6 @@
 				const im = document.createElement('img');
 				im.src = absUrl(cardBack);
 				im.alt = '裏';
-				im.loading = 'eager';
-				im.decoding = 'auto';
 				wrap.appendChild(im);
 			}
 			return wrap;
@@ -3401,8 +3393,6 @@
 					const im = document.createElement('img');
 					im.src = absUrl(cardBack);
 					im.alt = '';
-					im.loading = 'eager';
-					im.decoding = 'auto';
 					im.style.position = 'absolute';
 					im.style.width = '34px';
 					im.style.height = '48px';
@@ -4443,10 +4433,9 @@
 		if (battleTopActionsEl && battleTopActionsEl.parentNode) {
 			battleTopActionsEl.parentNode.removeChild(battleTopActionsEl);
 		}
+		app.innerHTML = '';
 		hideBattleCardTooltip();
 		hideBattleDeckTooltip();
-		/* innerHTML クリア→追記だとその間に空フレームが挟まり白っぽく見える。組み立ててから一括差し替え */
-		const mountFrag = document.createDocumentFragment();
 
 		// Top "thinking" banner (fixed-ish inside app)
 		if (st.phase === 'CPU_THINKING' || st.phase === 'OPPONENT_TURN') {
@@ -4456,10 +4445,10 @@
 			b.style.zIndex = '20';
 			b.style.marginBottom = '10px';
 			b.textContent = st.phase === 'OPPONENT_TURN' ? '相手の操作中…' : '考え中...';
-			mountFrag.appendChild(b);
+			app.appendChild(b);
 		}
 
-		mountFrag.appendChild(el('p', 'battle-msg', st.lastMessage || '—'));
+		app.appendChild(el('p', 'battle-msg', st.lastMessage || '—'));
 
 		const oppTop = el('section', 'battle-row battle-row--opp battle-band battle-band--opp');
 		{
@@ -4500,7 +4489,7 @@
 
 			oppTop.appendChild(inner);
 		}
-		mountFrag.appendChild(oppTop);
+		app.appendChild(oppTop);
 
 		const zonesRow = el('section', 'battle-row battle-row--zones-split');
 		{
@@ -4546,7 +4535,7 @@
 
 			zonesRow.appendChild(zonesWrap);
 		}
-		mountFrag.appendChild(zonesRow);
+		app.appendChild(zonesRow);
 
 		const you = el('section', 'battle-row battle-row--you battle-band battle-band--you');
 		{
@@ -4583,9 +4572,7 @@
 
 			you.appendChild(inner);
 		}
-		mountFrag.appendChild(you);
-
-		app.replaceChildren(mountFrag);
+		app.appendChild(you);
 
 		updateBattleFieldBackdrop(st.activeField, st.defs);
 

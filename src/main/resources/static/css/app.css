@@ -4748,13 +4748,6 @@ body.battle-intro-is-running {
 .page--battle .hand-card .battle-layered--hand {
 	display: block;
 }
-/* 再描画・画像デコード前に #e4e5eb が見えると白っぽくフラッシュする。バトルだけ暗い下地にする */
-.page--battle .battle-layered.card-face--layered {
-	background-color: #1e2229;
-}
-.page--battle .battle-layered .card-face__layer-img {
-	background-color: #1e2229;
-}
 /* 相手帯：ストーンは手札列の上、デッキ｜手札｜レスト */
 .page--battle .battle-band.battle-row {
 	display: block;
