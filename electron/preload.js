@@ -29,6 +29,28 @@ contextBridge.exposeInMainWorld('nuElectron', {
 	initialFullscreenPreference: initialFullscreenPreference,
 	/** サーバーの {@code app.desktop-client.minimum-version} と照合（ログイン前ゲート） */
 	appVersion: readPackageJsonVersion(),
-	/** ログイン後: サーバの最新版より古ければ「更新があります」ダイアログ（main が shell.openExternal） */
-	checkDesktopUpdate: () => ipcRenderer.invoke('nu-check-desktop-update'),
+	/** サーバの任意更新情報（Web オーバーレイ用）。従来の checkDesktopUpdate と同一応答。 */
+	getDesktopUpdateInfo: () => ipcRenderer.invoke('nu-get-desktop-update-info'),
+	checkDesktopUpdate: () => ipcRenderer.invoke('nu-get-desktop-update-info'),
+	/** main がインストーラを temp に保存（進捗は onDesktopInstallerProgress） */
+	startDesktopInstallerDownload: () => ipcRenderer.invoke('nu-start-desktop-installer-download'),
+	/**
+	 * 保存済みインストーラを起動してアプリを終了する。
+	 * opts.navigateToLoginFirst が true のとき、先に START_URL の /login を読み込んでから起動する。
+	 */
+	runDownloadedDesktopInstaller: (opts) =>
+		ipcRenderer.invoke('nu-run-downloaded-desktop-installer', opts && typeof opts === 'object' ? opts : {}),
+	onDesktopInstallerProgress: function (listener) {
+		if (typeof listener !== 'function') {
+			return function () {};
+		}
+		var channel = 'nu-desktop-installer-progress';
+		var wrapped = function (_event, payload) {
+			listener(payload);
+		};
+		ipcRenderer.on(channel, wrapped);
+		return function () {
+			ipcRenderer.removeListener(channel, wrapped);
+		};
+	},
 });

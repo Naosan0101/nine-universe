@@ -1,6 +1,9 @@
 const path = require('path');
 const fs = require('fs');
-const { app, BrowserWindow, Menu, ipcMain, Notification, session, shell, dialog } = require('electron');
+const http = require('http');
+const https = require('https');
+const { spawn } = require('child_process');
+const { app, BrowserWindow, Menu, ipcMain, Notification, session, shell } = require('electron');
 
 /* Windows でトースト通知にアプリ名を正しく出す（package.json の build.appId と一致） */
 if (process.platform === 'win32') {
@@ -15,6 +18,7 @@ if (process.platform === 'win32') {
  * ウィンドウ／タスクバー用（BrowserWindow）。exe 埋め込み／ショートカット表示は package.json の build.win.icon（build-resources/desktop_01.PNG）。
  * icon.png はアイコン01.PNG と同一画像（ASCII 名でランタイム読み込み互換）。
  * （Setup.exe のアイコンは package.json の nsis.installerIcon で別 ICO を使用）
+ * パッケージ exe に desktop_01 を反映するには build.win.signAndEditExecutable が true である必要がある（false だと Electron 既定アイコンのまま）。
  */
 function appIconPath() {
 	var candidates = [
@@ -154,11 +158,9 @@ function startAssetVersionPolling(win) {
 	assetPollTimer = setInterval(poll, ASSET_VERSION_POLL_INTERVAL_MS);
 }
 
-/* --- デスクトップ更新案内（ログイン後に preload から IPC） --- */
-var dismissedDesktopInstallerForLatest = null;
-var desktopUpdateDialogOpen = false;
-var lastDesktopUpdateCheckAt = 0;
-const DESKTOP_UPDATE_CHECK_THROTTLE_MS = 20 * 1000;
+/* --- デスクトップ任意更新（Web オーバーレイ + main がインストーラを取得して起動） --- */
+var lastInstallerDownloadPath = null;
+var activeInstallerDownloadReq = null;
 
 function desktopClientUpdateEndpointUrl() {
 	try {
@@ -191,111 +193,185 @@ function compareSemver(a, b) {
 	return 0;
 }
 
-function resolveWindowForDesktopUpdate(win) {
-	if (win && !win.isDestroyed()) {
-		return win;
-	}
-	try {
-		var f = BrowserWindow.getFocusedWindow();
-		if (f && !f.isDestroyed()) {
-			return f;
-		}
-	} catch (e) {
-		/* ignore */
-	}
-	try {
-		var all = BrowserWindow.getAllWindows();
-		for (var i = 0; i < all.length; i++) {
-			if (all[i] && !all[i].isDestroyed()) {
-				return all[i];
-			}
-		}
-	} catch (e2) {
-		/* ignore */
-	}
-	return null;
-}
-
-async function maybeOfferDesktopUpdate(win) {
-	if (desktopUpdateDialogOpen) {
-		return;
-	}
-	var now = Date.now();
-	if (now - lastDesktopUpdateCheckAt < DESKTOP_UPDATE_CHECK_THROTTLE_MS) {
-		return;
-	}
-	lastDesktopUpdateCheckAt = now;
-
-	var parent = resolveWindowForDesktopUpdate(win);
-	if (!parent) {
-		return;
-	}
-
+async function fetchDesktopClientUpdatePayload() {
 	var ep = desktopClientUpdateEndpointUrl();
 	if (!ep) {
-		return;
+		return null;
 	}
-
 	var res;
 	try {
 		res = await fetch(ep, { cache: 'no-store', method: 'GET' });
 	} catch (e) {
-		return;
+		return null;
 	}
 	if (!res.ok) {
-		return;
+		return null;
 	}
 	var data;
 	try {
 		data = await res.json();
 	} catch (e) {
-		return;
+		return null;
 	}
 	var latest = typeof data.latestVersion === 'string' ? data.latestVersion.trim() : '';
 	var installerUrl = typeof data.installerUrl === 'string' ? data.installerUrl.trim() : '';
 	if (!latest || !installerUrl) {
-		return;
+		return null;
 	}
 	if (installerUrl.indexOf('http://') !== 0 && installerUrl.indexOf('https://') !== 0) {
-		return;
+		return null;
 	}
+	return { latestVersion: latest, installerUrl: installerUrl };
+}
 
-	var current = app.getVersion();
-	if (compareSemver(current, latest) >= 0) {
-		dismissedDesktopInstallerForLatest = null;
-		return;
-	}
-	if (dismissedDesktopInstallerForLatest === latest) {
-		return;
-	}
-
-	desktopUpdateDialogOpen = true;
+function isSafeRemoteInstallerUrl(urlStr) {
 	try {
-		var r = await dialog.showMessageBox(parent, {
-			type: 'info',
-			title: 'Nine Universe',
-			message: 'アプリの更新があります。',
-			detail:
-				'現在のバージョン: ' +
-				current +
-				'\n最新のバージョン: ' +
-				latest +
-				'\n\n「ダウンロード」を選ぶと、インストーラの取得先を既定のブラウザで開きます。取得後、インストーラを実行して更新してください。',
-			buttons: ['ダウンロード', '後で'],
-			defaultId: 0,
-			cancelId: 1,
-			noLink: true,
-		});
-		if (r.response === 0) {
-			await shell.openExternal(installerUrl);
-		} else {
-			dismissedDesktopInstallerForLatest = latest;
+		var u = new URL(urlStr);
+		if (u.protocol === 'https:') {
+			return true;
 		}
+		if (u.protocol === 'http:') {
+			var h = (u.hostname || '').toLowerCase();
+			return h === 'localhost' || h === '127.0.0.1';
+		}
+		return false;
+	} catch (e) {
+		return false;
+	}
+}
+
+async function fetchDesktopUpdateInfoForRenderer() {
+	var current = app.getVersion();
+	var payload = await fetchDesktopClientUpdatePayload();
+	if (!payload) {
+		return { ok: true, needsUpdate: false, latestVersion: '', installerUrl: '', currentVersion: current };
+	}
+	var needs = compareSemver(current, payload.latestVersion) < 0;
+	return {
+		ok: true,
+		needsUpdate: needs,
+		latestVersion: payload.latestVersion,
+		installerUrl: needs ? payload.installerUrl : '',
+		currentVersion: current,
+	};
+}
+
+function sendInstallerProgress(webContents, payload) {
+	if (!webContents || webContents.isDestroyed()) {
+		return;
+	}
+	try {
+		webContents.send('nu-desktop-installer-progress', payload);
 	} catch (e) {
 		/* ignore */
-	} finally {
-		desktopUpdateDialogOpen = false;
 	}
+}
+
+function downloadInstallerToTemp(installerUrl, webContents) {
+	return new Promise(function (resolve, reject) {
+		if (!isSafeRemoteInstallerUrl(installerUrl)) {
+			reject(new Error('unsafe_installer_url'));
+			return;
+		}
+		var baseName = path.basename(new URL(installerUrl).pathname) || 'nine-universe-setup.exe';
+		if (baseName.indexOf('.') === -1) {
+			baseName += '.exe';
+		}
+		baseName = baseName.replace(/[^a-zA-Z0-9._-]+/g, '_');
+		var dest = path.join(app.getPath('temp'), 'nu-installer-' + Date.now() + '-' + baseName);
+		var received = 0;
+		var total = 0;
+
+		function cleanupPartial() {
+			try {
+				if (fs.existsSync(dest)) {
+					fs.unlinkSync(dest);
+				}
+			} catch (e) {
+				/* ignore */
+			}
+		}
+
+		function doRequest(url, redirectsLeft) {
+			if (redirectsLeft <= 0) {
+				cleanupPartial();
+				reject(new Error('too_many_redirects'));
+				return;
+			}
+			var lib = url.startsWith('https:') ? https : http;
+			var req = lib.get(
+				url,
+				{
+					headers: { 'Cache-Control': 'no-store' },
+				},
+				function (res) {
+					if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+						var nextUrl;
+						try {
+							nextUrl = new URL(res.headers.location, url).href;
+						} catch (e) {
+							cleanupPartial();
+							reject(e);
+							return;
+						}
+						res.resume();
+						doRequest(nextUrl, redirectsLeft - 1);
+						return;
+					}
+					if (res.statusCode !== 200) {
+						cleanupPartial();
+						reject(new Error('http_' + res.statusCode));
+						return;
+					}
+					total = parseInt(res.headers['content-length'] || '0', 10) || 0;
+					var out = fs.createWriteStream(dest);
+					activeInstallerDownloadReq = req;
+					res.on('data', function (chunk) {
+						received += chunk.length;
+						sendInstallerProgress(webContents, {
+							phase: 'downloading',
+							received: received,
+							total: total,
+						});
+					});
+					res.pipe(out);
+					out.on('finish', function () {
+						activeInstallerDownloadReq = null;
+						out.close(function (closeErr) {
+							if (closeErr) {
+								cleanupPartial();
+								reject(closeErr);
+								return;
+							}
+							sendInstallerProgress(webContents, {
+								phase: 'complete',
+								received: received,
+								total: total || received,
+							});
+							resolve(dest);
+						});
+					});
+					out.on('error', function (err) {
+						activeInstallerDownloadReq = null;
+						cleanupPartial();
+						reject(err);
+					});
+					res.on('error', function (err) {
+						activeInstallerDownloadReq = null;
+						cleanupPartial();
+						reject(err);
+					});
+				}
+			);
+			req.on('error', function (err) {
+				activeInstallerDownloadReq = null;
+				cleanupPartial();
+				reject(err);
+			});
+		}
+
+		doRequest(installerUrl, 12);
+	});
 }
 
 /** preload の initialFullscreenPreference と同じ（localStorage 未設定時の既定） */
@@ -679,14 +755,101 @@ if (!gotSingleInstanceLock) {
 		setTimeout(destroyAllAndExit, 0);
 	});
 
-	ipcMain.handle('nu-check-desktop-update', async function (event) {
-		var win = null;
-		try {
-			win = BrowserWindow.fromWebContents(event.sender);
-		} catch (e) {
-			win = null;
+	ipcMain.handle('nu-get-desktop-update-info', async function () {
+		return fetchDesktopUpdateInfoForRenderer();
+	});
+
+	ipcMain.handle('nu-check-desktop-update', async function () {
+		return fetchDesktopUpdateInfoForRenderer();
+	});
+
+	ipcMain.handle('nu-start-desktop-installer-download', async function (event) {
+		var wc = event.sender;
+		if (activeInstallerDownloadReq) {
+			try {
+				activeInstallerDownloadReq.destroy();
+			} catch (e) {
+				/* ignore */
+			}
+			activeInstallerDownloadReq = null;
 		}
-		await maybeOfferDesktopUpdate(win);
+		if (lastInstallerDownloadPath) {
+			try {
+				if (fs.existsSync(lastInstallerDownloadPath)) {
+					fs.unlinkSync(lastInstallerDownloadPath);
+				}
+			} catch (e) {
+				/* ignore */
+			}
+			lastInstallerDownloadPath = null;
+		}
+		var payload = await fetchDesktopClientUpdatePayload();
+		var current = app.getVersion();
+		if (!payload || compareSemver(current, payload.latestVersion) >= 0) {
+			return { ok: false, error: 'no_update' };
+		}
+		if (!isSafeRemoteInstallerUrl(payload.installerUrl)) {
+			return { ok: false, error: 'bad_url' };
+		}
+		try {
+			var dest = await downloadInstallerToTemp(payload.installerUrl, wc);
+			lastInstallerDownloadPath = dest;
+			return { ok: true, path: dest };
+		} catch (e) {
+			sendInstallerProgress(wc, { phase: 'error', message: String((e && e.message) || e) });
+			return { ok: false, error: 'download_failed', message: String((e && e.message) || e) };
+		}
+	});
+
+	ipcMain.handle('nu-run-downloaded-desktop-installer', async function (event, opts) {
+		var p = lastInstallerDownloadPath;
+		var tempRoot = app.getPath('temp');
+		if (!p || typeof p !== 'string' || !p.startsWith(tempRoot) || !fs.existsSync(p)) {
+			return { ok: false, error: 'no_file' };
+		}
+		var wc = event.sender;
+		var navigateFirst = opts && opts.navigateToLoginFirst;
+		if (navigateFirst && wc && !wc.isDestroyed()) {
+			try {
+				var loginHref = new URL('/login?nu_install=1', START_URL).href;
+				wc.loadURL(loginHref, {
+					extraHeaders: 'pragma: no-cache\ncache-control: no-cache\n',
+				});
+				await new Promise(function (resolve) {
+					var settled = false;
+					function settle() {
+						if (settled) {
+							return;
+						}
+						settled = true;
+						resolve();
+					}
+					var timer = setTimeout(settle, 8000);
+					wc.once('did-finish-load', function () {
+						clearTimeout(timer);
+						setTimeout(settle, 500);
+					});
+				});
+			} catch (eNav) {
+				/* ignore */
+			}
+		}
+		try {
+			spawn(p, [], { detached: true, stdio: 'ignore' });
+		} catch (e) {
+			return { ok: false, error: 'spawn_failed', message: String((e && e.message) || e) };
+		}
+		setTimeout(function () {
+			try {
+				app.exit(0);
+			} catch (e2) {
+				try {
+					process.exit(0);
+				} catch (e3) {
+					/* ignore */
+				}
+			}
+		}, 600);
 		return { ok: true };
 	});
 

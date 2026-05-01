@@ -3,7 +3,7 @@
 
 $ErrorActionPreference = "Stop"
 $electronRoot = Split-Path $PSScriptRoot -Parent
-$exe = Join-Path $electronRoot "dist\win-unpacked\Nine Universe.exe"
+$exe = Join-Path $electronRoot "dist-installer\win-unpacked\Nine Universe.exe"
 
 if (-not (Test-Path -LiteralPath $exe)) {
 	Write-Host "Missing: $exe" -ForegroundColor Red

@@ -19,14 +19,14 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @RestController
 public class DesktopInstallerDownloadController {
 
-	private static final String CANONICAL_WIN_RESOURCE = "static/downloads/nine-universe-setup-0.1.2.exe";
-	private static final String LEGACY_SPACED_WIN_RESOURCE = "static/downloads/Nine Universe Setup 0.1.2.exe";
-	private static final String DOWNLOAD_WIN_FILENAME = "Nine Universe Setup 0.1.2.exe";
+	private static final String CANONICAL_WIN_RESOURCE = "static/downloads/nine-universe-setup-0.1.3.exe";
+	private static final String LEGACY_SPACED_WIN_RESOURCE = "static/downloads/Nine Universe Setup 0.1.3.exe";
+	private static final String DOWNLOAD_WIN_FILENAME = "Nine Universe Setup 0.1.3.exe";
 
-	private static final String CANONICAL_MAC_RESOURCE = "static/downloads/nine-universe-0.1.2.dmg";
-	private static final String DOWNLOAD_MAC_FILENAME = "Nine Universe 0.1.2.dmg";
+	private static final String CANONICAL_MAC_RESOURCE = "static/downloads/nine-universe-0.1.3.dmg";
+	private static final String DOWNLOAD_MAC_FILENAME = "Nine Universe 0.1.3.dmg";
 
-	@GetMapping("/downloads/nine-universe-setup-0.1.2.exe")
+	@GetMapping("/downloads/nine-universe-setup-0.1.3.exe")
 	public ResponseEntity<Resource> desktopInstallerWindows() {
 		Resource body = resolveWindowsInstallerBody();
 		if (body == null) {
@@ -41,7 +41,7 @@ public class DesktopInstallerDownloadController {
 				.body(body);
 	}
 
-	@GetMapping("/downloads/nine-universe-0.1.2.dmg")
+	@GetMapping("/downloads/nine-universe-0.1.3.dmg")
 	public ResponseEntity<Resource> desktopInstallerMac() {
 		Resource body = resolveMacInstallerBody();
 		if (body == null) {
@@ -57,11 +57,33 @@ public class DesktopInstallerDownloadController {
 	}
 
 	/** 旧リリースの URL 互換 */
+	@GetMapping("/downloads/nine-universe-setup-0.1.2.exe")
+	public ResponseEntity<Void> redirect012WindowsInstaller() {
+		return ResponseEntity.status(HttpStatus.FOUND)
+				.location(ServletUriComponentsBuilder.fromCurrentContextPath()
+						.path("/downloads/nine-universe-setup-0.1.3.exe")
+						.build()
+						.toUri())
+				.build();
+	}
+
+	/** 旧リリースの URL 互換 */
 	@GetMapping("/downloads/nine-universe-setup-0.1.1.exe")
 	public ResponseEntity<Void> redirectLegacyWindowsInstaller() {
 		return ResponseEntity.status(HttpStatus.FOUND)
 				.location(ServletUriComponentsBuilder.fromCurrentContextPath()
-						.path("/downloads/nine-universe-setup-0.1.2.exe")
+						.path("/downloads/nine-universe-setup-0.1.3.exe")
+						.build()
+						.toUri())
+				.build();
+	}
+
+	/** 旧リリースの URL 互換 */
+	@GetMapping("/downloads/nine-universe-0.1.2.dmg")
+	public ResponseEntity<Void> redirect012MacInstaller() {
+		return ResponseEntity.status(HttpStatus.FOUND)
+				.location(ServletUriComponentsBuilder.fromCurrentContextPath()
+						.path("/downloads/nine-universe-0.1.3.dmg")
 						.build()
 						.toUri())
 				.build();
@@ -72,7 +94,7 @@ public class DesktopInstallerDownloadController {
 	public ResponseEntity<Void> redirectLegacyMacInstaller() {
 		return ResponseEntity.status(HttpStatus.FOUND)
 				.location(ServletUriComponentsBuilder.fromCurrentContextPath()
-						.path("/downloads/nine-universe-0.1.2.dmg")
+						.path("/downloads/nine-universe-0.1.3.dmg")
 						.build()
 						.toUri())
 				.build();

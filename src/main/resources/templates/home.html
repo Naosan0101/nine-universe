@@ -657,6 +657,30 @@
 			</div>
 		</article>
 
+		<article class="announcement-modal__card" data-announce-sort="2026050201"
+		         th:if="${announcementListDesktopAppIconDesktop01 and (desktopAppIconDesktop01AnnouncementClaimable or desktopAppIconDesktop01AnnouncementClaimed or desktopAppIconDesktop01AnnouncementExpiredUnclaimed or desktopAppIconDesktop01AnnouncementFutureUnclaimed)}">
+			<div class="announcement-modal__mailbox">
+				<div class="announcement-modal__mailbox-body">
+					<p class="announcement-modal__card-text">・デスクトップ版アプリのアイコンを、ゲームの雰囲気に合わせた画像（desktop_01）に変更しました。タスクバーやデスクトップのショートカットも、最新版を入れ直すと新しいアイコンが表示されます。</p>
+					<p class="announcement-modal__card-text muted">※アプリ内の「更新があります」から最新のインストーラを取得し、上書きインストールしてください。</p>
+				</div>
+				<aside class="announcement-modal__mailbox-aside">
+					<span th:if="${desktopAppIconDesktop01AnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
+					<form th:if="${desktopAppIconDesktop01AnnouncementClaimable}"
+					      th:action="@{/home/announcements/desktop-app-icon-desktop01/claim}"
+					      method="post"
+					      class="announcement-modal__gem-form">
+						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+						<button type="submit" class="btn btn--primary announcement-modal__gem-btn"
+						        th:text="|${desktopAppIconDesktop01AnnouncementGemAmount}ジェム|">10ジェム</button>
+					</form>
+					<p th:if="${desktopAppIconDesktop01AnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
+					<p th:if="${desktopAppIconDesktop01AnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
+					<p th:if="${desktopAppIconDesktop01AnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
+				</aside>
+			</div>
+		</article>
+
 		<div th:replace="~{fragments/announcement-captain-text :: card}"></div>
 		<div th:replace="~{fragments/announcement-kaenryu-status :: card}"></div>
 		<div th:replace="~{fragments/announcement-samurai-status :: card}"></div>

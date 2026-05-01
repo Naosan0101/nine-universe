@@ -1,0 +1,41 @@
+<th:block xmlns:th="http://www.thymeleaf.org" th:fragment="overlay">
+	<aside id="nu-desktop-opt-update-root"
+	       class="nu-desktop-opt-update"
+	       hidden
+	       role="dialog"
+	       aria-modal="true"
+	       aria-labelledby="nu-desktop-opt-update-title">
+		<div class="nu-desktop-opt-update__panel" role="document">
+			<div id="nu-desktop-opt-step-notice">
+				<h2 id="nu-desktop-opt-update-title" class="nu-desktop-opt-update__title">アプリの更新があります</h2>
+				<p class="nu-desktop-opt-update__text">
+					アイコンや実行ファイルの変更など、再インストールが必要な更新です。アプリ内から最新のインストーラを取得し、案内に従って更新できます。
+				</p>
+				<p id="nu-desktop-opt-vers" class="nu-desktop-opt-update__vers"></p>
+				<div class="nu-desktop-opt-update__actions">
+					<button type="button" class="btn btn--primary" id="nu-desktop-opt-btn-install">更新する</button>
+					<button type="button" class="btn btn--ghost" id="nu-desktop-opt-btn-later">後で</button>
+				</div>
+			</div>
+			<div id="nu-desktop-opt-step-progress" hidden>
+				<h2 class="nu-desktop-opt-update__title">インストーラを取得しています</h2>
+				<p class="nu-desktop-opt-update__text" id="nu-desktop-opt-progress-msg">最新のセットアップをダウンロードしています。完了するとログイン画面へ移り、インストーラが起動します。</p>
+				<p id="nu-desktop-opt-pct" class="nu-desktop-opt-update__pct" aria-live="polite"></p>
+				<div class="nu-desktop-opt-update__track" aria-hidden="true">
+					<div id="nu-desktop-opt-bar" class="nu-desktop-opt-update__fill"></div>
+				</div>
+				<p class="nu-desktop-opt-update__hint">
+					インストール完了後は、このアプリを再度起動してログインしてください。
+				</p>
+			</div>
+			<div id="nu-desktop-opt-step-error" hidden>
+				<h2 class="nu-desktop-opt-update__title">ダウンロードに失敗しました</h2>
+				<p class="nu-desktop-opt-update__text" id="nu-desktop-opt-err-msg"></p>
+				<div class="nu-desktop-opt-update__actions">
+					<button type="button" class="btn btn--primary" id="nu-desktop-opt-btn-retry">再試行</button>
+					<button type="button" class="btn btn--ghost" id="nu-desktop-opt-btn-close-err">閉じる</button>
+				</div>
+			</div>
+		</div>
+	</aside>
+</th:block>

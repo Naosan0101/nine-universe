@@ -56,12 +56,6 @@
 	        th:attr="data-poll-url=@{/battle/pvp/pending-inbound.json},data-pvp-menu-url=@{/battle/pvp},data-pvp-invite-notify-enabled=${pvpInviteNotifyEnabled},data-pvp-notify-icon-url=@{/images/cards/desktop_icon_01.PNG}"></script>
 	<script th:replace="~{fragments/tab-fullscreen :: script}"></script>
 	<script th:replace="~{fragments/click-sparkle :: script}"></script>
-	<script>
-		(function () {
-			if (typeof window.nuElectron === 'undefined' || !window.nuElectron || typeof window.nuElectron.checkDesktopUpdate !== 'function') {
-				return;
-			}
-			window.nuElectron.checkDesktopUpdate().catch(function () {});
-		})();
-	</script>
+	<th:block th:replace="~{fragments/desktop-optional-update-ui :: overlay}"></th:block>
+	<script th:src="@{/js/desktop-app-update-ui.js(v=${assetVersion})}"></script>
 </th:block>

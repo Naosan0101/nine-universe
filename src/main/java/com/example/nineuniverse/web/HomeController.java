@@ -120,6 +120,9 @@ public class HomeController {
 		boolean listCardDisplayServerOps202605 = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_START);
+		boolean listDesktopAppIconDesktop01 = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -146,6 +149,7 @@ public class HomeController {
 		model.addAttribute("announcementListKentoshiFix2026", listKentoshiFix2026);
 		model.addAttribute("announcementListKusuriFix2026", listKusuriFix2026);
 		model.addAttribute("announcementListCardDisplayServerOps202605", listCardDisplayServerOps202605);
+		model.addAttribute("announcementListDesktopAppIconDesktop01", listDesktopAppIconDesktop01);
 
 		Set<String> claimedKeys = announcementRewardService.findClaimedKeys(uid);
 
@@ -453,6 +457,26 @@ public class HomeController {
 				"cardDisplayServerOps202605AnnouncementGemAmount",
 				GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_GEMS);
 
+		boolean desktopAppIconDesktop01AnnClaimed =
+				claimedKeys.contains(GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_KEY);
+		boolean desktopAppIconDesktop01AnnInWindow =
+				announcementRewardService.isWithinDesktopAppIconDesktop01AnnouncementWindow(today);
+		model.addAttribute("desktopAppIconDesktop01AnnouncementClaimed", desktopAppIconDesktop01AnnClaimed);
+		model.addAttribute(
+				"desktopAppIconDesktop01AnnouncementClaimable",
+				desktopAppIconDesktop01AnnInWindow && !desktopAppIconDesktop01AnnClaimed);
+		model.addAttribute(
+				"desktopAppIconDesktop01AnnouncementExpiredUnclaimed",
+				!desktopAppIconDesktop01AnnClaimed
+						&& today.isAfter(GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_LAST_DAY));
+		model.addAttribute(
+				"desktopAppIconDesktop01AnnouncementFutureUnclaimed",
+				!desktopAppIconDesktop01AnnClaimed
+						&& today.isBefore(GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_START));
+		model.addAttribute(
+				"desktopAppIconDesktop01AnnouncementGemAmount",
+				GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_GEMS);
+
 		int announcementBulkClaimableGemTotal = 0;
 		if (listPerfLight && perfInWindow && !perfClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PERF_LIGHT_GEMS;
@@ -531,6 +555,9 @@ public class HomeController {
 		}
 		if (listCardDisplayServerOps202605 && cardDisplayServerOps202605AnnInWindow && !cardDisplayServerOps202605AnnClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_GEMS;
+		}
+		if (listDesktopAppIconDesktop01 && desktopAppIconDesktop01AnnInWindow && !desktopAppIconDesktop01AnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_GEMS;
 		}
 		model.addAttribute("announcementBulkClaimableGemTotal", announcementBulkClaimableGemTotal);
 		model.addAttribute("announcementAnyGemClaimable", announcementBulkClaimableGemTotal > 0);
@@ -1102,6 +1129,27 @@ public class HomeController {
 		switch (outcome) {
 			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
 					GameConstants.ANNOUNCEMENT_CARD_DISPLAY_SERVER_OPS_2026_05_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/desktop-app-icon-desktop01/claim")
+	public String claimDesktopAppIconDesktop01Announcement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimDesktopAppIconDesktop01AnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_GEMS + "ジェムを受け取りました。");
 			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
 			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
 		}

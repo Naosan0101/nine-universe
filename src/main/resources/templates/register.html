@@ -64,5 +64,7 @@
 })();
 </script>
 <th:block th:replace="~{fragments/desktop-app-update-gate :: overlay}"></th:block>
+<th:block th:replace="~{fragments/desktop-optional-update-ui :: overlay}"></th:block>
+<script th:src="@{/js/desktop-app-update-ui.js(v=${assetVersion})}"></script>
 </body>
 </html>

@@ -16,9 +16,17 @@ public class AuthController {
 
 	private final RegistrationService registrationService;
 
+	/**
+	 * {@code nu_install=1} はデスクトップ版が再インストール直前にログイン画面へ遷移するときのみ付与する。
+	 * このときはセッションが残っていてもテンプレートを返し、リダイレクトでホームへ飛ばさない。
+	 */
 	@GetMapping("/login")
-	public String login(Authentication authentication) {
-		if (authentication != null && authentication.isAuthenticated()
+	public String login(
+			Authentication authentication,
+			@RequestParam(value = "nu_install", required = false) String nuInstall) {
+		if (!"1".equals(nuInstall)
+				&& authentication != null
+				&& authentication.isAuthenticated()
 				&& !(authentication instanceof AnonymousAuthenticationToken)) {
 			return "redirect:/home";
 		}
