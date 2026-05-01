@@ -71,9 +71,14 @@ public class GlobalThymeleafModelAdvice {
 		return ua.contains("Electron");
 	}
 
+	/**
+	 * お知らせモーダル等の「Windows 用 .exe」リンク用。
+	 * {@link #webDesktopMigrationNoticeEnabled(HttpServletRequest)} は Electron では false になるが、
+	 * デスクトップアプリ内からもインストーラ取得は必要なため、ここではプロパティのオンオフのみで判定する。
+	 */
 	@ModelAttribute("webDesktopMigrationInstallerHref")
 	public String webDesktopMigrationInstallerHref(HttpServletRequest request) {
-		if (!webDesktopMigrationNoticeEnabled(request)) {
+		if (!this.webDesktopMigrationNoticeEnabled) {
 			return "";
 		}
 		return resolveWindowsInstallerHref(request);

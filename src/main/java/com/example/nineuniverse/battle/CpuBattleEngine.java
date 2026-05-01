@@ -526,6 +526,14 @@ public class CpuBattleEngine {
 
 	/** アドバンスド CPU: 同レベル帯でもオリジンより種族が揃いやすいよう、種族収束だけ強める */
 	private static final double ADVANCED_TRIBE_CONVERGENCE_FACTOR = 1.42;
+	/**
+	 * アドバンスドの種族寄せに加える二次項（レベル1では0）。レベル5に近づくほど単線形より強く同種族が選ばれる。
+	 */
+	private static final double ADVANCED_TRIBE_CONVERGENCE_QUAD_PER_LEVEL_SQ = 0.13;
+	/** L5: 多様化ピックで優勢種族に付けない重み倍率（メイン外を1〜2枚入れやすくする） */
+	private static final double ADVANCED_L5_VARIETY_DOMINANT_WEIGHT_MUL = 0.22;
+	/** L5: 多様化ピックで優勢種族以外を押し上げる倍率 */
+	private static final double ADVANCED_L5_VARIETY_OFF_DOMINANT_WEIGHT_MUL = 2.4;
 	/** アドバンスド CPU デッキに含められる〈フィールド〉カードの最大枚数（最小は 1 枚を別途保証） */
 	private static final int ADVANCED_CPU_DECK_MAX_FIELD_CARDS = 2;
 
@@ -660,7 +668,9 @@ public class CpuBattleEngine {
 
 	/**
 	 * 〈フィールド〉を含む全ファイター定義から CPU デッキを構築。
-	 * 強さは 1〜5 段階（レベルが上がるほど種族収束・レアリティが上がりやすい。種族は {@link #ADVANCED_TRIBE_CONVERGENCE_FACTOR} でオリジンより寄せる）。
+	 * 強さは 1〜5 段階（レベルが上がるほど種族収束・レアリティが上がりやすい。種族は {@link #ADVANCED_TRIBE_CONVERGENCE_FACTOR} と
+	 * {@link #ADVANCED_TRIBE_CONVERGENCE_QUAD_PER_LEVEL_SQ} でオリジンより寄せ、高レベルほど差をつける）。
+	 * レベル5のみ、残り枚数に応じた多様化ピックでメイン外が1〜2枚入りやすい。
 	 * 〈フィールド〉は必ず 1 枚以上、多くても 2 枚まで。
 	 */
 	private List<Short> buildCpuDeckIdsAdvanced(int cpuLevel, Random rnd, Map<Short, CardDefinition> defs) {
@@ -703,9 +713,25 @@ public class CpuBattleEngine {
 		int fieldInDeck = 0;
 
 		final String theme = coreTribes[rnd.nextInt(coreTribes.length)];
-		final double convergeBase = 0.55 + 0.40 * (lvl - 1);
+		final int lvlMinus1 = lvl - 1;
+		final double convergeBase = 0.55 + 0.40 * lvlMinus1
+				+ ADVANCED_TRIBE_CONVERGENCE_QUAD_PER_LEVEL_SQ * lvlMinus1 * lvlMinus1;
 		final double convergeBoost = clampDouble(convergeBase * ADVANCED_TRIBE_CONVERGENCE_FACTOR, 0.55, 7.0);
 		final double rarityFactor = clampDouble(0.22 + 0.12 * (lvl - 1), 0.22, 1.45);
+		// L5: メイン外を混ぜるピックの残り回数（0〜2）。全体として1〜2枚外しやすい確率になるよう初期化
+		int l5VarietyRemaining = 0;
+		if (lvl == 5) {
+			double u = rnd.nextDouble();
+			if (u < 0.14) {
+				l5VarietyRemaining = 0;
+			} else if (u < 0.54) {
+				l5VarietyRemaining = 1;
+			} else {
+				l5VarietyRemaining = 2;
+			}
+		}
+		// L5 通常ピックのみ種族寄せを少し弱め、多様化と合わせて「ほぼ揃い＋外し1〜2」になりやすくする
+		final double convergeBoostNormal = lvl == 5 ? convergeBoost * 0.88 : convergeBoost;
 
 		while (picked.size() < 8) {
 			String dominant = theme;
@@ -715,6 +741,21 @@ public class CpuBattleEngine {
 				if (c > best) {
 					best = c;
 					dominant = t;
+				}
+			}
+
+			int slotsLeft = 8 - picked.size();
+			boolean l5VarietyThisPick = false;
+			if (lvl == 5 && l5VarietyRemaining > 0 && slotsLeft > 0) {
+				if (l5VarietyRemaining > slotsLeft) {
+					l5VarietyRemaining = slotsLeft;
+				}
+				if (l5VarietyRemaining >= slotsLeft) {
+					l5VarietyThisPick = true;
+					l5VarietyRemaining--;
+				} else if (rnd.nextDouble() < (double) l5VarietyRemaining / slotsLeft) {
+					l5VarietyThisPick = true;
+					l5VarietyRemaining--;
 				}
 			}
 
@@ -737,8 +778,19 @@ public class CpuBattleEngine {
 				boolean hasDom = CardAttributes.hasAttribute(d, dominant);
 				double themeMul = theme != null && theme.equals("DRAGON") ? 0.45 : 1.0;
 				double domMul = dominant != null && dominant.equals("DRAGON") ? 0.55 : 1.0;
-				if (hasTheme) ww *= (1.0 + convergeBoost * 0.70 * themeMul);
-				if (hasDom) ww *= (1.0 + convergeBoost * 1.15 * domMul);
+				if (l5VarietyThisPick) {
+					if (hasDom) {
+						ww *= ADVANCED_L5_VARIETY_DOMINANT_WEIGHT_MUL;
+					} else {
+						ww *= ADVANCED_L5_VARIETY_OFF_DOMINANT_WEIGHT_MUL;
+					}
+					if (hasTheme) {
+						ww *= (1.0 + convergeBoostNormal * 0.35 * themeMul);
+					}
+				} else {
+					if (hasTheme) ww *= (1.0 + convergeBoostNormal * 0.70 * themeMul);
+					if (hasDom) ww *= (1.0 + convergeBoostNormal * 1.15 * domMul);
+				}
 
 				int rr = rarityRank(d.getRarity());
 				ww *= (1.0 + rr * rarityFactor);

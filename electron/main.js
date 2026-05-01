@@ -447,6 +447,34 @@ async function createWindow() {
 	}
 	const win = new BrowserWindow(winOpts);
 
+	/* インストーラ等: WebView 内で .exe を開かず、既定ブラウザでダウンロードさせる */
+	win.webContents.setWindowOpenHandler(function (details) {
+		var u = details.url;
+		if (u && (u.startsWith('http://') || u.startsWith('https://'))) {
+			try {
+				shell.openExternal(u);
+			} catch (e) {
+				/* ignore */
+			}
+			return { action: 'deny' };
+		}
+		return { action: 'allow' };
+	});
+	win.webContents.on('will-navigate', function (event, url) {
+		if (!url) {
+			return;
+		}
+		try {
+			var u = String(url);
+			if (u.includes('/downloads/nine-universe-setup-') && u.toLowerCase().endsWith('.exe')) {
+				event.preventDefault();
+				shell.openExternal(u);
+			}
+		} catch (e) {
+			/* ignore */
+		}
+	});
+
 	var assetPollStarted = false;
 
 	win.on('closed', function () {
