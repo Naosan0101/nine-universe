@@ -39,7 +39,73 @@ tasks.named('test') {
 	useJUnitPlatform()
 }
 
+/**
+ * {@code static/images/cards/**} が Git LFS のポインタのままだと、ブラウザには PNG/JPEG ではなくテキストが返りカード・パック絵が壊れる。
+ * 修復: Git LFS を入れたうえでリポジトリのルートで {@code git lfs install && git lfs pull} を実行する。
+ * どうしても検証を飛ばす場合のみ: {@code -PskipCardLfsVerify}
+ */
+def cardLfsVerifyEnabled = !project.hasProperty('skipCardLfsVerify')
+
+tasks.register('materializeCardLfsAssets', Exec) {
+	group = 'verification'
+	description = 'Runs git lfs pull (requires git and git-lfs on PATH) to download card/pack images.'
+	workingDir = rootDir
+	commandLine 'git', 'lfs', 'pull'
+}
+
+tasks.register('verifyCardStaticImages') {
+	group = 'verification'
+	description = 'Fails if card/pack images are Git LFS pointer stubs (fix: git lfs install && git lfs pull).'
+	onlyIf { cardLfsVerifyEnabled }
+	doLast {
+		def dir = file("${rootDir}/src/main/resources/static/images/cards")
+		if (!dir.isDirectory()) {
+			logger.lifecycle('verifyCardStaticImages: skip (directory missing)')
+			return
+		}
+		def bad = []
+		dir.eachFile { f ->
+			if (!f.isFile()) {
+				return
+			}
+			def lower = f.name.toLowerCase(java.util.Locale.ROOT)
+			if (!(lower.endsWith('.png') || lower.endsWith('.jpeg') || lower.endsWith('.jpg'))) {
+				return
+			}
+			def is = new FileInputStream(f)
+			try {
+				def buf = new byte[40]
+				def n = is.read(buf)
+				if (n > 0) {
+					def head = new String(buf, 0, n, java.nio.charset.StandardCharsets.US_ASCII)
+					if (head.startsWith('version https://git-lfs.github.com/spec/v1')) {
+						bad << f.name
+					}
+				}
+			} finally {
+				is.close()
+			}
+		}
+		if (!bad.isEmpty()) {
+			def sample = bad.take(12).join(', ')
+			def more = bad.size() > 12 ? " …他 ${bad.size() - 12} 件" : ''
+			throw new GradleException(
+					"カード／パック画像が Git LFS のポインタのままです (${bad.size()} 件)。Git / Git LFS を入れたうえで次を実行: git lfs install && git lfs pull（または ./gradlew materializeCardLfsAssets）\n例: ${sample}${more}")
+		}
+		logger.lifecycle("verifyCardStaticImages: OK (${dir.listFiles().length} files under cards/)")
+	}
+}
+
+tasks.named('check') {
+	dependsOn('verifyCardStaticImages')
+}
+
+tasks.named('bootRun') {
+	dependsOn('verifyCardStaticImages')
+}
+
 tasks.named('bootJar') {
+	dependsOn('verifyCardStaticImages')
 	archiveFileName = 'nine-universe.jar'
 }
 

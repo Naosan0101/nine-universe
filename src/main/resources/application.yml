@@ -1,0 +1,4 @@
+# ローカル開発向け既定。@ は YAML で明示引用。VPS（さくら等）では SPRING_DATASOURCE_PASSWORD でサーバの値に上書きすること。
+spring:
+  datasource:
+    password: "p@ss"

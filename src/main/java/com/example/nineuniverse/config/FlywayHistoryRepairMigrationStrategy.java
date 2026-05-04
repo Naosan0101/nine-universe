@@ -1,5 +1,6 @@
 package com.example.nineuniverse.config;
 
+import java.net.ConnectException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -34,11 +35,42 @@ public class FlywayHistoryRepairMigrationStrategy {
 			try (Connection c = dataSource.getConnection()) {
 				repairIfNeeded(c);
 			} catch (SQLException e) {
-				throw new IllegalStateException("Flyway 事前修復で DB に接続できませんでした", e);
+				String hint = connectionFailureHint(e);
+				throw new IllegalStateException(
+						"Flyway 事前修復で DB に接続できませんでした。" + hint, e);
 			}
 			flyway.repair();
 			flyway.migrate();
 		};
+	}
+
+	private static String connectionFailureHint(SQLException root) {
+		for (Throwable t = root; t != null; t = t.getCause()) {
+			if (t instanceof ConnectException) {
+				return " PostgreSQL に TCP で届いていません。spring.datasource.url のホスト・ポート、"
+						+ "サーバ上で PostgreSQL が起動しているか、ファイアウォールと pg_hba.conf で接続が許可されているかを確認してください。"
+						+ " ローカル開発のみの例: docker compose up -d postgres";
+			}
+			if (t instanceof SQLException se && "28P01".equals(se.getSQLState())) {
+				return " spring.datasource のユーザー名・パスワードが、接続先 DB（VPS 上の PostgreSQL 等）の定義と一致しているか確認してください。"
+						+ " 本番・リモートでは環境変数 SPRING_DATASOURCE_USERNAME / SPRING_DATASOURCE_PASSWORD（および URL）で"
+						+ " サーバ管理者が設定した値に上書きするのが安全です。"
+						+ " ローカル Docker では、初回作成済みのデータボリュームに古いパスワードが残っていると compose の値とずれることがあります。";
+			}
+			String msg = t.getMessage();
+			if (msg != null && (msg.contains("接続が拒絶") || msg.contains("Connection refused"))) {
+				return " PostgreSQL に TCP で届いていません。ホスト・ポート、サーバの PostgreSQL 起動、"
+						+ "ファイアウォールと pg_hba.conf を確認してください。"
+						+ " ローカル開発のみの例: docker compose up -d postgres";
+			}
+			if (msg != null
+					&& (msg.contains("password authentication failed") || msg.contains("パスワード認証"))) {
+				return " spring.datasource のユーザー名・パスワードが接続先 DB と一致しているか確認してください。"
+						+ " VPS ではサーバ上で作成したロールのパスワードに合わせ、環境変数で上書きしてください。"
+						+ " ローカル Docker では古いボリュームと compose のパスワードがずれることがあります。";
+			}
+		}
+		return "";
 	}
 
 	private void repairIfNeeded(Connection c) throws SQLException {

@@ -301,7 +301,9 @@
 		_ninjaAutoResolveInFlight: false,
 		/** 直前描画の共有〈フィールド〉（背景アニメ用キー） */
 		_fieldBackdropKey: null,
-		_fieldBackdropBurnEnd: null
+		_fieldBackdropBurnEnd: null,
+		/** PvP ポーリング等: 直前の full render と同一 JSON なら再描画をスキップ（画像のちらつき防止） */
+		_lastRenderedStateSig: null
 	};
 
 	const turnTimer = {
@@ -916,6 +918,15 @@
 	const deckTipEl = document.getElementById('battle-deck-tooltip');
 	let lastDefsForTooltip = null;
 	let lastStateForHandPower = null;
+
+	function primeBattleStateDefs(st) {
+		if (!st) return;
+		if (st.defs && Object.keys(st.defs).length > 0) {
+			lastDefsForTooltip = st.defs;
+		} else {
+			st.defs = lastDefsForTooltip || {};
+		}
+	}
 
 	function packSourcesForInitial(piRaw) {
 		const pi = (piRaw || 'STD').trim().toUpperCase() || 'STD';
@@ -3844,7 +3855,7 @@
 				ev.preventDefault();
 				ev.stopPropagation();
 				cancelLevelUpInProgress();
-				rerenderWithFreshState();
+				syncBattleSelectionAndLevelUpOverlay();
 			},
 			true
 		);
@@ -4530,11 +4541,7 @@
 
 	function render(st) {
 		lastStateForHandPower = st;
-		if (st.defs && Object.keys(st.defs).length > 0) {
-			lastDefsForTooltip = st.defs;
-		} else {
-			st.defs = lastDefsForTooltip || {};
-		}
+		primeBattleStateDefs(st);
 		const battleTopActionsEl = document.getElementById('battle-top-actions');
 		if (battleTopActionsEl && battleTopActionsEl.parentNode) {
 			battleTopActionsEl.parentNode.removeChild(battleTopActionsEl);
@@ -4890,6 +4897,11 @@
 		syncTurnChangeNotice(st);
 		syncUnwinnableDeployNotice(st);
 		scheduleBattleZoom();
+		try {
+			ui._lastRenderedStateSig = JSON.stringify(st);
+		} catch (e) {
+			ui._lastRenderedStateSig = null;
+		}
 	}
 
 	/** ビューポート内に収まるよう #battle-app の --battle-zoom を更新（幅・高さの両方を考慮） */
@@ -5048,8 +5060,64 @@
 		});
 	}
 
+	function syncBattleHandSelectionClasses() {
+		const sel = ui.selectedInstanceId != null && ui.selectedInstanceId !== '' ? String(ui.selectedInstanceId) : '';
+		app.querySelectorAll('button.hand-card.battle-card').forEach(function (btn) {
+			const inst = btn.dataset.instanceId != null ? String(btn.dataset.instanceId) : '';
+			if (sel && inst === sel) {
+				btn.classList.add('is-selected');
+			} else {
+				btn.classList.remove('is-selected');
+			}
+		});
+	}
+
+	/**
+	 * 手札の選択表示とレベルアップ用オーバーレイだけ更新する（サーバ再取得・#battle-app 全消しをしない）。
+	 * クリックのたびにカード画像 DOM を作り直さないため、ちらつきを防ぐ。
+	 */
+	function syncBattleSelectionAndLevelUpOverlay() {
+		const st = lastStateForHandPower;
+		if (!st) return;
+		syncBattleHandSelectionClasses();
+		const zonesWrap = app.querySelector('.battle-zones-wrap');
+		if (!zonesWrap) return;
+		const existing = zonesWrap.querySelector('.battle-control-overlay--levelup-popup');
+		const controlCluster = buildHumanControlOverlayCluster(st);
+		const show = !!(controlCluster && selectedCard(st) && st.phase !== 'HUMAN_CHOICE');
+		if (!show) {
+			if (existing) {
+				existing.remove();
+			}
+			return;
+		}
+		const overlay = el('div', 'battle-control-overlay battle-control-overlay--levelup-popup');
+		overlay.setAttribute('role', 'region');
+		overlay.setAttribute('aria-label', 'レベルアップ');
+		overlay.appendChild(controlCluster);
+		if (existing) {
+			existing.replaceWith(overlay);
+		} else {
+			zonesWrap.appendChild(overlay);
+		}
+		wireBattleCardTooltips(overlay);
+	}
+
 	async function rerenderWithFreshState() {
 		const st = await fetchState();
+		if (st == null) return;
+		primeBattleStateDefs(st);
+		let sig = '';
+		try {
+			sig = JSON.stringify(st);
+		} catch (e) {
+			sig = '';
+		}
+		if (battleIsPvp && sig && sig === ui._lastRenderedStateSig) {
+			ui.levelUpStones = clamp(ui.levelUpStones, 0, st.humanStones);
+			ui.levelUpRest = clamp(ui.levelUpRest, 0, maxLevelUpRestDiscard(st.humanHand ? st.humanHand.length : 0));
+			return;
+		}
 		ui.levelUpStones = clamp(ui.levelUpStones, 0, st.humanStones);
 		ui.levelUpRest = clamp(ui.levelUpRest, 0, maxLevelUpRestDiscard(st.humanHand ? st.humanHand.length : 0));
 		render(st);
@@ -5208,7 +5276,7 @@
 				}
 				ui.warnLevelUpRest = null;
 				ui.warnLevelUpStone = null;
-				rerenderWithFreshState();
+				syncBattleSelectionAndLevelUpOverlay();
 				return;
 			}
 
@@ -5218,7 +5286,7 @@
 
 			if (ui.selectedInstanceId) {
 				cancelLevelUpInProgress();
-				rerenderWithFreshState();
+				syncBattleSelectionAndLevelUpOverlay();
 			}
 		});
 
@@ -5243,7 +5311,7 @@
 				const handPick = t.closest('button.hand-card.battle-card');
 				if (handPick && !handPick.disabled) return;
 				cancelLevelUpInProgress();
-				rerenderWithFreshState();
+				syncBattleSelectionAndLevelUpOverlay();
 			},
 			false
 		);
