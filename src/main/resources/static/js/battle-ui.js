@@ -86,6 +86,22 @@
 		}
 	}
 
+	/** 相対パスと img.src の絶対URLを同一視（レイヤー img のプール再利用判定用） */
+	function battleLayerImgUrlsMatch(expectedHref, imgEl) {
+		const exp = normalizeBattleImgUrl(expectedHref);
+		if (!exp) return false;
+		if (!(imgEl instanceof HTMLImageElement)) return false;
+		const got = normalizeBattleImgUrl(imgEl.currentSrc || imgEl.src || '');
+		if (!got) return false;
+		if (exp === got) return true;
+		try {
+			const base = typeof window !== 'undefined' && window.location ? window.location.href : '';
+			return new URL(exp, base).href === new URL(got, base).href;
+		} catch (e) {
+			return false;
+		}
+	}
+
 	function poolKeyBattleLayer(animKey, suffix) {
 		return String(animKey || '') + '\t' + String(suffix || '');
 	}
@@ -149,8 +165,7 @@
 			if (!pooled) return;
 			const cur = stack.querySelector('img.card-face__layer-img--' + suffix);
 			if (!cur || !(cur instanceof HTMLImageElement)) return;
-			const pooledSrc = normalizeBattleImgUrl(pooled.currentSrc || pooled.src || '');
-			if (pooledSrc !== normalizeBattleImgUrl(expected)) {
+			if (!battleLayerImgUrlsMatch(expected, pooled)) {
 				battleLayerImgPool.delete(key);
 				return;
 			}
