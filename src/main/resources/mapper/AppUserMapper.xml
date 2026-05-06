@@ -34,7 +34,7 @@
 		FROM app_user WHERE id = #{id}
 	</select>
 
-	<insert id="insert">
+	<insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
 		INSERT INTO app_user (username, display_name, password_hash, coins, last_mission_date, starter_gift_standard1_remaining, cpu_think_speed,
 			selected_epithet_upper_id, selected_epithet_lower_id)
 		VALUES (#{username}, #{displayName}, #{passwordHash}, #{coins}, #{lastMissionDate}, #{starterGiftStandard1Remaining}, COALESCE(#{cpuThinkSpeed}, 'NORMAL'),

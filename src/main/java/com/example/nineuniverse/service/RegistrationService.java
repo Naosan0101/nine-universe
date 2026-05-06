@@ -33,6 +33,9 @@ public class RegistrationService {
 		u.setLastMissionDate(null);
 		u.setStarterGiftStandard1Remaining(GameConstants.STARTER_GIFT_STANDARD1_PACK_COUNT);
 		appUserMapper.insert(u);
+		if (u.getId() == null) {
+			throw new IllegalStateException("ユーザー登録に失敗しました（ID採番に失敗）。DBのスキーマとMapper設定を確認してください。");
+		}
 		nicknameEpithetService.grantBeginnerOwnedForNewUser(u.getId());
 	}
 }
