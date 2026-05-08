@@ -18,7 +18,7 @@ public class RegistrationService {
 
 	@Transactional
 	public void register(String username, String rawPassword) {
-		if (username == null || username.isBlank() || rawPassword.length() < 4) {
+		if (username == null || username.isBlank() || rawPassword == null || rawPassword.length() < 4) {
 			throw new IllegalArgumentException("ユーザーIDとパスワード（4文字以上）を入力してください");
 		}
 		if (appUserMapper.findByUsername(username.trim()) != null) {

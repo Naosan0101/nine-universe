@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>Nine Universe — エラー</title>
+	<link rel="stylesheet" th:href="@{/css/app.css(v=${assetVersion})}"/>
+	<th:block th:replace="~{fragments/desktop-app-update-gate :: head-meta}"></th:block>
+</head>
+<body class="page page--auth">
+<div class="auth-card">
+	<div th:replace="~{fragments/game-title-brand :: brand}"></div>
+	<h2 style="margin:0.5rem 0 0.75rem 0;font-size:1.05rem;">ページを表示できませんでした</h2>
+
+	<p class="error" style="margin:0.25rem 0 0.75rem 0;">
+		<span th:text="${status}">500</span>
+		<span th:if="${error}" th:text="${' ' + error}"></span>
+	</p>
+
+	<p class="muted" style="margin:0.25rem 0 0.75rem 0;">
+		しばらくしてからもう一度お試しください。改善しない場合は、アプリを再起動してください。
+	</p>
+
+	<div class="stack" style="gap:0.5rem;">
+		<a class="btn btn--primary" th:href="@{/home}">ホームへ</a>
+		<a class="btn btn--ghost" th:href="@{/login}">ログイン画面へ</a>
+	</div>
+
+	<p class="muted" style="margin:0.85rem 0 0 0;font-size:0.9rem;word-break:break-word;">
+		<span th:if="${path}">パス: <code th:text="${path}">/</code></span>
+	</p>
+</div>
+
+<script th:replace="~{fragments/tab-fullscreen :: script}"></script>
+<script th:replace="~{fragments/click-sparkle :: script}"></script>
+<th:block th:replace="~{fragments/cursor-feedback :: scripts}"></th:block>
+<th:block th:replace="~{fragments/desktop-app-update-gate :: overlay}"></th:block>
+<th:block th:replace="~{fragments/desktop-optional-update-ui :: overlay}"></th:block>
+<script th:src="@{/js/desktop-app-update-ui.js(v=${assetVersion})}"></script>
+</body>
+</html>
