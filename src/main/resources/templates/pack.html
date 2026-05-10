@@ -42,12 +42,12 @@
 			<div class="card-strip">
 				<button type="button" class="card-thumb" th:each="c, iter : ${pulledFaces}"
 				        th:data-pack-index="${iter.index}">
-					<div class="card-thumb__face" th:insert="~{fragments/card-face :: layers(c=${c}, cp=${contextPath}, showNewFromPack=false)}"></div>
+					<div class="card-thumb__face" th:insert="~{fragments/card-face :: layers(c=${c}, cp=${contextPath})}"></div>
 				</button>
 			</div>
 			<div id="pack-big-stage" class="pack-big-stage" th:if="${!pulledFaces.isEmpty()}">
 				<div class="pack-big-slide" th:each="c, iter : ${pulledFaces}" th:classappend="${iter.first} ? ' is-active' : ''">
-					<div th:replace="~{fragments/card-face :: layers(c=${c}, cp=${contextPath}, showNewFromPack=false)}"></div>
+					<div th:replace="~{fragments/card-face :: layers(c=${c}, cp=${contextPath})}"></div>
 				</div>
 			</div>
 		</section>

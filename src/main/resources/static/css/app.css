@@ -6412,23 +6412,52 @@ body.battle-intro-is-running {
 	text-shadow: 0 2px 3px rgba(0,0,0,0.6);
 }
 
-.card-face__new-pill {
+/* パック結果・開封：New はカード面に重ねず、枠の外側右上へ */
+.library-card__art-shell {
+	position: relative;
+	width: 100%;
+	container-type: inline-size;
+	container-name: libcardshell;
+}
+
+.library-card__art-shell .card-outer-new-badge {
+	font-size: max(0.98rem, 17cqi);
+	padding: 0.42em 0.78em;
+	top: -0.58rem;
+	right: -0.62rem;
+}
+
+.pack-opening-card__face-wrap {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	container-type: inline-size;
+	container-name: openingfaceshell;
+}
+
+.page--pack-opening .pack-opening-card__face-wrap .card-outer-new-badge {
+	font-size: clamp(15px, 15cqi, 26px);
+	padding: 0.45em 0.85em;
+	top: -0.72rem;
+	right: -0.78rem;
+}
+
+.card-outer-new-badge {
 	position: absolute;
-	top: 1.1%;
-	right: 2.8%;
-	z-index: 130;
+	z-index: 30;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	padding: 0.18em 0.42em;
-	border-radius: 6px;
 	font-weight: 800;
-	font-size: 3.7cqi;
-	letter-spacing: 0.05em;
-	color: #fff;
-	background: linear-gradient(145deg, #ff6b2e 0%, #f5a623 100%);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.38);
-	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+	letter-spacing: 0.08em;
+	line-height: 1;
+	color: #2a2408;
+	background: linear-gradient(180deg, #fffef0 0%, #fff159 35%, #f5dc1a 100%);
+	border: 2px solid rgba(115, 95, 12, 0.45);
+	border-radius: 10px;
+	box-shadow:
+		0 1px 0 rgba(255, 255, 255, 0.65) inset,
+		0 5px 16px rgba(0, 0, 0, 0.22);
 	pointer-events: none;
 }
 

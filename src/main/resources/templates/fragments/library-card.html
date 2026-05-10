@@ -25,9 +25,12 @@
 			th:data-layer-portrait-alt="${c.layerPortraitPathAlt != null && !c.layerPortraitPathAlt.isBlank() ? c.layerPortraitPathAlt : ''}"
 			th:data-layer-frame="${c.layerFramePath}"
 			th:data-layer-bar="${c.barImagePath}">
-		<div class="library-card__inner">
-			<div th:replace="~{fragments/card-face :: layers(c=${c}, cp=${cp}, showNewFromPack=${c.highlightNewFromPack})}"></div>
-			<div class="library-card__mask" th:if="${!c.owned}"></div>
+		<div class="library-card__art-shell">
+			<div class="library-card__inner">
+				<div th:replace="~{fragments/card-face :: layers(c=${c}, cp=${cp})}"></div>
+				<div class="library-card__mask" th:if="${!c.owned}"></div>
+			</div>
+			<span th:if="${c.highlightNewFromPack}" class="card-outer-new-badge" aria-label="新規">New</span>
 		</div>
 		<div class="library-card__cap">
 			<span th:if="${c.owned}" th:text="|×${c.quantity}|">×0</span>
