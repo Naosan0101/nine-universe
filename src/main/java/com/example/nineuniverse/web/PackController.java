@@ -2,6 +2,7 @@ package com.example.nineuniverse.web;
 
 import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.domain.CardDefinition;
+import com.example.nineuniverse.domain.LibraryCardView;
 import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.service.LibraryService;
 import com.example.nineuniverse.service.PackService;
@@ -33,6 +34,9 @@ public class PackController {
 
 	/** 開封演出のあとに遷移する URL（セッション）。未設定時は {@code /pack/result}。 */
 	public static final String SESSION_PACK_AFTER_OPEN_REDIRECT = "pack_after_open_redirect";
+
+	/** {@link #SESSION_PACK_OPENING_SLOTS} と同じ順で、各カード枠がこの開封で初取得か（{@code pack_last_pulled_ids} と同順）。 */
+	public static final String SESSION_PACK_LAST_PULLED_NEW_FLAGS = "pack_last_pulled_new_flags";
 
 	/** 開封画面の背景演出（セッション）。値: {@code EPIC_PLUS} / {@code LEGENDARY}。未設定時は通常。 */
 	public static final String SESSION_PACK_OPENING_THEME = "pack_opening_theme";
@@ -197,9 +201,10 @@ public class PackController {
 			session.removeAttribute(SESSION_PACK_RESULT_FROM_BONUS_PACK);
 			session.removeAttribute(SESSION_PACK_OPENING_SLOTS);
 			session.removeAttribute(SESSION_PACK_LAST_EPITHET_RESULTS);
+			session.removeAttribute(SESSION_PACK_LAST_PULLED_NEW_FLAGS);
 			var pulled = packService.openStarterGiftStandard1Pack(uid);
-			List<Short> ids = pulled.stream().map(c -> c.getId()).toList();
-			session.setAttribute("pack_last_pulled_ids", ids);
+			session.setAttribute("pack_last_pulled_ids", pulled.stream().map(r -> r.card().getId()).toList());
+			session.setAttribute(SESSION_PACK_LAST_PULLED_NEW_FLAGS, pulled.stream().map(PackService.PackOpenRow::newToCollection).toList());
 			session.setAttribute("pack_last_type", PackType.STANDARD.name());
 		} catch (IllegalArgumentException e) {
 			ra.addFlashAttribute("error", e.getMessage());
@@ -216,10 +221,11 @@ public class PackController {
 			session.removeAttribute(SESSION_PACK_RESULT_FROM_BONUS_PACK);
 			session.removeAttribute(SESSION_PACK_OPENING_SLOTS);
 			session.removeAttribute(SESSION_PACK_LAST_EPITHET_RESULTS);
+			session.removeAttribute(SESSION_PACK_LAST_PULLED_NEW_FLAGS);
 			PackType t = parsePackType(type);
 			var pulled = packService.openPack(uid, t);
-			List<Short> ids = pulled.stream().map(c -> c.getId()).toList();
-			session.setAttribute("pack_last_pulled_ids", ids);
+			session.setAttribute("pack_last_pulled_ids", pulled.stream().map(r -> r.card().getId()).toList());
+			session.setAttribute(SESSION_PACK_LAST_PULLED_NEW_FLAGS, pulled.stream().map(PackService.PackOpenRow::newToCollection).toList());
 			session.setAttribute("pack_last_type", t != null ? t.name() : PackType.STANDARD.name());
 		} catch (IllegalArgumentException e) {
 			ra.addFlashAttribute("error", e.getMessage());
@@ -243,11 +249,12 @@ public class PackController {
 			int idx = 0;
 			for (PackOpeningSessionSlot s : slots) {
 				if ("EPITHET".equals(s.kind())) {
-					viewSlots.add(new PackOpeningSlotView(true, null, s.epithetUpper(), s.epithetLower(), idx++));
+					viewSlots.add(new PackOpeningSlotView(true, null, s.epithetUpper(), s.epithetLower(), idx++, false));
 				} else if (s.cardId() != null) {
 					var faces = libraryService.displayFacesForCardIds(List.of(s.cardId()));
 					if (!faces.isEmpty()) {
-						viewSlots.add(new PackOpeningSlotView(false, faces.get(0), null, null, idx++));
+						boolean isNew = Boolean.TRUE.equals(s.newToCollection());
+						viewSlots.add(new PackOpeningSlotView(false, faces.get(0), null, null, idx++, isNew));
 					}
 				}
 			}
@@ -259,11 +266,14 @@ public class PackController {
 				ra.addFlashAttribute("error", "開封中のパックがありません");
 				return "redirect:/pack";
 			}
+			List<Boolean> newFlags = coerceNewFlags(session.getAttribute(SESSION_PACK_LAST_PULLED_NEW_FLAGS));
 			int idx = 0;
-			for (Short id : ids) {
+			for (int i = 0; i < ids.size(); i++) {
+				Short id = ids.get(i);
 				var faces = libraryService.displayFacesForCardIds(List.of(id));
 				if (!faces.isEmpty()) {
-					viewSlots.add(new PackOpeningSlotView(false, faces.get(0), null, null, idx++));
+					boolean isNew = i < newFlags.size() && Boolean.TRUE.equals(newFlags.get(i));
+					viewSlots.add(new PackOpeningSlotView(false, faces.get(0), null, null, idx++, isNew));
 				}
 			}
 		}
@@ -310,7 +320,14 @@ public class PackController {
 			ra.addFlashAttribute("error", "結果表示できるパックがありません");
 			return "redirect:/pack";
 		}
-		model.addAttribute("cards", libraryService.displayFacesForCardIds(ids));
+		List<LibraryCardView> resultCards = libraryService.displayFacesForCardIds(ids);
+		List<Boolean> newFlags = coerceNewFlags(session.getAttribute(SESSION_PACK_LAST_PULLED_NEW_FLAGS));
+		for (int i = 0; i < resultCards.size(); i++) {
+			if (i < newFlags.size() && Boolean.TRUE.equals(newFlags.get(i))) {
+				resultCards.get(i).setHighlightNewFromPack(true);
+			}
+		}
+		model.addAttribute("cards", resultCards);
 		if (hasEpithets) {
 			model.addAttribute("packResultEpithets", epObj);
 			session.removeAttribute(SESSION_PACK_LAST_EPITHET_RESULTS);
@@ -366,5 +383,18 @@ public class PackController {
 			}
 		}
 		return ids;
+	}
+
+	private static List<Boolean> coerceNewFlags(Object raw) {
+		if (!(raw instanceof List<?> list) || list.isEmpty()) {
+			return List.of();
+		}
+		List<Boolean> out = new ArrayList<>();
+		for (Object o : list) {
+			if (o instanceof Boolean b) {
+				out.add(b);
+			}
+		}
+		return out;
 	}
 }

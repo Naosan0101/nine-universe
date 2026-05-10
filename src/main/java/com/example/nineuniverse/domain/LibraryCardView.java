@@ -49,4 +49,6 @@ public class LibraryCardView {
 	private String powerFaceCssClass = "card-face__power";
 	/** カード下中央のレア度表記 */
 	private String rarityLabel = "C";
+	/** パック結果画面：この開封で初めてコレクションに入ったカードならカード面に New を出す */
+	private boolean highlightNewFromPack;
 }

@@ -25,7 +25,7 @@
 			th:data-layer-frame="${c.layerFramePath}"
 			th:data-layer-bar="${c.barImagePath}">
 		<div class="library-card__inner">
-			<div th:replace="~{fragments/card-face :: layers(c=${c}, cp=${cp})}"></div>
+			<div th:replace="~{fragments/card-face :: layers(c=${c}, cp=${cp}, showNewFromPack=false)}"></div>
 		</div>
 	</button>
 </div>

@@ -5,7 +5,7 @@
   画像のみ: ①カード基盤 → ②イラスト（人間・エルフ・アンデッド・エルフアンデッド・ドラゴン）→ ③種族バー → ④カード基礎データ → HTML テキスト
   イラスト: static/images/cards/「名前」.PNG
 -->
-<div th:fragment="layers(c, cp)" class="card-face card-face--layered"
+<div th:fragment="layers(c, cp, showNewFromPack)" class="card-face card-face--layered"
      th:classappend="|card-face--attr-${c.attribute} card-face--rarity-${c.rarity}|">
 	<div class="card-face__stack" aria-hidden="true">
 		<img class="card-face__layer-img card-face__layer-img--base"
@@ -47,6 +47,7 @@
 		<span class="card-face__rarity" th:text="${c.rarityLabel != null ? c.rarityLabel : 'C'}">C</span>
 		<span class="card-face__pack-initial"
 		      th:text="${(c.packInitial != null && !c.packInitial.isBlank()) ? #strings.toUpperCase(c.packInitial.trim()) : 'STD'}">STD</span>
+		<span th:if="${showNewFromPack}" class="card-face__new-pill" aria-label="新規">New</span>
 	</div>
 	<div class="card-face__layer card-face__narrative">
 		<div class="card-face__ability">

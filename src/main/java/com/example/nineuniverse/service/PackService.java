@@ -17,6 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class PackService {
 
+	/** パック1枠分：コレクション追加後の表示用に、追加前に未所持だったかを保持する */
+	public record PackOpenRow(CardDefinition card, boolean newToCollection) {
+	}
+
 	public enum PackType {
 		STANDARD(3),
 		WINDY_HILL(4),
@@ -40,12 +44,12 @@ public class PackService {
 	private final MissionService missionService;
 
 	@Transactional
-	public List<CardDefinition> openPack(long userId) {
+	public List<PackOpenRow> openPack(long userId) {
 		return openPack(userId, PackType.STANDARD);
 	}
 
 	@Transactional
-	public List<CardDefinition> openPack(long userId, PackType type) {
+	public List<PackOpenRow> openPack(long userId, PackType type) {
 		AppUser u = appUserMapper.findById(userId);
 		if (u == null) {
 			throw new IllegalStateException("ユーザーが見つかりません");
@@ -62,7 +66,7 @@ public class PackService {
 	 * ホームの時間ゲージなど：ジェムを消費せず、スタンダードと同じ排出で開封する。
 	 */
 	@Transactional
-	public List<CardDefinition> openStandardPackWithoutGemCost(long userId) {
+	public List<PackOpenRow> openStandardPackWithoutGemCost(long userId) {
 		return pullPackIntoCollection(userId, PackType.STANDARD, false);
 	}
 
@@ -70,7 +74,7 @@ public class PackService {
 	 * ボーナス開封（時間ゲージなど）：ジェム消費なし。スタンダード1または2のみ。
 	 */
 	@Transactional
-	public List<CardDefinition> openBonusPackWithoutGemCost(long userId, PackType type) {
+	public List<PackOpenRow> openBonusPackWithoutGemCost(long userId, PackType type) {
 		if (type != PackType.STANDARD && type != PackType.STANDARD_2) {
 			throw new IllegalArgumentException("ボーナスパックではスタンダードパック1または2のみ選べます");
 		}
@@ -81,7 +85,7 @@ public class PackService {
 	 * 新規登録プレゼントの「スタンダードパック1」を1パック開封（残数を1減らしてから、ジェム消費なしで {@link PackType#STANDARD} と同じ排出）。
 	 */
 	@Transactional
-	public List<CardDefinition> openStarterGiftStandard1Pack(long userId) {
+	public List<PackOpenRow> openStarterGiftStandard1Pack(long userId) {
 		int n = appUserMapper.decrementStarterGiftStandard1IfPositive(userId);
 		if (n == 0) {
 			throw new IllegalArgumentException("開封できるプレゼントのスタンダードパック1がありません");
@@ -89,17 +93,20 @@ public class PackService {
 		return openStandardPackWithoutGemCost(userId);
 	}
 
-	private List<CardDefinition> pullPackIntoCollection(long userId, PackType t, boolean paidWithGems) {
+	private List<PackOpenRow> pullPackIntoCollection(long userId, PackType t, boolean paidWithGems) {
 		Random rnd = new Random();
-		List<CardDefinition> pulled = new ArrayList<>();
+		List<PackOpenRow> pulled = new ArrayList<>();
 		List<CardDefinition> all = filterCardsForPack(cardCatalogService.all(), t);
 		if (all.isEmpty()) {
 			all = cardCatalogService.all();
 		}
 		for (int i = 0; i < GameConstants.PACK_CARD_COUNT; i++) {
 			CardDefinition c = pickWeightedByRarity(all, rnd);
-			userCollectionMapper.upsertAdd(userId, c.getId(), 1);
-			pulled.add(c);
+			short cid = c.getId();
+			Integer q = userCollectionMapper.findQuantity(userId, cid);
+			boolean newToCollection = q == null || q == 0;
+			userCollectionMapper.upsertAdd(userId, cid, 1);
+			pulled.add(new PackOpenRow(c, newToCollection));
 		}
 		if (paidWithGems) {
 			missionService.onPaidPackOpened(userId);

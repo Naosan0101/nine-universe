@@ -206,7 +206,7 @@ public class RecycleService {
 	}
 
 	@Transactional
-	public List<CardDefinition> openEpicPlusRecyclePack(long userId, PackService.PackType standardPack) {
+	public List<PackService.PackOpenRow> openEpicPlusRecyclePack(long userId, PackService.PackType standardPack) {
 		requireRecycleStandardPack(standardPack);
 		int n = appUserMapper.subtractRecycleCrystalIfEnough(userId, GameConstants.RECYCLE_SHOP_EPIC_PLUS_PACK_CRYSTAL);
 		if (n != 1) {
@@ -216,7 +216,7 @@ public class RecycleService {
 	}
 
 	@Transactional
-	public List<CardDefinition> openLegendaryRecyclePack(long userId, PackService.PackType standardPack) {
+	public List<PackService.PackOpenRow> openLegendaryRecyclePack(long userId, PackService.PackType standardPack) {
 		requireRecycleStandardPack(standardPack);
 		int n = appUserMapper.subtractRecycleCrystalIfEnough(userId, GameConstants.RECYCLE_SHOP_LEGENDARY_PACK_CRYSTAL);
 		if (n != 1) {
@@ -234,22 +234,28 @@ public class RecycleService {
 	/**
 	 * 1〜3枚目: レジェンダリーなし。Ep 10% / R 30% / C 60%。4枚目: レジェパックはレジェ確定、エピック以上パックはレジェ10%・エピック90%。
 	 */
-	private List<CardDefinition> pullRecycleAssuredFourPack(
+	private List<PackService.PackOpenRow> pullRecycleAssuredFourPack(
 			long userId, PackService.PackType standardPack, boolean epicPlusLastSlot) {
 		List<CardDefinition> pool = new ArrayList<>(packService.eligibleCardsForPack(standardPack));
 		if (pool.isEmpty()) {
 			throw new IllegalStateException("排出対象のカード定義がありません。");
 		}
 		Random rnd = new Random();
-		List<CardDefinition> pulled = new ArrayList<>();
+		List<PackService.PackOpenRow> pulled = new ArrayList<>();
 		for (int i = 0; i < 3; i++) {
 			CardDefinition c = pickRecycleNonLegendarySlot(pool, rnd);
-			userCollectionMapper.upsertAdd(userId, c.getId(), 1);
-			pulled.add(c);
+			short cid = c.getId();
+			Integer q = userCollectionMapper.findQuantity(userId, cid);
+			boolean newToCollection = q == null || q == 0;
+			userCollectionMapper.upsertAdd(userId, cid, 1);
+			pulled.add(new PackService.PackOpenRow(c, newToCollection));
 		}
 		CardDefinition fourth = epicPlusLastSlot ? pickRecycleFourthEpicOrLegendary(pool, rnd) : pickRecycleFourthLegendary(pool, rnd);
-		userCollectionMapper.upsertAdd(userId, fourth.getId(), 1);
-		pulled.add(fourth);
+		short fid = fourth.getId();
+		Integer q4 = userCollectionMapper.findQuantity(userId, fid);
+		boolean newFourth = q4 == null || q4 == 0;
+		userCollectionMapper.upsertAdd(userId, fid, 1);
+		pulled.add(new PackService.PackOpenRow(fourth, newFourth));
 		return pulled;
 	}
 

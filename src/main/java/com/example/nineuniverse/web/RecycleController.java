@@ -1,7 +1,6 @@
 package com.example.nineuniverse.web;
 
 import com.example.nineuniverse.GameConstants;
-import com.example.nineuniverse.domain.CardDefinition;
 import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.service.LibraryService;
 import com.example.nineuniverse.service.PackService;
@@ -237,8 +236,10 @@ public class RecycleController {
 		long uid = CurrentUser.require().getId();
 		try {
 			PackType t = parseRecycleStandardPackParam(standardPackRaw, packService);
-			List<CardDefinition> pulled = recycleService.openEpicPlusRecyclePack(uid, t);
-			session.setAttribute("pack_last_pulled_ids", pulled.stream().map(CardDefinition::getId).toList());
+			var pulled = recycleService.openEpicPlusRecyclePack(uid, t);
+			session.setAttribute("pack_last_pulled_ids", pulled.stream().map(r -> r.card().getId()).toList());
+			session.setAttribute(PackController.SESSION_PACK_LAST_PULLED_NEW_FLAGS,
+					pulled.stream().map(PackService.PackOpenRow::newToCollection).toList());
 			session.setAttribute("pack_last_type", "RECYCLE_EPIC_PLUS");
 			session.setAttribute(PackController.SESSION_PACK_OPENING_THEME, "EPIC_PLUS");
 			session.setAttribute(PackController.SESSION_PACK_AFTER_OPEN_REDIRECT, "/recycle");
@@ -257,8 +258,10 @@ public class RecycleController {
 		long uid = CurrentUser.require().getId();
 		try {
 			PackType t = parseRecycleStandardPackParam(standardPackRaw, packService);
-			List<CardDefinition> pulled = recycleService.openLegendaryRecyclePack(uid, t);
-			session.setAttribute("pack_last_pulled_ids", pulled.stream().map(CardDefinition::getId).toList());
+			var pulled = recycleService.openLegendaryRecyclePack(uid, t);
+			session.setAttribute("pack_last_pulled_ids", pulled.stream().map(r -> r.card().getId()).toList());
+			session.setAttribute(PackController.SESSION_PACK_LAST_PULLED_NEW_FLAGS,
+					pulled.stream().map(PackService.PackOpenRow::newToCollection).toList());
 			session.setAttribute("pack_last_type", "RECYCLE_LEGENDARY");
 			session.setAttribute(PackController.SESSION_PACK_OPENING_THEME, "LEGENDARY");
 			session.setAttribute(PackController.SESSION_PACK_AFTER_OPEN_REDIRECT, "/recycle");

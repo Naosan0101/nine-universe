@@ -11,9 +11,11 @@ import com.example.nineuniverse.service.PackService;
 import com.example.nineuniverse.service.PackService.PackType;
 import com.example.nineuniverse.service.PvpFriendInviteService;
 import com.example.nineuniverse.service.TimePackGaugeService;
+import com.example.nineuniverse.web.dto.PackOpeningSessionSlot;
 import jakarta.servlet.http.HttpSession;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -1215,6 +1217,7 @@ public class HomeController {
 
 			if (choice == PackType.BONUS_EPITHET_GACHA) {
 				session.removeAttribute(PackController.SESSION_PACK_OPENING_SLOTS);
+				session.removeAttribute(PackController.SESSION_PACK_LAST_PULLED_NEW_FLAGS);
 				session.setAttribute("pack_last_pulled_ids", List.of());
 				session.removeAttribute(PackController.SESSION_PACK_LAST_EPITHET_RESULTS);
 				session.removeAttribute(PackController.SESSION_PACK_RESULT_FROM_BONUS_PACK);
@@ -1234,6 +1237,13 @@ public class HomeController {
 
 			session.setAttribute("pack_last_pulled_ids", outcome.flatCardIds());
 			session.setAttribute(PackController.SESSION_PACK_OPENING_SLOTS, outcome.openingSlots());
+			List<Boolean> packNewFlags = new ArrayList<>();
+			for (PackOpeningSessionSlot s : outcome.openingSlots()) {
+				if ("CARD".equals(s.kind()) && s.cardId() != null) {
+					packNewFlags.add(Boolean.TRUE.equals(s.newToCollection()));
+				}
+			}
+			session.setAttribute(PackController.SESSION_PACK_LAST_PULLED_NEW_FLAGS, packNewFlags);
 			session.setAttribute(PackController.SESSION_PACK_LAST_EPITHET_RESULTS, outcome.epithetResults());
 			session.setAttribute("pack_last_type", choice.name());
 			session.setAttribute(PackController.SESSION_PACK_RESULT_FROM_BONUS_PACK, Boolean.TRUE);

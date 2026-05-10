@@ -2,7 +2,6 @@ package com.example.nineuniverse.service;
 
 import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.domain.AppUser;
-import com.example.nineuniverse.domain.CardDefinition;
 import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.service.NicknameEpithetService.EpithetGachaResult;
 import com.example.nineuniverse.service.PackService.PackType;
@@ -106,12 +105,13 @@ public class TimePackGaugeService {
 			epithetResults.add(r);
 			openingSlots.add(PackOpeningSessionSlot.epithet(r.upperGained(), r.lowerGained()));
 		} else {
-			List<CardDefinition> pulled = packService.openBonusPackWithoutGemCost(userId, choice);
-			for (CardDefinition c : pulled) {
+			var pulled = packService.openBonusPackWithoutGemCost(userId, choice);
+			for (var row : pulled) {
+				var c = row.card();
 				if (c.getId() != null) {
 					short cid = c.getId();
 					flatCardIds.add(cid);
-					openingSlots.add(PackOpeningSessionSlot.card(cid));
+					openingSlots.add(PackOpeningSessionSlot.card(cid, row.newToCollection()));
 				}
 			}
 		}

@@ -10,5 +10,6 @@ public record PackOpeningSlotView(
 		LibraryCardView card,
 		String epithetUpper,
 		String epithetLower,
-		int index) {
+		int index,
+		boolean newFromPack) {
 }
