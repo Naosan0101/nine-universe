@@ -6421,10 +6421,10 @@ body.battle-intro-is-running {
 }
 
 .library-card__art-shell .card-outer-new-badge {
-	font-size: max(0.98rem, 17cqi);
-	padding: 0.42em 0.78em;
-	top: -0.58rem;
-	right: -0.62rem;
+	font-size: max(0.68rem, 10.5cqi);
+	padding: 0.26em 0.48em;
+	top: -0.38rem;
+	right: -0.4rem;
 }
 
 .pack-opening-card__face-wrap {
@@ -6436,10 +6436,10 @@ body.battle-intro-is-running {
 }
 
 .page--pack-opening .pack-opening-card__face-wrap .card-outer-new-badge {
-	font-size: clamp(15px, 15cqi, 26px);
-	padding: 0.45em 0.85em;
-	top: -0.72rem;
-	right: -0.78rem;
+	font-size: clamp(11px, 8.5cqi, 16px);
+	padding: 0.28em 0.52em;
+	top: -0.48rem;
+	right: -0.52rem;
 }
 
 .card-outer-new-badge {
@@ -6449,15 +6449,15 @@ body.battle-intro-is-running {
 	align-items: center;
 	justify-content: center;
 	font-weight: 800;
-	letter-spacing: 0.08em;
+	letter-spacing: 0.05em;
 	line-height: 1;
 	color: #2a2408;
 	background: linear-gradient(180deg, #fffef0 0%, #fff159 35%, #f5dc1a 100%);
-	border: 2px solid rgba(115, 95, 12, 0.45);
-	border-radius: 10px;
+	border: 1.5px solid rgba(115, 95, 12, 0.42);
+	border-radius: 7px;
 	box-shadow:
-		0 1px 0 rgba(255, 255, 255, 0.65) inset,
-		0 5px 16px rgba(0, 0, 0, 0.22);
+		0 1px 0 rgba(255, 255, 255, 0.55) inset,
+		0 3px 10px rgba(0, 0, 0, 0.18);
 	pointer-events: none;
 }
 
