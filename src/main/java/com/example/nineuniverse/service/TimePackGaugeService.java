@@ -67,9 +67,10 @@ public class TimePackGaugeService {
 		if (u == null) {
 			throw new IllegalStateException("ユーザーが見つかりません");
 		}
+		Instant now = Instant.now();
 		int bank = u.getTimePackBonusBank() != null ? Math.max(0, u.getTimePackBonusBank()) : 0;
-		Instant start = u.getTimePackCycleStart() != null ? u.getTimePackCycleStart() : Instant.now();
-		int timerPacks = computeSnapshot(start, Instant.now()).availablePacks();
+		Instant start = u.getTimePackCycleStart() != null ? u.getTimePackCycleStart() : now;
+		int timerPacks = computeSnapshot(start, now).availablePacks();
 		if (bank == 0 && timerPacks == 0) {
 			throw new IllegalStateException("ゲージが半分に達していません。しばらく待ってから再度お試しください。");
 		}
@@ -80,17 +81,15 @@ public class TimePackGaugeService {
 				throw new IllegalStateException("開封できるボーナスパックがありません。");
 			}
 		} else if (timerPacks == 2) {
-			Instant now = Instant.now();
-			long elapsed = Duration.between(start, now).toMillis();
 			long dur = GameConstants.TIME_PACK_CYCLE_DURATION_MS;
+			long elapsed = Math.max(0L, Duration.between(start, now).toMillis());
 			// MAX 時は1パックを開封し、もう1パック分を預りに回す。経過が D を超えている余剰はゲージに繰り越す。
 			long overflow = Math.max(0L, elapsed - dur);
 			appUserMapper.updateTimePackCycleStart(userId, now.minusMillis(overflow));
 			appUserMapper.addTimePackBonusBankDelta(userId, 1);
 		} else if (timerPacks == 1) {
-			Instant now = Instant.now();
-			long elapsed = Duration.between(start, now).toMillis();
 			long dur = GameConstants.TIME_PACK_CYCLE_DURATION_MS;
+			long elapsed = Math.max(0L, Duration.between(start, now).toMillis());
 			long half = dur / 2;
 			// 半分〜満タン手前で開封したとき、50% を超えた余り時間は次のゲージに繰り越す（いままでは即リセットで消えていた）。
 			long carry = Math.max(0L, elapsed - half);
