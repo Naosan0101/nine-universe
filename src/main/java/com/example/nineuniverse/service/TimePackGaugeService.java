@@ -55,7 +55,8 @@ public class TimePackGaugeService {
 
 	/**
 	 * ボーナスパックを1パック分だけ開封する（カードは {@link GameConstants#PACK_CARD_COUNT} 枚＝1パック）。
-	 * ゲージが MAX で2パック分あるときは、1回目の開封でサイクルをリセットし残り1パックを {@link AppUser#getTimePackBonusBank()} に預ける。
+	 * ゲージが MAX で2パック分あるときは、1回目の開封で残り1パックを {@link AppUser#getTimePackBonusBank()} に預け、サイクルは「満タン超えで溜まっていた余剰時間」が次のゲージに繰り越される。
+	 * 半分〜満タン手前（タイマー由来が1パック分）で開封したときも、50% を超えた余り時間を繰り越す。
 	 */
 	@Transactional
 	public TimePackClaimResult claimOneBonusPackFromGauge(long userId, PackType choice) {
@@ -79,10 +80,21 @@ public class TimePackGaugeService {
 				throw new IllegalStateException("開封できるボーナスパックがありません。");
 			}
 		} else if (timerPacks == 2) {
-			appUserMapper.updateTimePackCycleStart(userId, Instant.now());
+			Instant now = Instant.now();
+			long elapsed = Duration.between(start, now).toMillis();
+			long dur = GameConstants.TIME_PACK_CYCLE_DURATION_MS;
+			// MAX 時は1パックを開封し、もう1パック分を預りに回す。経過が D を超えている余剰はゲージに繰り越す。
+			long overflow = Math.max(0L, elapsed - dur);
+			appUserMapper.updateTimePackCycleStart(userId, now.minusMillis(overflow));
 			appUserMapper.addTimePackBonusBankDelta(userId, 1);
 		} else if (timerPacks == 1) {
-			appUserMapper.updateTimePackCycleStart(userId, Instant.now());
+			Instant now = Instant.now();
+			long elapsed = Duration.between(start, now).toMillis();
+			long dur = GameConstants.TIME_PACK_CYCLE_DURATION_MS;
+			long half = dur / 2;
+			// 半分〜満タン手前で開封したとき、50% を超えた余り時間は次のゲージに繰り越す（いままでは即リセットで消えていた）。
+			long carry = Math.max(0L, elapsed - half);
+			appUserMapper.updateTimePackCycleStart(userId, now.minusMillis(carry));
 		} else {
 			throw new IllegalStateException("開封できるボーナスパックがありません。");
 		}
