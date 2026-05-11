@@ -34,6 +34,22 @@
 		FROM app_user WHERE id = #{id}
 	</select>
 
+	<select id="findByIdForUpdate" resultType="com.example.nineuniverse.domain.AppUser">
+		SELECT id, username, display_name AS displayName, password_hash AS passwordHash, coins,
+		       recycle_crystal AS recycleCrystal,
+		       welcome_home_bonus_granted AS welcomeHomeBonusGranted,
+		       last_mission_date AS lastMissionDate, created_at AS createdAt,
+		       last_access_at AS lastAccessAt,
+		       cpu_think_speed AS cpuThinkSpeed,
+		       time_pack_cycle_start AS timePackCycleStart,
+		       time_pack_bonus_bank AS timePackBonusBank,
+		       starter_gift_standard1_remaining AS starterGiftStandard1Remaining,
+		       selected_epithet_upper_id AS selectedEpithetUpperId,
+		       selected_epithet_lower_id AS selectedEpithetLowerId,
+		       pvp_invite_notify_enabled AS pvpInviteNotifyEnabled
+		FROM app_user WHERE id = #{id} FOR UPDATE
+	</select>
+
 	<insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
 		INSERT INTO app_user (username, display_name, password_hash, coins, last_mission_date, starter_gift_standard1_remaining, cpu_think_speed,
 			selected_epithet_upper_id, selected_epithet_lower_id)

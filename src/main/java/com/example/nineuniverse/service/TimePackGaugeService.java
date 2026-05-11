@@ -56,13 +56,14 @@ public class TimePackGaugeService {
 	 * ボーナスパックを1パック分だけ開封する（カードは {@link GameConstants#PACK_CARD_COUNT} 枚＝1パック）。
 	 * ゲージが MAX で2パック分あるときは、1回目の開封で残り1パックを {@link AppUser#getTimePackBonusBank()} に預け、サイクルは「満タン超えで溜まっていた余剰時間」が次のゲージに繰り越される。
 	 * 半分〜満タン手前（タイマー由来が1パック分）で開封したときも、50% を超えた余り時間を繰り越す。
+	 * <p>同一ユーザーからの並行リクエストでは {@link AppUserMapper#findByIdForUpdate(long)} で行ロックし、許容回数を超えて開封されないようにする。
 	 */
 	@Transactional
 	public TimePackClaimResult claimOneBonusPackFromGauge(long userId, PackType choice) {
 		if (choice != PackType.STANDARD && choice != PackType.STANDARD_2 && choice != PackType.BONUS_EPITHET_GACHA) {
 			throw new IllegalArgumentException("開封できるのはスタンダードパック1・2、または二つ名ガチャです。");
 		}
-		AppUser u = appUserMapper.findById(userId);
+		AppUser u = appUserMapper.findByIdForUpdate(userId);
 		if (u == null) {
 			throw new IllegalStateException("ユーザーが見つかりません");
 		}

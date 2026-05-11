@@ -12,6 +12,9 @@ public interface AppUserMapper {
 
 	AppUser findById(@Param("id") long id);
 
+	/** 同一ユーザーでの並行ボーナス開封など、更新前提の読み取り（トランザクション内で行ロック）。 */
+	AppUser findByIdForUpdate(@Param("id") long id);
+
 	@Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
 	int insert(AppUser user);
 
