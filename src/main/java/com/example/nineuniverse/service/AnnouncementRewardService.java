@@ -87,6 +87,10 @@ public class AnnouncementRewardService {
 		return userAnnouncementClaimMapper.exists(userId, GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_POPUP_SUPPRESS_KEY);
 	}
 
+	public boolean hasSuppressed80UsersMilestonePopup(long userId) {
+		return userAnnouncementClaimMapper.exists(userId, GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_POPUP_SUPPRESS_KEY);
+	}
+
 	/** 受け取り可能期間内（開始日〜終了日を含む）か。 */
 	public boolean isWithinPerfLightWindow(LocalDate today) {
 		if (today.isBefore(GameConstants.ANNOUNCEMENT_PERF_LIGHT_START)) {
@@ -280,6 +284,13 @@ public class AnnouncementRewardService {
 			return false;
 		}
 		return !today.isAfter(GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_LAST_DAY);
+	}
+
+	public boolean isWithin80UsersMilestoneAnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_LAST_DAY);
 	}
 
 	public enum ClaimOutcome {
@@ -961,5 +972,28 @@ public class AnnouncementRewardService {
 	@Transactional
 	public void suppressMajorUpdateLoginPopup(long userId) {
 		userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_POPUP_SUPPRESS_KEY);
+	}
+
+	/**
+	 * 80名突破記念のジェム・クリスタルを、初回ホーム表示時にまとめて付与する（冪等）。
+	 */
+	@Transactional
+	public void ensure80UsersMilestoneRewardGranted(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (!isWithin80UsersMilestoneAnnouncementWindow(today)) {
+			return;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_KEY);
+		if (inserted == 0) {
+			return;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_GEMS);
+		appUserMapper.addRecycleCrystalDelta(userId, GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_CRYSTAL);
+	}
+
+	/** 「次回から表示しない」: ログイン時ポップアップのみ抑止（本文はおしらせから閲覧可）。 */
+	@Transactional
+	public void suppress80UsersMilestoneLoginPopup(long userId) {
+		userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_POPUP_SUPPRESS_KEY);
 	}
 }

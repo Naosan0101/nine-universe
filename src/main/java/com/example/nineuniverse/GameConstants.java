@@ -514,6 +514,22 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_LAST_DAY =
 			ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_START.plusDays(30 - 1);
 
+	/** おしらせ・配布（ユーザー登録者数80名突破記念：20ジェム＋10000クリスタル） */
+	public static final String ANNOUNCEMENT_80_USERS_MILESTONE_KEY = "celebrate_80_users_2026_05";
+
+	public static final int ANNOUNCEMENT_80_USERS_MILESTONE_GEMS = 20;
+
+	public static final int ANNOUNCEMENT_80_USERS_MILESTONE_CRYSTAL = 10000;
+
+	public static final LocalDate ANNOUNCEMENT_80_USERS_MILESTONE_START = LocalDate.of(2026, 5, 11);
+
+	public static final LocalDate ANNOUNCEMENT_80_USERS_MILESTONE_LAST_DAY =
+			ANNOUNCEMENT_80_USERS_MILESTONE_START.plusDays(30 - 1);
+
+	/** ログイン時ポップアップ「次回から表示しない」用（配布受領記録とは別行）。 */
+	public static final String ANNOUNCEMENT_80_USERS_MILESTONE_POPUP_SUPPRESS_KEY =
+			"celebrate_80_users_popup_suppress_2026_05";
+
 	/**
 	 * ログイン時ポップアップ「もう表示しない」用（ジェム受け取りとは別行）。
 	 */
@@ -565,7 +581,7 @@ public final class GameConstants {
 	/**
 	 * おしらせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
 	 */
-	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-05-02";
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-05-11";
 
 	/** リサイクル：レア度ごとに得るクリスタル（1枚あたり） */
 	public static final int RECYCLE_CRYSTAL_PER_CARD_C = 20;

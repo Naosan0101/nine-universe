@@ -125,6 +125,9 @@ public class HomeController {
 		boolean listDesktopAppIconDesktop01 = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_START);
+		boolean list80UsersMilestone = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -152,6 +155,9 @@ public class HomeController {
 		model.addAttribute("announcementListKusuriFix2026", listKusuriFix2026);
 		model.addAttribute("announcementListCardDisplayServerOps202605", listCardDisplayServerOps202605);
 		model.addAttribute("announcementListDesktopAppIconDesktop01", listDesktopAppIconDesktop01);
+		model.addAttribute("announcementList80UsersMilestone", list80UsersMilestone);
+
+		announcementRewardService.ensure80UsersMilestoneRewardGranted(uid);
 
 		Set<String> claimedKeys = announcementRewardService.findClaimedKeys(uid);
 
@@ -478,6 +484,18 @@ public class HomeController {
 		model.addAttribute(
 				"desktopAppIconDesktop01AnnouncementGemAmount",
 				GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_GEMS);
+
+		boolean users80MilestoneAnnClaimed = claimedKeys.contains(GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_KEY);
+		boolean users80MilestoneAnnInWindow = announcementRewardService.isWithin80UsersMilestoneAnnouncementWindow(today);
+		boolean users80MilestonePopupSuppress = announcementRewardService.hasSuppressed80UsersMilestonePopup(uid);
+		model.addAttribute("users80MilestoneAnnouncementClaimed", users80MilestoneAnnClaimed);
+		model.addAttribute("users80MilestoneAnnouncementInWindow", users80MilestoneAnnInWindow);
+		model.addAttribute("users80MilestoneAnnouncementExpiredUnclaimed",
+				!users80MilestoneAnnClaimed && today.isAfter(GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_LAST_DAY));
+		model.addAttribute("users80MilestoneAnnouncementFutureUnclaimed",
+				!users80MilestoneAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_START));
+		model.addAttribute("users80MilestoneLoginPopupShow",
+				list80UsersMilestone && users80MilestoneAnnInWindow && !users80MilestonePopupSuppress);
 
 		int announcementBulkClaimableGemTotal = 0;
 		if (listPerfLight && perfInWindow && !perfClaimed) {
@@ -1183,6 +1201,13 @@ public class HomeController {
 	public String suppressMajorUpdateLoginPopup(RedirectAttributes ra) {
 		long uid = CurrentUser.require().getId();
 		announcementRewardService.suppressMajorUpdateLoginPopup(uid);
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/80-users-milestone/suppress-popup")
+	public String suppress80UsersMilestoneLoginPopup() {
+		long uid = CurrentUser.require().getId();
+		announcementRewardService.suppress80UsersMilestoneLoginPopup(uid);
 		return "redirect:/home";
 	}
 

@@ -35,6 +35,7 @@
                data-kusuri-fix-claimable=${kusuriFixAnnouncementClaimable and announcementListKusuriFix2026},
                data-card-display-server-ops-2026-05-claimable=${cardDisplayServerOps202605AnnouncementClaimable and announcementListCardDisplayServerOps202605},
                data-major-update-login-popup=${majorUpdateLoginPopupShow},
+               data-80-users-login-popup=${users80MilestoneLoginPopupShow},
                data-user-id=${user.id},
                data-home-bonus-epithet-reveal=${homeBonusEpithetReveal},
                data-home-bonus-epithet-upper=${homeBonusEpithetUpper},
@@ -313,6 +314,22 @@
 					<p th:if="${celebrate30UsersAnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
 					<p th:if="${celebrate30UsersAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
 					<p th:if="${celebrate30UsersAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
+				</aside>
+			</div>
+		</article>
+
+		<article class="announcement-modal__card" data-announce-sort="2026051101"
+		         th:if="${announcementList80UsersMilestone and (users80MilestoneAnnouncementClaimed or users80MilestoneAnnouncementExpiredUnclaimed or users80MilestoneAnnouncementFutureUnclaimed or users80MilestoneAnnouncementInWindow)}">
+			<div class="announcement-modal__mailbox">
+				<div class="announcement-modal__mailbox-body">
+					<p class="announcement-modal__card-text">ユーザー登録者数80名突破のご報告と記念配布（20ジェム・10000クリスタル）、および5/13（水）の超大型アップデート予定のお知らせです。</p>
+					<p class="announcement-modal__card-text muted">※全文は「開く」からご確認いただけます。おしらせからいつでも開けます。</p>
+				</div>
+				<aside class="announcement-modal__mailbox-aside">
+					<p th:if="${users80MilestoneAnnouncementClaimed}" class="announcement-modal__card-status ok">配布済み</p>
+					<p th:if="${users80MilestoneAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">配布期限が過ぎました</p>
+					<p th:if="${users80MilestoneAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">配布開始前です</p>
+					<button type="button" class="btn btn--ghost announcement-modal__open-detail" id="users-80-milestone-open">開く</button>
 				</aside>
 			</div>
 		</article>
@@ -729,6 +746,65 @@
 	</div>
 </div>
 
+<div id="users-80-milestone-modal"
+     class="announcement-modal users-80-milestone-modal"
+     th:if="${announcementList80UsersMilestone}"
+     hidden
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="users-80-milestone-modal-title"
+     aria-hidden="true">
+	<div class="announcement-modal__panel users-80-milestone-modal__panel" role="document">
+		<h2 id="users-80-milestone-modal-title" class="users-80-milestone-modal__title">
+			<em class="users-80-milestone-modal__italic">ユーザーのみなさまへ</em>
+		</h2>
+		<article class="announcement-modal__card users-80-milestone-modal__letter">
+			<div class="announcement-modal__mailbox-body">
+				<div class="users-80-milestone-modal__stanza">
+					<p class="announcement-modal__card-text">いつも『ナインユニバース』を遊んでいただき、誠にありがとうございます。</p>
+					<p class="announcement-modal__card-text">日々アップデートを続けられているのは、みなさまの熱い応援のおかげです。これからも『ナインユニバース』をよろしくお願いいたします。</p>
+				</div>
+				<div class="users-80-milestone-modal__stanza">
+					<p class="announcement-modal__card-text">そして、ご報告です。</p>
+					<p class="announcement-modal__card-text users-80-milestone-modal__highlight">ユーザー登録者数が80名を突破しました！</p>
+					<p class="announcement-modal__card-text">感謝の気持ちを込めまして、ユーザー登録者数80名突破記念に、ユーザーのみなさま全員に</p>
+					<p class="announcement-modal__card-text">・20ジェム</p>
+					<p class="announcement-modal__card-text">・10000クリスタル</p>
+					<p class="announcement-modal__card-text">を配布いたします。</p>
+				</div>
+				<div class="users-80-milestone-modal__stanza">
+					<p class="announcement-modal__card-text">10000クリスタルを使えば、お好きなレジェンダリーカードと交換することができますので、ぜひご活用ください。</p>
+				</div>
+				<div class="users-80-milestone-modal__stanza">
+					<p class="announcement-modal__card-text users-80-milestone-modal__highlight">また、5/13（水）12：30～12：45ごろに超大型アップデートを実施予定です。</p>
+					<p class="announcement-modal__card-text">超大型アップデートの内容は以下の通りです。</p>
+					<p class="announcement-modal__card-text">・新カードパック「スタンダードパック3」「海底の激流パック」「創成の神域パック」の追加</p>
+					<p class="announcement-modal__card-text">・新カードパックにともない、新カード40枚の追加</p>
+					<p class="announcement-modal__card-text">・やりこみ要素の追加</p>
+					<p class="announcement-modal__card-text">・各UIの見直し</p>
+				</div>
+				<div class="users-80-milestone-modal__stanza">
+					<p class="announcement-modal__card-text">これからも、より楽しいゲーム体験をお届けできるよう、頑張ってまいります。</p>
+				</div>
+				<div class="users-80-milestone-modal__stanza">
+					<p class="announcement-modal__card-text">それでは、引き続き『ナインユニバース』をお楽しみください。</p>
+					<p class="announcement-modal__card-text muted users-80-milestone-modal__hint">このおしらせは「おしらせ」からいつでも確認できます。</p>
+				</div>
+			</div>
+		</article>
+		<p class="users-80-milestone-modal__signoff">
+			<em class="users-80-milestone-modal__italic">ナインユニバース 運営</em>
+		</p>
+		<div class="users-80-milestone-modal__actions">
+			<form th:action="@{/home/announcements/80-users-milestone/suppress-popup}" method="post" class="users-80-milestone-modal__suppress-form">
+				<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+				<button type="submit" class="btn btn--ghost">次回から表示しない</button>
+			</form>
+			<button type="button" class="btn btn--primary users-80-milestone-modal__close-primary" id="users-80-milestone-close">閉じる</button>
+		</div>
+	</div>
+</div>
+
 <div id="welcome-bonus-modal"
      class="welcome-bonus-modal"
      th:if="${welcomeHomeBonusShown}"
@@ -1117,53 +1193,116 @@
 </script>
 <script>
 (function () {
-	var modal = document.getElementById('major-update-modal');
-	var openBtn = document.getElementById('major-update-open');
-	var closeBtn = document.getElementById('major-update-close');
-	if (!modal || !closeBtn) return;
+	var majorModal = document.getElementById('major-update-modal');
+	var majorOpenBtn = document.getElementById('major-update-open');
+	var majorCloseBtn = document.getElementById('major-update-close');
+	var majorOpenedFromAnnouncementList = false;
+
+	var u80Modal = document.getElementById('users-80-milestone-modal');
+	var u80OpenBtn = document.getElementById('users-80-milestone-open');
+	var u80CloseBtn = document.getElementById('users-80-milestone-close');
 
 	function openMajorUpdateModal() {
-		modal.hidden = false;
-		modal.setAttribute('aria-hidden', 'false');
+		if (!majorModal || !majorCloseBtn) return;
+		majorModal.hidden = false;
+		majorModal.setAttribute('aria-hidden', 'false');
 		document.body.style.overflow = 'hidden';
-		closeBtn.focus();
+		majorCloseBtn.focus();
 	}
 	function closeMajorUpdateModal() {
-		modal.hidden = true;
-		modal.setAttribute('aria-hidden', 'true');
+		if (!majorModal) return;
+		majorModal.hidden = true;
+		majorModal.setAttribute('aria-hidden', 'true');
 		document.body.style.overflow = '';
-		if (openBtn) openBtn.focus();
+		if (majorOpenBtn) majorOpenBtn.focus();
+		if (!majorOpenedFromAnnouncementList) {
+			tryAutoOpen80UsersLoginPopup();
+		}
+		majorOpenedFromAnnouncementList = false;
 	}
-	if (openBtn) {
-		openBtn.addEventListener('click', openMajorUpdateModal);
+	if (majorModal && majorCloseBtn) {
+		if (majorOpenBtn) {
+			majorOpenBtn.addEventListener('click', function () {
+				majorOpenedFromAnnouncementList = true;
+				openMajorUpdateModal();
+			});
+		}
+		majorCloseBtn.addEventListener('click', closeMajorUpdateModal);
+		majorModal.addEventListener('click', function (e) {
+			if (e.target === majorModal) closeMajorUpdateModal();
+		});
 	}
-	closeBtn.addEventListener('click', closeMajorUpdateModal);
-	modal.addEventListener('click', function (e) {
-		if (e.target === modal) closeMajorUpdateModal();
-	});
+
+	function openUsers80MilestoneModal() {
+		if (!u80Modal || !u80CloseBtn) return;
+		u80Modal.hidden = false;
+		u80Modal.setAttribute('aria-hidden', 'false');
+		document.body.style.overflow = 'hidden';
+		u80CloseBtn.focus();
+	}
+	function closeUsers80MilestoneModal() {
+		if (!u80Modal) return;
+		u80Modal.hidden = true;
+		u80Modal.setAttribute('aria-hidden', 'true');
+		document.body.style.overflow = '';
+		if (u80OpenBtn) u80OpenBtn.focus();
+	}
+	if (u80Modal && u80CloseBtn) {
+		if (u80OpenBtn) {
+			u80OpenBtn.addEventListener('click', openUsers80MilestoneModal);
+		}
+		u80CloseBtn.addEventListener('click', closeUsers80MilestoneModal);
+		u80Modal.addEventListener('click', function (e) {
+			if (e.target === u80Modal) closeUsers80MilestoneModal();
+		});
+	}
+
 	document.addEventListener('keydown', function (e) {
-		if (e.key === 'Escape' && !modal.hidden) closeMajorUpdateModal();
+		if (e.key !== 'Escape') return;
+		if (majorModal && !majorModal.hidden) {
+			closeMajorUpdateModal();
+			return;
+		}
+		if (u80Modal && !u80Modal.hidden) {
+			closeUsers80MilestoneModal();
+		}
 	});
 
-	var loginPopup = document.body.getAttribute('data-major-update-login-popup') === 'true';
-	if (!loginPopup) return;
-
-	function tryAutoOpenMajorUpdate() {
-		if (modal.hidden === false) return;
+	function tryAutoOpenMajorUpdateLoginPopup() {
+		if (document.body.getAttribute('data-major-update-login-popup') !== 'true') return false;
+		if (!majorModal || !majorCloseBtn) return false;
+		if (majorModal.hidden === false) return true;
 		openMajorUpdateModal();
+		return true;
+	}
+	function tryAutoOpen80UsersLoginPopup() {
+		if (document.body.getAttribute('data-80-users-login-popup') !== 'true') return false;
+		if (!u80Modal || !u80CloseBtn) return false;
+		if (u80Modal.hidden === false) return true;
+		openUsers80MilestoneModal();
+		return true;
+	}
+	function continueLoginPopupChainFromWelcome() {
+		setTimeout(function () {
+			var openedMajor = tryAutoOpenMajorUpdateLoginPopup();
+			if (!openedMajor || (majorModal && majorModal.hidden)) {
+				tryAutoOpen80UsersLoginPopup();
+			}
+		}, 0);
 	}
 
 	var welcome = document.getElementById('welcome-bonus-modal');
 	if (welcome) {
 		var wbtn = document.getElementById('welcome-bonus-close');
 		if (wbtn) {
-			wbtn.addEventListener('click', function () {
-				setTimeout(tryAutoOpenMajorUpdate, 0);
-			}, { once: true });
+			wbtn.addEventListener('click', continueLoginPopupChainFromWelcome, { once: true });
 		}
 		return;
 	}
-	tryAutoOpenMajorUpdate();
+	var openedMajor = tryAutoOpenMajorUpdateLoginPopup();
+	if (!openedMajor || (majorModal && majorModal.hidden)) {
+		tryAutoOpen80UsersLoginPopup();
+	}
 })();
 </script>
 <script th:src="@{/js/home-time-pack-choice.js(v=${assetVersion})}"></script>
