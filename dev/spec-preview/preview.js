@@ -60,6 +60,8 @@
 				return "マシン";
 			case "CARBUNCLE":
 				return "カーバンクル";
+			case "MERFOLK":
+				return "マーフォーク";
 			default:
 				return code;
 		}
@@ -78,7 +80,7 @@
 	}
 
 	function barFileForAttribute(attribute) {
-		var a = (attribute || "").toUpperCase();
+		var a = (attribute || "").trim().toUpperCase();
 		switch (a) {
 			case "HUMAN":
 				return "人間バー.PNG";
@@ -98,6 +100,12 @@
 				return "マシンバー.PNG";
 			case "CARBUNCLE":
 				return "カーバンクルバー.PNG";
+			case "MERFOLK":
+				return "マーフォークバー.PNG";
+			case "DRAGON_MERFOLK":
+				return "ドラゴンマーフォークバー.PNG";
+			case "HUMAN_MERFOLK":
+				return "人間マーフォークバー.PNG";
 			default:
 				return "人間バー.PNG";
 		}
@@ -105,6 +113,12 @@
 
 	function namedPortraitFilename(attribute, cardName) {
 		var a = (attribute || "").trim().toUpperCase();
+		if (a === "DRAGON_MERFOLK") {
+			return "ドラゴンマーフォーク.PNG";
+		}
+		if (a === "HUMAN_MERFOLK") {
+			return "人間マーフォーク.PNG";
+		}
 		if (["HUMAN", "ELF", "UNDEAD", "ELF_UNDEAD", "DRAGON"].indexOf(a) < 0) {
 			return "";
 		}

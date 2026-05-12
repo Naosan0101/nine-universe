@@ -43,6 +43,7 @@ public final class CardAttributeLabels {
 			case "DRAGON" -> "ドラゴン";
 			case "MACHINE" -> "マシン";
 			case "CARBUNCLE" -> "カーバンクル";
+			case "MERFOLK" -> "マーフォーク";
 			default -> code;
 		};
 	}

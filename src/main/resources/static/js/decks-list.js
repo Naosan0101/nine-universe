@@ -113,6 +113,74 @@
 		panel.appendChild(strip);
 	}
 
+	(function wireDeckDeleteConfirm() {
+		var modal = document.getElementById('nu-deck-delete-modal');
+		var titleEl = document.getElementById('nu-deck-delete-title');
+		var cancelBtn = document.getElementById('nu-deck-delete-cancel');
+		var confirmBtn = document.getElementById('nu-deck-delete-confirm');
+		if (!modal || !titleEl || !cancelBtn || !confirmBtn) {
+			return;
+		}
+		var pendingForm = null;
+		var prevFocus = null;
+		function closeModal() {
+			modal.hidden = true;
+			modal.setAttribute('aria-hidden', 'true');
+			pendingForm = null;
+			document.removeEventListener('keydown', onKeyDown);
+			if (prevFocus && typeof prevFocus.focus === 'function') {
+				try {
+					prevFocus.focus();
+				} catch (e) {
+					/* ignore */
+				}
+			}
+			prevFocus = null;
+		}
+		function openModal(form) {
+			pendingForm = form;
+			prevFocus = document.activeElement;
+			var name = (form.getAttribute('data-deck-name') || '').trim();
+			titleEl.textContent = name
+				? '「' + name + '」を削除しますか？'
+				: 'このデッキを削除しますか？';
+			modal.hidden = false;
+			modal.setAttribute('aria-hidden', 'false');
+			document.addEventListener('keydown', onKeyDown);
+			try {
+				cancelBtn.focus();
+			} catch (e2) {
+				/* ignore */
+			}
+		}
+		function onKeyDown(e) {
+			if (e.key === 'Escape') {
+				e.preventDefault();
+				closeModal();
+			}
+		}
+		document.querySelectorAll('form.deck-delete-form').forEach(function (form) {
+			form.addEventListener('submit', function (e) {
+				e.preventDefault();
+				openModal(form);
+			});
+		});
+		cancelBtn.addEventListener('click', closeModal);
+		modal.addEventListener('click', function (e) {
+			if (e.target === modal) {
+				closeModal();
+			}
+		});
+		confirmBtn.addEventListener('click', function () {
+			var f = pendingForm;
+			if (!f) {
+				return;
+			}
+			closeModal();
+			f.submit();
+		});
+	})();
+
 	document.querySelectorAll('[data-deck-preview-toggle]').forEach(function (btn) {
 		btn.addEventListener('click', function () {
 			const li = btn.closest('.deck-row--card');

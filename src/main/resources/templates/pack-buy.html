@@ -86,6 +86,30 @@
 				</button>
 				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-iron-fleet">詳細を見る</button>
 			</div>
+			<div class="pack-buy__cell">
+				<button type="button" class="pack-buy__item" data-pack-type="STANDARD_3" data-pack-name="スタンダードパック3（OT/CS）" data-pack-cost="3">
+					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtStandard3}?v=${packArtCacheKey}|" alt="スタンダードパック3（OT/CS）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<span class="pack-buy__label">スタンダードパック3（OT/CS）</span>
+					<span class="pack-buy__price" aria-label="価格3ジェム"><span class="pack-buy__price-num">3</span><span class="pack-buy__price-unit">ジェム</span></span>
+				</button>
+				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-standard-3">詳細を見る</button>
+			</div>
+			<div class="pack-buy__cell">
+				<button type="button" class="pack-buy__item" data-pack-type="OCEAN_TIDE" data-pack-name="海底の潮流パック（OT）" data-pack-cost="4">
+					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtOceanTide}?v=${packArtCacheKey}|" alt="海底の潮流パック（OT）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<span class="pack-buy__label">海底の潮流パック（OT）</span>
+					<span class="pack-buy__price" aria-label="価格4ジェム"><span class="pack-buy__price-num">4</span><span class="pack-buy__price-unit">ジェム</span></span>
+				</button>
+				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-ocean-tide">詳細を見る</button>
+			</div>
+			<div class="pack-buy__cell">
+				<button type="button" class="pack-buy__item" data-pack-type="CREATION_SANCTUM" data-pack-name="創成の神域パック（CS）" data-pack-cost="5">
+					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtCreationSanctum}?v=${packArtCacheKey}|" alt="創成の神域パック（CS）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<span class="pack-buy__label">創成の神域パック（CS）</span>
+					<span class="pack-buy__price" aria-label="価格5ジェム"><span class="pack-buy__price-num">5</span><span class="pack-buy__price-unit">ジェム</span></span>
+				</button>
+				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-creation-sanctum">詳細を見る</button>
+			</div>
 		</div>
 	</section>
 
@@ -254,6 +278,84 @@
 		<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
 		<ul class="pack-detail-modal__cards">
 			<li th:each="line : ${ironFleetPackPreview}"
+			    class="pack-detail-modal__card-row"
+			    th:classappend="${'pack-detail-modal__card-row--' + line.rarityCode}">
+				<span class="pack-detail-modal__card-name" th:text="${line.name}">名前</span>
+				<span class="pack-detail-modal__card-rarity" th:text="${line.rarityLabel}">コモン</span>
+			</li>
+		</ul>
+	</div>
+</div>
+
+<!-- スタンダード3 -->
+<div id="pack-detail-standard-3" class="pack-detail-modal" hidden>
+	<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
+	<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="pack-detail-standard-3-title">
+		<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
+		<h2 id="pack-detail-standard-3-title" class="pack-detail-modal__heading">スタンダードパック3（OT/CS）</h2>
+		<p class="pack-detail-modal__price"><span class="muted">1パックあたりの支払い</span> <strong>3ジェム</strong></p>
+		<h3 class="pack-detail-modal__sub">レア度別の排出率</h3>
+		<ul class="pack-detail-modal__rates">
+			<li th:each="r : ${packRarityRates}">
+				<span class="pack-detail-modal__rate-label" th:text="${r.label}">レジェンダリー</span>
+				<span class="pack-detail-modal__rate-pct" th:text="${r.percent}">2%</span>
+			</li>
+		</ul>
+		<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
+		<ul class="pack-detail-modal__cards">
+			<li th:each="line : ${standard3PackPreview}"
+			    class="pack-detail-modal__card-row"
+			    th:classappend="${'pack-detail-modal__card-row--' + line.rarityCode}">
+				<span class="pack-detail-modal__card-name" th:text="${line.name}">名前</span>
+				<span class="pack-detail-modal__card-rarity" th:text="${line.rarityLabel}">コモン</span>
+			</li>
+		</ul>
+	</div>
+</div>
+
+<!-- 海底の潮流 -->
+<div id="pack-detail-ocean-tide" class="pack-detail-modal" hidden>
+	<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
+	<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="pack-detail-ocean-tide-title">
+		<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
+		<h2 id="pack-detail-ocean-tide-title" class="pack-detail-modal__heading">海底の潮流パック（OT）</h2>
+		<p class="pack-detail-modal__price"><span class="muted">1パックあたりの支払い</span> <strong>4ジェム</strong></p>
+		<h3 class="pack-detail-modal__sub">レア度別の排出率</h3>
+		<ul class="pack-detail-modal__rates">
+			<li th:each="r : ${packRarityRates}">
+				<span class="pack-detail-modal__rate-label" th:text="${r.label}">レジェンダリー</span>
+				<span class="pack-detail-modal__rate-pct" th:text="${r.percent}">2%</span>
+			</li>
+		</ul>
+		<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
+		<ul class="pack-detail-modal__cards">
+			<li th:each="line : ${oceanTidePackPreview}"
+			    class="pack-detail-modal__card-row"
+			    th:classappend="${'pack-detail-modal__card-row--' + line.rarityCode}">
+				<span class="pack-detail-modal__card-name" th:text="${line.name}">名前</span>
+				<span class="pack-detail-modal__card-rarity" th:text="${line.rarityLabel}">コモン</span>
+			</li>
+		</ul>
+	</div>
+</div>
+
+<!-- 創成の神域 -->
+<div id="pack-detail-creation-sanctum" class="pack-detail-modal" hidden>
+	<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
+	<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="pack-detail-creation-sanctum-title">
+		<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
+		<h2 id="pack-detail-creation-sanctum-title" class="pack-detail-modal__heading">創成の神域パック（CS）</h2>
+		<p class="pack-detail-modal__price"><span class="muted">1パックあたりの支払い</span> <strong>5ジェム</strong></p>
+		<h3 class="pack-detail-modal__sub">レア度別の排出率</h3>
+		<ul class="pack-detail-modal__rates">
+			<li th:each="r : ${packRarityRates}">
+				<span class="pack-detail-modal__rate-label" th:text="${r.label}">レジェンダリー</span>
+				<span class="pack-detail-modal__rate-pct" th:text="${r.percent}">2%</span>
+			</li>
+		</ul>
+		<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
+		<ul class="pack-detail-modal__cards">
+			<li th:each="line : ${creationSanctumPackPreview}"
 			    class="pack-detail-modal__card-row"
 			    th:classappend="${'pack-detail-modal__card-row--' + line.rarityCode}">
 				<span class="pack-detail-modal__card-name" th:text="${line.name}">名前</span>

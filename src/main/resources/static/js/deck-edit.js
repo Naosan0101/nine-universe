@@ -55,10 +55,11 @@
 		UNDEAD: 'アンデッド',
 		DRAGON: 'ドラゴン',
 		MACHINE: 'マシン',
-		CARBUNCLE: 'カーバンクル'
+		CARBUNCLE: 'カーバンクル',
+		MERFOLK: 'マーフォーク'
 	};
 	/** 上段カードの種族ソート順（種族フィルターと同じ並び） */
-	const TRIBE_SORT_ORDER = ['HUMAN', 'ELF', 'UNDEAD', 'DRAGON', 'MACHINE', 'CARBUNCLE'];
+	const TRIBE_SORT_ORDER = ['HUMAN', 'ELF', 'UNDEAD', 'DRAGON', 'MACHINE', 'CARBUNCLE', 'MERFOLK'];
 
 	function tribeSortIndex(segment) {
 		const u = (segment || '').trim().toUpperCase();
@@ -119,10 +120,13 @@
 	const PACK_JA = {
 		STD: 'スタンダードパック1',
 		STD2: 'スタンダードパック2',
+		STD3: 'スタンダードパック3（OT/CS）',
 		WH: '風吹く丘パック',
 		ET: '邪悪なる脅威パック',
 		JU: '宝石の秘境パック',
-		IF: '鉄面の艦隊パック'
+		IF: '鉄面の艦隊パック',
+		OT: '海底の潮流パック',
+		CS: '創成の神域パック'
 	};
 
 	function packSourcesForInitial(piRaw) {
@@ -131,6 +135,8 @@
 		if (pi === 'ET') return [PACK_JA.ET, PACK_JA.STD];
 		if (pi === 'JU') return [PACK_JA.JU, PACK_JA.STD2];
 		if (pi === 'IF') return [PACK_JA.IF, PACK_JA.STD2];
+		if (pi === 'OT') return [PACK_JA.OT, PACK_JA.STD3];
+		if (pi === 'CS') return [PACK_JA.CS, PACK_JA.STD3];
 		return [PACK_JA.STD];
 	}
 
@@ -411,12 +417,14 @@
 	// PackService.filterCardsForPack と同じ収録イニシャル
 	var PACK_IDS_STANDARD_1 = ['STD', 'WH', 'ET'];
 	var PACK_IDS_STANDARD_2 = ['JU', 'IF'];
+	var PACK_IDS_STANDARD_3 = ['OT', 'CS'];
 
 	function matchesPackFilter(pi, filterVal) {
 		if (!filterVal) return true;
 		var n = (pi || 'STD').trim().toUpperCase() || 'STD';
 		if (filterVal === 'STANDARD_1') return PACK_IDS_STANDARD_1.indexOf(n) !== -1;
 		if (filterVal === 'STANDARD_2') return PACK_IDS_STANDARD_2.indexOf(n) !== -1;
+		if (filterVal === 'STANDARD_3') return PACK_IDS_STANDARD_3.indexOf(n) !== -1;
 		return n === filterVal;
 	}
 

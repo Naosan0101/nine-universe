@@ -1434,23 +1434,6 @@ public class CpuBattleEngine {
 					} else if ("NIDONEBI".equals(pc.getAbilityDeployCode())) {
 						moveOneCardIdToDeckBottom(st.getHumanRest(), st.getHumanDeck(), (short) 18);
 						st.addLog("ネクロマンサー: デッキ最下段へ");
-					} else if ("RYUNOTAMAGO".equals(pc.getAbilityDeployCode())) {
-						// ドラゴンを選ぶ
-						List<String> opts = new ArrayList<>();
-						for (BattleCard c : st.getHumanRest()) {
-							if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "DRAGON")) opts.add(c.getInstanceId());
-						}
-						if (!opts.isEmpty()) {
-							st.setPendingChoice(new PendingChoice(
-									ChoiceKind.SELECT_ONE_FROM_REST_TO_HAND,
-									"ドラゴンの卵（レストのドラゴンを選択）",
-									true,
-									"RYUNOTAMAGO",
-									0,
-									opts
-							));
-							return;
-						}
 					} else if ("KORYU".equals(pc.getAbilityDeployCode())) {
 						int elves = countAttributeInRest(st.getHumanRest(), defs, "ELF");
 						if (elves > 0 && st.getHumanBattle() != null) {
@@ -1575,6 +1558,8 @@ public class CpuBattleEngine {
 					} else if ("ASTORIA".equals(pc.getAbilityDeployCode())) {
 						c.setHandDeployCostModifier(-1);
 						st.addLog("研究者アストリア: 手札へ（コスト-1）");
+					} else if ("RYUNOTAMAGO".equals(pc.getAbilityDeployCode())) {
+						st.addLog("ドラゴンの卵: レストのドラゴンを手札へ");
 					} else {
 						st.addLog("レストから手札へ");
 					}
@@ -1823,23 +1808,6 @@ public class CpuBattleEngine {
 					} else if ("NIDONEBI".equals(pc.getAbilityDeployCode())) {
 						moveOneCardIdToDeckBottom(st.getCpuRest(), st.getCpuDeck(), (short) 18);
 						st.addLog("ネクロマンサー: デッキ最下段へ");
-					} else if ("RYUNOTAMAGO".equals(pc.getAbilityDeployCode())) {
-						List<String> opts = new ArrayList<>();
-						for (BattleCard c : st.getCpuRest()) {
-							if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "DRAGON")) opts.add(c.getInstanceId());
-						}
-						if (!opts.isEmpty()) {
-							st.setPendingChoice(new PendingChoice(
-									ChoiceKind.SELECT_ONE_FROM_REST_TO_HAND,
-									"ドラゴンの卵（レストのドラゴンを選択）",
-									false,
-									"RYUNOTAMAGO",
-									0,
-									opts,
-									true
-							));
-							return;
-						}
 					} else if ("KORYU".equals(pc.getAbilityDeployCode())) {
 						int elves = countAttributeInRest(st.getCpuRest(), defs, "ELF");
 						if (elves > 0 && st.getCpuBattle() != null) {
@@ -1959,6 +1927,8 @@ public class CpuBattleEngine {
 					} else if ("ASTORIA".equals(pc.getAbilityDeployCode())) {
 						c.setHandDeployCostModifier(-1);
 						st.addLog("研究者アストリア: 手札へ（コスト-1）");
+					} else if ("RYUNOTAMAGO".equals(pc.getAbilityDeployCode())) {
+						st.addLog("ドラゴンの卵: レストのドラゴンを手札へ");
 					} else {
 						st.addLog("レストから手札へ");
 					}
@@ -4960,7 +4930,6 @@ public class CpuBattleEngine {
 		return switch (code) {
 			case "SAMURAI" -> stones >= 3;
 			case "YOSEI", "NOROWARETA", "FUWAFUWA", "NIDONEBI", "KORYU" -> stones >= 1;
-			case "RYUNOTAMAGO" -> stones >= 2;
 			case "CRYSTAKUL" -> stones >= CRYSTAKUL_OPTIONAL_STONE_COST;
 			case "FEZARIA" -> stones >= FEZARIA_OPTIONAL_STONE_COST;
 			default -> true;
@@ -5695,18 +5664,24 @@ public class CpuBattleEngine {
 				}
 			}
 			case "RYUNOTAMAGO" -> {
-				if (st.getHumanStones() >= 2 && restContainsAttribute(st.getHumanRest(), defs, "DRAGON")) {
-					List<String> opts = new ArrayList<>();
-					for (BattleCard c : st.getHumanRest()) {
-						if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "DRAGON")) opts.add(c.getInstanceId());
+				List<String> ryuOpts = new ArrayList<>();
+				ZoneFighter ownBattleRy = st.getHumanBattle();
+				for (BattleCard c : st.getHumanRest()) {
+					if (isTuckedUnderOwnFighter(ownBattleRy, c)) {
+						continue;
 					}
+					if (CardAttributes.hasAttribute(defs.get(c.getCardId()), c, "DRAGON")) {
+						ryuOpts.add(c.getInstanceId());
+					}
+				}
+				if (!ryuOpts.isEmpty()) {
 					st.setPendingChoice(new PendingChoice(
-							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"ドラゴンの卵",
+							ChoiceKind.SELECT_ONE_FROM_REST_TO_HAND,
+							"ドラゴンの卵（レストのドラゴンを選択）",
 							true,
 							"RYUNOTAMAGO",
-							2,
-							opts
+							0,
+							ryuOpts
 					));
 				}
 			}
@@ -6172,18 +6147,24 @@ public class CpuBattleEngine {
 				}
 			}
 			case "RYUNOTAMAGO" -> {
-				if (st.getCpuStones() >= 2 && restContainsAttribute(st.getCpuRest(), defs, "DRAGON")) {
-					List<String> opts = new ArrayList<>();
-					for (BattleCard c : st.getCpuRest()) {
-						if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "DRAGON")) opts.add(c.getInstanceId());
+				List<String> ryuGuestOpts = new ArrayList<>();
+				ZoneFighter ownBattleRyG = st.getCpuBattle();
+				for (BattleCard c : st.getCpuRest()) {
+					if (isTuckedUnderOwnFighter(ownBattleRyG, c)) {
+						continue;
 					}
+					if (CardAttributes.hasAttribute(defs.get(c.getCardId()), c, "DRAGON")) {
+						ryuGuestOpts.add(c.getInstanceId());
+					}
+				}
+				if (!ryuGuestOpts.isEmpty()) {
 					st.setPendingChoice(new PendingChoice(
-							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"ドラゴンの卵",
+							ChoiceKind.SELECT_ONE_FROM_REST_TO_HAND,
+							"ドラゴンの卵（レストのドラゴンを選択）",
 							false,
 							"RYUNOTAMAGO",
-							2,
-							opts,
+							0,
+							ryuGuestOpts,
 							true
 					));
 				}
@@ -6686,17 +6667,17 @@ public class CpuBattleEngine {
 				}
 			}
 			case "RYUNOTAMAGO" -> {
-				if (st.getCpuStones() >= 2) {
-					// 簡易: 使う（ドラゴンがあるなら）
-					for (int i = 0; i < st.getCpuRest().size(); i++) {
-						BattleCard c = st.getCpuRest().get(i);
-						if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "DRAGON")) {
-							st.setCpuStones(st.getCpuStones() - 2);
-							st.getCpuRest().remove(i);
-							st.getCpuHand().add(0, c);
-							st.addLog("CPUドラゴンの卵: レストのドラゴンを1枚手札へ");
-							break;
-						}
+				ZoneFighter ownBattleRyCpu = st.getCpuBattle();
+				for (int i = 0; i < st.getCpuRest().size(); i++) {
+					BattleCard c = st.getCpuRest().get(i);
+					if (isTuckedUnderOwnFighter(ownBattleRyCpu, c)) {
+						continue;
+					}
+					if (CardAttributes.hasAttribute(defs.get(c.getCardId()), c, "DRAGON")) {
+						st.getCpuRest().remove(i);
+						st.getCpuHand().add(0, c);
+						st.addLog("CPUドラゴンの卵: レストのドラゴンを1枚手札へ");
+						break;
 					}
 				}
 			}

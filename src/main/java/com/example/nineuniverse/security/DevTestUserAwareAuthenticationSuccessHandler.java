@@ -28,7 +28,7 @@ public class DevTestUserAwareAuthenticationSuccessHandler implements Authenticat
 	@Override
 	public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
 			Authentication authentication) throws IOException, ServletException {
-		devTestUserLoginBaselineService.resetIfApplicable(authentication);
+		devTestUserLoginBaselineService.resetIfApplicable(authentication, request);
 		delegate.onAuthenticationSuccess(request, response, authentication);
 	}
 }

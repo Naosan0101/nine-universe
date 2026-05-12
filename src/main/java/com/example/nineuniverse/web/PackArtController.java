@@ -24,10 +24,13 @@ public class PackArtController {
 	private static final Map<String, String> LOGICAL_FILE_BY_KEY = Map.of(
 			"standard1", GameConstants.PACK_ART_FILE_STANDARD_1,
 			"standard2", GameConstants.PACK_ART_FILE_STANDARD_2,
+			"standard3", GameConstants.PACK_ART_FILE_STANDARD_3,
 			"windyHill", GameConstants.PACK_ART_FILE_WINDY_HILL,
 			"evilThreat", GameConstants.PACK_ART_FILE_EVIL_THREAT,
 			"jewelUtopia", GameConstants.PACK_ART_FILE_JEWEL_UTOPIA,
-			"ironFleet", GameConstants.PACK_ART_FILE_IRON_FLEET);
+			"ironFleet", GameConstants.PACK_ART_FILE_IRON_FLEET,
+			"oceanTide", GameConstants.PACK_ART_FILE_OCEAN_TIDE,
+			"creationSanctum", GameConstants.PACK_ART_FILE_CREATION_SANCTUM);
 
 	@GetMapping("/pack-art/{key}.png")
 	public ResponseEntity<Resource> packArtPng(@PathVariable("key") String key) {

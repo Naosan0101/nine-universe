@@ -667,6 +667,11 @@ html:has(.page--single-screen-hub) body {
 	line-height: 1.45;
 	color: var(--text);
 }
+.nu-home-quit-modal__hint {
+	margin: -0.35rem 0 1.1rem;
+	font-size: 0.92rem;
+	line-height: 1.45;
+}
 .nu-home-quit-modal__actions {
 	display: flex;
 	flex-wrap: wrap;
@@ -6468,6 +6473,15 @@ body.battle-intro-is-running {
 	font-size: calc(var(--cf-attr-size) * 0.86);
 	/* バー上の見た目バランスのためほんの少し右へ */
 	left: calc(var(--cf-attr-left) + 2%);
+}
+.card-face--attr-MERFOLK .card-face__attr-label {
+	/* 「マーフォーク」はやや長いのでわずかに小さく */
+	font-size: calc(var(--cf-attr-size) * 0.92);
+}
+.card-face--attr-DRAGON_MERFOLK .card-face__attr-label--compound .card-face__attr-line:nth-child(2),
+.card-face--attr-HUMAN_MERFOLK .card-face__attr-label--compound .card-face__attr-line:nth-child(2) {
+	/* 複合種族の2行目「マーフォーク」 */
+	font-size: 0.92em;
 }
 .card-face__attr-line { display: inline; }
 .card-face__attr-label--compound {

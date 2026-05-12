@@ -23,6 +23,11 @@
 		INSERT INTO user_collection (user_id, card_id, quantity) VALUES (#{userId}, #{cardId}, #{quantity})
 	</insert>
 
+	<insert id="upsertExactQuantity">
+		INSERT INTO user_collection (user_id, card_id, quantity) VALUES (#{userId}, #{cardId}, #{quantity})
+		ON CONFLICT (user_id, card_id) DO UPDATE SET quantity = EXCLUDED.quantity
+	</insert>
+
 	<update id="subtractQuantityIfEnough">
 		UPDATE user_collection
 		SET quantity = quantity - #{delta}

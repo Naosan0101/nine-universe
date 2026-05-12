@@ -79,7 +79,10 @@ public class PackController {
 			packArtClasspathRel(GameConstants.PACK_ART_FILE_EVIL_THREAT),
 			packArtClasspathRel(GameConstants.PACK_ART_FILE_STANDARD_2),
 			packArtClasspathRel(GameConstants.PACK_ART_FILE_JEWEL_UTOPIA),
-			packArtClasspathRel(GameConstants.PACK_ART_FILE_IRON_FLEET));
+			packArtClasspathRel(GameConstants.PACK_ART_FILE_IRON_FLEET),
+			packArtClasspathRel(GameConstants.PACK_ART_FILE_STANDARD_3),
+			packArtClasspathRel(GameConstants.PACK_ART_FILE_OCEAN_TIDE),
+			packArtClasspathRel(GameConstants.PACK_ART_FILE_CREATION_SANCTUM));
 
 	private static final String CARD_BACK_CLASSPATH = "static/images/cards/card-back.PNG";
 
@@ -117,12 +120,18 @@ public class PackController {
 		model.addAttribute("standard2PackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.STANDARD_2)));
 		model.addAttribute("jewelUtopiaPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.JEWEL_UTOPIA)));
 		model.addAttribute("ironFleetPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.IRON_FLEET)));
+		model.addAttribute("standard3PackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.STANDARD_3)));
+		model.addAttribute("oceanTidePackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.OCEAN_TIDE)));
+		model.addAttribute("creationSanctumPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.CREATION_SANCTUM)));
 		model.addAttribute("packBuyArtStandard1", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_1));
 		model.addAttribute("packBuyArtWindyHill", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_WINDY_HILL));
 		model.addAttribute("packBuyArtEvilThreat", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_EVIL_THREAT));
 		model.addAttribute("packBuyArtStandard2", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_2));
 		model.addAttribute("packBuyArtJewelUtopia", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_JEWEL_UTOPIA));
 		model.addAttribute("packBuyArtIronFleet", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_IRON_FLEET));
+		model.addAttribute("packBuyArtStandard3", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_3));
+		model.addAttribute("packBuyArtOceanTide", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_OCEAN_TIDE));
+		model.addAttribute("packBuyArtCreationSanctum", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_CREATION_SANCTUM));
 		return "pack-buy";
 	}
 
@@ -365,6 +374,9 @@ public class PackController {
 			case "STANDARD_2" -> PackType.STANDARD_2;
 			case "JEWEL_UTOPIA" -> PackType.JEWEL_UTOPIA;
 			case "IRON_FLEET" -> PackType.IRON_FLEET;
+			case "STANDARD_3" -> PackType.STANDARD_3;
+			case "OCEAN_TIDE" -> PackType.OCEAN_TIDE;
+			case "CREATION_SANCTUM" -> PackType.CREATION_SANCTUM;
 			default -> PackType.STANDARD;
 		};
 	}

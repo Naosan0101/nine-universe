@@ -28,6 +28,10 @@ public class PackService {
 		STANDARD_2(3),
 		JEWEL_UTOPIA(4),
 		IRON_FLEET(5),
+		/** {@code pack_initial} OT / CS のカードを対象 */
+		STANDARD_3(3),
+		OCEAN_TIDE(4),
+		CREATION_SANCTUM(5),
 		/** 時間ゲージのボーナス開封のみ（カードは排出しない／二つ名ガチャ） */
 		BONUS_EPITHET_GACHA(0);
 
@@ -98,6 +102,9 @@ public class PackService {
 		List<PackOpenRow> pulled = new ArrayList<>();
 		List<CardDefinition> all = filterCardsForPack(cardCatalogService.all(), t);
 		if (all.isEmpty()) {
+			if (!allowGlobalFallbackWhenFilteredEmpty(t)) {
+				throw new IllegalArgumentException("このパックの収録カードは準備中です。しばらくしてから再度お試しください。");
+			}
 			all = cardCatalogService.all();
 		}
 		for (int i = 0; i < GameConstants.PACK_CARD_COUNT; i++) {
@@ -129,7 +136,7 @@ public class PackService {
 
 	public List<CardDefinition> eligibleCardsForPack(PackType type) {
 		List<CardDefinition> all = filterCardsForPack(cardCatalogService.all(), type);
-		if (all.isEmpty()) {
+		if (all.isEmpty() && allowGlobalFallbackWhenFilteredEmpty(type)) {
 			return new ArrayList<>(cardCatalogService.all());
 		}
 		return all;
@@ -161,6 +168,20 @@ public class PackService {
 		};
 	}
 
+	/**
+	 * フィルタ後にカードが0枚のとき、従来どおり全カードへフォールバックしてよいパック。
+	 * OT/CS 系は収録未設定時に他パックのカードが混ざらないようフォールバックしない。
+	 */
+	private static boolean allowGlobalFallbackWhenFilteredEmpty(PackType t) {
+		if (t == null) {
+			return true;
+		}
+		return switch (t) {
+			case STANDARD, STANDARD_2, WINDY_HILL, EVIL_THREAT, JEWEL_UTOPIA, IRON_FLEET -> true;
+			case STANDARD_3, OCEAN_TIDE, CREATION_SANCTUM, BONUS_EPITHET_GACHA -> false;
+		};
+	}
+
 	private static List<CardDefinition> filterCardsForPack(List<CardDefinition> all, PackType type) {
 		if (all == null || all.isEmpty()) return List.of();
 		PackType t = type != null ? type : PackType.STANDARD;
@@ -174,6 +195,9 @@ public class PackService {
 			case STANDARD_2 -> List.of("JU", "IF");
 			case JEWEL_UTOPIA -> List.of("JU");
 			case IRON_FLEET -> List.of("IF");
+			case STANDARD_3 -> List.of("OT", "CS");
+			case OCEAN_TIDE -> List.of("OT");
+			case CREATION_SANCTUM -> List.of("CS");
 			case BONUS_EPITHET_GACHA -> List.of();
 		};
 		for (CardDefinition c : all) {

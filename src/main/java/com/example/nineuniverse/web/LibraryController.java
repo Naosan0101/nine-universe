@@ -1,6 +1,7 @@
 package com.example.nineuniverse.web;
 
 import com.example.nineuniverse.GameConstants;
+import com.example.nineuniverse.dev.DevTestUserLoginBaselineService;
 import com.example.nineuniverse.service.LibraryService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -15,10 +16,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 public class LibraryController {
 
 	private final LibraryService libraryService;
+	private final DevTestUserLoginBaselineService devTestUserLoginBaselineService;
 
 	@GetMapping
 	public String library(Model model, HttpServletRequest request) {
 		long uid = CurrentUser.require().getId();
+		devTestUserLoginBaselineService.syncTestuserCollectionOnlyIfLocal(request);
 		model.addAttribute("cards", libraryService.library(uid));
 		String cp = request.getContextPath();
 		model.addAttribute("contextPath", cp != null ? cp : "");

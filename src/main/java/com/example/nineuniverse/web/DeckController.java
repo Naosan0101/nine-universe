@@ -1,6 +1,7 @@
 package com.example.nineuniverse.web;
 
 import com.example.nineuniverse.GameConstants;
+import com.example.nineuniverse.dev.DevTestUserLoginBaselineService;
 import com.example.nineuniverse.domain.LibraryCardView;
 import com.example.nineuniverse.service.DeckService;
 import com.example.nineuniverse.service.LibraryService;
@@ -30,10 +31,12 @@ public class DeckController {
 
 	private final DeckService deckService;
 	private final LibraryService libraryService;
+	private final DevTestUserLoginBaselineService devTestUserLoginBaselineService;
 
 	@GetMapping
 	public String list(Model model, HttpServletRequest request) {
 		long uid = CurrentUser.require().getId();
+		devTestUserLoginBaselineService.syncTestuserCollectionOnlyIfLocal(request);
 		model.addAttribute("decks", deckService.listDecks(uid));
 		String cp = request.getContextPath();
 		model.addAttribute("contextPath", cp != null ? cp : "");
@@ -42,8 +45,9 @@ public class DeckController {
 	}
 
 	@GetMapping("/new")
-	public String newForm(Model model) {
+	public String newForm(Model model, HttpServletRequest request) {
 		long uid = CurrentUser.require().getId();
+		devTestUserLoginBaselineService.syncTestuserCollectionOnlyIfLocal(request);
 		var library = libraryService.library(uid);
 		int maxBuildable = maxBuildableDeckSlots(library);
 		boolean noOwned = library.stream().noneMatch(LibraryCardView::isOwned);
@@ -93,8 +97,9 @@ public class DeckController {
 	}
 
 	@GetMapping("/{id}/edit")
-	public String edit(@PathVariable long id, Model model) {
+	public String edit(@PathVariable long id, Model model, HttpServletRequest request) {
 		long uid = CurrentUser.require().getId();
+		devTestUserLoginBaselineService.syncTestuserCollectionOnlyIfLocal(request);
 		var deck = deckService.requireDeck(uid, id);
 		model.addAttribute("library", libraryService.library(uid));
 		model.addAttribute("deckName", deck.getName());

@@ -15,6 +15,9 @@ public interface UserCollectionMapper {
 
 	int insertQuantity(@Param("userId") long userId, @Param("cardId") short cardId, @Param("quantity") int quantity);
 
+	/** 所持枚数を指定値で上書き（存在しなければ挿入）。開発用 testuser のコレクション同期など。 */
+	int upsertExactQuantity(@Param("userId") long userId, @Param("cardId") short cardId, @Param("quantity") int quantity);
+
 	/** 所持が十分なときだけ減算。更新行数 1 で成功。 */
 	int subtractQuantityIfEnough(@Param("userId") long userId, @Param("cardId") short cardId, @Param("delta") int delta);
 

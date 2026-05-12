@@ -24,6 +24,13 @@ public final class GameConstants {
 	 */
 	private static final Set<Short> PORTRAIT_USE_DB_IMAGE_FILE_IDS = Set.of((short) 41, (short) 42, (short) 65, (short) 68);
 
+	/**
+	 * ドラゴン＋マーフォーク複合（{@code DRAGON_MERFOLK}）／人間＋マーフォーク複合（{@code HUMAN_MERFOLK}）の共有イラスト。
+	 * カード名ではなく固定ファイル名（{@code static/images/cards/}）。
+	 */
+	private static final String PORTRAIT_FILE_DRAGON_MERFOLK = "ドラゴンマーフォーク.PNG";
+	private static final String PORTRAIT_FILE_HUMAN_MERFOLK = "人間マーフォーク.PNG";
+
 	private static String normalizeImageExtension(String filename) {
 		if (filename == null || filename.isBlank()) {
 			return filename;
@@ -77,9 +84,19 @@ public final class GameConstants {
 	/** ③カード基礎データ（フィールド用） */
 	public static final String CARD_LAYER_DATA_FIELD = encCardFile("カード基礎データ_フィールド.PNG");
 
-	/** ②種族バー（ファイル名は NFC 想定で {@link #encCardFileNfc}） */
+	/**
+	 * ②種族バー。既定は {@link #encCardFileNfc}（従来どおり）。リポジトリ上 NFD 名のみ存在する
+	 * 単一種族 {@code MERFOLK} だけ {@link #encCardFile}（NFD URL）。複合のドラゴン／人間マーフォークは
+	 * 素材が NFC 名のため {@link #encCardFileNfc}（{@code merfolkBarAssetUsesNfdUrl} が false）。
+	 */
 	public static String cardLayerBarPath(String attribute) {
-		String file = switch (attribute == null || attribute.isBlank() ? "HUMAN" : attribute.toUpperCase(Locale.ROOT)) {
+		String key = attribute == null ? "" : attribute.trim();
+		if (key.isEmpty()) {
+			key = "HUMAN";
+		} else {
+			key = key.toUpperCase(Locale.ROOT);
+		}
+		String file = switch (key) {
 			case "HUMAN" -> "人間バー.PNG";
 			case "ELF" -> "エルフバー.PNG";
 			case "UNDEAD" -> "アンデッドバー.PNG";
@@ -89,9 +106,25 @@ public final class GameConstants {
 			case "HUMAN_ELF" -> "人間エルフバー.PNG";
 			case "MACHINE" -> "マシンバー.PNG";
 			case "CARBUNCLE" -> "カーバンクルバー.PNG";
+			case "MERFOLK" -> "マーフォークバー.PNG";
+			case "DRAGON_MERFOLK" -> "ドラゴンマーフォークバー.PNG";
+			case "HUMAN_MERFOLK" -> "人間マーフォークバー.PNG";
 			default -> "人間バー.PNG";
 		};
-		return encCardFileNfc(file);
+		return merfolkBarAssetUsesNfdUrl(key) ? encCardFile(file) : encCardFileNfc(file);
+	}
+
+	/** 単一種族マーフォークのバー素材のみ {@link #encCardFile}（NFD URL）で配信する。 */
+	private static boolean merfolkBarAssetUsesNfdUrl(String attributeKeyUpper) {
+		return "MERFOLK".equals(attributeKeyUpper);
+	}
+
+	/** DB の {@code __missing__.PNG} はイラスト未着手。カード面イラスト層・サムネ URL は出さない。 */
+	private static boolean isMissingImageFilePlaceholder(String imageFile) {
+		if (imageFile == null || imageFile.isBlank()) {
+			return false;
+		}
+		return imageFile.trim().equalsIgnoreCase("__missing__.PNG");
 	}
 
 	/**
@@ -101,14 +134,48 @@ public final class GameConstants {
 		if (imageFile == null || imageFile.isBlank()) {
 			return "";
 		}
+		if (isMissingImageFilePlaceholder(imageFile)) {
+			return "";
+		}
 		return encCardFile(imageFile);
 	}
 
+	/**
+	 * 複合種族カードのイラスト層 URL。
+	 * <ul>
+	 * <li>{@code DRAGON_MERFOLK}（ドラゴン＋マーフォーク）→ ドラゴンマーフォーク.PNG</li>
+	 * <li>{@code HUMAN_MERFOLK}（人間＋マーフォーク）→ 人間マーフォーク.PNG</li>
+	 * </ul>
+	 * 該当しないときは空。
+	 * <p>{@link #isMissingImageFilePlaceholder} が真のときは空（イラスト未実装のカードでは出さない）。
+	 * <p>URL は {@link #encCardFileNfc} のみ（リポジトリ上の NFC ファイル名と一致。{@code バ} の合成／分解差で NFD URL が 404 になるのを避ける）。
+	 */
+	private static String fixedCompositeMerfolkPortraitLayer(String attribute) {
+		if (attribute == null || attribute.isBlank()) {
+			return "";
+		}
+		String au = attribute.trim().toUpperCase(Locale.ROOT);
+		if ("DRAGON_MERFOLK".equals(au)) {
+			return encCardFileNfc(PORTRAIT_FILE_DRAGON_MERFOLK);
+		}
+		if ("HUMAN_MERFOLK".equals(au)) {
+			return encCardFileNfc(PORTRAIT_FILE_HUMAN_MERFOLK);
+		}
+		return "";
+	}
+
 	private static String namedTribePortraitLayerPathInternal(String attribute, String cardName, boolean nfdUrl) {
-		if (attribute == null || cardName == null) {
+		String fixed = fixedCompositeMerfolkPortraitLayer(attribute);
+		if (!fixed.isBlank()) {
+			return fixed;
+		}
+		if (attribute == null) {
 			return "";
 		}
 		String attr = attribute.trim().toUpperCase(Locale.ROOT);
+		if (cardName == null) {
+			return "";
+		}
 		if (!attr.equals("HUMAN")
 				&& !attr.equals("ELF")
 				&& !attr.equals("UNDEAD")
@@ -126,7 +193,8 @@ public final class GameConstants {
 
 	/**
 	 * カード面のイラスト層（①基盤と種族バーの間）。素材は {@code カード名.PNG}（または DB の image_file）。
-	 * 種族: 人間・エルフ・アンデッド・ドラゴン・エルフアンデッド・カーバンクル（カード名とファイル名を一致させる）。
+	 * 種族: 人間・エルフ・アンデッド・ドラゴン・エルフアンデッド・カーバンクル（カード名とファイル名を一致）、
+	 * 複合のドラゴンマーフォーク・人間マーフォークは {@code ドラゴンマーフォーク.PNG} / {@code 人間マーフォーク.PNG}。
 	 */
 	public static String namedTribePortraitLayerPath(String attribute, String cardName) {
 		return namedTribePortraitLayerPathInternal(attribute, cardName, true);
@@ -151,6 +219,7 @@ public final class GameConstants {
 	 * カード面のイラスト層 URL。
 	 * <p>単一種族は通常 {@link #namedTribePortraitLayerPath}（カード名.PNG）を優先。
 	 * {@link #PORTRAIT_USE_DB_IMAGE_FILE_IDS} のみ {@code image_file} を優先（静的ファイル名がカード名と異なる場合）。
+	 * <p>{@code image_file} が {@code __missing__.PNG} のときは複合・単一の名前解決をせず空を返す（イラスト未実装）。
 	 */
 	public static String cardFacePortraitLayerPath(String attribute, String cardName, String imageFile, Short cardId) {
 		return cardFacePortraitLayerPathInternal(attribute, cardName, imageFile, cardId, true);
@@ -172,20 +241,27 @@ public final class GameConstants {
 	private static String cardFacePortraitLayerPathInternal(
 			String attribute, String cardName, String imageFile, Short cardId, boolean nfdUrl) {
 		String img = imageFile != null ? imageFile.trim() : "";
+		boolean missingArt = isMissingImageFilePlaceholder(imageFile);
 		if (cardId != null
 				&& PORTRAIT_USE_DB_IMAGE_FILE_IDS.contains(cardId)
 				&& !img.isEmpty()
-				&& !img.equalsIgnoreCase("__missing__.PNG")) {
+				&& !missingArt) {
 			return encCardFileNfc(imageFile.trim());
 		}
-		String named = namedTribePortraitLayerPathInternal(attribute, cardName, nfdUrl);
-		if (named != null && !named.isBlank()) {
-			return named;
+		if (!missingArt) {
+			String composite = fixedCompositeMerfolkPortraitLayer(attribute);
+			if (!composite.isBlank()) {
+				return composite;
+			}
+			String named = namedTribePortraitLayerPathInternal(attribute, cardName, nfdUrl);
+			if (named != null && !named.isBlank()) {
+				return named;
+			}
 		}
-		if (!img.isEmpty() && !img.equalsIgnoreCase("__missing__.PNG")) {
+		if (!img.isEmpty() && !missingArt) {
 			return portraitFileUrl(imageFile, nfdUrl);
 		}
-		return portraitFileUrl(imageFile, nfdUrl);
+		return "";
 	}
 
 	/** ASCII 名に統一（Git が NFD の「カードうら.PNG」だと URL 解決が環境で不一致になりやすい）。 */
@@ -210,6 +286,9 @@ public final class GameConstants {
 	public static final String PACK_ART_FILE_STANDARD_2 = "スタンダードパック2.PNG";
 	public static final String PACK_ART_FILE_JEWEL_UTOPIA = "宝石の秘境パック.PNG";
 	public static final String PACK_ART_FILE_IRON_FLEET = "鉄面の艦隊パック.PNG";
+	public static final String PACK_ART_FILE_STANDARD_3 = "スタンダードパック3.PNG";
+	public static final String PACK_ART_FILE_OCEAN_TIDE = "海底の潮流パック.PNG";
+	public static final String PACK_ART_FILE_CREATION_SANCTUM = "創成の神域パック.PNG";
 
 	/**
 	 * パック絵（{@code static/images/cards/〇〇パック.PNG}）を {@code /images/cards/…} で返す URL。
