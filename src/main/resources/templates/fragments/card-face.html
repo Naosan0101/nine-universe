@@ -6,7 +6,7 @@
   イラスト: static/images/cards/「名前」.PNG
 -->
 <div th:fragment="layers(c, cp)" class="card-face card-face--layered"
-     th:classappend="|card-face--attr-${c.attribute} card-face--rarity-${c.rarity}|">
+     th:classappend="|card-face--attr-${c.attribute} card-face--rarity-${c.rarity}${c.fieldCard ? ' card-face--field' : ''}|">
 	<div class="card-face__stack" aria-hidden="true">
 		<img class="card-face__layer-img card-face__layer-img--base"
 		     th:if="${c.layerBasePath != null && !c.layerBasePath.isBlank()}"

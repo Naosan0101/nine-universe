@@ -88,6 +88,9 @@ public final class GameConstants {
 	 * ②種族バー。既定は {@link #encCardFileNfc}（従来どおり）。リポジトリ上 NFD 名のみ存在する
 	 * 単一種族 {@code MERFOLK} だけ {@link #encCardFile}（NFD URL）。複合のドラゴン／人間マーフォークは
 	 * 素材が NFC 名のため {@link #encCardFileNfc}（{@code merfolkBarAssetUsesNfdUrl} が false）。
+	 * {@code COMIC}／{@code HUMAN_COMIC} は {@link #encCardFileNfc}（リポジトリ上 NFC 名の素材）。
+	 * {@code ANGEL}／{@code ANGEL_UNDEAD}／{@code DRAGON_COMIC} は、日本語ファイル名の NFC/NFD と静的配信の相性で 404 になり得るため、
+	 * {@code TRIBE_BAR_ANGEL.PNG} 等の ASCII 名の同一画像を {@link #encCardFileNfc} で参照する（元の「エンジェルバー.PNG」等と同内容）。
 	 */
 	public static String cardLayerBarPath(String attribute) {
 		String key = attribute == null ? "" : attribute.trim();
@@ -109,8 +112,20 @@ public final class GameConstants {
 			case "MERFOLK" -> "マーフォークバー.PNG";
 			case "DRAGON_MERFOLK" -> "ドラゴンマーフォークバー.PNG";
 			case "HUMAN_MERFOLK" -> "人間マーフォークバー.PNG";
+			case "COMIC" -> "コミックバー.PNG";
+			case "HUMAN_COMIC" -> "人間コミックバー.PNG";
+			case "ANGEL" -> "TRIBE_BAR_ANGEL.PNG";
+			case "ANGEL_UNDEAD" -> "TRIBE_BAR_ANGEL_UNDEAD.PNG";
+			case "DRAGON_COMIC" -> "TRIBE_BAR_DRAGON_COMIC.PNG";
 			default -> "人間バー.PNG";
 		};
+		if ("COMIC".equals(key)
+				|| "HUMAN_COMIC".equals(key)
+				|| "ANGEL".equals(key)
+				|| "ANGEL_UNDEAD".equals(key)
+				|| "DRAGON_COMIC".equals(key)) {
+			return encCardFileNfc(file);
+		}
 		return merfolkBarAssetUsesNfdUrl(key) ? encCardFile(file) : encCardFileNfc(file);
 	}
 

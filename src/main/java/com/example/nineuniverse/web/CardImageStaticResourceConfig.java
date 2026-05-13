@@ -8,7 +8,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
  * {@code /images/cards/**} を明示登録し、{@link UnicodeFormFallbackResourceResolver} で NFC/NFD の両方を解決する。
- * より具体的なパターンで既定の {@code /**} 静的配信と競合したときに優先されるよう、設定の順序を高くする。
+ * <p>{@link ResourceHandlerRegistry#setOrder} は登録される<strong>すべて</strong>の静的ハンドラの優先度を変えるため、
+ * ここでは呼ばない（{@code HIGHEST_PRECEDENCE} にすると {@code /**} がコントローラより先になり、画面が 404 になり得る）。
  */
 @Configuration(proxyBeanMethods = false)
 @Order(Ordered.HIGHEST_PRECEDENCE)

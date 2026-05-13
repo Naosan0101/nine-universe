@@ -56,10 +56,22 @@
 		DRAGON: 'ドラゴン',
 		MACHINE: 'マシン',
 		CARBUNCLE: 'カーバンクル',
-		MERFOLK: 'マーフォーク'
+		MERFOLK: 'マーフォーク',
+		COMIC: 'コミック',
+		ANGEL: 'エンジェル'
 	};
 	/** 上段カードの種族ソート順（種族フィルターと同じ並び） */
-	const TRIBE_SORT_ORDER = ['HUMAN', 'ELF', 'UNDEAD', 'DRAGON', 'MACHINE', 'CARBUNCLE', 'MERFOLK'];
+	const TRIBE_SORT_ORDER = [
+		'HUMAN',
+		'ELF',
+		'UNDEAD',
+		'DRAGON',
+		'MACHINE',
+		'CARBUNCLE',
+		'MERFOLK',
+		'COMIC',
+		'ANGEL'
+	];
 
 	function tribeSortIndex(segment) {
 		const u = (segment || '').trim().toUpperCase();
@@ -120,7 +132,7 @@
 	const PACK_JA = {
 		STD: 'スタンダードパック1',
 		STD2: 'スタンダードパック2',
-		STD3: 'スタンダードパック3（OT/CS）',
+		STD3: 'スタンダードパック3',
 		WH: '風吹く丘パック',
 		ET: '邪悪なる脅威パック',
 		JU: '宝石の秘境パック',
@@ -256,6 +268,7 @@
 			if (typeof window.syncCardFaceAttrClass === 'function') {
 				window.syncCardFaceAttrClass(modalFaceRoot, c.attribute);
 			}
+			modalFaceRoot.classList.toggle('card-face--field', !!c.fieldCard);
 		}
 		if (modalRarity) {
 			// カード面の表示はコード（Reg/Ep/R/C）

@@ -303,6 +303,9 @@
 			card.basePower != null ? card.basePower : card.power != null ? card.power : 0
 		);
 		const isField = card.fieldCard === true || card.fieldCard === 'true';
+		if (isField) {
+			face.classList.add('card-face--field');
+		}
 
 		const datum = document.createElement('div');
 		datum.className = 'card-face__layer card-face__datum';

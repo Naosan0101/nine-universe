@@ -45,13 +45,15 @@
 		DRAGON: 'ドラゴン',
 		MACHINE: 'マシン',
 		CARBUNCLE: 'カーバンクル',
-		MERFOLK: 'マーフォーク'
+		MERFOLK: 'マーフォーク',
+		COMIC: 'コミック',
+		ANGEL: 'エンジェル'
 	};
 
 	const PACK_JA = {
 		STD: 'スタンダードパック1',
 		STD2: 'スタンダードパック2',
-		STD3: 'スタンダードパック3（OT/CS）',
+		STD3: 'スタンダードパック3',
 		WH: '風吹く丘パック',
 		ET: '邪悪なる脅威パック',
 		JU: '宝石の秘境パック',
@@ -334,6 +336,9 @@
 			if (cn === 2) modalCost.classList.add('card-face__cost--digit-2');
 		}
 		const fieldCard = d.fieldCard === 'true';
+		if (modalFaceRoot) {
+			modalFaceRoot.classList.toggle('card-face--field', fieldCard);
+		}
 		if (modalPower) {
 			if (fieldCard) {
 				modalPower.textContent = '';
@@ -604,7 +609,10 @@
 			UNDEAD: 2,
 			DRAGON: 3,
 			MACHINE: 4,
-			CARBUNCLE: 5
+			CARBUNCLE: 5,
+			MERFOLK: 6,
+			COMIC: 7,
+			ANGEL: 8
 		};
 		const cards = Array.from(grid.children).filter(function (el) {
 			return el.classList && el.classList.contains('library-card');

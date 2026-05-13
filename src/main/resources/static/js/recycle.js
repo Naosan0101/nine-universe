@@ -63,13 +63,15 @@
 		DRAGON: 'ドラゴン',
 		MACHINE: 'マシン',
 		CARBUNCLE: 'カーバンクル',
-		MERFOLK: 'マーフォーク'
+		MERFOLK: 'マーフォーク',
+		COMIC: 'コミック',
+		ANGEL: 'エンジェル'
 	};
 	const RARITY_LABEL = { Reg: 'レジェンダリー', Ep: 'エピック', R: 'レア', C: 'コモン' };
 	const PACK_JA = {
 		STD: 'スタンダードパック1',
 		STD2: 'スタンダードパック2',
-		STD3: 'スタンダードパック3（OT/CS）',
+		STD3: 'スタンダードパック3',
 		WH: '風吹く丘パック',
 		ET: '邪悪なる脅威パック',
 		JU: '宝石の秘境パック',
@@ -290,7 +292,17 @@
 		return c.qty > 0 && !isNaN(c.id);
 	});
 
-	const TRIBE_SORT_ORDER = ['HUMAN', 'ELF', 'UNDEAD', 'DRAGON', 'MACHINE', 'CARBUNCLE'];
+	const TRIBE_SORT_ORDER = [
+		'HUMAN',
+		'ELF',
+		'UNDEAD',
+		'DRAGON',
+		'MACHINE',
+		'CARBUNCLE',
+		'MERFOLK',
+		'COMIC',
+		'ANGEL'
+	];
 
 	function tribeSortIndex(segment) {
 		const u = (segment || '').trim().toUpperCase();
@@ -590,6 +602,7 @@
 			if (typeof window.syncCardFaceAttrClass === 'function') {
 				window.syncCardFaceAttrClass(modalFaceRoot, c.attribute);
 			}
+			modalFaceRoot.classList.toggle('card-face--field', !!c.fieldCard);
 		}
 		if (modalRarity) {
 			modalRarity.textContent = rarity;

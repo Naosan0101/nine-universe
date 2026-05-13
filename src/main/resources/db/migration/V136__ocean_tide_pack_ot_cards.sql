@@ -5,7 +5,7 @@ VALUES
 	(69, 'セイレーン', 0, 3, 'MERFOLK', 'FIGHTER', '__missing__.PNG', 'Reg', 'OT', NULL, NULL, '相手のバトルゾーンのファイターを自分の手札に加え、そのファイターを「ソードフィッシュ」に変化させる。バトル終了まで、そのファイターの強さを+2。', NULL),
 	(70, 'ポセイドン', 2, 5, 'MERFOLK', 'FIGHTER', '__missing__.PNG', 'R', 'OT', NULL, NULL, '自分のレストゾーンにある、すべての「ソードフィッシュ」を手札に加える。', NULL),
 	(71, 'クラーケン', 0, 3, 'MERFOLK', 'FIGHTER', '__missing__.PNG', 'C', 'OT', NULL, NULL, '自分のレストゾーンに「ソードフィッシュ」があるなら、次の自分のターンの開始時に、「ソードフィッシュ」を1枚手札に加える。', NULL),
-	(72, 'マーメイド', 1, 4, 'MERFOLK', 'FIGHTER', '__missing__.PNG', 'Ep', 'OT', NULL, NULL, NULL, '手札のすべての「ソードフィッシュ」を、バトル終了まで強さ+2。'),
+	(72, 'マーメイド', 1, 2, 'MERFOLK', 'FIGHTER', '__missing__.PNG', 'Ep', 'OT', NULL, NULL, NULL, '手札のすべての「ソードフィッシュ」を、バトル終了まで強さ+2。'),
 	(73, 'メガロドン', 1, 4, 'MERFOLK', 'FIGHTER', '__missing__.PNG', 'C', 'OT', NULL, NULL, NULL, NULL),
 	(74, 'シーサーペント', 0, 2, 'MERFOLK', 'FIGHTER', '__missing__.PNG', 'R', 'OT', NULL, NULL, 'ストーンを1つ使用してもよい。使用したなら、「ソードフィッシュ」を2枚手札に加える。', NULL),
 	(75, 'アクアガーディアン', 2, 3, 'MERFOLK', 'FIGHTER', '__missing__.PNG', 'Ep', 'OT', NULL, NULL, NULL, '自分のレストゾーンにある「種族：マーフォーク」のカード1枚につき、強さ+1。'),

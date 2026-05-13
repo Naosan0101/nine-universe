@@ -6291,7 +6291,7 @@ body.battle-intro-is-running {
 	--cf-attr-left: 80.85%;
 	--cf-attr-bottom: 45.85%;
 	--cf-attr-size: 4.35cqi;
-	--cf-ability-bottom: 2.8%;
+	--cf-ability-bottom: 4.2%;
 	--cf-ability-height: 35%;
 	--cf-ability-pad-x: 7%;
 	/* 効果テキスト：全ページでほんの少し大きく */
@@ -6477,6 +6477,12 @@ body.battle-intro-is-running {
 .card-face--attr-MERFOLK .card-face__attr-label {
 	/* 「マーフォーク」はやや長いのでわずかに小さく */
 	font-size: calc(var(--cf-attr-size) * 0.92);
+	/* バー上の見た目バランスのためほんの少し右へ */
+	left: calc(var(--cf-attr-left) + 1.4%);
+}
+.card-face--attr-ANGEL .card-face__attr-label {
+	/* バー上の見た目バランスのためほんの少し右へ */
+	left: calc(var(--cf-attr-left) + 1.4%);
 }
 .card-face--attr-DRAGON_MERFOLK .card-face__attr-label--compound .card-face__attr-line:nth-child(2),
 .card-face--attr-HUMAN_MERFOLK .card-face__attr-label--compound .card-face__attr-line:nth-child(2) {
@@ -6637,6 +6643,10 @@ body.battle-intro-is-running {
 	line-height: 1.35;
 	text-align: left;
 	width: 100%;
+}
+/* 〈フィールド〉カードの見出し「〈フィールド〉」はやや長いため少し小さく */
+.card-face--field .card-face__ability-head {
+	font-size: calc(var(--cf-ability-head) * 0.88);
 }
 .card-face__ability-body {
 	margin: 0;
