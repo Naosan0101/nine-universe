@@ -26,5 +26,11 @@ public class PendingEffect implements Serializable {
 	 * 未処理の間だけ abilityDeployCode が NINJA のまま。
 	 */
 	private boolean ninjaSwapPhaseDone;
+	/**
+	 * メカニック: この配置で消費した {@link CpuBattleState#getHumanNextMechanicStacks()} /
+	 * {@link CpuBattleState#getCpuNextMechanicStacks()} の値（0 なら種族上書きなし）。
+	 * 〈配置〉解決時にスタックは既に 0 なので、種族マシン付与だけ pending に保持する。
+	 */
+	private int mechanicStacksAtDeploy;
 }
 

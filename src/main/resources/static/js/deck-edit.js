@@ -34,6 +34,9 @@
 	const sideRarity = document.getElementById('lib-modal-side-rarity');
 	const sidePack = document.getElementById('lib-modal-side-pack');
 	const sideAbility = document.getElementById('lib-modal-side-ability');
+	const navPrev = document.getElementById('lib-modal-nav-prev');
+	const navNext = document.getElementById('lib-modal-nav-next');
+	const FossilUi = window.NuLibDetailFossilUi;
 	const libSearch = document.getElementById('lib-search');
 	const libSort = document.getElementById('lib-sort');
 	const libFilterAttr = document.getElementById('lib-filter-attr');
@@ -138,11 +141,16 @@
 		JU: '宝石の秘境パック',
 		IF: '鉄面の艦隊パック',
 		OT: '海底の潮流パック',
-		CS: '創成の神域パック'
+		CS: '創世の神域パック'
 	};
 
 	function packSourcesForInitial(piRaw) {
-		const pi = (piRaw || 'STD').trim().toUpperCase() || 'STD';
+		const raw = piRaw == null ? '' : String(piRaw).trim();
+		const rawU = raw.toUpperCase();
+		if (raw === '—' || raw === '-' || rawU === 'NONE') {
+			return ['—'];
+		}
+		const pi = (raw || 'STD').toUpperCase() || 'STD';
 		if (pi === 'WH') return [PACK_JA.WH, PACK_JA.STD];
 		if (pi === 'ET') return [PACK_JA.ET, PACK_JA.STD];
 		if (pi === 'JU') return [PACK_JA.JU, PACK_JA.STD2];
@@ -242,6 +250,9 @@
 
 	function closeCardDetailModal() {
 		hideTooltip();
+		if (window.NuLibDetailFossilUi) {
+			window.NuLibDetailFossilUi.resetDetailStack();
+		}
 		if (!detailModal) return;
 		const modalSpark = document.getElementById('lib-modal-spark');
 		if (modalSpark) {
@@ -253,8 +264,13 @@
 		document.body.style.overflow = '';
 	}
 
-	function openCardDetailModal(c) {
+	function openCardDetailModal(c, navOpts) {
 		hideTooltip();
+		if (!navOpts || !navOpts.preserveStack) {
+			if (window.NuLibDetailFossilUi) {
+				window.NuLibDetailFossilUi.resetDetailStack();
+			}
+		}
 		if (!detailModal || !modalCost || !modalAbility) return;
 
 		const rarity = rarityCode4(c.rarity);
@@ -278,7 +294,9 @@
 			sideRarity.textContent = rarityLabel;
 		}
 		if (sidePack) {
-			sidePack.textContent = packSourcesForInitial(c.packInitial).join('\n');
+			const sources = packSourcesForInitial(c.packInitial);
+			sidePack.textContent = sources.join('\n');
+			sidePack.classList.toggle('library-detail-modal__pack--multiline', sources.length > 1);
 		}
 
 		if (modalCost) {
@@ -346,23 +364,182 @@
 
 		modalAbility.innerHTML = '';
 		const blocks = buildAbilityBlocksFromCanonical(c.canonicalLine);
-		blocks.forEach(function (bl) {
-			if (bl.h) {
-				const ph = document.createElement('p');
-				ph.className = 'card-face__ability-head';
-				ph.textContent = bl.h;
-				modalAbility.appendChild(ph);
+		function goCompanionDeck() {
+			if (!FossilUi) return;
+			const compRaw = FossilUi.parseCompanionJson(c.companionDetailJson);
+			if (compRaw && compRaw.kind === 'mikaelMiracleDeckLinks' && compRaw.miracle) {
+				const nextC = FossilUi.normalizeCompanionPlainForDeckRecycleModal(compRaw.miracle);
+				if (!nextC) return;
+				try {
+					FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(c)));
+				} catch (e) {
+					FossilUi.pushDetailPlain(c);
+				}
+				openCardDetailModal(nextC, { preserveStack: true });
+				return;
 			}
-			const pb = document.createElement('p');
-			pb.className = 'card-face__ability-body';
-			pb.textContent = bl.b;
-			modalAbility.appendChild(pb);
-		});
+			if (compRaw && compRaw.kind === 'luciferMiracleFallenLinks' && compRaw.miracle) {
+				const nextC = FossilUi.normalizeCompanionPlainForDeckRecycleModal(compRaw.miracle);
+				if (!nextC) return;
+				try {
+					FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(c)));
+				} catch (e) {
+					FossilUi.pushDetailPlain(c);
+				}
+				openCardDetailModal(nextC, { preserveStack: true });
+				return;
+			}
+			if (compRaw && compRaw.kind === 'kingMakerEffectLinks' && compRaw.inkKnight) {
+				const nextC = FossilUi.normalizeCompanionPlainForDeckRecycleModal(compRaw.inkKnight);
+				if (!nextC) return;
+				try {
+					FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(c)));
+				} catch (e) {
+					FossilUi.pushDetailPlain(c);
+				}
+				openCardDetailModal(nextC, { preserveStack: true });
+				return;
+			}
+			if (compRaw && compRaw.kind === 'dominionMinionEffectLinks' && compRaw.minionSoldier) {
+				const nextC = FossilUi.normalizeCompanionPlainForDeckRecycleModal(compRaw.minionSoldier);
+				if (!nextC) return;
+				try {
+					FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(c)));
+				} catch (e) {
+					FossilUi.pushDetailPlain(c);
+				}
+				openCardDetailModal(nextC, { preserveStack: true });
+				return;
+			}
+			if (!compRaw) return;
+			const nextC = FossilUi.normalizeCompanionPlainForDeckRecycleModal(compRaw);
+			if (!nextC) return;
+			try {
+				FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(c)));
+			} catch (e) {
+				FossilUi.pushDetailPlain(c);
+			}
+			openCardDetailModal(nextC, { preserveStack: true });
+		}
+		function goKingMakerInkKingDeck() {
+			if (!FossilUi) return;
+			const compRaw = FossilUi.parseCompanionJson(c.companionDetailJson);
+			if (!compRaw || compRaw.kind !== 'kingMakerEffectLinks' || !compRaw.inkKing) return;
+			const nextC = FossilUi.normalizeCompanionPlainForDeckRecycleModal(compRaw.inkKing);
+			if (!nextC) return;
+			try {
+				FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(c)));
+			} catch (e) {
+				FossilUi.pushDetailPlain(c);
+			}
+			openCardDetailModal(nextC, { preserveStack: true });
+		}
+		function goDominionMinionKingDeck() {
+			if (!FossilUi) return;
+			const compRaw = FossilUi.parseCompanionJson(c.companionDetailJson);
+			if (!compRaw || compRaw.kind !== 'dominionMinionEffectLinks' || !compRaw.minionKing) return;
+			const nextC = FossilUi.normalizeCompanionPlainForDeckRecycleModal(compRaw.minionKing);
+			if (!nextC) return;
+			try {
+				FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(c)));
+			} catch (e) {
+				FossilUi.pushDetailPlain(c);
+			}
+			openCardDetailModal(nextC, { preserveStack: true });
+		}
+		function goLuciferFallenDeck() {
+			if (!FossilUi) return;
+			const compRaw = FossilUi.parseCompanionJson(c.companionDetailJson);
+			if (!compRaw || compRaw.kind !== 'luciferMiracleFallenLinks' || !compRaw.fallen) return;
+			const nextC = FossilUi.normalizeCompanionPlainForDeckRecycleModal(compRaw.fallen);
+			if (!nextC) return;
+			try {
+				FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(c)));
+			} catch (e) {
+				FossilUi.pushDetailPlain(c);
+			}
+			openCardDetailModal(nextC, { preserveStack: true });
+		}
+		function goMikaelDeckDeck() {
+			if (!FossilUi) return;
+			const compRaw = FossilUi.parseCompanionJson(c.companionDetailJson);
+			if (!compRaw || compRaw.kind !== 'mikaelMiracleDeckLinks' || !compRaw.miracle) return;
+			const nextStr = compRaw.miracle.nextCompanionDetailJson;
+			if (!nextStr || String(nextStr).trim() === '') return;
+			const nextObj = FossilUi.parseCompanionJson(String(nextStr));
+			const nextC = FossilUi.normalizeCompanionPlainForDeckRecycleModal(nextObj);
+			if (!nextC) return;
+			try {
+				FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(c)));
+			} catch (e) {
+				FossilUi.pushDetailPlain(c);
+			}
+			openCardDetailModal(nextC, { preserveStack: true });
+		}
+		if (FossilUi) {
+			FossilUi.appendAbilityBlocksToModal(modalAbility, blocks, c.companionDetailJson, goCompanionDeck);
+			FossilUi.updateFossilDetailNavButtons(navPrev, navNext, c.companionDetailJson, FossilUi.canGoBackDetail());
+			if (navNext) {
+				navNext.onclick = function (ev) {
+					ev.preventDefault();
+					ev.stopPropagation();
+					goCompanionDeck();
+				};
+			}
+			if (navPrev) {
+				navPrev.onclick = function (ev) {
+					ev.preventDefault();
+					ev.stopPropagation();
+					const prev = FossilUi.popDetailPlain();
+					if (prev) {
+						openCardDetailModal(prev, { preserveStack: true });
+					}
+				};
+			}
+		} else {
+			blocks.forEach(function (bl) {
+				if (bl.h) {
+					const ph = document.createElement('p');
+					ph.className = 'card-face__ability-head';
+					ph.textContent = bl.h;
+					modalAbility.appendChild(ph);
+				}
+				const pb = document.createElement('p');
+				pb.className = 'card-face__ability-body';
+				pb.textContent = bl.b;
+				modalAbility.appendChild(pb);
+			});
+		}
 		if (sideAbility) {
-			const t = blocks.map(function (b) {
-				return b.h ? (b.h + '\n' + b.b) : b.b;
-			}).join('\n\n');
-			sideAbility.textContent = t || '—';
+			if (FossilUi) {
+				const cr = FossilUi.parseCompanionJson(c.companionDetailJson || '');
+				let extraFn;
+				if (cr && cr.kind === 'kingMakerEffectLinks') {
+					extraFn = goKingMakerInkKingDeck;
+				} else if (cr && cr.kind === 'dominionMinionEffectLinks') {
+					extraFn = goDominionMinionKingDeck;
+				} else if (cr && cr.kind === 'luciferMiracleFallenLinks') {
+					extraFn = goLuciferFallenDeck;
+				} else if (cr && cr.kind === 'mikaelMiracleDeckLinks') {
+					extraFn = goMikaelDeckDeck;
+				} else {
+					extraFn = undefined;
+				}
+				FossilUi.appendSideAbilityDetail(
+					sideAbility,
+					blocks,
+					c.companionDetailJson,
+					goCompanionDeck,
+					extraFn
+				);
+			} else {
+				const t = blocks
+					.map(function (b) {
+						return b.h ? b.h + '\n' + b.b : b.b;
+					})
+					.join('\n\n');
+				sideAbility.textContent = t || '—';
+			}
 		}
 
 		if (detailArtWrap) {
@@ -521,7 +698,8 @@
 				const v = (el.dataset.packInitial || 'STD').trim();
 				const u = v.toUpperCase();
 				return u || 'STD';
-			})()
+			})(),
+			companionDetailJson: el.dataset.companionDetailJson || ''
 		};
 	}).filter(function (c) { return c.qty > 0 && !isNaN(c.id); });
 
@@ -577,13 +755,7 @@
 		const kindF = libFilterCardKind ? libFilterCardKind.value : '';
 		let list = seeds.filter(function (c) {
 			if (
-				!matchesCardTextSearch(q, [
-					c.name,
-					c.ability,
-					c.canonicalLine,
-					c.deployHelp,
-					c.passiveHelp
-				])
+				!matchesCardTextSearch(q, [c.name, c.ability, c.canonicalLine])
 			) {
 				return false;
 			}

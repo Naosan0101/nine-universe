@@ -15,8 +15,9 @@
 	</div>
 </header>
 
-<div class="hub-screen-title">
+<div class="hub-screen-title hub-screen-title--pack-shop">
 	<h2 class="hub-screen-title__h">カードパックを購入</h2>
+	<p class="hub-screen-title__sub">パックをタップして選び、画面下で購入を確定できます。</p>
 </div>
 
 <div class="container hub-main">
@@ -36,11 +37,13 @@
 		</form>
 	</section>
 
-	<section class="pack-buy">
+	<section class="pack-buy pack-buy--shop">
 		<div class="pack-buy__grid">
 			<div class="pack-buy__cell">
 				<button type="button" class="pack-buy__item" data-pack-type="STANDARD" data-pack-name="スタンダードパック1（WH+ET）" data-pack-cost="3">
-					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtStandard1}?v=${packArtCacheKey}|" alt="スタンダードパック1（WH+ET）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<div class="pack-buy__art">
+						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtStandard1}?v=${packArtCacheKey}|" alt="スタンダードパック1（WH+ET）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					</div>
 					<span class="pack-buy__label">スタンダードパック1（WH+ET）</span>
 					<span class="pack-buy__price" aria-label="価格3ジェム"><span class="pack-buy__price-num">3</span><span class="pack-buy__price-unit">ジェム</span></span>
 				</button>
@@ -48,7 +51,9 @@
 			</div>
 			<div class="pack-buy__cell">
 				<button type="button" class="pack-buy__item" data-pack-type="WINDY_HILL" data-pack-name="風吹く丘パック（WH）" data-pack-cost="4">
-					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtWindyHill}?v=${packArtCacheKey}|" alt="風吹く丘パック（WH）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<div class="pack-buy__art">
+						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtWindyHill}?v=${packArtCacheKey}|" alt="風吹く丘パック（WH）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					</div>
 					<span class="pack-buy__label">風吹く丘パック（WH）</span>
 					<span class="pack-buy__price" aria-label="価格4ジェム"><span class="pack-buy__price-num">4</span><span class="pack-buy__price-unit">ジェム</span></span>
 				</button>
@@ -56,7 +61,9 @@
 			</div>
 			<div class="pack-buy__cell">
 				<button type="button" class="pack-buy__item" data-pack-type="EVIL_THREAT" data-pack-name="邪悪なる脅威パック（ET）" data-pack-cost="5">
-					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtEvilThreat}?v=${packArtCacheKey}|" alt="邪悪なる脅威パック（ET）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<div class="pack-buy__art">
+						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtEvilThreat}?v=${packArtCacheKey}|" alt="邪悪なる脅威パック（ET）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					</div>
 					<span class="pack-buy__label">邪悪なる脅威パック（ET）</span>
 					<span class="pack-buy__price" aria-label="価格5ジェム"><span class="pack-buy__price-num">5</span><span class="pack-buy__price-unit">ジェム</span></span>
 				</button>
@@ -64,7 +71,9 @@
 			</div>
 			<div class="pack-buy__cell">
 				<button type="button" class="pack-buy__item" data-pack-type="STANDARD_2" data-pack-name="スタンダードパック2（JU+IF）" data-pack-cost="3">
-					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtStandard2}?v=${packArtCacheKey}|" alt="スタンダードパック2（JU+IF）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<div class="pack-buy__art">
+						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtStandard2}?v=${packArtCacheKey}|" alt="スタンダードパック2（JU+IF）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					</div>
 					<span class="pack-buy__label">スタンダードパック2（JU+IF）</span>
 					<span class="pack-buy__price" aria-label="価格3ジェム"><span class="pack-buy__price-num">3</span><span class="pack-buy__price-unit">ジェム</span></span>
 				</button>
@@ -72,7 +81,9 @@
 			</div>
 			<div class="pack-buy__cell">
 				<button type="button" class="pack-buy__item" data-pack-type="JEWEL_UTOPIA" data-pack-name="宝石の秘境パック（JU）" data-pack-cost="4">
-					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtJewelUtopia}?v=${packArtCacheKey}|" alt="宝石の秘境パック（JU）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<div class="pack-buy__art">
+						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtJewelUtopia}?v=${packArtCacheKey}|" alt="宝石の秘境パック（JU）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					</div>
 					<span class="pack-buy__label">宝石の秘境パック（JU）</span>
 					<span class="pack-buy__price" aria-label="価格4ジェム"><span class="pack-buy__price-num">4</span><span class="pack-buy__price-unit">ジェム</span></span>
 				</button>
@@ -80,7 +91,9 @@
 			</div>
 			<div class="pack-buy__cell">
 				<button type="button" class="pack-buy__item" data-pack-type="IRON_FLEET" data-pack-name="鉄面の艦隊パック（IF）" data-pack-cost="5">
-					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtIronFleet}?v=${packArtCacheKey}|" alt="鉄面の艦隊パック（IF）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<div class="pack-buy__art">
+						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtIronFleet}?v=${packArtCacheKey}|" alt="鉄面の艦隊パック（IF）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					</div>
 					<span class="pack-buy__label">鉄面の艦隊パック（IF）</span>
 					<span class="pack-buy__price" aria-label="価格5ジェム"><span class="pack-buy__price-num">5</span><span class="pack-buy__price-unit">ジェム</span></span>
 				</button>
@@ -88,7 +101,9 @@
 			</div>
 			<div class="pack-buy__cell">
 				<button type="button" class="pack-buy__item" data-pack-type="STANDARD_3" data-pack-name="スタンダードパック3（OT/CS）" data-pack-cost="3">
-					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtStandard3}?v=${packArtCacheKey}|" alt="スタンダードパック3（OT/CS）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<div class="pack-buy__art">
+						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtStandard3}?v=${packArtCacheKey}|" alt="スタンダードパック3（OT/CS）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					</div>
 					<span class="pack-buy__label">スタンダードパック3（OT/CS）</span>
 					<span class="pack-buy__price" aria-label="価格3ジェム"><span class="pack-buy__price-num">3</span><span class="pack-buy__price-unit">ジェム</span></span>
 				</button>
@@ -96,16 +111,20 @@
 			</div>
 			<div class="pack-buy__cell">
 				<button type="button" class="pack-buy__item" data-pack-type="OCEAN_TIDE" data-pack-name="海底の潮流パック（OT）" data-pack-cost="4">
-					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtOceanTide}?v=${packArtCacheKey}|" alt="海底の潮流パック（OT）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<div class="pack-buy__art">
+						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtOceanTide}?v=${packArtCacheKey}|" alt="海底の潮流パック（OT）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					</div>
 					<span class="pack-buy__label">海底の潮流パック（OT）</span>
 					<span class="pack-buy__price" aria-label="価格4ジェム"><span class="pack-buy__price-num">4</span><span class="pack-buy__price-unit">ジェム</span></span>
 				</button>
 				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-ocean-tide">詳細を見る</button>
 			</div>
 			<div class="pack-buy__cell">
-				<button type="button" class="pack-buy__item" data-pack-type="CREATION_SANCTUM" data-pack-name="創成の神域パック（CS）" data-pack-cost="5">
-					<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtCreationSanctum}?v=${packArtCacheKey}|" alt="創成の神域パック（CS）" onerror="this.hidden=true; this.removeAttribute('src');"/>
-					<span class="pack-buy__label">創成の神域パック（CS）</span>
+				<button type="button" class="pack-buy__item" data-pack-type="CREATION_SANCTUM" data-pack-name="創世の神域パック（CS）" data-pack-cost="5">
+					<div class="pack-buy__art">
+						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtCreationSanctum}?v=${packArtCacheKey}|" alt="創世の神域パック（CS）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					</div>
+					<span class="pack-buy__label">創世の神域パック（CS）</span>
 					<span class="pack-buy__price" aria-label="価格5ジェム"><span class="pack-buy__price-num">5</span><span class="pack-buy__price-unit">ジェム</span></span>
 				</button>
 				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-creation-sanctum">詳細を見る</button>
@@ -116,16 +135,21 @@
 <section id="pack-buy-confirm-bar" class="pack-buy-confirm" hidden>
 	<div class="pack-buy-confirm__inner">
 		<div class="pack-buy-confirm__text">
-			<p class="pack-buy-confirm__title" id="pack-buy-confirm-title">パックを選択してください</p>
+			<p class="pack-buy-confirm__title" id="pack-buy-confirm-title" role="status" aria-live="polite">
+				<span class="pack-buy-confirm__hint" id="pack-buy-confirm-hint">パックを選択してください</span>
+				<span class="pack-buy-confirm__question" id="pack-buy-confirm-question" hidden>
+					<span class="pack-buy-confirm__name" id="pack-buy-confirm-name"></span><span class="pack-buy-confirm__suffix">を購入しますか？</span>
+				</span>
+			</p>
 			<p class="pack-buy-confirm__payment" id="pack-buy-confirm-payment" hidden role="status"></p>
 		</div>
 		<div class="pack-buy-confirm__actions">
-			<form th:action="@{/pack/buy}" method="post" class="inline">
+			<button type="button" class="btn btn--ghost pack-buy-confirm__btn-cancel" id="pack-buy-cancel" disabled>キャンセル</button>
+			<form th:action="@{/pack/buy}" method="post" class="inline pack-buy-confirm__buy-form">
 				<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 				<input type="hidden" name="type" id="pack-buy-type" value=""/>
-				<button type="submit" class="btn btn--primary" id="pack-buy-confirm" disabled>購入</button>
+				<button type="submit" class="btn btn--primary pack-buy-confirm__btn-buy" id="pack-buy-confirm" disabled>購入</button>
 			</form>
-			<button type="button" class="btn btn--ghost" id="pack-buy-cancel" disabled>キャンセル</button>
 		</div>
 	</div>
 </section>
@@ -339,12 +363,12 @@
 	</div>
 </div>
 
-<!-- 創成の神域 -->
+<!-- 創世の神域 -->
 <div id="pack-detail-creation-sanctum" class="pack-detail-modal" hidden>
 	<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
 	<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="pack-detail-creation-sanctum-title">
 		<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
-		<h2 id="pack-detail-creation-sanctum-title" class="pack-detail-modal__heading">創成の神域パック（CS）</h2>
+		<h2 id="pack-detail-creation-sanctum-title" class="pack-detail-modal__heading">創世の神域パック（CS）</h2>
 		<p class="pack-detail-modal__price"><span class="muted">1パックあたりの支払い</span> <strong>5ジェム</strong></p>
 		<h3 class="pack-detail-modal__sub">レア度別の排出率</h3>
 		<ul class="pack-detail-modal__rates">

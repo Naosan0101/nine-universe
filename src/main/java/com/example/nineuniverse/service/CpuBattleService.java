@@ -164,6 +164,12 @@ public class CpuBattleService {
 						: null,
 				st.getScrapyardFieldTurnsRemaining(),
 				st.getDeathbounceFieldTurnsRemaining(),
+				st.getAtlantisFieldCounterDisplay(),
+				st.getWeeklyShonenCampFieldCounterDisplay(),
+				st.isWeeklyShonenCampCount2ComicBonus(),
+				st.isWeeklyShonenCampGlobalDeployCostPlusOneThisTurn(),
+				st.getWorldRebuildFieldCounterDisplay(),
+				st.getPaperCityFieldCounterDisplay(),
 				hbPow,
 				cbPow,
 				st.getHumanNextDeployBonus(),
@@ -223,6 +229,9 @@ public class CpuBattleService {
 								String rarity = d.getRarity();
 								String rar = rarity != null && !rarity.isBlank() ? rarity : "C";
 								String pi = d.getPackInitial();
+								String packInitialOut = GameConstants.excludedFromPackOpenAndLibraryListing(d.getId())
+										? "—"
+										: (pi != null && !pi.isBlank() ? pi.trim() : "STD");
 								boolean isField = d.getCardKind() != null && d.getCardKind().trim().equalsIgnoreCase("FIELD");
 								return new CardDefDto(
 									d.getId(),
@@ -230,7 +239,7 @@ public class CpuBattleService {
 									(short) (d.getCost() != null ? d.getCost() : 0),
 									(short) (d.getBasePower() != null ? d.getBasePower() : 0),
 									d.getAttribute(),
-									pi != null && !pi.isBlank() ? pi.trim() : "STD",
+									packInitialOut,
 									rar,
 									rar,
 									d.getImageFile(),
@@ -311,7 +320,7 @@ public class CpuBattleService {
 		}
 		int handAdjDisplay = c.getHandDeployCostModifier() + c.getDeathbounceHandCostStacks();
 		return new BattleCardDto(c.getInstanceId(), c.getCardId(), c.isBlankEffects(), handAdjDisplay,
-				c.getBattleTribeOverride());
+				c.getBattleTribeOverride(), c.getBattleEndPowerBonus());
 	}
 
 	private static ZoneFighterDto toZoneDto(ZoneFighter z, List<BattlePowerModifierDto> powerModifiers) {

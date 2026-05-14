@@ -69,18 +69,35 @@ public final class CardAttributes {
 
 	/**
 	 * 手札から配置する直前のボーナス計算用: SPEC-666 により次のそのスロットの配置がアンデッド扱いになる場合、
-	 * まだ {@link BattleCard} に上書きが無い段階でも種族はアンデッドのみとして判定する。
+	 * メカニックの残機で次配置がマシン扱いになる場合、
+	 * まだ {@link BattleCard} に上書きが無い段階でも種族を合成して判定する（両方なら {@code UNDEAD_MACHINE}）。
 	 */
 	public static boolean hasAttributeForDeployPreview(CardDefinition def, BattleCard battleCard,
-			boolean spec666NextSlotPending, String tribe) {
+			boolean spec666NextSlotPending, int mechanicDeployStacksPending, String tribe) {
 		if (def == null || tribe == null) {
 			return false;
 		}
-		if (spec666NextSlotPending
+		String pending = pendingDeployTribeOverridePreview(spec666NextSlotPending, mechanicDeployStacksPending);
+		if (pending != null && !pending.isBlank()
 				&& (battleCard == null || battleCard.getBattleTribeOverride() == null
 						|| battleCard.getBattleTribeOverride().isBlank())) {
-			return hasAttribute("UNDEAD", tribe);
+			return hasAttribute(pending, tribe);
 		}
 		return hasAttribute(def, battleCard, tribe);
+	}
+
+	private static String pendingDeployTribeOverridePreview(boolean spec666NextSlotPending,
+			int mechanicDeployStacksPending) {
+		boolean mech = mechanicDeployStacksPending > 0;
+		if (!spec666NextSlotPending && !mech) {
+			return null;
+		}
+		if (spec666NextSlotPending && mech) {
+			return "UNDEAD_MACHINE";
+		}
+		if (spec666NextSlotPending) {
+			return "UNDEAD";
+		}
+		return "MACHINE";
 	}
 }

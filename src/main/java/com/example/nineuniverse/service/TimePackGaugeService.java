@@ -54,7 +54,9 @@ public class TimePackGaugeService {
 
 	/**
 	 * ボーナスパックを1パック分だけ開封する（カードは {@link GameConstants#PACK_CARD_COUNT} 枚＝1パック）。
-	 * ゲージが MAX で2パック分あるときは、1回目の開封で残り1パックを {@link AppUser#getTimePackBonusBank()} に預け、サイクルは「満タン超えで溜まっていた余剰時間」が次のゲージに繰り越される。
+	 * ゲージが MAX で2パック分あるときは、1回目の開封で残り1パックを {@link AppUser#getTimePackBonusBank()} に預ける。
+	 * 満タンを超えて経過していた時間のうち、次の1サイクル内の端数だけがゲージに繰り越される（{@code elapsed - dur} を {@code dur} で折り返し）。
+	 * 端数が半分以上あると「タイマー1パック＋預り1パック」となり1回の開封で3パック相当になるため、その端数は捨ててゲージをリセットする。
 	 * 半分〜満タン手前（タイマー由来が1パック分）で開封したときも、50% を超えた余り時間を繰り越す。
 	 * <p>同一ユーザーからの並行リクエストでは {@link AppUserMapper#findByIdForUpdate(long)} で行ロックし、許容回数を超えて開封されないようにする。
 	 */
@@ -82,10 +84,18 @@ public class TimePackGaugeService {
 			}
 		} else if (timerPacks == 2) {
 			long dur = GameConstants.TIME_PACK_CYCLE_DURATION_MS;
+			long half = dur / 2;
 			long elapsed = Math.max(0L, Duration.between(start, now).toMillis());
-			// MAX 時は1パックを開封し、もう1パック分を預りに回す。経過が D を超えている余剰はゲージに繰り越す。
-			long overflow = Math.max(0L, elapsed - dur);
-			appUserMapper.updateTimePackCycleStart(userId, now.minusMillis(overflow));
+			// MAX 時は1パックを開封し、もう1パック分を預りに回す。
+			// elapsed - dur が dur 以上だと、従来の now-(elapsed-dur) だと開封直後も再び満タン扱いになり無限に引けるため、
+			// 満タン超え分は 1 サイクル長で折り返す。
+			long overflowPastFull = Math.max(0L, elapsed - dur);
+			long carry = overflowPastFull % dur;
+			// 預り1パックと合わせて「タイマー上もう1パック」になると、本来の2パック上限を超えるため端数を捨てる。
+			if (carry >= half) {
+				carry = 0L;
+			}
+			appUserMapper.updateTimePackCycleStart(userId, now.minusMillis(carry));
 			appUserMapper.addTimePackBonusBankDelta(userId, 1);
 		} else if (timerPacks == 1) {
 			long dur = GameConstants.TIME_PACK_CYCLE_DURATION_MS;

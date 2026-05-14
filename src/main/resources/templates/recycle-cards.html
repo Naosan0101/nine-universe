@@ -54,78 +54,53 @@
 							<input type="search" id="recycle-lib-search" class="deck-lib-input" autocomplete="off" placeholder="カード名・効果の一部"/>
 						</label>
 						<label class="deck-lib-field">種族
-							<select id="recycle-lib-filter-attr" class="deck-lib-select">
-								<option value="" selected>すべて</option>
-								<option value="HUMAN">人間</option>
-								<option value="ELF">エルフ</option>
-								<option value="UNDEAD">アンデッド</option>
-								<option value="DRAGON">ドラゴン</option>
-								<option value="MACHINE">マシン</option>
-								<option value="CARBUNCLE">カーバンクル</option>
-								<option value="MERFOLK">マーフォーク</option>
-								<option value="COMIC">コミック</option>
-								<option value="ANGEL">エンジェル</option>
-							</select>
+							<span class="tribe-filter" data-toolbar-filter data-filter-set="tribe">
+								<button type="button" class="tribe-filter__trigger deck-lib-select" aria-expanded="false" aria-haspopup="listbox">すべて</button>
+								<ul class="tribe-filter__list" role="listbox" hidden></ul>
+								<input type="hidden" id="recycle-lib-filter-attr" class="tribe-filter__value" value=""/>
+							</span>
 						</label>
 						<label class="deck-lib-field">種類
-							<select id="recycle-lib-filter-card-kind" class="deck-lib-select">
-								<option value="" selected>すべて</option>
-								<option value="fighter">ファイター</option>
-								<option value="field">フィールド</option>
-							</select>
+							<span class="tribe-filter" data-toolbar-filter data-filter-set="cardKind">
+								<button type="button" class="tribe-filter__trigger deck-lib-select" aria-expanded="false" aria-haspopup="listbox">すべて</button>
+								<ul class="tribe-filter__list" role="listbox" hidden></ul>
+								<input type="hidden" id="recycle-lib-filter-card-kind" class="tribe-filter__value" value=""/>
+							</span>
 						</label>
 						<label class="deck-lib-field">パック
-							<select id="recycle-lib-filter-pack" class="deck-lib-select">
-								<option value="" selected>すべて</option>
-								<option value="STANDARD_1">スタンダードパック1（WH/ET）</option>
-								<option value="STANDARD_2">スタンダードパック2（JU/IF）</option>
-								<option value="STANDARD_3">スタンダードパック3（OT/CS）</option>
-								<option value="WH">風吹く丘パック（WH）</option>
-								<option value="ET">邪悪なる脅威パック（ET）</option>
-								<option value="JU">宝石の秘境パック（JU）</option>
-								<option value="IF">鉄面の艦隊パック（IF）</option>
-								<option value="OT">海底の潮流パック（OT）</option>
-								<option value="CS">創成の神域パック（CS）</option>
-							</select>
+							<span class="tribe-filter" data-toolbar-filter data-filter-set="pack">
+								<button type="button" class="tribe-filter__trigger deck-lib-select" aria-expanded="false" aria-haspopup="listbox">すべて</button>
+								<ul class="tribe-filter__list" role="listbox" hidden></ul>
+								<input type="hidden" id="recycle-lib-filter-pack" class="tribe-filter__value" value=""/>
+							</span>
 						</label>
 						<label class="deck-lib-field">強さ
-							<select id="recycle-lib-filter-power" class="deck-lib-select">
-								<option value="" selected>すべて</option>
-								<option value="0">0</option>
-								<option value="1">1</option>
-								<option value="2">2</option>
-								<option value="3">3</option>
-								<option value="4">4</option>
-								<option value="5">5</option>
-								<option value="6">6</option>
-								<option value="7">7</option>
-								<option value="8">8</option>
-							</select>
+							<span class="tribe-filter" data-toolbar-filter data-filter-set="power">
+								<button type="button" class="tribe-filter__trigger deck-lib-select" aria-expanded="false" aria-haspopup="listbox">すべて</button>
+								<ul class="tribe-filter__list" role="listbox" hidden></ul>
+								<input type="hidden" id="recycle-lib-filter-power" class="tribe-filter__value" value=""/>
+							</span>
 						</label>
 						<label class="deck-lib-field">コスト
-							<select id="recycle-lib-filter-cost" class="deck-lib-select">
-								<option value="" selected>すべて</option>
-								<option value="0">0</option>
-								<option value="1">1</option>
-								<option value="2">2</option>
-								<option value="3">3</option>
-								<option value="4">4</option>
-							</select>
+							<span class="tribe-filter" data-toolbar-filter data-filter-set="cost">
+								<button type="button" class="tribe-filter__trigger deck-lib-select" aria-expanded="false" aria-haspopup="listbox">すべて</button>
+								<ul class="tribe-filter__list" role="listbox" hidden></ul>
+								<input type="hidden" id="recycle-lib-filter-cost" class="tribe-filter__value" value=""/>
+							</span>
 						</label>
 						<label class="deck-lib-field">★
-							<select id="recycle-lib-filter-rarity" class="deck-lib-select">
-								<option value="" selected>すべて</option>
-								<option value="Reg">レジェンダリー</option>
-								<option value="Ep">エピック</option>
-								<option value="R">レア</option>
-								<option value="C">コモン</option>
-							</select>
+							<span class="tribe-filter" data-toolbar-filter data-filter-set="rarity">
+								<button type="button" class="tribe-filter__trigger deck-lib-select" aria-expanded="false" aria-haspopup="listbox">すべて</button>
+								<ul class="tribe-filter__list" role="listbox" hidden></ul>
+								<input type="hidden" id="recycle-lib-filter-rarity" class="tribe-filter__value" value=""/>
+							</span>
 						</label>
 						<label class="deck-lib-field">並び替え（コスト）
-							<select id="recycle-lib-sort" class="deck-lib-select">
-								<option value="cost_asc" selected>コスト 小→大</option>
-								<option value="cost_desc">コスト 大→小</option>
-							</select>
+							<span class="tribe-filter" data-toolbar-filter data-filter-set="libSort">
+								<button type="button" class="tribe-filter__trigger deck-lib-select" aria-expanded="false" aria-haspopup="listbox">コスト 小→大</button>
+								<ul class="tribe-filter__list" role="listbox" hidden></ul>
+								<input type="hidden" id="recycle-lib-sort" class="tribe-filter__value" value="cost_asc"/>
+							</span>
 						</label>
 					</div>
 				</div>
@@ -194,7 +169,8 @@
 	     th:data-deploy-help="${line.card.deployHelp != null ? line.card.deployHelp : ''}"
 	     th:data-passive-help="${line.card.passiveHelp != null ? line.card.passiveHelp : ''}"
 	     th:data-attr-pipe="${line.card.attributeLabelPipe != null ? line.card.attributeLabelPipe : ''}"
-	     th:data-pack-initial="${line.card.packInitial}"></div>
+	     th:data-pack-initial="${line.card.packInitial}"
+	     th:attr="data-companion-detail-json=${line.card.companionDetailJson != null ? line.card.companionDetailJson : _}"></div>
 </div>
 
 <div id="deck-tooltip" class="deck-tooltip deck-edit-page-tooltip" hidden role="tooltip">
@@ -213,7 +189,9 @@
 <div id="library-detail-modal" class="library-detail-modal" hidden>
 	<div class="library-detail-modal__panel" role="dialog" aria-modal="true" aria-label="カード詳細">
 		<button type="button" class="library-detail-modal__close" data-library-detail-close aria-label="閉じる">×</button>
-		<div id="library-detail-art" class="library-detail-modal__art-wrap">
+		<div id="library-detail-art" class="library-detail-modal__art-wrap library-detail-modal__art-wrap--nav">
+			<button type="button" id="lib-modal-nav-prev" class="library-detail-modal__card-nav library-detail-modal__card-nav--prev" hidden aria-label="前のカード">‹</button>
+			<button type="button" id="lib-modal-nav-next" class="library-detail-modal__card-nav library-detail-modal__card-nav--next" hidden aria-label="次のカード">›</button>
 			<div class="card-face card-face--layered" id="library-modal-card-face">
 				<div class="card-face__stack" aria-hidden="true">
 					<img id="lib-modal-layer-base" class="card-face__layer-img card-face__layer-img--base" th:src="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|" alt="" onerror="this.hidden=true; this.removeAttribute('src');"/>
@@ -246,13 +224,15 @@
 				<dt>収録パック：</dt><dd id="lib-modal-side-pack" class="library-detail-modal__pack">—</dd>
 			</dl>
 			<p class="library-detail-modal__ability-label">効果</p>
-			<p class="library-detail-modal__detail" id="lib-modal-side-ability">—</p>
+			<div class="library-detail-modal__detail library-detail-modal__detail--rich" id="lib-modal-side-ability"></div>
 		</div>
 	</div>
 </div>
 
+<script th:src="@{/js/lib-detail-modal-fossil.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/card-spark.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/card-face-layer.js(v=${assetVersion})}"></script>
+<script th:src="@{/js/tribe-filter-dropdown.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/recycle.js(v=${assetVersion})}"></script>
 <th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>

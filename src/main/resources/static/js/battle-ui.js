@@ -890,16 +890,40 @@
 		return hasCardAttribute(effectiveCardAttributeCode(def, battleCard), tribe);
 	}
 
-	/** CpuBattleEngine.hasAttributeForDeployPreview 相当（手札の次配置が SPEC-666 でアンデッド扱いになる予定） */
-	function hasCardAttributeForDeployPreview(def, battleCard, spec666NextSlotPending, tribe) {
+	function hasCardAttributeForDeployPreview(def, battleCard, spec666NextSlotPending, mechanicNextStacks, tribe) {
 		if (!tribe) return false;
-		if (
-			spec666NextSlotPending &&
-			(!battleCard || battleCard.battleTribeOverride == null || String(battleCard.battleTribeOverride).trim() === '')
-		) {
-			return tribe === 'UNDEAD';
+		const noOv =
+			!battleCard || battleCard.battleTribeOverride == null || String(battleCard.battleTribeOverride).trim() === '';
+		const mech = Number(mechanicNextStacks || 0) > 0;
+		const p666 = !!spec666NextSlotPending;
+		if (noOv && (p666 || mech)) {
+			let pending = '';
+			if (p666) pending = 'UNDEAD';
+			if (mech) pending = pending ? pending + '_MACHINE' : 'MACHINE';
+			return hasCardAttribute(pending, tribe);
 		}
 		return hasCardAttributeResolved(def, battleCard, tribe);
+	}
+
+	function tribeSegmentLabelJa(seg) {
+		const u = String(seg || '').trim().toUpperCase();
+		const map = {
+			UNDEAD: 'アンデッド',
+			MACHINE: 'マシン',
+			ELF: 'エルフ',
+			HUMAN: '人間',
+			DRAGON: 'ドラゴン',
+			CARBUNCLE: 'カーバンクル',
+			MERFOLK: 'マーフォーク',
+			ANGEL: '天使',
+			DEMON: '悪魔',
+			COMIC: 'コミック',
+			BEAST: '獣',
+			PLANT: '植物',
+			GOD: '神',
+			DRAGON_MERFOLK: 'ドラゴン・マーフォーク'
+		};
+		return map[u] || u;
 	}
 
 	function defWithBattleTribeOverride(d, battleCard, defs) {
@@ -908,18 +932,49 @@
 		const ov = battleCard && battleCard.battleTribeOverride;
 		if (ov == null || String(ov).trim() === '') return base;
 		const code = String(ov).trim().toUpperCase();
-		if (code !== 'UNDEAD') return base;
-		const barPath = resolveLayerBarPathForTribe(defs, 'UNDEAD') || base.layerBarPath;
+		const segs = attrSegments(code);
+		const lines = segs.length ? segs.map(tribeSegmentLabelJa) : [tribeSegmentLabelJa(code)];
+		const primary = segs.length ? segs[0] : code;
+		const barPath = resolveLayerBarPathForTribe(defs, primary) || base.layerBarPath;
 		return Object.assign({}, base, {
-			attribute: 'UNDEAD',
-			attributeLabelJa: 'アンデッド',
-			attributeLabelLines: ['アンデッド'],
+			attribute: code,
+			attributeLabelJa: lines.join('・'),
+			attributeLabelLines: lines,
 			layerBarPath: barPath
 		});
 	}
 
-	function cardDefForBattleFace(def, battleCard, defs) {
-		return defWithBattleTribeOverride(defWithBlankEffectsIfNeeded(def, battleCard), battleCard, defs);
+	function pendingHandDeployTribeOverridePreview(st, battleCard, humanSlot) {
+		if (!st || !battleCard) return null;
+		const noOv = battleCard.battleTribeOverride == null || String(battleCard.battleTribeOverride).trim() === '';
+		if (!noOv) return null;
+		const p666 = humanSlot
+			? st.spec666NextHumanUndead === true || st.spec666NextHumanUndead === 'true'
+			: st.spec666NextCpuUndead === true || st.spec666NextCpuUndead === 'true';
+		const mech = humanSlot
+			? Number(st.humanNextMechanicStacks || 0) > 0
+			: Number(st.cpuNextMechanicStacks || 0) > 0;
+		if (!p666 && !mech) return null;
+		if (p666 && mech) return 'UNDEAD_MACHINE';
+		if (p666) return 'UNDEAD';
+		return 'MACHINE';
+	}
+
+	function cardDefForBattleFace(def, battleCard, defs, pendingDeployTribeOverride) {
+		const blanked = defWithBlankEffectsIfNeeded(def, battleCard);
+		const p =
+			pendingDeployTribeOverride != null && String(pendingDeployTribeOverride).trim() !== ''
+				? String(pendingDeployTribeOverride).trim().toUpperCase()
+				: '';
+		if (
+			p &&
+			battleCard &&
+			(battleCard.battleTribeOverride == null || String(battleCard.battleTribeOverride).trim() === '')
+		) {
+			const virtualCard = Object.assign({}, battleCard, { battleTribeOverride: p });
+			return defWithBattleTribeOverride(blanked, virtualCard, defs);
+		}
+		return defWithBattleTribeOverride(blanked, battleCard, defs);
 	}
 
 	const battleTipEl = document.getElementById('battle-card-tooltip');
@@ -944,13 +999,18 @@
 	}
 
 	function packSourcesForInitial(piRaw) {
-		const pi = (piRaw || 'STD').trim().toUpperCase() || 'STD';
+		const raw = piRaw == null ? '' : String(piRaw).trim();
+		const rawU = raw.toUpperCase();
+		if (raw === '—' || raw === '-' || rawU === 'NONE') {
+			return ['—'];
+		}
+		const pi = (raw || 'STD').toUpperCase() || 'STD';
 		if (pi === 'WH') return ['風吹く丘パック', 'スタンダードパック1'];
 		if (pi === 'ET') return ['邪悪なる脅威パック', 'スタンダードパック1'];
 		if (pi === 'JU') return ['宝石の秘境パック', 'スタンダードパック2'];
 		if (pi === 'IF') return ['鉄面の艦隊パック', 'スタンダードパック2'];
 		if (pi === 'OT') return ['海底の潮流パック', 'スタンダードパック3'];
-		if (pi === 'CS') return ['創成の神域パック', 'スタンダードパック3'];
+		if (pi === 'CS') return ['創世の神域パック', 'スタンダードパック3'];
 		return ['スタンダードパック1'];
 	}
 
@@ -1182,7 +1242,12 @@
 			const wrap = el('div', 'battle-power-contributor-popup__stat');
 			wrap.appendChild(el('dt', '', label));
 			const dd = el('dd', '', value);
-			if (label === '収録パック') dd.classList.add('battle-power-contributor-popup__pack');
+			if (label === '収録パック') {
+				dd.classList.add('battle-power-contributor-popup__pack');
+				if (String(value).indexOf('\n') >= 0) {
+					dd.classList.add('battle-power-contributor-popup__pack--multiline');
+				}
+			}
 			wrap.appendChild(dd);
 			return wrap;
 		}
@@ -2470,7 +2535,7 @@
 		return wrap;
 	}
 
-	function renderHandCards(hand, defs, { faceDown, selectable, compactOpp, nextDeployBonus, nextElfOnlyBonus, nextDeployCostBonusTimes, nextMechanicStacks, battleState }) {
+	function renderHandCards(hand, defs, { faceDown, selectable, compactOpp, nextDeployBonus, nextElfOnlyBonus, nextDeployCostBonusTimes, nextMechanicStacks, battleState, deployPreviewHumanSlot }) {
 		const wrap = el('div', faceDown ? 'hand backs' : 'hand');
 		if (faceDown && compactOpp) {
 			wrap.classList.add('hand--opp-backs');
@@ -2486,10 +2551,19 @@
 		}
 		hand.forEach((c) => {
 			const dRaw = defs[c.cardId] != null ? defs[c.cardId] : resolveCardDef(defs, c.cardId);
-			const d = cardDefForBattleFace(dRaw, c, defs);
+			const slotHuman = deployPreviewHumanSlot !== false;
+			const pendingOv =
+				battleState && !faceDown ? pendingHandDeployTribeOverridePreview(battleState, c, slotHuman) : null;
+			const d = cardDefForBattleFace(dRaw, c, defs, pendingOv);
 			const pending666 =
 				battleState &&
-				(battleState.spec666NextHumanUndead === true || battleState.spec666NextHumanUndead === 'true');
+				(slotHuman
+					? battleState.spec666NextHumanUndead === true || battleState.spec666NextHumanUndead === 'true'
+					: battleState.spec666NextCpuUndead === true || battleState.spec666NextCpuUndead === 'true');
+			const mechStacksPreview =
+				battleState && slotHuman
+					? Number(battleState.humanNextMechanicStacks || 0)
+					: Number((battleState && battleState.cpuNextMechanicStacks) || 0);
 			const cardWrap = el('button', 'hand-card battle-card', null);
 			cardWrap.type = 'button';
 			cardWrap.dataset.instanceId = c.instanceId;
@@ -2507,7 +2581,7 @@
 				const shell = buildBattleCardFaceShell(d, 'hand', 'card:' + String(c.instanceId));
 				const basePow = Number(d.basePower != null ? d.basePower : 0);
 				let bonus = Number(nextDeployBonus || 0);
-				if (Number(nextElfOnlyBonus || 0) > 0 && hasCardAttributeForDeployPreview(dRaw, c, pending666, 'ELF')) {
+				if (Number(nextElfOnlyBonus || 0) > 0 && hasCardAttributeForDeployPreview(dRaw, c, pending666, mechStacksPreview, 'ELF')) {
 					bonus += Number(nextElfOnlyBonus || 0);
 				}
 				if (Number(nextDeployCostBonusTimes || 0) > 0) {
@@ -2589,7 +2663,86 @@
 		/** 廃棄工場 5C-R4P / CpuBattleEngine.SCRAPYARD_FIELD_ID */
 		FIELD_SCRAPYARD: 63,
 		/** 霊園教会 デスバウンス / CpuBattleEngine.DEATHBOUNCE_FIELD_ID */
-		FIELD_DEATHBOUNCE: 68
+		FIELD_DEATHBOUNCE: 68,
+		/** 深海神殿 アトランティス / GameConstants.ATLANTIS_FIELD_CARD_ID */
+		FIELD_ATLANTIS: 76,
+		/** 天界門 ヘヴンズゲート / GameConstants.HEAVENS_GATE_FIELD_CARD_ID */
+		HEAVENS_GATE_FIELD: 107,
+		/** 奇跡トークン / GameConstants.MIRACLE_TOKEN_CARD_ID */
+		MIRACLE: 112,
+		/** ミカエル / GameConstants.MIKAEL_FIGHTER_CARD_ID */
+		MIKAEL: 106,
+		/** ミカエルデッキ（怒り〜一閃） */
+		MIKAEL_WRATH: 116,
+		MIKAEL_PUNCH: 117,
+		MIKAEL_STRATEGY: 118,
+		MIKAEL_MINION_A: 119,
+		MIKAEL_MINION_B: 120,
+		MIKAEL_FLASH: 121,
+		/** 週刊少年 CAMP / GameConstants.WEEKLY_SHONEN_CAMP_FIELD_CARD_ID */
+		WEEKLY_SHONEN_CAMP: 93,
+		/** 世界の再構築 / GameConstants.WORLD_REBUILD_FIELD_CARD_ID */
+		FIELD_WORLD_REBUILD: 92,
+		/** ペーパーシティ / GameConstants.PAPER_CITY_FIELD_CARD_ID */
+		FIELD_PAPER_CITY: 95,
+		/** 化石（ファイター） */
+		FOSSIL_FIGHTER: 79,
+		/** 化石（フィールド）トークン / GameConstants.FOSSIL_FIELD_TRANSFORMS_TOKEN_CARD_ID */
+		FOSSIL_FIELD_CARD: 109,
+		/** シーサーペント */
+		SEASERPENT: 74,
+		/** マーメイド */
+		MERMAID: 72,
+		/** クラーケン */
+		KRAKEN: 71,
+		/** セイレーン */
+		SIREN: 69,
+		/** ポセイドン */
+		POSEIDON: 70,
+		/** アクアガーディアン */
+		AQUA_GUARDIAN: 75,
+		/** ソードフィッシュ（トークン） */
+		SWORDFISH_CARD: 110,
+		/** ドラゴンの卵 */
+		DRAGON_EGG: 27,
+		/** コミックダイナソー */
+		COMIC_DINOSAUR: 97,
+		/** インクナイト / GameConstants.INK_KNIGHT_FIGHTER_CARD_ID */
+		INK_KNIGHT: 86,
+		/** キングメーカー / GameConstants.KING_MAKER_FIGHTER_CARD_ID */
+		KING_MAKER: 90,
+		/** ドミニオン / GameConstants.DOMINION_FIGHTER_CARD_ID */
+		DOMINION: 102,
+		/** ミニオンソルジャー / GameConstants.MINION_SOLDIER_TOKEN_CARD_ID */
+		MINION_SOLDIER: 113,
+		/** ミニオンキング / GameConstants.MINION_KING_TOKEN_CARD_ID */
+		MINION_KING: 114,
+		/** インクキング / GameConstants.INK_KING_FIGHTER_CARD_ID */
+		INK_KING: 111,
+		/** スケッチャー / GameConstants.SKETCHER_FIGHTER_CARD_ID */
+		SKETCHER: 87,
+		/** コミックウィッチ / GameConstants.COMIC_WITCH_FIGHTER_CARD_ID */
+		COMIC_WITCH: 88,
+		/** コミックヒーロー / GameConstants.COMIC_HERO_FIGHTER_CARD_ID */
+		COMIC_HERO: 91,
+		/** エンジェルメイジ / GameConstants.ANGEL_MAGE_FIGHTER_CARD_ID */
+		ANGEL_MAGE: 105,
+		/** ザドキエル / GameConstants.ZADKIEL_FIGHTER_CARD_ID */
+		ZADKIEL: 98,
+		/** ラミエル / GameConstants.RAMIEL_FIGHTER_CARD_ID */
+		RAMIEL: 99,
+		/** ヴァーチャー / GameConstants.VIRTUAL_FIGHTER_CARD_ID */
+		VIRTUAL: 100,
+		/** セレスティア / GameConstants.CELESTIA_FIGHTER_CARD_ID */
+		CELESTIA: 101,
+		/** セラフィム / GameConstants.SERAPHIM_FIGHTER_CARD_ID */
+		SERAPHIM: 103,
+		/** ガブリエル / GameConstants.GABRIEL_FIGHTER_CARD_ID */
+		GABRIEL: 104,
+		/** ルシファー / GameConstants.LUCIFER_FIGHTER_CARD_ID */
+		LUCIFER: 108,
+		/** 堕天使ルシファー / GameConstants.FALLEN_ANGEL_LUCIFER_CARD_ID */
+		FALLEN_ANGEL_LUCIFER: 115
 	};
 
 	/** 〈フィールド〉持続ターン系: 効果文の「◯ターンの間」を残りターン N に合わせる */
@@ -2609,6 +2762,12 @@
 			r = Math.max(0, Math.floor(Number(st.scrapyardFieldTurnsRemaining)));
 		} else if (id === PREVIEW_CARD_IDS.FIELD_DEATHBOUNCE && st.deathbounceFieldTurnsRemaining != null) {
 			r = Math.max(0, Math.floor(Number(st.deathbounceFieldTurnsRemaining)));
+		} else if (id === PREVIEW_CARD_IDS.WEEKLY_SHONEN_CAMP && st.weeklyShonenCampFieldCounterDisplay != null) {
+			r = Math.max(0, Math.floor(Number(st.weeklyShonenCampFieldCounterDisplay)));
+		} else if (id === PREVIEW_CARD_IDS.FIELD_WORLD_REBUILD && st.worldRebuildFieldCounterDisplay != null) {
+			r = Math.max(0, Math.floor(Number(st.worldRebuildFieldCounterDisplay)));
+		} else if (id === PREVIEW_CARD_IDS.FIELD_PAPER_CITY && st.paperCityFieldCounterDisplay != null) {
+			r = Math.max(0, Math.floor(Number(st.paperCityFieldCounterDisplay)));
 		}
 		if (r < 1 || !Array.isArray(d.abilityBlocks)) return d;
 		const blocks = d.abilityBlocks.map(function (b) {
@@ -2655,11 +2814,19 @@
 	}
 
 	/** 〈フィールド〉以外のマシン・ファイター（印字コストとの差で緑／赤表示） */
-	function weaponDepotMachineFighterForCost(def, handCard) {
+	function weaponDepotMachineFighterForCost(def, handCard, st) {
 		if (!def || def.fieldCard) return false;
 		const ck = String(def.cardKind || '').trim().toUpperCase();
 		/* CardDefDto に cardKind が無い古い応答でも、フィールドでないマシンはファイター扱い */
 		if (ck !== '' && ck !== 'FIGHTER') return false;
+		if (st && handCard) {
+			const humanSlot = deployPreviewUsesHumanSlotBonuses(st, handCard);
+			const p666 = humanSlot
+				? st.spec666NextHumanUndead === true || st.spec666NextHumanUndead === 'true'
+				: st.spec666NextCpuUndead === true || st.spec666NextCpuUndead === 'true';
+			const mech = Number((humanSlot ? st.humanNextMechanicStacks : st.cpuNextMechanicStacks) || 0);
+			return hasCardAttributeForDeployPreview(def, handCard, p666, mech, 'MACHINE');
+		}
 		return hasCardAttributeResolved(def, handCard, 'MACHINE');
 	}
 
@@ -2667,19 +2834,25 @@
 	function characteristicDeployCostForCaptainBonus(def, handCard, st) {
 		if (!def) return 0;
 		let base = Number(def.cost != null ? def.cost : 0);
-		if (weaponDepotFieldActive(st) && weaponDepotMachineFighterForCost(def, handCard)) {
+		if (weaponDepotFieldActive(st) && weaponDepotMachineFighterForCost(def, handCard, st)) {
 			base = 1;
 		}
+		const sh =
+			st &&
+			(st.weeklyShonenCampGlobalDeployCostPlusOneThisTurn === true ||
+				st.weeklyShonenCampGlobalDeployCostPlusOneThisTurn === 'true')
+				? 1
+				: 0;
 		if (handCard && (handCard.blankEffects === true || handCard.blankEffects === 'true')) {
-			return Math.max(0, base);
+			return Math.max(0, base + sh);
 		}
 		if (Number(def.id) === PREVIEW_CARD_IDS.NEMURY) {
 			const defs = st && st.defs ? st.defs : {};
 			const discountRest = deployPreviewUsesHumanSlotBonuses(st, handCard) ? st && st.humanRest : st && st.cpuRest;
-			const disc = countAttributeInRest(discountRest ? discountRest : [], defs, 'CARBUNCLE');
-			return Math.max(0, base - disc);
+			const disc = countAttributeInRest(discountRest ? discountRest : [], defs, 'CARBUNCLE', st);
+			return Math.max(0, base - disc) + sh;
 		}
-		return base;
+		return base + sh;
 	}
 
 	/**
@@ -2690,6 +2863,18 @@
 		if (!st.activeField || Number(st.activeField.cardId) !== PREVIEW_CARD_IDS.FIELD_GLORIA) return 0;
 		if (!hasCardAttributeResolved(def, battleCard, 'CARBUNCLE')) return 0;
 		return 2;
+	}
+
+	/** 週刊少年 CAMP（CpuBattleEngine.weeklyShonenCampComicPowerForFighter と同趣旨） */
+	function weeklyShonenCampComicPowerBonusPreview(st, def, battleCard) {
+		if (!st || !def || def.fieldCard) return 0;
+		if (!st.activeField || Number(st.activeField.cardId) !== PREVIEW_CARD_IDS.WEEKLY_SHONEN_CAMP) return 0;
+		if (!hasCardAttributeResolved(def, battleCard, 'COMIC')) return 0;
+		let p = 2;
+		if (st.weeklyShonenCampCount2ComicBonus === true || st.weeklyShonenCampCount2ComicBonus === 'true') {
+			p += 4;
+		}
+		return p;
 	}
 
 	/** 画面上のストーン表示と同じ（レベルアップ・支払モーダルで予約した分を除く。ネビュラ坑道の+1は配置コミット応答に含まれる） */
@@ -2711,6 +2896,18 @@
 		if (!a) return false;
 		if (a === tribe) return true;
 		return attrSegments(a).indexOf(tribe) >= 0;
+	}
+
+	function fossilFieldMerfolkRestActive(st) {
+		return st && st.activeField && Number(st.activeField.cardId) === PREVIEW_CARD_IDS.FOSSIL_FIELD_CARD;
+	}
+
+	/** CpuBattleEngine.restCardHasTribe と同趣旨（レストの種族判定。化石フィールド時は印字に関わらずマーフォークのみ） */
+	function hasRestCardTribeForPreview(st, def, battleCard, tribe) {
+		if (fossilFieldMerfolkRestActive(st)) {
+			return hasCardAttribute('MERFOLK', tribe);
+		}
+		return hasCardAttributeResolved(def, battleCard, tribe);
 	}
 
 	function zoneMainDef(zone, defs) {
@@ -2747,28 +2944,28 @@
 		return rest;
 	}
 
-	function restContainsTribe(rest, defs, tribe) {
+	function restContainsTribe(rest, defs, tribe, st) {
 		for (let i = 0; i < rest.length; i++) {
 			const card = rest[i];
 			const d = resolveCardDef(defs, card.cardId);
-			if (d && hasCardAttributeResolved(d, card, tribe)) return true;
+			if (d && hasRestCardTribeForPreview(st, d, card, tribe)) return true;
 		}
 		return false;
 	}
 
-	function countAttributeInRest(rest, defs, attr) {
+	function countAttributeInRest(rest, defs, attr, st) {
 		let c = 0;
 		if (!Array.isArray(rest)) return 0;
 		for (let i = 0; i < rest.length; i++) {
 			const card = rest[i];
 			const d = resolveCardDef(defs, card.cardId);
-			if (d && hasCardAttributeResolved(d, card, attr)) c++;
+			if (d && hasRestCardTribeForPreview(st, d, card, attr)) c++;
 		}
 		return c;
 	}
 
-	function countUndeadInRest(rest, defs) {
-		return countAttributeInRest(rest, defs, 'UNDEAD');
+	function countUndeadInRest(rest, defs, st) {
+		return countAttributeInRest(rest, defs, 'UNDEAD', st);
 	}
 
 	/** CpuBattleEngine.battleCostUnderInstanceIds 相当（自分バトルのコスト下） */
@@ -2786,7 +2983,7 @@
 	 * CpuBattleEngine.countDistinctCarbuncleTypesInRest と同じ（レストの「シャイニ」以外の種族カーバンクルの種類数。
 	 * 自分バトルに重なっている instance は除外）
 	 */
-	function countDistinctCarbuncleTypesInRestForPreview(defs, rest, ownBattleZone) {
+	function countDistinctCarbuncleTypesInRestForPreview(defs, rest, ownBattleZone, st) {
 		if (!defs || !Array.isArray(rest)) return 0;
 		const under = battleCostUnderInstanceIdSet(ownBattleZone);
 		const seen = Object.create(null);
@@ -2798,10 +2995,68 @@
 			const cid = Number(c.cardId);
 			if (cid === PREVIEW_CARD_IDS.SHINY) continue;
 			const d = resolveCardDef(defs, c.cardId);
-			if (!d || !hasCardAttributeResolved(d, c, 'CARBUNCLE')) continue;
+			if (!d || !hasRestCardTribeForPreview(st, d, c, 'CARBUNCLE')) continue;
 			if (seen[cid]) continue;
 			seen[cid] = true;
 			n++;
+		}
+		return n;
+	}
+
+	/** CpuBattleEngine: 自分レストの「インクナイト」枚数（コスト下の instance は除外） */
+	function countInkKnightsInRestForPreview(rest, ownBattleZone) {
+		if (!Array.isArray(rest)) return 0;
+		const under = battleCostUnderInstanceIdSet(ownBattleZone);
+		let n = 0;
+		for (let i = 0; i < rest.length; i++) {
+			const c = rest[i];
+			if (!c) continue;
+			if (c.instanceId != null && under[String(c.instanceId)]) continue;
+			if (Number(c.cardId) === PREVIEW_CARD_IDS.INK_KNIGHT) n++;
+		}
+		return n;
+	}
+
+	/** CpuBattleEngine: 自分レストの「エンジェルメイジ」枚数（コスト下の instance は除外） */
+	function countAngelMagesInRestForPreview(rest, ownBattleZone) {
+		if (!Array.isArray(rest)) return 0;
+		const under = battleCostUnderInstanceIdSet(ownBattleZone);
+		let n = 0;
+		for (let i = 0; i < rest.length; i++) {
+			const c = rest[i];
+			if (!c) continue;
+			if (c.instanceId != null && under[String(c.instanceId)]) continue;
+			if (Number(c.cardId) === PREVIEW_CARD_IDS.ANGEL_MAGE) n++;
+		}
+		return n;
+	}
+
+	/**
+	 * CpuBattleEngine.countDistinctTribeSegmentsFromRestFighters と同じ（レストの〈フィールド〉以外のファイターの種族セグメント種類数。
+	 * 化石〈フィールド〉下はレストの種族をマーフォークのみとして数える）
+	 */
+	function countDistinctTribeSegmentsFromRestFightersForPreview(defs, rest, ownBattleZone, st) {
+		if (!defs || !Array.isArray(rest)) return 0;
+		const under = battleCostUnderInstanceIdSet(ownBattleZone);
+		const seenSeg = Object.create(null);
+		let n = 0;
+		for (let i = 0; i < rest.length; i++) {
+			const c = rest[i];
+			if (!c) continue;
+			if (c.instanceId != null && under[String(c.instanceId)]) continue;
+			const d = resolveCardDef(defs, c.cardId);
+			if (!d || d.fieldCard) continue;
+			const ck = String(d.cardKind || '').trim().toUpperCase();
+			if (ck !== '' && ck !== 'FIGHTER') continue;
+			const code = fossilFieldMerfolkRestActive(st) ? 'MERFOLK' : effectiveCardAttributeCode(d, c);
+			const segs = attrSegments(code);
+			for (let j = 0; j < segs.length; j++) {
+				const s = segs[j];
+				if (!seenSeg[s]) {
+					seenSeg[s] = true;
+					n++;
+				}
+			}
 		}
 		return n;
 	}
@@ -2835,7 +3090,7 @@
 			return 0;
 		}
 		if (sid === PREVIEW_CARD_IDS.DRAGON_RIDER) {
-			return restContainsTribe(rest, defs, 'DRAGON') ? 4 : 0;
+			return restContainsTribe(rest, defs, 'DRAGON', st) ? 4 : 0;
 		}
 		if (sid === PREVIEW_CARD_IDS.GAIKOTSU) {
 			const opp = ownerIsHuman ? st.cpuBattle : st.humanBattle;
@@ -2866,15 +3121,15 @@
 			for (let i = 0; i < rest.length; i++) {
 				const c = rest[i];
 				if (!c || isRestCardTuckedUnderOwnFighter(battleZf, c)) continue;
-				if (hasCardAttributeResolved(resolveCardDef(defs, c.cardId), c, 'UNDEAD')) undead++;
+				if (hasRestCardTribeForPreview(st, resolveCardDef(defs, c.cardId), c, 'UNDEAD')) undead++;
 			}
 			return undead;
 		}
 		if (sid === PREVIEW_CARD_IDS.SHINY) {
-			return countDistinctCarbuncleTypesInRestForPreview(defs, rest, ownZoneForShiny) * 2;
+			return countDistinctCarbuncleTypesInRestForPreview(defs, rest, ownZoneForShiny, st) * 2;
 		}
 		if (sid === PREVIEW_CARD_IDS.FROSTKRUL) {
-			return oppTurn && countAttributeInRest(rest, defs, 'CARBUNCLE') > 0 ? 3 : 0;
+			return oppTurn && countAttributeInRest(rest, defs, 'CARBUNCLE', st) > 0 ? 3 : 0;
 		}
 		if (sid === PREVIEW_CARD_IDS.NEMURY) {
 			return oppTurn ? PREVIEW_CARD_IDS.NEMURY_OPP_BONUS : 0;
@@ -2985,16 +3240,23 @@
 		const out = [];
 		if (!st || !c || !d || d.fieldCard) return out;
 		const base = Number(d.basePower != null ? d.basePower : 0);
+		const instBt =
+			c && c.battleEndPowerBonus != null ? Number(c.battleEndPowerBonus) : 0;
+		if (!isNaN(instBt) && instBt !== 0) {
+			out.push({ sourceCardId: null, label: 'バトル終了までの強さ加算（+' + instBt + '）' });
+		}
 		const humanSlot = deployPreviewUsesHumanSlotBonuses(st, c);
 		const pending666 =
 			st.spec666NextHumanUndead === true || st.spec666NextHumanUndead === 'true';
+		const pending666Cpu = st.spec666NextCpuUndead === true || st.spec666NextCpuUndead === 'true';
 		if (humanSlot) {
+			const mechH = Number(st.humanNextMechanicStacks || 0);
 			const nb = Number(st.humanNextDeployBonus || 0);
 			if (nb > 0) {
 				out.push({ sourceCardId: null, label: '隊長（次の配置ボーナス +' + nb + '）' });
 			}
 			const elfOnly = Number(st.humanNextElfOnlyBonus || 0);
-			if (elfOnly > 0 && dRaw && hasCardAttributeForDeployPreview(dRaw, c, pending666, 'ELF')) {
+			if (elfOnly > 0 && dRaw && hasCardAttributeForDeployPreview(dRaw, c, pending666, mechH, 'ELF')) {
 				out.push({ sourceCardId: null, label: '隊長（エルフ限定ボーナス +' + elfOnly + '）' });
 			}
 			const costTimes = Number(st.humanNextDeployCostBonusTimes || 0);
@@ -3009,12 +3271,13 @@
 				out.push({ sourceCardId: null, label: 'メカニック（+' + 3 * mech + '）' });
 			}
 		} else {
+			const mechC = Number(st.cpuNextMechanicStacks || 0);
 			const nb = Number(st.cpuNextDeployBonus || 0);
 			if (nb > 0) {
 				out.push({ sourceCardId: null, label: '相手・隊長（次の配置ボーナス +' + nb + '）' });
 			}
 			const elfOnly = Number(st.cpuNextElfOnlyBonus || 0);
-			if (elfOnly > 0 && dRaw && hasCardAttributeForDeployPreview(dRaw, c, st.spec666NextCpuUndead, 'ELF')) {
+			if (elfOnly > 0 && dRaw && hasCardAttributeForDeployPreview(dRaw, c, pending666Cpu, mechC, 'ELF')) {
 				out.push({ sourceCardId: null, label: '相手・隊長（エルフ限定ボーナス +' + elfOnly + '）' });
 			}
 			const costTimes = Number(st.cpuNextDeployCostBonusTimes || 0);
@@ -3029,7 +3292,10 @@
 				out.push({ sourceCardId: null, label: '相手・メカニック（+' + 3 * mech + '）' });
 			}
 		}
-		const explained = base + Number(deployBonus || 0);
+		const explained =
+			base +
+			Number(deployBonus || 0) +
+			(!isNaN(instBt) && instBt !== 0 ? instBt : 0);
 		const pv = Math.max(0, Math.floor(Number(curPow)));
 		if (pv !== explained) {
 			const delta = pv - explained;
@@ -3083,33 +3349,40 @@
 		const printed = Number(def.cost != null ? def.cost : 0);
 		const discountRest = humanSlot ? st && st.humanRest : st && st.cpuRest;
 
+		const shonenCampCost =
+			st &&
+			(st.weeklyShonenCampGlobalDeployCostPlusOneThisTurn === true ||
+				st.weeklyShonenCampGlobalDeployCostPlusOneThisTurn === 'true')
+				? 1
+				: 0;
+
 		if (def.fieldCard) {
 			if (blank) {
-				return Math.max(0, printed + mechanic + handAdj);
+				return Math.max(0, printed + mechanic + handAdj + shonenCampCost);
 			}
 			let core = printed;
 			if (Number(def.id) === PREVIEW_CARD_IDS.NEMURY) {
 				const defs = st && st.defs ? st.defs : {};
-				const disc = countAttributeInRest(discountRest ? discountRest : [], defs, 'CARBUNCLE');
+				const disc = countAttributeInRest(discountRest ? discountRest : [], defs, 'CARBUNCLE', st);
 				core = Math.max(0, printed - disc);
 			}
-			return Math.max(0, core + mechanic + handAdj);
+			return Math.max(0, core + mechanic + handAdj + shonenCampCost);
 		}
 
 		let base = printed;
-		if (weaponDepotFieldActive(st) && weaponDepotMachineFighterForCost(def, handCard)) {
+		if (weaponDepotFieldActive(st) && weaponDepotMachineFighterForCost(def, handCard, st)) {
 			base = 1;
 		}
 		if (blank) {
-			return Math.max(0, base + mechanic + handAdj);
+			return Math.max(0, base + mechanic + handAdj + shonenCampCost);
 		}
 		let core = base;
 		if (Number(def.id) === PREVIEW_CARD_IDS.NEMURY) {
 			const defs = st && st.defs ? st.defs : {};
-			const disc = countAttributeInRest(discountRest ? discountRest : [], defs, 'CARBUNCLE');
+			const disc = countAttributeInRest(discountRest ? discountRest : [], defs, 'CARBUNCLE', st);
 			core = Math.max(0, base - disc);
 		}
-		return Math.max(0, core + mechanic + handAdj);
+		return Math.max(0, core + mechanic + handAdj + shonenCampCost);
 	}
 
 	function computeHumanNextDeployBonusForDef(st, def, handCard) {
@@ -3120,7 +3393,8 @@
 		const p666 = humanSlot
 			? !!(st.spec666NextHumanUndead === true || st.spec666NextHumanUndead === 'true')
 			: !!(st.spec666NextCpuUndead === true || st.spec666NextCpuUndead === 'true');
-		if (elfOnly > 0 && hasCardAttributeForDeployPreview(def, handCard, p666, 'ELF')) {
+		const mechN = Number((humanSlot ? st.humanNextMechanicStacks : st.cpuNextMechanicStacks) || 0);
+		if (elfOnly > 0 && hasCardAttributeForDeployPreview(def, handCard, p666, mechN, 'ELF')) {
 			bonus += elfOnly;
 		}
 		const costTimes = Number((humanSlot ? st.humanNextDeployCostBonusTimes : st.cpuNextDeployCostBonusTimes) || 0);
@@ -3139,11 +3413,24 @@
 		const id = Number(mainDef.id);
 		const base = Number(mainDef.basePower != null ? mainDef.basePower : 0);
 		let p = base + Number(deployBonus || 0);
+		const instBonus =
+			handCard && handCard.battleEndPowerBonus != null ? Number(handCard.battleEndPowerBonus) : 0;
+		if (!isNaN(instBonus) && instBonus !== 0) {
+			p += instBonus;
+		}
 		p += fieldGloriaCarbunclePowerBonus(st, mainDef, handCard);
+		p += weeklyShonenCampComicPowerBonusPreview(st, mainDef, handCard);
 
 		// ノクスクル(id=37/STONIA): 自分のターンの終わりまで所持ストーン数を加算（CpuBattleEngine と同様）
 		if (id === PREVIEW_CARD_IDS.STONIA && st.humansTurn) {
 			p += humanStonesPreviewReserveAdjusted(st);
+		}
+
+		if (id === PREVIEW_CARD_IDS.POSEIDON && handCard) {
+			const slotHuman = deployPreviewUsesHumanSlotBonuses(st, handCard);
+			if (slotHuman ? st.humansTurn : !st.humansTurn) {
+				p += 3;
+			}
 		}
 
 		// 竜王が相手ゾーンにいると〈常時〉等は無効化（〈宝石の地〉の+2は engine と同様に残す）
@@ -3181,7 +3468,7 @@
 		}
 
 		if (id === PREVIEW_CARD_IDS.DRAGON_RIDER) {
-			if (restContainsTribe(st.humanRest || [], defs, 'DRAGON')) {
+			if (restContainsTribe(st.humanRest || [], defs, 'DRAGON', st)) {
 				p += 4;
 			}
 		}
@@ -3209,11 +3496,46 @@
 		}
 
 		if (id === PREVIEW_CARD_IDS.HONE) {
-			p += countUndeadInRest(st.humanRest || [], defs);
+			p += countUndeadInRest(st.humanRest || [], defs, st);
+		}
+
+		if (id === PREVIEW_CARD_IDS.AQUA_GUARDIAN) {
+			p += countAttributeInRest(st.humanRest || [], defs, 'MERFOLK', st);
 		}
 
 		if (id === PREVIEW_CARD_IDS.SHINY) {
-			p += countDistinctCarbuncleTypesInRestForPreview(defs, st.humanRest || [], st.humanBattle) * 2;
+			p += countDistinctCarbuncleTypesInRestForPreview(defs, st.humanRest || [], st.humanBattle, st) * 2;
+		}
+
+		if (id === PREVIEW_CARD_IDS.INK_KNIGHT) {
+			p += countInkKnightsInRestForPreview(st.humanRest || [], st.humanBattle);
+		}
+
+		if (id === PREVIEW_CARD_IDS.COMIC_HERO) {
+			p += countDistinctTribeSegmentsFromRestFightersForPreview(
+				defs,
+				st.humanRest || [],
+				st.humanBattle,
+				st
+			);
+		}
+
+		if (id === PREVIEW_CARD_IDS.ANGEL_MAGE) {
+			if (countAngelMagesInRestForPreview(st.humanRest || [], st.humanBattle) >= 1) {
+				p += 2;
+			}
+		}
+
+		if (id === PREVIEW_CARD_IDS.MIKAEL_MINION_A && handCard) {
+			const slotHuman = deployPreviewUsesHumanSlotBonuses(st, handCard);
+			const r = slotHuman ? st.humanRest || [] : st.cpuRest || [];
+			for (let i = 0; i < r.length; i++) {
+				const rc = r[i];
+				if (rc && Number(rc.cardId) === PREVIEW_CARD_IDS.MIKAEL_MINION_B) {
+					p += 2;
+					break;
+				}
+			}
 		}
 
 		if (id === PREVIEW_CARD_IDS.ARTHUR && activeFieldIsKamui(st)) {
@@ -3231,10 +3553,23 @@
 		const id = Number(mainDef.id);
 		const base = Number(mainDef.basePower != null ? mainDef.basePower : 0);
 		let p = base + deployBonus;
+		const instBonusP =
+			handCard && handCard.battleEndPowerBonus != null ? Number(handCard.battleEndPowerBonus) : 0;
+		if (!isNaN(instBonusP) && instBonusP !== 0) {
+			p += instBonusP;
+		}
 		p += fieldGloriaCarbunclePowerBonus(st, mainDef, handCard);
+		p += weeklyShonenCampComicPowerBonusPreview(st, mainDef, handCard);
 
 		if (id === PREVIEW_CARD_IDS.STONIA && st.humansTurn) {
 			p += humanStonesPreviewReserveAdjusted(st);
+		}
+
+		if (id === PREVIEW_CARD_IDS.POSEIDON && handCard) {
+			const slotHuman = deployPreviewUsesHumanSlotBonuses(st, handCard);
+			if (slotHuman ? st.humansTurn : !st.humansTurn) {
+				p += 3;
+			}
 		}
 
 		if (hasRyuohInCpuZone(st.cpuBattle, defs)) {
@@ -3273,7 +3608,7 @@
 		}
 
 		if (id === PREVIEW_CARD_IDS.DRAGON_RIDER) {
-			if (restContainsTribe(simRest, defs, 'DRAGON')) {
+			if (restContainsTribe(simRest, defs, 'DRAGON', st)) {
 				p += 4;
 			}
 		}
@@ -3301,11 +3636,29 @@
 		}
 
 		if (id === PREVIEW_CARD_IDS.HONE) {
-			p += countUndeadInRest(simRest, defs);
+			p += countUndeadInRest(simRest, defs, st);
+		}
+
+		if (id === PREVIEW_CARD_IDS.AQUA_GUARDIAN) {
+			p += countAttributeInRest(simRest, defs, 'MERFOLK', st);
 		}
 
 		if (id === PREVIEW_CARD_IDS.SHINY) {
-			p += countDistinctCarbuncleTypesInRestForPreview(defs, simRest, st.humanBattle) * 2;
+			p += countDistinctCarbuncleTypesInRestForPreview(defs, simRest, st.humanBattle, st) * 2;
+		}
+
+		if (id === PREVIEW_CARD_IDS.INK_KNIGHT) {
+			p += countInkKnightsInRestForPreview(simRest, st.humanBattle);
+		}
+
+		if (id === PREVIEW_CARD_IDS.COMIC_HERO) {
+			p += countDistinctTribeSegmentsFromRestFightersForPreview(defs, simRest, st.humanBattle, st);
+		}
+
+		if (id === PREVIEW_CARD_IDS.ANGEL_MAGE) {
+			if (countAngelMagesInRestForPreview(simRest, st.humanBattle) >= 1) {
+				p += 2;
+			}
 		}
 
 		if (id === PREVIEW_CARD_IDS.ARTHUR && activeFieldIsKamui(st)) {
@@ -3453,12 +3806,31 @@
 		}
 		const st = opts.battleState;
 		let rem = 0;
+		let atlantisCounter = null;
 		if (st && Number(d.id) === PREVIEW_CARD_IDS.FIELD_SCRAPYARD && st.scrapyardFieldTurnsRemaining != null) {
 			rem = Math.max(0, Math.floor(Number(st.scrapyardFieldTurnsRemaining)));
 		} else if (st && Number(d.id) === PREVIEW_CARD_IDS.FIELD_DEATHBOUNCE && st.deathbounceFieldTurnsRemaining != null) {
 			rem = Math.max(0, Math.floor(Number(st.deathbounceFieldTurnsRemaining)));
+		} else if (st && Number(d.id) === PREVIEW_CARD_IDS.FIELD_ATLANTIS && st.atlantisFieldCounterDisplay != null) {
+			atlantisCounter = Math.max(0, Math.floor(Number(st.atlantisFieldCounterDisplay)));
 		}
-		const dForFace = rem > 0 ? defWithTimedFieldTurnOverlay(d, st) : d;
+		let shonenCampCounter = null;
+		if (st && Number(d.id) === PREVIEW_CARD_IDS.WEEKLY_SHONEN_CAMP && st.weeklyShonenCampFieldCounterDisplay != null) {
+			shonenCampCounter = Math.max(0, Math.floor(Number(st.weeklyShonenCampFieldCounterDisplay)));
+		}
+		let worldRebuildCounter = null;
+		if (st && Number(d.id) === PREVIEW_CARD_IDS.FIELD_WORLD_REBUILD && st.worldRebuildFieldCounterDisplay != null) {
+			worldRebuildCounter = Math.max(0, Math.floor(Number(st.worldRebuildFieldCounterDisplay)));
+		}
+		let paperCityCounter = null;
+		if (st && Number(d.id) === PREVIEW_CARD_IDS.FIELD_PAPER_CITY && st.paperCityFieldCounterDisplay != null) {
+			paperCityCounter = Math.max(0, Math.floor(Number(st.paperCityFieldCounterDisplay)));
+		}
+		const dForFace =
+			rem > 0 || atlantisCounter != null || shonenCampCounter != null || worldRebuildCounter != null
+				|| paperCityCounter != null
+				? defWithTimedFieldTurnOverlay(d, st)
+				: d;
 		const wrap = el('div', 'library-card battle-zone-card battle-field-card', null);
 		const shell = buildBattleCardFaceShell(
 			dForFace,
@@ -3484,6 +3856,22 @@
 		if (rem > 0) {
 			const badge = el('span', 'battle-field-turn-badge', String(rem));
 			badge.setAttribute('aria-label', '残りターン ' + String(rem));
+			wrap.appendChild(badge);
+		} else if (atlantisCounter != null) {
+			const badge = el('span', 'battle-field-turn-badge', String(atlantisCounter));
+			badge.setAttribute('aria-label', 'カウント ' + String(atlantisCounter));
+			wrap.appendChild(badge);
+		} else if (shonenCampCounter != null) {
+			const badge = el('span', 'battle-field-turn-badge', String(shonenCampCounter));
+			badge.setAttribute('aria-label', 'カウント ' + String(shonenCampCounter));
+			wrap.appendChild(badge);
+		} else if (worldRebuildCounter != null) {
+			const badge = el('span', 'battle-field-turn-badge', String(worldRebuildCounter));
+			badge.setAttribute('aria-label', 'カウント ' + String(worldRebuildCounter));
+			wrap.appendChild(badge);
+		} else if (paperCityCounter != null) {
+			const badge = el('span', 'battle-field-turn-badge', String(paperCityCounter));
+			badge.setAttribute('aria-label', 'カウント ' + String(paperCityCounter));
 			wrap.appendChild(badge);
 		}
 		box.appendChild(wrap);
@@ -3988,7 +4376,12 @@
 		const picked = [];
 
 		if (pc.kind === 'CONFIRM_OPTIONAL_STONE') {
-			panel.appendChild(el('p', 'muted', 'ストーンを' + String(pc.stoneCost || 0) + 'つ使用しますか？'));
+			const sc = Number(pc.stoneCost != null ? pc.stoneCost : 0);
+			if (sc > 0) {
+				panel.appendChild(el('p', 'muted', 'ストーンを' + String(sc) + 'つ使用しますか？'));
+			} else {
+				panel.appendChild(el('p', 'muted', 'この効果を使いますか？'));
+			}
 
 			// Show ability details for the card that triggered this choice (best-effort via abilityDeployCode).
 			const detailDef = resolveDefByAbilityDeployCode(st.defs, pc.abilityDeployCode, pc.prompt);
@@ -4014,9 +4407,9 @@
 			}
 
 			const actions = el('div', 'battle-pay-modal__actions');
-			const noBtn = el('button', 'btn btn--ghost', 'しない');
+			const noBtn = el('button', 'btn btn--ghost', sc > 0 ? 'しない' : '使わない');
 			noBtn.type = 'button';
-			const yesBtn = el('button', 'btn btn--primary', '使用する');
+			const yesBtn = el('button', 'btn btn--primary', sc > 0 ? '使用する' : '使う');
 			yesBtn.type = 'button';
 			actions.appendChild(noBtn);
 			actions.appendChild(yesBtn);
@@ -4260,6 +4653,13 @@
 					ok.disabled = picked.length > 2;
 					return;
 				}
+				if (
+					pc.kind === 'SELECT_ONE_FROM_HAND_TO_REST' &&
+					(pc.abilityDeployCode === 'ZADKIEL' || pc.abilityDeployCode === 'SERAPHIM')
+				) {
+					ok.disabled = picked.length > 1;
+					return;
+				}
 				ok.disabled = picked.length !== needCount();
 			}
 
@@ -4311,7 +4711,7 @@
 		document.body.appendChild(overlay);
 	}
 
-	function showBattleZoneDetailModal(def, powerContributors, battleState, battleCard) {
+	function showBattleZoneDetailModal(def, powerContributors, battleState, battleCard, companionRemainderChain) {
 		if (!def) return;
 		const contributors = Array.isArray(powerContributors)
 			? powerContributors.map(normalizeBattlePowerModifier)
@@ -4336,6 +4736,209 @@
 		const grid = el('div', 'battle-zone-detail-modal__grid');
 		const left = el('div', 'battle-zone-detail-modal__left');
 		const right = el('div', 'battle-zone-detail-modal__right');
+		const fossilFieldDefNav =
+			battleState && battleState.defs
+				? resolveCardDef(battleState.defs, PREVIEW_CARD_IDS.FOSSIL_FIELD_CARD)
+				: null;
+		const swordfishDefNav =
+			battleState && battleState.defs
+				? resolveCardDef(battleState.defs, PREVIEW_CARD_IDS.SWORDFISH_CARD)
+				: null;
+		const dragonEggDefNav =
+			battleState && battleState.defs
+				? resolveCardDef(battleState.defs, PREVIEW_CARD_IDS.DRAGON_EGG)
+				: null;
+		const inkKnightDefNav =
+			battleState && battleState.defs
+				? resolveCardDef(battleState.defs, PREVIEW_CARD_IDS.INK_KNIGHT)
+				: null;
+		const inkKingDefNav =
+			battleState && battleState.defs
+				? resolveCardDef(battleState.defs, PREVIEW_CARD_IDS.INK_KING)
+				: null;
+		const miracleDefNav =
+			battleState && battleState.defs
+				? resolveCardDef(battleState.defs, PREVIEW_CARD_IDS.MIRACLE)
+				: null;
+		const fallenAngelLuciferDefNav =
+			battleState && battleState.defs
+				? resolveCardDef(battleState.defs, PREVIEW_CARD_IDS.FALLEN_ANGEL_LUCIFER)
+				: null;
+		const angelMageDefNav =
+			battleState && battleState.defs
+				? resolveCardDef(battleState.defs, PREVIEW_CARD_IDS.ANGEL_MAGE)
+				: null;
+		const minionSoldierDefNav =
+			battleState && battleState.defs
+				? resolveCardDef(battleState.defs, PREVIEW_CARD_IDS.MINION_SOLDIER)
+				: null;
+		const minionKingDefNav =
+			battleState && battleState.defs
+				? resolveCardDef(battleState.defs, PREVIEW_CARD_IDS.MINION_KING)
+				: null;
+		function buildMikaelZoneNavChain(st) {
+			if (!st || !st.defs) return null;
+			const m = resolveCardDef(st.defs, PREVIEW_CARD_IDS.MIRACLE);
+			if (!m) return null;
+			const out = [m];
+			for (let mi = PREVIEW_CARD_IDS.MIKAEL_WRATH; mi <= PREVIEW_CARD_IDS.MIKAEL_FLASH; mi++) {
+				const d0 = resolveCardDef(st.defs, mi);
+				if (!d0) return null;
+				out.push(d0);
+			}
+			return out;
+		}
+		const mikaelZoneNav = buildMikaelZoneNavChain(battleState);
+
+		let navChain = companionRemainderChain;
+		if (
+			(!navChain || navChain.length === 0) &&
+			battleState &&
+			battleState.defs &&
+			Number(def.id) === PREVIEW_CARD_IDS.KING_MAKER &&
+			inkKnightDefNav &&
+			inkKingDefNav
+		) {
+			navChain = [inkKnightDefNav, inkKingDefNav];
+		}
+		if (
+			(!navChain || navChain.length === 0) &&
+			battleState &&
+			battleState.defs &&
+			Number(def.id) === PREVIEW_CARD_IDS.DOMINION &&
+			minionSoldierDefNav &&
+			minionKingDefNav
+		) {
+			navChain = [minionSoldierDefNav, minionKingDefNav];
+		}
+		if (
+			(!navChain || navChain.length === 0) &&
+			battleState &&
+			battleState.defs &&
+			Number(def.id) === PREVIEW_CARD_IDS.LUCIFER &&
+			miracleDefNav &&
+			fallenAngelLuciferDefNav
+		) {
+			navChain = [miracleDefNav, fallenAngelLuciferDefNav];
+		}
+		if (
+			(!navChain || navChain.length === 0) &&
+			battleState &&
+			battleState.defs &&
+			Number(def.id) === PREVIEW_CARD_IDS.MIRACLE &&
+			fallenAngelLuciferDefNav
+		) {
+			navChain = [fallenAngelLuciferDefNav];
+		}
+		if (
+			(!navChain || navChain.length === 0) &&
+			battleState &&
+			battleState.defs &&
+			mikaelZoneNav &&
+			Number(def.id) === PREVIEW_CARD_IDS.MIKAEL
+		) {
+			navChain = mikaelZoneNav;
+		}
+		if ((!navChain || navChain.length === 0) && mikaelZoneNav) {
+			const mid = Number(def.id);
+			if (mid === PREVIEW_CARD_IDS.MIKAEL_WRATH) navChain = mikaelZoneNav.slice(1);
+			else if (mid === PREVIEW_CARD_IDS.MIKAEL_PUNCH) navChain = mikaelZoneNav.slice(2);
+			else if (mid === PREVIEW_CARD_IDS.MIKAEL_STRATEGY) navChain = mikaelZoneNav.slice(3);
+			else if (mid === PREVIEW_CARD_IDS.MIKAEL_MINION_A) navChain = mikaelZoneNav.slice(4);
+			else if (mid === PREVIEW_CARD_IDS.MIKAEL_MINION_B) navChain = mikaelZoneNav.slice(5);
+			else if (mid === PREVIEW_CARD_IDS.MIKAEL_FLASH) navChain = mikaelZoneNav.slice(6);
+		}
+
+		let companionNavTargetDef = null;
+		let companionNavTok = '';
+		let companionNavAria = '';
+		if (navChain && navChain.length > 0) {
+			companionNavTargetDef = navChain[0];
+			companionNavTok = '';
+			companionNavAria = (companionNavTargetDef.name || '関連カード').trim() || '関連カード';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.FOSSIL_FIGHTER && fossilFieldDefNav != null) {
+			companionNavTargetDef = fossilFieldDefNav;
+			companionNavTok = '化石（フィールド）';
+			companionNavAria = '化石（フィールド）';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.SEASERPENT && swordfishDefNav != null) {
+			companionNavTargetDef = swordfishDefNav;
+			companionNavTok = 'ソードフィッシュ';
+			companionNavAria = 'ソードフィッシュ';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.MERMAID && swordfishDefNav != null) {
+			companionNavTargetDef = swordfishDefNav;
+			companionNavTok = 'ソードフィッシュ';
+			companionNavAria = 'ソードフィッシュ';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.KRAKEN && swordfishDefNav != null) {
+			companionNavTargetDef = swordfishDefNav;
+			companionNavTok = 'ソードフィッシュ';
+			companionNavAria = 'ソードフィッシュ';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.SIREN && swordfishDefNav != null) {
+			companionNavTargetDef = swordfishDefNav;
+			companionNavTok = 'ソードフィッシュ';
+			companionNavAria = 'ソードフィッシュ';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.POSEIDON && swordfishDefNav != null) {
+			companionNavTargetDef = swordfishDefNav;
+			companionNavTok = 'ソードフィッシュ';
+			companionNavAria = 'ソードフィッシュ';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.FIELD_ATLANTIS && swordfishDefNav != null) {
+			companionNavTargetDef = swordfishDefNav;
+			companionNavTok = 'ソードフィッシュ';
+			companionNavAria = 'ソードフィッシュ';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.HEAVENS_GATE_FIELD && miracleDefNav != null) {
+			companionNavTargetDef = miracleDefNav;
+			companionNavTok = '「奇跡」';
+			companionNavAria = '奇跡';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.ZADKIEL && miracleDefNav != null) {
+			companionNavTargetDef = miracleDefNav;
+			companionNavTok = '「奇跡」';
+			companionNavAria = '奇跡';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.RAMIEL && miracleDefNav != null) {
+			companionNavTargetDef = miracleDefNav;
+			companionNavTok = '「奇跡」';
+			companionNavAria = '奇跡';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.VIRTUAL && miracleDefNav != null) {
+			companionNavTargetDef = miracleDefNav;
+			companionNavTok = '「奇跡」';
+			companionNavAria = '奇跡';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.CELESTIA && miracleDefNav != null) {
+			companionNavTargetDef = miracleDefNav;
+			companionNavTok = '「奇跡」';
+			companionNavAria = '奇跡';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.SERAPHIM && miracleDefNav != null) {
+			companionNavTargetDef = miracleDefNav;
+			companionNavTok = '「奇跡」';
+			companionNavAria = '奇跡';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.GABRIEL && miracleDefNav != null) {
+			companionNavTargetDef = miracleDefNav;
+			companionNavTok = '「奇跡」';
+			companionNavAria = '奇跡';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.FIELD_PAPER_CITY && inkKnightDefNav != null) {
+			companionNavTargetDef = inkKnightDefNav;
+			companionNavTok = '「インクナイト」';
+			companionNavAria = 'インクナイト';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.SKETCHER && inkKnightDefNav != null) {
+			companionNavTargetDef = inkKnightDefNav;
+			companionNavTok = '「インクナイト」';
+			companionNavAria = 'インクナイト';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.COMIC_WITCH && inkKnightDefNav != null) {
+			companionNavTargetDef = inkKnightDefNav;
+			companionNavTok = '「インクナイト」';
+			companionNavAria = 'インクナイト';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.COMIC_DINOSAUR && dragonEggDefNav != null) {
+			companionNavTargetDef = dragonEggDefNav;
+			companionNavTok = 'ドラゴンの卵';
+			companionNavAria = 'ドラゴンの卵';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.ANGEL_MAGE && angelMageDefNav != null) {
+			companionNavTargetDef = angelMageDefNav;
+			companionNavTok = '「エンジェルメイジ」';
+			companionNavAria = 'エンジェルメイジ';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.INK_KNIGHT && inkKnightDefNav != null) {
+			companionNavTargetDef = inkKnightDefNav;
+			companionNavTok = 'インクナイト';
+			companionNavAria = 'インクナイト';
+		}
+
+		let battleCompanionNavBtn = null;
 
 		const face = buildBattleCardFaceShell(def, 'zone');
 		face.classList.add('battle-zone-detail-modal__card');
@@ -4377,6 +4980,17 @@
 			}
 		}
 
+		if (companionNavTargetDef != null) {
+			battleCompanionNavBtn = el(
+				'button',
+				'battle-zone-detail-modal__fossil-next library-detail-modal__card-nav library-detail-modal__card-nav--next',
+				'›'
+			);
+			battleCompanionNavBtn.type = 'button';
+			battleCompanionNavBtn.setAttribute('aria-label', companionNavAria);
+			left.appendChild(battleCompanionNavBtn);
+		}
+
 		right.appendChild(el('h3', 'battle-zone-detail-modal__name', def.name || '—'));
 
 		const stats = el('dl', 'battle-zone-detail-modal__stats');
@@ -4384,7 +4998,12 @@
 			const wrap = el('div', 'battle-zone-detail-modal__stat');
 			wrap.appendChild(el('dt', '', label));
 			const dd = el('dd', '', value);
-			if (label === '収録パック') dd.classList.add('battle-zone-detail-modal__pack');
+			if (label === '収録パック') {
+				dd.classList.add('battle-zone-detail-modal__pack');
+				if (String(value).indexOf('\n') >= 0) {
+					dd.classList.add('battle-zone-detail-modal__pack--multiline');
+				}
+			}
 			wrap.appendChild(dd);
 			return wrap;
 		}
@@ -4477,6 +5096,12 @@
 				rr = Math.max(0, Math.floor(Number(stCost.scrapyardFieldTurnsRemaining)));
 			} else if (Number(def.id) === PREVIEW_CARD_IDS.FIELD_DEATHBOUNCE && stCost.deathbounceFieldTurnsRemaining != null) {
 				rr = Math.max(0, Math.floor(Number(stCost.deathbounceFieldTurnsRemaining)));
+			} else if (Number(def.id) === PREVIEW_CARD_IDS.WEEKLY_SHONEN_CAMP && stCost.weeklyShonenCampFieldCounterDisplay != null) {
+				rr = Math.max(0, Math.floor(Number(stCost.weeklyShonenCampFieldCounterDisplay)));
+			} else if (Number(def.id) === PREVIEW_CARD_IDS.FIELD_WORLD_REBUILD && stCost.worldRebuildFieldCounterDisplay != null) {
+				rr = Math.max(0, Math.floor(Number(stCost.worldRebuildFieldCounterDisplay)));
+			} else if (Number(def.id) === PREVIEW_CARD_IDS.FIELD_PAPER_CITY && stCost.paperCityFieldCounterDisplay != null) {
+				rr = Math.max(0, Math.floor(Number(stCost.paperCityFieldCounterDisplay)));
 			}
 			if (rr > 0) {
 				raw = adjustScrapyardFieldAbilityTextForRemaining(raw, rr);
@@ -4484,10 +5109,240 @@
 		}
 		const lines = String(raw || '').split('\n');
 		const first = lines.length ? String(lines[0]).trim() : '';
-		ability.textContent =
+		const displayed =
 			first === '〈配置〉' || first === '〈常時〉' || first === '〈フィールド〉'
 				? lines.slice(1).join('\n')
 				: String(raw || '—');
+		ability.textContent = '';
+		if (
+			Number(def.id) === PREVIEW_CARD_IDS.DOMINION &&
+			minionSoldierDefNav &&
+			minionKingDefNav &&
+			displayed.indexOf('「ミニオンソルジャー」') !== -1 &&
+			displayed.indexOf('「ミニオンキング」') !== -1
+		) {
+			function appendDominionBattleFrag(remaining) {
+				if (remaining === '') return;
+				const tokens = [
+					{ tok: '「ミニオンソルジャー」', def: minionSoldierDefNav, chain: [minionKingDefNav] },
+					{ tok: '「ミニオンキング」', def: minionKingDefNav, chain: undefined }
+				];
+				let bestIdx = -1;
+				let best = null;
+				for (let ti = 0; ti < tokens.length; ti++) {
+					const ix = remaining.indexOf(tokens[ti].tok);
+					if (ix >= 0 && (bestIdx < 0 || ix < bestIdx)) {
+						bestIdx = ix;
+						best = tokens[ti];
+					}
+				}
+				if (bestIdx < 0 || !best) {
+					ability.appendChild(document.createTextNode(remaining));
+					return;
+				}
+				if (bestIdx > 0) {
+					ability.appendChild(document.createTextNode(remaining.slice(0, bestIdx)));
+				}
+				const sp = el('span', 'nu-fossil-field-link', best.tok);
+				sp.tabIndex = 0;
+				sp.setAttribute('role', 'link');
+				sp.addEventListener('click', function (ev) {
+					ev.preventDefault();
+					ev.stopPropagation();
+					teardown();
+					showBattleZoneDetailModal(best.def, [], battleState, null, best.chain);
+				});
+				sp.addEventListener('keydown', function (ev) {
+					if (ev.key === 'Enter' || ev.key === ' ') {
+						ev.preventDefault();
+						ev.stopPropagation();
+						teardown();
+						showBattleZoneDetailModal(best.def, [], battleState, null, best.chain);
+					}
+				});
+				ability.appendChild(sp);
+				appendDominionBattleFrag(remaining.slice(bestIdx + best.tok.length));
+			}
+			appendDominionBattleFrag(displayed);
+		} else if (
+			Number(def.id) === PREVIEW_CARD_IDS.KING_MAKER &&
+			inkKnightDefNav &&
+			inkKingDefNav &&
+			displayed.indexOf('「インクナイト」') !== -1 &&
+			displayed.indexOf('「インクキング」') !== -1
+		) {
+			function appendKingMakerBattleFrag(remaining) {
+				if (remaining === '') return;
+				const tokens = [
+					{ tok: '「インクナイト」', def: inkKnightDefNav, chain: [inkKingDefNav] },
+					{ tok: '「インクキング」', def: inkKingDefNav, chain: undefined }
+				];
+				let bestIdx = -1;
+				let best = null;
+				for (let ti = 0; ti < tokens.length; ti++) {
+					const ix = remaining.indexOf(tokens[ti].tok);
+					if (ix >= 0 && (bestIdx < 0 || ix < bestIdx)) {
+						bestIdx = ix;
+						best = tokens[ti];
+					}
+				}
+				if (bestIdx < 0 || !best) {
+					ability.appendChild(document.createTextNode(remaining));
+					return;
+				}
+				if (bestIdx > 0) {
+					ability.appendChild(document.createTextNode(remaining.slice(0, bestIdx)));
+				}
+				const sp = el('span', 'nu-fossil-field-link', best.tok);
+				sp.tabIndex = 0;
+				sp.setAttribute('role', 'link');
+				sp.addEventListener('click', function (ev) {
+					ev.preventDefault();
+					ev.stopPropagation();
+					teardown();
+					showBattleZoneDetailModal(best.def, [], battleState, null, best.chain);
+				});
+				sp.addEventListener('keydown', function (ev) {
+					if (ev.key === 'Enter' || ev.key === ' ') {
+						ev.preventDefault();
+						ev.stopPropagation();
+						teardown();
+						showBattleZoneDetailModal(best.def, [], battleState, null, best.chain);
+					}
+				});
+				ability.appendChild(sp);
+				appendKingMakerBattleFrag(remaining.slice(bestIdx + best.tok.length));
+			}
+			appendKingMakerBattleFrag(displayed);
+		} else if (
+			Number(def.id) === PREVIEW_CARD_IDS.LUCIFER &&
+			miracleDefNav &&
+			fallenAngelLuciferDefNav &&
+			displayed.indexOf('「奇跡」') !== -1 &&
+			displayed.indexOf('「堕天使ルシファー」') !== -1
+		) {
+			function appendLuciferBattleFrag(remaining) {
+				if (remaining === '') return;
+				const tokens = [
+					{ tok: '「奇跡」', def: miracleDefNav, chain: [fallenAngelLuciferDefNav] },
+					{ tok: '「堕天使ルシファー」', def: fallenAngelLuciferDefNav, chain: undefined }
+				];
+				let bestIdx = -1;
+				let best = null;
+				for (let ti = 0; ti < tokens.length; ti++) {
+					const ix = remaining.indexOf(tokens[ti].tok);
+					if (ix >= 0 && (bestIdx < 0 || ix < bestIdx)) {
+						bestIdx = ix;
+						best = tokens[ti];
+					}
+				}
+				if (bestIdx < 0 || !best) {
+					ability.appendChild(document.createTextNode(remaining));
+					return;
+				}
+				if (bestIdx > 0) {
+					ability.appendChild(document.createTextNode(remaining.slice(0, bestIdx)));
+				}
+				const sp = el('span', 'nu-fossil-field-link', best.tok);
+				sp.tabIndex = 0;
+				sp.setAttribute('role', 'link');
+				sp.addEventListener('click', function (ev) {
+					ev.preventDefault();
+					ev.stopPropagation();
+					teardown();
+					showBattleZoneDetailModal(best.def, [], battleState, null, best.chain);
+				});
+				sp.addEventListener('keydown', function (ev) {
+					if (ev.key === 'Enter' || ev.key === ' ') {
+						ev.preventDefault();
+						ev.stopPropagation();
+						teardown();
+						showBattleZoneDetailModal(best.def, [], battleState, null, best.chain);
+					}
+				});
+				ability.appendChild(sp);
+				appendLuciferBattleFrag(remaining.slice(bestIdx + best.tok.length));
+			}
+			appendLuciferBattleFrag(displayed);
+		} else if (
+			Number(def.id) === PREVIEW_CARD_IDS.MIKAEL &&
+			miracleDefNav &&
+			mikaelZoneNav &&
+			displayed.indexOf('「奇跡」') !== -1 &&
+			displayed.indexOf('「ミカエルデッキ（ミカエルのカード6枚からなるデッキ）」') !== -1
+		) {
+			const mikaelDeckTok = '「ミカエルデッキ（ミカエルのカード6枚からなるデッキ）」';
+			const wrathDefNav = mikaelZoneNav[1];
+			function appendMikaelBattleFrag(remaining) {
+				if (remaining === '') return;
+				const tokens = [
+					{ tok: '「奇跡」', def: miracleDefNav, chain: mikaelZoneNav.slice(1) },
+					{ tok: mikaelDeckTok, def: wrathDefNav, chain: mikaelZoneNav.slice(2) }
+				];
+				let bestIdx = -1;
+				let best = null;
+				for (let ti = 0; ti < tokens.length; ti++) {
+					const ix = remaining.indexOf(tokens[ti].tok);
+					if (ix >= 0 && (bestIdx < 0 || ix < bestIdx)) {
+						bestIdx = ix;
+						best = tokens[ti];
+					}
+				}
+				if (bestIdx < 0 || !best) {
+					ability.appendChild(document.createTextNode(remaining));
+					return;
+				}
+				if (bestIdx > 0) {
+					ability.appendChild(document.createTextNode(remaining.slice(0, bestIdx)));
+				}
+				const sp = el('span', 'nu-fossil-field-link', best.tok);
+				sp.tabIndex = 0;
+				sp.setAttribute('role', 'link');
+				sp.addEventListener('click', function (ev) {
+					ev.preventDefault();
+					ev.stopPropagation();
+					teardown();
+					showBattleZoneDetailModal(best.def, [], battleState, null, best.chain);
+				});
+				sp.addEventListener('keydown', function (ev) {
+					if (ev.key === 'Enter' || ev.key === ' ') {
+						ev.preventDefault();
+						ev.stopPropagation();
+						teardown();
+						showBattleZoneDetailModal(best.def, [], battleState, null, best.chain);
+					}
+				});
+				ability.appendChild(sp);
+				appendMikaelBattleFrag(remaining.slice(bestIdx + best.tok.length));
+			}
+			appendMikaelBattleFrag(displayed);
+		} else if (companionNavTargetDef != null && companionNavTok && displayed.indexOf(companionNavTok) !== -1) {
+			const parts = displayed.split(companionNavTok);
+			for (let fi = 0; fi < parts.length; fi++) {
+				if (fi > 0) {
+					const sp = el('span', 'nu-fossil-field-link', companionNavTok);
+					sp.tabIndex = 0;
+					sp.setAttribute('role', 'link');
+					sp.addEventListener('click', function (ev) {
+						ev.preventDefault();
+						ev.stopPropagation();
+						teardown();
+						showBattleZoneDetailModal(companionNavTargetDef, [], battleState, null);
+					});
+					sp.addEventListener('keydown', function (ev) {
+						if (ev.key === 'Enter' || ev.key === ' ') {
+							ev.preventDefault();
+							teardown();
+							showBattleZoneDetailModal(companionNavTargetDef, [], battleState, null);
+						}
+					});
+					ability.appendChild(sp);
+				}
+				ability.appendChild(document.createTextNode(parts[fi]));
+			}
+		} else {
+			ability.textContent = displayed;
+		}
 		right.appendChild(ability);
 
 		if (contributors.length) {
@@ -4536,6 +5391,16 @@
 			if (e.target === overlay) teardown();
 		});
 		document.addEventListener('keydown', onKey);
+		if (battleCompanionNavBtn && companionNavTargetDef != null) {
+			battleCompanionNavBtn.addEventListener('click', function (ev) {
+				ev.preventDefault();
+				ev.stopPropagation();
+				teardown();
+				const nextRemain =
+					navChain && navChain.length > 1 ? navChain.slice(1) : undefined;
+				showBattleZoneDetailModal(companionNavTargetDef, [], battleState, null, nextRemain);
+			});
+		}
 		closeBtn.focus();
 	}
 
@@ -4593,7 +5458,7 @@
 			const cellHand = el('div', 'battle-cell battle-cell--opp-hand');
 			cellHand.setAttribute('aria-label', '相手の手札');
 			const oppHandRow = el('div', 'battle-opp-hand-row');
-			oppHandRow.appendChild(renderHandCards(st.cpuHand, st.defs, { faceDown: true, compactOpp: true, nextDeployBonus: 0, nextElfOnlyBonus: 0, nextDeployCostBonusTimes: 0 }));
+			oppHandRow.appendChild(renderHandCards(st.cpuHand, st.defs, { faceDown: true, compactOpp: true, nextDeployBonus: 0, nextElfOnlyBonus: 0, nextDeployCostBonusTimes: 0, nextMechanicStacks: 0, battleState: st }));
 			const oppStonesInline = el('div', 'battle-opp-hand-row__stones');
 			oppStonesInline.setAttribute('aria-label', '相手ストーン所持数 ' + String(st.cpuStones));
 			oppStonesInline.appendChild(el('span', 'battle-opp-hand-row__stones-label', 'ストーン'));

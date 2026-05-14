@@ -1,4 +1,4 @@
--- 創成の神域パック（pack_initial CS）新カード（テキスト・定義のみ。バトル用 ability_* は未実装）
+-- 創世の神域パック（pack_initial CS）新カード（テキスト・定義のみ。バトル用 ability_* は未実装）
 
 INSERT INTO card_definition (id, name, cost, base_power, attribute, card_kind, image_file, rarity, pack_initial, ability_deploy_code, ability_passive_code, deploy_help, passive_help)
 VALUES

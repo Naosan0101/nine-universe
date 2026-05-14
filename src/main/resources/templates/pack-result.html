@@ -63,7 +63,9 @@
 <div id="library-detail-modal" class="library-detail-modal" hidden>
 	<div class="library-detail-modal__panel" role="dialog" aria-modal="true" aria-label="カード詳細">
 		<button type="button" class="library-detail-modal__close" data-library-detail-close aria-label="閉じる">×</button>
-		<div id="library-detail-art" class="library-detail-modal__art-wrap">
+		<div id="library-detail-art" class="library-detail-modal__art-wrap library-detail-modal__art-wrap--nav">
+			<button type="button" id="lib-modal-nav-prev" class="library-detail-modal__card-nav library-detail-modal__card-nav--prev" hidden aria-label="前のカード">‹</button>
+			<button type="button" id="lib-modal-nav-next" class="library-detail-modal__card-nav library-detail-modal__card-nav--next" hidden aria-label="次のカード">›</button>
 			<div class="card-face card-face--layered" id="library-modal-card-face">
 				<div class="card-face__stack" aria-hidden="true">
 					<img id="lib-modal-layer-base" class="card-face__layer-img card-face__layer-img--base"
@@ -99,11 +101,12 @@
 				<dt>収録パック：</dt><dd id="lib-modal-side-pack" class="library-detail-modal__pack">—</dd>
 			</dl>
 			<p class="library-detail-modal__ability-label">効果</p>
-			<p class="library-detail-modal__detail" id="lib-modal-side-ability">—</p>
+			<div class="library-detail-modal__detail library-detail-modal__detail--rich" id="lib-modal-side-ability"></div>
 		</div>
 	</div>
 </div>
 
+<script th:src="@{/js/lib-detail-modal-fossil.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/card-spark.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/card-face-layer.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/library.js(v=${assetVersion})}"></script>

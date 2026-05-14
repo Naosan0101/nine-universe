@@ -8,14 +8,16 @@ public record BattleCardDto(
 		/** 研究者アストリア等による手札中の配置コスト補正 */
 		int handDeployCostModifier,
 		/** SPEC-666 等によるバトル中の種族上書き（例: UNDEAD）。なければ null */
-		String battleTribeOverride
+		String battleTribeOverride,
+		/** マーメイド等: バトル終了までの強さ加算 */
+		int battleEndPowerBonus
 ) {
 	public BattleCardDto(String instanceId, short cardId) {
-		this(instanceId, cardId, false, 0, null);
+		this(instanceId, cardId, false, 0, null, 0);
 	}
 
 	public BattleCardDto(String instanceId, short cardId, boolean blankEffects) {
-		this(instanceId, cardId, blankEffects, 0, null);
+		this(instanceId, cardId, blankEffects, 0, null, 0);
 	}
 }
 

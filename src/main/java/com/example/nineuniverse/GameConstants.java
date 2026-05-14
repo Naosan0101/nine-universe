@@ -19,10 +19,155 @@ public final class GameConstants {
 	public static final String CARD_ASSET_DIR = "/images/cards/";
 
 	/**
-	 * イラストファイル名が「カード名.PNG」（スペース）と異なる（アンダースコア名など）場合、{@code image_file} をそのまま参照する。
-	 * 他カードは従来どおり「カード名.PNG」優先のまま。
+	 * 「化石」がバトルからレストへ行く際に場に出るトークン〈フィールド〉。
+	 * パック排出・ライブラリ一覧からは除外（{@link #excludedFromPackOpenAndLibraryListing}）。
 	 */
-	private static final Set<Short> PORTRAIT_USE_DB_IMAGE_FILE_IDS = Set.of((short) 41, (short) 42, (short) 65, (short) 68);
+	public static final short FOSSIL_FIELD_TRANSFORMS_TOKEN_CARD_ID = 109;
+
+	/** シーサーペント等が生成するトークン。パック・ライブラリ一覧から除外。 */
+	public static final short SWORDFISH_TOKEN_CARD_ID = 110;
+
+	public static final short FOSSIL_FIGHTER_CARD_ID = 79;
+
+	public static final short SEASERPENT_CARD_ID = 74;
+
+	/** マーメイド（id=72） */
+	public static final short MERMAID_FIGHTER_CARD_ID = 72;
+
+	/** クラーケン（id=71） */
+	public static final short KRAKEN_FIGHTER_CARD_ID = 71;
+
+	/** セイレーン（id=69） */
+	public static final short SIREN_FIGHTER_CARD_ID = 69;
+
+	/** ポセイドン（id=70） */
+	public static final short POSEIDON_FIGHTER_CARD_ID = 70;
+
+	/** 深海神殿 アトランティス（〈フィールド〉・id=76） */
+	public static final short ATLANTIS_FIELD_CARD_ID = 76;
+
+	/** 天界門 ヘヴンズゲート（〈フィールド〉・id=107） */
+	public static final short HEAVENS_GATE_FIELD_CARD_ID = 107;
+
+	/** 奇跡トークン（id=112・天界門等で生成。パック・ライブラリ一覧除外） */
+	public static final short MIRACLE_TOKEN_CARD_ID = 112;
+
+	/** 堕天使ルシファー（id=115・ルシファー効果で奇跡が変化。パック・ライブラリ一覧除外） */
+	public static final short FALLEN_ANGEL_LUCIFER_CARD_ID = 115;
+
+	/** ミカエル（id=106） */
+	public static final short MIKAEL_FIGHTER_CARD_ID = 106;
+
+	/** ミカエルデッキ6枚（ミカエル効果でデッキが差し替わる。パック・ライブラリ一覧除外） */
+	public static final short MIKAEL_WRATH_CARD_ID = 116;
+	public static final short MIKAEL_PUNCH_CARD_ID = 117;
+	public static final short MIKAEL_STRATEGY_CARD_ID = 118;
+	public static final short MIKAEL_MINION_A_CARD_ID = 119;
+	public static final short MIKAEL_MINION_B_CARD_ID = 120;
+	public static final short MIKAEL_FLASH_CARD_ID = 121;
+
+	/** ミカエル〈配置〉: レストの「奇跡」がこの枚数以上でデッキがミカエルデッキに置き換わる */
+	public static final int MIKAEL_DECK_MIN_MIRACLES_IN_REST = 3;
+
+	/** ルシファー（id=108） */
+	public static final short LUCIFER_FIGHTER_CARD_ID = 108;
+
+	/** ラミエル（id=99） */
+	public static final short RAMIEL_FIGHTER_CARD_ID = 99;
+
+	/** ヴァーチャー（id=100） */
+	public static final short VIRTUAL_FIGHTER_CARD_ID = 100;
+
+	/** ドミニオン（id=102） */
+	public static final short DOMINION_FIGHTER_CARD_ID = 102;
+
+	/** ドミニオンが生成する「ミニオンソルジャー」（id=113・パック・ライブラリ一覧除外） */
+	public static final short MINION_SOLDIER_TOKEN_CARD_ID = 113;
+
+	/** ドミニオンが生成する「ミニオンキング」（id=114・パック・ライブラリ一覧除外） */
+	public static final short MINION_KING_TOKEN_CARD_ID = 114;
+
+	/** 漫画家（id=96） */
+	public static final short MANGAKA_FIGHTER_CARD_ID = 96;
+
+	/** ザドキエル（id=98） */
+	public static final short ZADKIEL_FIGHTER_CARD_ID = 98;
+
+	/** セレスティア（id=101） */
+	public static final short CELESTIA_FIGHTER_CARD_ID = 101;
+
+	/** セラフィム（id=103） */
+	public static final short SERAPHIM_FIGHTER_CARD_ID = 103;
+
+	/** ガブリエル（id=104） */
+	public static final short GABRIEL_FIGHTER_CARD_ID = 104;
+
+	/** エンジェルメイジ（id=105） */
+	public static final short ANGEL_MAGE_FIGHTER_CARD_ID = 105;
+
+	/** ドラゴンの卵（id=27） */
+	public static final short DRAGON_EGG_CARD_ID = 27;
+
+	/** コミックダイナソー（id=97） */
+	public static final short COMIC_DINOSAUR_FIGHTER_CARD_ID = 97;
+
+	/** インクナイト（id=86） */
+	public static final short INK_KNIGHT_FIGHTER_CARD_ID = 86;
+
+	/** スケッチャー（id=87） */
+	public static final short SKETCHER_FIGHTER_CARD_ID = 87;
+
+	/** コミックウィッチ（id=88） */
+	public static final short COMIC_WITCH_FIGHTER_CARD_ID = 88;
+
+	/** コミックヒーロー（id=91） */
+	public static final short COMIC_HERO_FIGHTER_CARD_ID = 91;
+
+	/** インクキング（id=111・キングメーカー等で生成。パック・ライブラリ一覧除外） */
+	public static final short INK_KING_FIGHTER_CARD_ID = 111;
+
+	/** キングメーカー（id=90） */
+	public static final short KING_MAKER_FIGHTER_CARD_ID = 90;
+
+	/** ページウォーカー（id=89） */
+	public static final short PAGE_WALKER_FIGHTER_CARD_ID = 89;
+
+	/** 週刊少年 CAMP（〈フィールド〉・id=93） */
+	public static final short WEEKLY_SHONEN_CAMP_FIELD_CARD_ID = 93;
+
+	/** 世界の再構築（〈フィールド〉・id=92） */
+	public static final short WORLD_REBUILD_FIELD_CARD_ID = 92;
+
+	/** ペーパーシティ（〈フィールド〉・id=95） */
+	public static final short PAPER_CITY_FIELD_CARD_ID = 95;
+
+	/** 鳥獣戯画（〈フィールド〉・id=94） */
+	public static final short CHOJU_GIGA_FIELD_CARD_ID = 94;
+
+	public static boolean excludedFromPackOpenAndLibraryListing(Short id) {
+		if (id == null) {
+			return false;
+		}
+		short v = id.shortValue();
+		return v == FOSSIL_FIELD_TRANSFORMS_TOKEN_CARD_ID || v == SWORDFISH_TOKEN_CARD_ID
+				|| v == INK_KING_FIGHTER_CARD_ID || v == MIRACLE_TOKEN_CARD_ID
+				|| v == FALLEN_ANGEL_LUCIFER_CARD_ID
+				|| v == MIKAEL_WRATH_CARD_ID || v == MIKAEL_PUNCH_CARD_ID || v == MIKAEL_STRATEGY_CARD_ID
+				|| v == MIKAEL_MINION_A_CARD_ID || v == MIKAEL_MINION_B_CARD_ID || v == MIKAEL_FLASH_CARD_ID
+				|| v == MINION_SOLDIER_TOKEN_CARD_ID || v == MINION_KING_TOKEN_CARD_ID;
+	}
+
+	/**
+	 * カード面イラストで {@code image_file} を「カード名.PNG」より先に使う ID。
+	 * 固定ファイル名（アンダースコア等）に加え、単一種族ドラゴン既定解決より DB 名を優先するカード（スタンダード3 の OT ドラゴン・複合マーフォーク等）。
+	 * 単一種族エルフでも {@code image_file} を優先するカード（例: id=85 研究者フローラ）。
+	 * 〈フィールド〉でローマ字ファイル名のイラストを使う OT のドラゴン系フィールド（共有画／カード名.PNG より {@code image_file} を先に）。
+	 */
+	private static final Set<Short> PORTRAIT_USE_DB_IMAGE_FILE_IDS = Set.of(
+			(short) 41, (short) 42, (short) 65, (short) 68,
+			(short) 77, (short) 78, (short) 79, (short) 80, (short) 81, (short) 82, (short) 83,
+			(short) 84, (short) 85, (short) 109, (short) 110, (short) 111, (short) 112, (short) 113, (short) 114,
+			(short) 115, (short) 116, (short) 117, (short) 118, (short) 119, (short) 120, (short) 121);
 
 	/**
 	 * ドラゴン＋マーフォーク複合（{@code DRAGON_MERFOLK}）／人間＋マーフォーク複合（{@code HUMAN_MERFOLK}）の共有イラスト。
@@ -233,7 +378,7 @@ public final class GameConstants {
 	/**
 	 * カード面のイラスト層 URL。
 	 * <p>単一種族は通常 {@link #namedTribePortraitLayerPath}（カード名.PNG）を優先。
-	 * {@link #PORTRAIT_USE_DB_IMAGE_FILE_IDS} のみ {@code image_file} を優先（静的ファイル名がカード名と異なる場合）。
+	 * {@link #PORTRAIT_USE_DB_IMAGE_FILE_IDS} に含まれる ID は {@code image_file} を最優先（カード名.PNG や複合種族の共有画より前）。
 	 * <p>{@code image_file} が {@code __missing__.PNG} のときは複合・単一の名前解決をせず空を返す（イラスト未実装）。
 	 */
 	public static String cardFacePortraitLayerPath(String attribute, String cardName, String imageFile, Short cardId) {
@@ -303,7 +448,14 @@ public final class GameConstants {
 	public static final String PACK_ART_FILE_IRON_FLEET = "鉄面の艦隊パック.PNG";
 	public static final String PACK_ART_FILE_STANDARD_3 = "スタンダードパック3.PNG";
 	public static final String PACK_ART_FILE_OCEAN_TIDE = "海底の潮流パック.PNG";
-	public static final String PACK_ART_FILE_CREATION_SANCTUM = "創成の神域パック.PNG";
+	public static final String PACK_ART_FILE_CREATION_SANCTUM = "創世の神域パック.PNG";
+
+	/**
+	 * 創世の神域パック絵の配信 URL（ASCII のみ）。{@link com.example.nineuniverse.web.PackArtController} が
+	 * {@link #PACK_ART_FILE_CREATION_SANCTUM} をクラスパス上で NFC/NFD いずれでも解決する。
+	 * {@code /images/cards/} 直リンクは環境によって 404 になりやすいためこちらを使う。
+	 */
+	public static final String PACK_ART_WEB_CREATION_SANCTUM = "/pack-art/creationSanctum.png";
 
 	/**
 	 * パック絵（{@code static/images/cards/〇〇パック.PNG}）を {@code /images/cards/…} で返す URL。
@@ -314,6 +466,32 @@ public final class GameConstants {
 			return "";
 		}
 		return encCardFile(logicalFilenameWithExtension.trim());
+	}
+
+	/**
+	 * 開封結果など: セッションの {@code pack_last_type}（{@link com.example.nineuniverse.service.PackService.PackType} 名）からパック絵 URL。
+	 * リサイクル系・二つ名ボーナス等は汎用 {@link #packImageUrl()}。
+	 */
+	public static String packArtImageWebPathForLastOpenedPackType(String packTypeName) {
+		if (packTypeName == null || packTypeName.isBlank()) {
+			return packImageUrl();
+		}
+		String u = packTypeName.trim().toUpperCase(Locale.ROOT);
+		if (u.startsWith("RECYCLE_") || u.startsWith("BONUS_")) {
+			return packImageUrl();
+		}
+		return switch (u) {
+			case "STANDARD" -> packArtImageWebPath(PACK_ART_FILE_STANDARD_1);
+			case "WINDY_HILL" -> packArtImageWebPath(PACK_ART_FILE_WINDY_HILL);
+			case "EVIL_THREAT" -> packArtImageWebPath(PACK_ART_FILE_EVIL_THREAT);
+			case "STANDARD_2" -> packArtImageWebPath(PACK_ART_FILE_STANDARD_2);
+			case "JEWEL_UTOPIA" -> packArtImageWebPath(PACK_ART_FILE_JEWEL_UTOPIA);
+			case "IRON_FLEET" -> packArtImageWebPath(PACK_ART_FILE_IRON_FLEET);
+			case "STANDARD_3" -> packArtImageWebPath(PACK_ART_FILE_STANDARD_3);
+			case "OCEAN_TIDE" -> packArtImageWebPath(PACK_ART_FILE_OCEAN_TIDE);
+			case "CREATION_SANCTUM" -> PACK_ART_WEB_CREATION_SANCTUM;
+			default -> packImageUrl();
+		};
 	}
 
 	/** 新規登録直後の所持ジェム（初回ホームでウェルカムボーナス） */

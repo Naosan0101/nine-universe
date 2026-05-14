@@ -1,6 +1,8 @@
 (function () {
 	const bar = document.getElementById('pack-buy-confirm-bar');
-	const title = document.getElementById('pack-buy-confirm-title');
+	const hintEl = document.getElementById('pack-buy-confirm-hint');
+	const questionEl = document.getElementById('pack-buy-confirm-question');
+	const nameEl = document.getElementById('pack-buy-confirm-name');
 	const paymentEl = document.getElementById('pack-buy-confirm-payment');
 	const typeInput = document.getElementById('pack-buy-type');
 	const confirmBtn = document.getElementById('pack-buy-confirm');
@@ -76,7 +78,9 @@
 		});
 		if (!selected) {
 			if (typeInput) typeInput.value = '';
-			if (title) title.textContent = 'パックを選択してください';
+			if (hintEl) hintEl.hidden = false;
+			if (questionEl) questionEl.hidden = true;
+			if (nameEl) nameEl.textContent = '';
 			updatePaymentSummary('');
 			if (confirmBtn) {
 				confirmBtn.disabled = true;
@@ -91,7 +95,9 @@
 		const packName = selected.dataset.packName || 'パック';
 		const packCost = selected.dataset.packCost || '';
 		if (typeInput) typeInput.value = packType;
-		if (title) title.textContent = packName + 'を購入しますか？';
+		if (hintEl) hintEl.hidden = true;
+		if (questionEl) questionEl.hidden = false;
+		if (nameEl) nameEl.textContent = packName;
 		updatePaymentSummary(packCost);
 		if (confirmBtn) {
 			confirmBtn.disabled = !packType;

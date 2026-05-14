@@ -28,6 +28,9 @@
 	const sideRarity = document.getElementById('lib-modal-side-rarity');
 	const sidePack = document.getElementById('lib-modal-side-pack');
 	const sideAbility = document.getElementById('lib-modal-side-ability');
+	const navPrev = modal ? document.getElementById('lib-modal-nav-prev') : null;
+	const navNext = modal ? document.getElementById('lib-modal-nav-next') : null;
+	const FossilUi = window.NuLibDetailFossilUi;
 
 	const tooltipEl = document.getElementById('library-tooltip');
 	const tooltipName = tooltipEl ? tooltipEl.querySelector('.deck-tooltip__name') : null;
@@ -59,12 +62,17 @@
 		JU: '宝石の秘境パック',
 		IF: '鉄面の艦隊パック',
 		OT: '海底の潮流パック',
-		CS: '創成の神域パック'
+		CS: '創世の神域パック'
 	};
 
 	// WH/ET はスタンダード1からも排出。JU/IF はスタンダード2からも排出。OT/CS はスタンダード3からも排出。
 	function packSourcesForInitial(piRaw) {
-		const pi = (piRaw || 'STD').trim().toUpperCase() || 'STD';
+		const raw = piRaw == null ? '' : String(piRaw).trim();
+		const rawU = raw.toUpperCase();
+		if (raw === '—' || raw === '-' || rawU === 'NONE') {
+			return ['—'];
+		}
+		const pi = (raw || 'STD').toUpperCase() || 'STD';
 		if (pi === 'WH') return [PACK_JA.WH, PACK_JA.STD];
 		if (pi === 'ET') return [PACK_JA.ET, PACK_JA.STD];
 		if (pi === 'JU') return [PACK_JA.JU, PACK_JA.STD2];
@@ -291,12 +299,42 @@
 		return 'C';
 	}
 
+	function plainFromLibraryButtonDataset(ds) {
+		return {
+			name: ds.name || '',
+			attribute: ds.attribute || '',
+			rarity: ds.rarity || 'C',
+			rarityLabel: ds.rarityLabel || '',
+			packInitial: ds.packInitial || '',
+			cost: ds.cost != null ? String(ds.cost) : '',
+			basePower: ds.basePower != null ? String(ds.basePower) : '',
+			fieldCard: ds.fieldCard || '',
+			owned: ds.owned || '',
+			forceDetail: ds.forceDetail || '',
+			canonicalLine: ds.canonicalLine || '',
+			attrPipe: ds.attrPipe || '',
+			attributeJa: ds.attributeJa || '',
+			layerBase: ds.layerBase || '',
+			layerPortrait: ds.layerPortrait || '',
+			layerPortraitAlt: ds.layerPortraitAlt || '',
+			layerFrame: ds.layerFrame || '',
+			layerBar: ds.layerBar || '',
+			companionDetailJson: ds.companionDetailJson || ''
+		};
+	}
+
 	function openModal(btn) {
+		if (FossilUi) {
+			FossilUi.resetDetailStack();
+		}
+		openModalFromPlain(plainFromLibraryButtonDataset(btn.dataset), btn);
+	}
+
+	function openModalFromPlain(d, openingBtn) {
 		hideHoverTooltip();
 		if (!modal || !modalCost || !modalAbility) return;
-		const d = btn.dataset;
-		const owned = d.owned === 'true';
-		const forceDetail = d.forceDetail === 'true';
+		const owned = d.owned === 'true' || d.owned === true;
+		const forceDetail = d.forceDetail === 'true' || d.forceDetail === true;
 		if (!owned && !forceDetail) return;
 
 		const rarity = rarityCode4(d.rarity);
@@ -325,7 +363,9 @@
 			sideRarity.textContent = rarityLabel;
 		}
 		if (sidePack) {
-			sidePack.textContent = packSourcesForInitial(d.packInitial).join('\n');
+			const sources = packSourcesForInitial(d.packInitial);
+			sidePack.textContent = sources.join('\n');
+			sidePack.classList.toggle('library-detail-modal__pack--multiline', sources.length > 1);
 		}
 
 		if (modalCost) {
@@ -335,7 +375,7 @@
 			if (cn === 1) modalCost.classList.add('card-face__cost--digit-1');
 			if (cn === 2) modalCost.classList.add('card-face__cost--digit-2');
 		}
-		const fieldCard = d.fieldCard === 'true';
+		const fieldCard = d.fieldCard === 'true' || d.fieldCard === true;
 		if (modalFaceRoot) {
 			modalFaceRoot.classList.toggle('card-face--field', fieldCard);
 		}
@@ -397,26 +437,186 @@
 			sideAttr.textContent = tooltipAttributeDisplay(d);
 		}
 
-		modalAbility.innerHTML = '';
 		const blocks = buildAbilityBlocksFromCanonical(d.canonicalLine);
-		blocks.forEach(function (bl) {
-			if (bl.h) {
-				const ph = document.createElement('p');
-				ph.className = 'card-face__ability-head';
-				ph.textContent = bl.h;
-				modalAbility.appendChild(ph);
+		function goCompanionFromModal() {
+			if (!FossilUi) return;
+			const compRaw = FossilUi.parseCompanionJson(d.companionDetailJson);
+			if (compRaw && compRaw.kind === 'mikaelMiracleDeckLinks' && compRaw.miracle) {
+				const nextP = FossilUi.normalizeCompanionPlainForLibraryModal(compRaw.miracle);
+				if (!nextP) return;
+				try {
+					FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(d)));
+				} catch (e) {
+					FossilUi.pushDetailPlain(d);
+				}
+				openModalFromPlain(nextP, null);
+				return;
 			}
-			const pb = document.createElement('p');
-			pb.className = 'card-face__ability-body';
-			pb.textContent = bl.b;
-			modalAbility.appendChild(pb);
-		});
+			if (compRaw && compRaw.kind === 'luciferMiracleFallenLinks' && compRaw.miracle) {
+				const nextP = FossilUi.normalizeCompanionPlainForLibraryModal(compRaw.miracle);
+				if (!nextP) return;
+				try {
+					FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(d)));
+				} catch (e) {
+					FossilUi.pushDetailPlain(d);
+				}
+				openModalFromPlain(nextP, null);
+				return;
+			}
+			if (compRaw && compRaw.kind === 'kingMakerEffectLinks' && compRaw.inkKnight) {
+				const nextP = FossilUi.normalizeCompanionPlainForLibraryModal(compRaw.inkKnight);
+				if (!nextP) return;
+				try {
+					FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(d)));
+				} catch (e) {
+					FossilUi.pushDetailPlain(d);
+				}
+				openModalFromPlain(nextP, null);
+				return;
+			}
+			if (compRaw && compRaw.kind === 'dominionMinionEffectLinks' && compRaw.minionSoldier) {
+				const nextP = FossilUi.normalizeCompanionPlainForLibraryModal(compRaw.minionSoldier);
+				if (!nextP) return;
+				try {
+					FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(d)));
+				} catch (e) {
+					FossilUi.pushDetailPlain(d);
+				}
+				openModalFromPlain(nextP, null);
+				return;
+			}
+			if (!compRaw) return;
+			const nextP = FossilUi.normalizeCompanionPlainForLibraryModal(compRaw);
+			if (!nextP) return;
+			try {
+				FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(d)));
+			} catch (e) {
+				FossilUi.pushDetailPlain(d);
+			}
+			openModalFromPlain(nextP, null);
+		}
+		function goKingMakerInkKingFromModal() {
+			if (!FossilUi) return;
+			const compRaw = FossilUi.parseCompanionJson(d.companionDetailJson);
+			if (!compRaw || compRaw.kind !== 'kingMakerEffectLinks' || !compRaw.inkKing) return;
+			const nextP = FossilUi.normalizeCompanionPlainForLibraryModal(compRaw.inkKing);
+			if (!nextP) return;
+			try {
+				FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(d)));
+			} catch (e) {
+				FossilUi.pushDetailPlain(d);
+			}
+			openModalFromPlain(nextP, null);
+		}
+		function goDominionMinionKingFromModal() {
+			if (!FossilUi) return;
+			const compRaw = FossilUi.parseCompanionJson(d.companionDetailJson);
+			if (!compRaw || compRaw.kind !== 'dominionMinionEffectLinks' || !compRaw.minionKing) return;
+			const nextP = FossilUi.normalizeCompanionPlainForLibraryModal(compRaw.minionKing);
+			if (!nextP) return;
+			try {
+				FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(d)));
+			} catch (e) {
+				FossilUi.pushDetailPlain(d);
+			}
+			openModalFromPlain(nextP, null);
+		}
+		function goLuciferFallenFromModal() {
+			if (!FossilUi) return;
+			const compRaw = FossilUi.parseCompanionJson(d.companionDetailJson);
+			if (!compRaw || compRaw.kind !== 'luciferMiracleFallenLinks' || !compRaw.fallen) return;
+			const nextP = FossilUi.normalizeCompanionPlainForLibraryModal(compRaw.fallen);
+			if (!nextP) return;
+			try {
+				FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(d)));
+			} catch (e) {
+				FossilUi.pushDetailPlain(d);
+			}
+			openModalFromPlain(nextP, null);
+		}
+		function goMikaelDeckFromModal() {
+			if (!FossilUi) return;
+			const compRaw = FossilUi.parseCompanionJson(d.companionDetailJson);
+			if (!compRaw || compRaw.kind !== 'mikaelMiracleDeckLinks' || !compRaw.miracle) return;
+			const nextStr = compRaw.miracle.nextCompanionDetailJson;
+			if (!nextStr || String(nextStr).trim() === '') return;
+			const nextObj = FossilUi.parseCompanionJson(String(nextStr));
+			const nextP = FossilUi.normalizeCompanionPlainForLibraryModal(nextObj);
+			if (!nextP) return;
+			try {
+				FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(d)));
+			} catch (e) {
+				FossilUi.pushDetailPlain(d);
+			}
+			openModalFromPlain(nextP, null);
+		}
+		if (FossilUi) {
+			FossilUi.appendAbilityBlocksToModal(modalAbility, blocks, d.companionDetailJson, goCompanionFromModal);
+		} else {
+			modalAbility.innerHTML = '';
+			blocks.forEach(function (bl) {
+				if (bl.h) {
+					const ph = document.createElement('p');
+					ph.className = 'card-face__ability-head';
+					ph.textContent = bl.h;
+					modalAbility.appendChild(ph);
+				}
+				const pb = document.createElement('p');
+				pb.className = 'card-face__ability-body';
+				pb.textContent = bl.b;
+				modalAbility.appendChild(pb);
+			});
+		}
 		if (sideAbility) {
-			// 右側テキスト用（見出し付きのブロックを1つの文章にまとめる）
-			const t = blocks.map(function (b) {
-				return b.h ? (b.h + '\n' + b.b) : b.b;
-			}).join('\n\n');
-			sideAbility.textContent = t || '—';
+			if (FossilUi) {
+				const cr = FossilUi.parseCompanionJson(d.companionDetailJson || '');
+				let extraFn;
+				if (cr && cr.kind === 'kingMakerEffectLinks') {
+					extraFn = goKingMakerInkKingFromModal;
+				} else if (cr && cr.kind === 'dominionMinionEffectLinks') {
+					extraFn = goDominionMinionKingFromModal;
+				} else if (cr && cr.kind === 'luciferMiracleFallenLinks') {
+					extraFn = goLuciferFallenFromModal;
+				} else if (cr && cr.kind === 'mikaelMiracleDeckLinks') {
+					extraFn = goMikaelDeckFromModal;
+				} else {
+					extraFn = undefined;
+				}
+				FossilUi.appendSideAbilityDetail(
+					sideAbility,
+					blocks,
+					d.companionDetailJson,
+					goCompanionFromModal,
+					extraFn
+				);
+			} else {
+				const t = blocks
+					.map(function (b) {
+						return b.h ? b.h + '\n' + b.b : b.b;
+					})
+					.join('\n\n');
+				sideAbility.textContent = t || '—';
+			}
+		}
+		if (FossilUi) {
+			FossilUi.updateFossilDetailNavButtons(navPrev, navNext, d.companionDetailJson, FossilUi.canGoBackDetail());
+			if (navNext) {
+				navNext.onclick = function (ev) {
+					ev.preventDefault();
+					ev.stopPropagation();
+					goCompanionFromModal();
+				};
+			}
+			if (navPrev) {
+				navPrev.onclick = function (ev) {
+					ev.preventDefault();
+					ev.stopPropagation();
+					const prev = FossilUi.popDetailPlain();
+					if (prev) {
+						openModalFromPlain(prev, null);
+					}
+				};
+			}
 		}
 
 		if (artWrap) {
@@ -467,7 +667,9 @@
 		document.body.style.overflow = 'hidden';
 
 		try {
-			window.dispatchEvent(new CustomEvent('nu-library-modal-opened', { detail: { button: btn } }));
+			window.dispatchEvent(
+				new CustomEvent('nu-library-modal-opened', { detail: { button: openingBtn || null } })
+			);
 		} catch (err) {
 			// noop
 		}
@@ -490,6 +692,9 @@
 
 	function closeModal() {
 		hideHoverTooltip();
+		if (window.NuLibDetailFossilUi) {
+			window.NuLibDetailFossilUi.resetDetailStack();
+		}
 		try {
 			window.dispatchEvent(new CustomEvent('nu-library-modal-closed'));
 		} catch (err) {
@@ -707,13 +912,9 @@
 					power: isNaN(p) ? 0 : p,
 					cost: isNaN(c) ? 0 : c,
 					rarity: (ds.rarity || 'C').trim(),
-					searchParts: [
-						ds.name,
-						ds.ability,
-						ds.canonicalLine,
-						ds.deployHelp,
-						ds.passiveHelp
-					]
+					// カード面・公式1行は canonical / ability のみ。deploy_help・passive_help は DB 別経路のため
+					// ルール改訂で canonical だけ更新した場合に検索だけ古い「+2」等にマッチするのを避ける。
+					searchParts: [ds.name, ds.ability, ds.canonicalLine]
 				};
 			});
 			items = items.filter(function (it) {

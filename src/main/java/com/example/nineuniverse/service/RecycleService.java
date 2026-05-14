@@ -55,6 +55,9 @@ public class RecycleService {
 		}
 		List<RecycleInventoryLine> out = new ArrayList<>();
 		for (CardDefinition c : cardCatalogService.all()) {
+			if (GameConstants.excludedFromPackOpenAndLibraryListing(c.getId())) {
+				continue;
+			}
 			int owned = qty.getOrDefault(c.getId(), 0);
 			int inDecks = deck.getOrDefault(c.getId(), 0);
 			int recyclable = Math.max(0, owned);
@@ -190,6 +193,9 @@ public class RecycleService {
 		defs.sort(Comparator.comparingInt(CardDefinition::getId));
 		for (CardDefinition d : defs) {
 			short id = d.getId();
+			if (GameConstants.excludedFromPackOpenAndLibraryListing(id)) {
+				continue;
+			}
 			if (id == recyclingCardId) {
 				continue;
 			}

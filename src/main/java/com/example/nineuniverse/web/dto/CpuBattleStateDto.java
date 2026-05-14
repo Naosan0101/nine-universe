@@ -30,6 +30,18 @@ public record CpuBattleStateDto(
 		int scrapyardFieldTurnsRemaining,
 		/** 霊園教会 デスバウンス の残りターン（6…1）。該当フィールドでないときは 0 */
 		int deathbounceFieldTurnsRemaining,
+		/** 深海神殿 アトランティスのカウント表示（2→0）。該当フィールドでないときは 0 */
+		int atlantisFieldCounterDisplay,
+		/** 週刊少年 CAMP のカウント表示（6…1）。該当フィールドでないときは 0 */
+		int weeklyShonenCampFieldCounterDisplay,
+		/** 週刊少年 CAMP のカウント2到達後（コミック+4 分） */
+		boolean weeklyShonenCampCount2ComicBonus,
+		/** 週刊少年 CAMP のカウント3到達ターン中、全カード配置コスト+1 */
+		boolean weeklyShonenCampGlobalDeployCostPlusOneThisTurn,
+		/** 世界の再構築〈フィールド〉のカウント（4→0）。該当でないときは 0 */
+		int worldRebuildFieldCounterDisplay,
+		/** ペーパーシティ〈フィールド〉のカウント（6→0）。該当でないときは 0 */
+		int paperCityFieldCounterDisplay,
 		int humanBattlePower,
 		int cpuBattlePower,
 		int humanNextDeployBonus,

@@ -347,7 +347,10 @@
 		datum.appendChild(elSpan('card-face__rarity', rlab));
 
 		const piRaw = card.packInitial != null ? String(card.packInitial).trim() : '';
-		const piDisp = piRaw === '' ? 'STD' : piRaw.toUpperCase();
+		let piDisp = piRaw === '' ? 'STD' : piRaw.toUpperCase();
+		if (piRaw === '—' || piRaw === '-' || piDisp === 'NONE') {
+			piDisp = '—';
+		}
 		datum.appendChild(elSpan('card-face__pack-initial', piDisp));
 
 		face.appendChild(datum);

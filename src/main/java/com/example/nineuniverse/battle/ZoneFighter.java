@@ -28,6 +28,11 @@ public class ZoneFighter implements Serializable {
 	 * {@link CpuBattleEngine#beginTurnGainStone} で 0 に戻す。
 	 */
 	private int botBikeMechanicPowerBonus;
+	/**
+	 * ザドキエル: 「奇跡」を置いた後に配置したファイターの、相手ターン中の強さ加算（所有者の次ターン開始で 0）。
+	 * {@link CpuBattleEngine#beginTurnGainStone} で解除。
+	 */
+	private int zadkielOpponentTurnPowerBonus;
 	/** ふわふわゴースト等: 次にレストへ置かれる代わりに手札へ戻る */
 	private boolean returnToHandOnKnock;
 	/**

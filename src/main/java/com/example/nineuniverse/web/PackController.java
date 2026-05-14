@@ -131,7 +131,7 @@ public class PackController {
 		model.addAttribute("packBuyArtIronFleet", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_IRON_FLEET));
 		model.addAttribute("packBuyArtStandard3", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_3));
 		model.addAttribute("packBuyArtOceanTide", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_OCEAN_TIDE));
-		model.addAttribute("packBuyArtCreationSanctum", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_CREATION_SANCTUM));
+		model.addAttribute("packBuyArtCreationSanctum", GameConstants.PACK_ART_WEB_CREATION_SANCTUM);
 		return "pack-buy";
 	}
 
@@ -320,7 +320,6 @@ public class PackController {
 		long uid = CurrentUser.require().getId();
 		var fresh = appUserMapper.findById(uid);
 		model.addAttribute("gems", fresh != null && fresh.getCoins() != null ? fresh.getCoins() : 0);
-		model.addAttribute("packImage", GameConstants.packImageUrl());
 		Object idsObj = session.getAttribute("pack_last_pulled_ids");
 		List<Short> ids = coerceIds(idsObj);
 		Object epObj = session.getAttribute(SESSION_PACK_LAST_EPITHET_RESULTS);

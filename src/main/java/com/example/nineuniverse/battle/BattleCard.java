@@ -20,6 +20,8 @@ public class BattleCard implements Serializable {
 	private int deathbounceHandCostStacks;
 	/** SPEC-666 等: バトル中のみ種族として扱う上書き（例: UNDEAD）。null でカード定義どおり */
 	private String battleTribeOverride;
+	/** マーメイド等: バトル終了までの強さ加算（手札・レスト・ゾーンを問わずインスタンスに付随）。助手〈配置〉で手札に加えた「研究者」名カードも同様 */
+	private int battleEndPowerBonus;
 
 	public BattleCard(String instanceId, short cardId) {
 		this.instanceId = instanceId;

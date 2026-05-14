@@ -10,7 +10,6 @@
 			th:data-rarity-label="${c.rarityLabel}"
 			th:data-pack-initial="${c.packInitial}"
 			th:data-attribute-ja="${c.attributeLabelJa}"
-			th:attr="data-attr-pipe=${c.attributeLabelPipe}"
 			th:data-cost="${c.cost}"
 			th:data-base-power="${c.basePower}"
 			th:data-field-card="${c.fieldCard}"
@@ -24,7 +23,8 @@
 			th:data-layer-portrait="${c.layerPortraitPath}"
 			th:data-layer-portrait-alt="${c.layerPortraitPathAlt != null && !c.layerPortraitPathAlt.isBlank() ? c.layerPortraitPathAlt : ''}"
 			th:data-layer-frame="${c.layerFramePath}"
-			th:data-layer-bar="${c.barImagePath}">
+			th:data-layer-bar="${c.barImagePath}"
+			th:attr="data-attr-pipe=${c.attributeLabelPipe},data-companion-detail-json=${c.companionDetailJson != null ? c.companionDetailJson : _}">
 		<div class="library-card__art-shell">
 			<div class="library-card__inner">
 				<div th:replace="~{fragments/card-face :: layers(c=${c}, cp=${cp})}"></div>

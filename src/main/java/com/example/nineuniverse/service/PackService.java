@@ -1,6 +1,7 @@
 package com.example.nineuniverse.service;
 
 import com.example.nineuniverse.GameConstants;
+import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.domain.AppUser;
 import com.example.nineuniverse.domain.CardDefinition;
 import com.example.nineuniverse.repository.AppUserMapper;
@@ -202,6 +203,9 @@ public class PackService {
 		};
 		for (CardDefinition c : all) {
 			if (c == null) continue;
+			if (GameConstants.excludedFromPackOpenAndLibraryListing(c.getId())) {
+				continue;
+			}
 			String pi = c.getPackInitial();
 			String got = (pi != null && !pi.isBlank()) ? pi.trim().toUpperCase() : "STD";
 			if (!wants.contains(got)) continue;
