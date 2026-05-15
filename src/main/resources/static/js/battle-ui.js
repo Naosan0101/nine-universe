@@ -5092,6 +5092,10 @@
 			companionNavTargetDef = miracleDefNav;
 			companionNavTok = '「奇跡」';
 			companionNavAria = '奇跡';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.MIKAEL_STRATEGY && miracleDefNav != null) {
+			companionNavTargetDef = miracleDefNav;
+			companionNavTok = '「奇跡」';
+			companionNavAria = '奇跡';
 		} else if (Number(def.id) === PREVIEW_CARD_IDS.FIELD_PAPER_CITY && inkKnightDefNav != null) {
 			companionNavTargetDef = inkKnightDefNav;
 			companionNavTok = '「インクナイト」';
@@ -5524,6 +5528,39 @@
 				}
 				ability.appendChild(document.createTextNode(parts[fi]));
 			}
+		} else if (miracleDefNav && displayed.indexOf('「奇跡」') !== -1) {
+			const miracleTok = '「奇跡」';
+			function appendMiracleTokBattleFrag(remaining) {
+				if (remaining === '') return;
+				const ix = remaining.indexOf(miracleTok);
+				if (ix < 0) {
+					ability.appendChild(document.createTextNode(remaining));
+					return;
+				}
+				if (ix > 0) {
+					ability.appendChild(document.createTextNode(remaining.slice(0, ix)));
+				}
+				const sp = el('span', 'nu-fossil-field-link', miracleTok);
+				sp.tabIndex = 0;
+				sp.setAttribute('role', 'link');
+				sp.addEventListener('click', function (ev) {
+					ev.preventDefault();
+					ev.stopPropagation();
+					teardown();
+					showBattleZoneDetailModal(miracleDefNav, [], battleState, null, navChain);
+				});
+				sp.addEventListener('keydown', function (ev) {
+					if (ev.key === 'Enter' || ev.key === ' ') {
+						ev.preventDefault();
+						ev.stopPropagation();
+						teardown();
+						showBattleZoneDetailModal(miracleDefNav, [], battleState, null, navChain);
+					}
+				});
+				ability.appendChild(sp);
+				appendMiracleTokBattleFrag(remaining.slice(ix + miracleTok.length));
+			}
+			appendMiracleTokBattleFrag(displayed);
 		} else {
 			ability.textContent = displayed;
 		}

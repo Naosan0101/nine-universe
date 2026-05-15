@@ -4,6 +4,7 @@
  */
 (function (global) {
 	var FOSSIL_FIELD_TOKEN = '化石（フィールド）';
+	var MIRACLE_TOKEN = '「奇跡」';
 
 	function parseCompanionJson(raw) {
 		if (raw == null || String(raw).trim() === '') {
@@ -142,6 +143,8 @@
 					}
 					pb.appendChild(document.createTextNode(parts[i]));
 				}
+			} else if (body.indexOf(MIRACLE_TOKEN) !== -1) {
+				appendMiracleTokenLinkBody(pb, body, onFn && linkTok === MIRACLE_TOKEN ? onFn : null);
 			} else {
 				pb.textContent = body;
 			}
@@ -300,6 +303,48 @@
 			})(bestFn);
 			pb.appendChild(sp);
 			appendFragment(remaining.slice(bestIdx + bestTok.length));
+		}
+		appendFragment(body);
+	}
+
+	/**
+	 * 効果文中の「奇跡」を化石（フィールド）と同様の黄色表示。{@code onMiracle} があればクリックで詳細へ。
+	 */
+	function appendMiracleTokenLinkBody(pb, body, onMiracle) {
+		function appendFragment(remaining) {
+			if (remaining === '') {
+				return;
+			}
+			var ix = remaining.indexOf(MIRACLE_TOKEN);
+			if (ix < 0) {
+				pb.appendChild(document.createTextNode(remaining));
+				return;
+			}
+			if (ix > 0) {
+				pb.appendChild(document.createTextNode(remaining.slice(0, ix)));
+			}
+			var sp = document.createElement('span');
+			sp.className = 'nu-fossil-field-link';
+			sp.textContent = MIRACLE_TOKEN;
+			if (typeof onMiracle === 'function') {
+				sp.tabIndex = 0;
+				sp.setAttribute('role', 'link');
+				(function (fn) {
+					sp.addEventListener('click', function (ev) {
+						ev.preventDefault();
+						ev.stopPropagation();
+						fn();
+					});
+					sp.addEventListener('keydown', function (ev) {
+						if (ev.key === 'Enter' || ev.key === ' ') {
+							ev.preventDefault();
+							fn();
+						}
+					});
+				})(onMiracle);
+			}
+			pb.appendChild(sp);
+			appendFragment(remaining.slice(ix + MIRACLE_TOKEN.length));
 		}
 		appendFragment(body);
 	}
@@ -465,6 +510,8 @@
 
 	global.NuLibDetailFossilUi = {
 		fossilFieldToken: FOSSIL_FIELD_TOKEN,
+		miracleToken: MIRACLE_TOKEN,
+		appendMiracleTokenLinkBody: appendMiracleTokenLinkBody,
 		companionLinkToken: companionLinkToken,
 		parseCompanionJson: parseCompanionJson,
 		appendAbilityBlocksToModal: appendAbilityBlocksToModal,

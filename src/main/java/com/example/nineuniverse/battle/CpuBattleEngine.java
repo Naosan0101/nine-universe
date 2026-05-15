@@ -5251,6 +5251,35 @@ public class CpuBattleEngine {
 	}
 
 	/** ラミエル〈配置〉（ストーン1使用後）: 次の自分のターン開始時に「奇跡」を1枚手札に加える（重ねがけ可）。 */
+	private static String mikaelStrategyDeployLogPrefix(CpuBattleState st, boolean deployerIsHuman, boolean cpuAiDeploy) {
+		if (deployerIsHuman) {
+			return "ミカエルの戦略";
+		}
+		if (cpuAiDeploy) {
+			return "CPUミカエルの戦略";
+		}
+		return cpuSlotActorLogLabel(st) + "のミカエルの戦略";
+	}
+
+	/** ミカエルの戦略〈配置〉: 「奇跡」を1枚手札に加える。 */
+	private void applyMikaelStrategyDeployEffect(CpuBattleState st, boolean deployerIsHuman, boolean cpuAiDeploy,
+			Map<Short, CardDefinition> defs) {
+		if (st == null || defs == null) {
+			return;
+		}
+		String logP = mikaelStrategyDeployLogPrefix(st, deployerIsHuman, cpuAiDeploy);
+		List<BattleCard> hand = deployerIsHuman ? st.getHumanHand() : st.getCpuHand();
+		if (!canGrantMiracleSlotCard(st, deployerIsHuman, defs)) {
+			st.addLog(logP + ": 「奇跡」の定義がない");
+			return;
+		}
+		addMiracleCopiesToHandForPlayer(hand, 1, st, deployerIsHuman, defs);
+		short gid = miracleGrantCardId(st, deployerIsHuman, defs);
+		CardDefinition gd = defs.get(gid);
+		String nm = gd != null && gd.getName() != null ? gd.getName() : "奇跡";
+		st.addLog(logP + ": 「" + nm + "」を1枚手札に加えた");
+	}
+
 	private void applyRamielDeployEffect(CpuBattleState st, boolean deployerIsHuman, boolean cpuAiDeploy) {
 		if (st == null) {
 			return;
@@ -9026,10 +9055,7 @@ public class CpuBattleEngine {
 					st.addLog("ミカエルパンチ: 相手ターンの間、強さ+3");
 				}
 			}
-			case "MIKAEL_STRATEGY" -> {
-				st.setHumanStones(st.getHumanStones() + 2);
-				st.addLog("ミカエルの戦略: ストーンを2つ得た");
-			}
+			case "MIKAEL_STRATEGY" -> applyMikaelStrategyDeployEffect(st, true, false, defs);
 			case "MIKAEL_MINION_A" -> {
 				ZoneFighter zf = st.getHumanBattle();
 				if (zf != null && zf.getMain() != null
@@ -9786,10 +9812,7 @@ public class CpuBattleEngine {
 					st.addLog("ミカエルパンチ: 相手ターンの間、強さ+3");
 				}
 			}
-			case "MIKAEL_STRATEGY" -> {
-				st.setCpuStones(st.getCpuStones() + 2);
-				st.addLog("ミカエルの戦略: ストーンを2つ得た");
-			}
+			case "MIKAEL_STRATEGY" -> applyMikaelStrategyDeployEffect(st, false, false, defs);
 			case "MIKAEL_MINION_A" -> {
 				ZoneFighter zf = st.getCpuBattle();
 				if (zf != null && zf.getMain() != null
@@ -10633,10 +10656,7 @@ public class CpuBattleEngine {
 					st.addLog("CPUミカエルパンチ: 相手ターンの間、強さ+3");
 				}
 			}
-			case "MIKAEL_STRATEGY" -> {
-				st.setCpuStones(st.getCpuStones() + 2);
-				st.addLog("CPUミカエルの戦略: ストーンを2つ得た");
-			}
+			case "MIKAEL_STRATEGY" -> applyMikaelStrategyDeployEffect(st, false, true, defs);
 			case "MIKAEL_MINION_A" -> {
 				ZoneFighter zf = st.getCpuBattle();
 				if (zf != null && zf.getMain() != null

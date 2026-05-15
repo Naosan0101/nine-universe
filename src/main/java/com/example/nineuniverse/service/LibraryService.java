@@ -177,7 +177,7 @@ public class LibraryService {
 			} else if (c.getId() != null && c.getId() == GameConstants.MIKAEL_PUNCH_CARD_ID) {
 				v.setCompanionDetailJson(buildMikaelDeckCardChainFromId(GameConstants.MIKAEL_PUNCH_CARD_ID));
 			} else if (c.getId() != null && c.getId() == GameConstants.MIKAEL_STRATEGY_CARD_ID) {
-				v.setCompanionDetailJson(buildMikaelDeckCardChainFromId(GameConstants.MIKAEL_STRATEGY_CARD_ID));
+				v.setCompanionDetailJson(buildHeavensGateMiracleCompanionDetailJson());
 			} else if (c.getId() != null && c.getId() == GameConstants.MIKAEL_MINION_A_CARD_ID) {
 				v.setCompanionDetailJson(buildMikaelDeckCardChainFromId(GameConstants.MIKAEL_MINION_A_CARD_ID));
 			} else if (c.getId() != null && c.getId() == GameConstants.MIKAEL_MINION_B_CARD_ID) {
