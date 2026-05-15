@@ -461,6 +461,10 @@ public final class GameConstants {
 	public static final String PACK_ART_FILE_STANDARD_2 = "スタンダードパック2.PNG";
 	public static final String PACK_ART_FILE_JEWEL_UTOPIA = "宝石の秘境パック.PNG";
 	public static final String PACK_ART_FILE_IRON_FLEET = "鉄面の艦隊パック.PNG";
+	/**
+	 * 実ファイルの拡張子は {@code .PNG} にすること。{@link #normalizeImageExtension} が URL を {@code .PNG} に統一するため、
+	 * リポジトリ上が {@code .png} のままだと（特に Linux）静的配信が 404 になる。
+	 */
 	public static final String PACK_ART_FILE_STANDARD_3 = "スタンダードパック3.PNG";
 	public static final String PACK_ART_FILE_OCEAN_TIDE = "海底の潮流パック.PNG";
 	public static final String PACK_ART_FILE_CREATION_SANCTUM = "創世の神域パック.PNG";
