@@ -286,6 +286,13 @@ public class AnnouncementRewardService {
 		return !today.isAfter(GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_LAST_DAY);
 	}
 
+	public boolean isWithinFossilFieldFix202605AnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_LAST_DAY);
+	}
+
 	public boolean isWithin80UsersMilestoneAnnouncementWindow(LocalDate today) {
 		if (today.isBefore(GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_START)) {
 			return false;
@@ -496,6 +503,13 @@ public class AnnouncementRewardService {
 				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_START)) {
 			if (claimDesktopAppIconDesktop01AnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
 				totalGems += GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_START)) {
+			if (claimFossilFieldFix202605AnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_GEMS;
 				claimed++;
 			}
 		}
@@ -965,6 +979,24 @@ public class AnnouncementRewardService {
 			return ClaimOutcome.ALREADY_CLAIMED;
 		}
 		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimFossilFieldFix202605AnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(
+				userId, GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_GEMS);
 		return ClaimOutcome.SUCCESS;
 	}
 

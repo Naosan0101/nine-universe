@@ -131,6 +131,9 @@ public class HomeController {
 		boolean listStd3LeagueUiUpdate202605 = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_START);
+		boolean listFossilFieldFix202605 = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -160,6 +163,7 @@ public class HomeController {
 		model.addAttribute("announcementListDesktopAppIconDesktop01", listDesktopAppIconDesktop01);
 		model.addAttribute("announcementList80UsersMilestone", list80UsersMilestone);
 		model.addAttribute("announcementListStd3LeagueUiUpdate202605", listStd3LeagueUiUpdate202605);
+		model.addAttribute("announcementListFossilFieldFix202605", listFossilFieldFix202605);
 
 		announcementRewardService.ensure80UsersMilestoneRewardGranted(uid);
 		announcementRewardService.ensureStd3LeagueUiUpdate202605RewardGranted(uid);
@@ -518,6 +522,25 @@ public class HomeController {
 				"std3LeagueUiUpdate202605AnnouncementGemAmount",
 				GameConstants.ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_GEMS);
 
+		boolean fossilFieldFix202605AnnClaimed =
+				claimedKeys.contains(GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_KEY);
+		boolean fossilFieldFix202605AnnInWindow =
+				announcementRewardService.isWithinFossilFieldFix202605AnnouncementWindow(today);
+		model.addAttribute("fossilFieldFix202605AnnouncementClaimed", fossilFieldFix202605AnnClaimed);
+		model.addAttribute("fossilFieldFix202605AnnouncementClaimable",
+				fossilFieldFix202605AnnInWindow && !fossilFieldFix202605AnnClaimed);
+		model.addAttribute(
+				"fossilFieldFix202605AnnouncementExpiredUnclaimed",
+				!fossilFieldFix202605AnnClaimed
+						&& today.isAfter(GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_LAST_DAY));
+		model.addAttribute(
+				"fossilFieldFix202605AnnouncementFutureUnclaimed",
+				!fossilFieldFix202605AnnClaimed
+						&& today.isBefore(GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_START));
+		model.addAttribute(
+				"fossilFieldFix202605AnnouncementGemAmount",
+				GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_GEMS);
+
 		int announcementBulkClaimableGemTotal = 0;
 		if (listPerfLight && perfInWindow && !perfClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PERF_LIGHT_GEMS;
@@ -599,6 +622,9 @@ public class HomeController {
 		}
 		if (listDesktopAppIconDesktop01 && desktopAppIconDesktop01AnnInWindow && !desktopAppIconDesktop01AnnClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_GEMS;
+		}
+		if (listFossilFieldFix202605 && fossilFieldFix202605AnnInWindow && !fossilFieldFix202605AnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_GEMS;
 		}
 		model.addAttribute("announcementBulkClaimableGemTotal", announcementBulkClaimableGemTotal);
 		model.addAttribute("announcementAnyGemClaimable", announcementBulkClaimableGemTotal > 0);
@@ -1193,6 +1219,27 @@ public class HomeController {
 		switch (outcome) {
 			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
 					GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/fossil-field-fix-2026-05/claim")
+	public String claimFossilFieldFix202605Announcement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimFossilFieldFix202605AnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_GEMS + "ジェムを受け取りました。");
 			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
 			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
 		}

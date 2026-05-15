@@ -73,6 +73,37 @@ public class DeckService {
 		return d;
 	}
 
+	/** リーグ用スロットの表示名（未設定時は「デッキ1」「デッキ2」） */
+	public static String leagueDeckSlotDisplayName(String storedName, int slot1Or2) {
+		if (storedName != null && !storedName.isBlank()) {
+			return storedName.trim();
+		}
+		return slot1Or2 == 2 ? "デッキ2" : "デッキ1";
+	}
+
+	/**
+	 * リーグ子デッキがまだユーザー命名されていないか（空、または旧自動生成名「…・デッキ1/2」）。
+	 */
+	public boolean isLeagueDeckNameUnset(Deck deck) {
+		if (deck == null || deck.getLeagueSlot() == null) {
+			return false;
+		}
+		String name = deck.getName();
+		if (name == null || name.isBlank()) {
+			return true;
+		}
+		int slot = deck.getLeagueSlot();
+		return (slot == 1 && name.endsWith("・デッキ1")) || (slot == 2 && name.endsWith("・デッキ2"));
+	}
+
+	/** デッキ編集画面のデッキ名欄（未命名のリーグ子デッキはカジュアル新規作成と同様に空） */
+	public String deckNameForLeagueEditForm(Deck deck) {
+		if (isLeagueDeckNameUnset(deck)) {
+			return "";
+		}
+		return deck.getName() != null ? deck.getName() : "";
+	}
+
 	public List<DeckEntry> entries(long deckId) {
 		return deckEntryMapper.findByDeckId(deckId);
 	}
@@ -108,13 +139,13 @@ public class DeckService {
 		}
 		Deck d1 = new Deck();
 		d1.setUserId(userId);
-		d1.setName(base + "・デッキ1");
+		d1.setName("");
 		d1.setLeagueSetId(row.getId());
 		d1.setLeagueSlot(1);
 		deckMapper.insert(d1);
 		Deck d2 = new Deck();
 		d2.setUserId(userId);
-		d2.setName(base + "・デッキ2");
+		d2.setName("");
 		d2.setLeagueSetId(row.getId());
 		d2.setLeagueSlot(2);
 		deckMapper.insert(d2);
@@ -148,7 +179,13 @@ public class DeckService {
 		Deck self = requireDeck(userId, deckId);
 		validateEight(cardIds, userId);
 		validateLeagueSiblingDisjoint(self, cardIds);
-		deckMapper.updateName(deckId, userId, name.trim().isEmpty() ? "マイデッキ" : name.trim());
+		String resolvedName;
+		if (self.getLeagueSetId() != null) {
+			resolvedName = name == null ? "" : name.trim();
+		} else {
+			resolvedName = name.trim().isEmpty() ? "マイデッキ" : name.trim();
+		}
+		deckMapper.updateName(deckId, userId, resolvedName);
 		deckEntryMapper.deleteByDeckId(deckId);
 		saveEntries(deckId, cardIds);
 	}

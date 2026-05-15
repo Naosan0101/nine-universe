@@ -181,6 +181,7 @@ public class RecycleController {
 		}
 		model.addAttribute("standardPackPreview", PackController.buildPackPreviewLines(packService, PackType.STANDARD));
 		model.addAttribute("standard2PackPreview", PackController.buildPackPreviewLines(packService, PackType.STANDARD_2));
+		model.addAttribute("standard3PackPreview", PackController.buildPackPreviewLines(packService, PackType.STANDARD_3));
 		model.addAttribute("packArtCacheKey", PackController.getPackArtCacheKey());
 		String cp = request.getContextPath();
 		model.addAttribute("contextPath", cp != null ? cp : "");
@@ -194,19 +195,27 @@ public class RecycleController {
 			o.setDisplayName(switch (t) {
 				case STANDARD -> "スタンダードパック1（WH+ET）";
 				case STANDARD_2 -> "スタンダードパック2（JU+IF）";
+				case STANDARD_3 -> "スタンダードパック3（OT/CS）";
 				default -> t.name();
 			});
 			o.setPackThumbKey(switch (t) {
 				case STANDARD -> "standard1";
 				case STANDARD_2 -> "standard2";
+				case STANDARD_3 -> "standard3";
 				default -> "standard1";
 			});
 			o.setPackThumbUrl(switch (t) {
 				case STANDARD -> GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_1);
 				case STANDARD_2 -> GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_2);
+				case STANDARD_3 -> GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_3);
 				default -> GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_1);
 			});
-			o.setPackDetailModalId(t == PackType.STANDARD ? "pack-detail-standard" : "pack-detail-standard-2");
+			o.setPackDetailModalId(switch (t) {
+				case STANDARD -> "pack-detail-standard";
+				case STANDARD_2 -> "pack-detail-standard-2";
+				case STANDARD_3 -> "pack-detail-standard-3";
+				default -> "pack-detail-standard";
+			});
 			list.add(o);
 		}
 		return list;

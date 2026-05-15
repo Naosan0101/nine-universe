@@ -148,7 +148,7 @@ public class PackService {
 	 * スタンダードパック3以降を追加する場合は {@link PackType} と {@link #filterCardsForPack} を拡張し、ここにも列挙する。
 	 */
 	public List<PackType> recycleStandardBundlePackTypes() {
-		return List.of(PackType.STANDARD, PackType.STANDARD_2);
+		return List.of(PackType.STANDARD, PackType.STANDARD_2, PackType.STANDARD_3);
 	}
 
 	public boolean isRecycleStandardBundlePack(PackType type) {

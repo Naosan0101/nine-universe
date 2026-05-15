@@ -168,6 +168,18 @@
 		if (!img) return;
 		img.setAttribute('hidden', '');
 		img.removeAttribute('src');
+		if (img.dataset) {
+			delete img.dataset.nuLastSrc;
+		}
+	}
+
+	function assignImgSrcIfChanged(img, nextUrl) {
+		if (!img || nextUrl == null) return;
+		const next = String(nextUrl);
+		if (next === '') return;
+		if (img.dataset && img.dataset.nuLastSrc === next) return;
+		if (img.dataset) img.dataset.nuLastSrc = next;
+		img.src = next;
 	}
 
 	function applyOnceImgFallback(img, fallbackSrc) {
@@ -555,14 +567,14 @@
 		if (modalLayerBase) {
 			applyOnceImgFallback(modalLayerBase, plateFbFull);
 			modalLayerBase.removeAttribute('hidden');
-			modalLayerBase.src = staticUrl(c.layerBase) || plateFbFull;
+			assignImgSrcIfChanged(modalLayerBase, staticUrl(c.layerBase) || plateFbFull);
 		}
 		if (modalLayerPortrait) {
 			applyOnceImgFallback(modalLayerPortrait, '');
 			const pu = staticUrl(c.layerPortrait);
 			if (pu) {
 				modalLayerPortrait.removeAttribute('hidden');
-				modalLayerPortrait.src = pu;
+				assignImgSrcIfChanged(modalLayerPortrait, pu);
 			} else {
 				hideBrokenImg(modalLayerPortrait);
 			}
@@ -572,7 +584,7 @@
 			const bu = staticUrl(c.layerBar);
 			if (bu) {
 				modalLayerBar.removeAttribute('hidden');
-				modalLayerBar.src = bu;
+				assignImgSrcIfChanged(modalLayerBar, bu);
 			} else {
 				hideBrokenImg(modalLayerBar);
 			}
@@ -580,7 +592,7 @@
 		if (modalLayerFrame) {
 			applyOnceImgFallback(modalLayerFrame, dataFbFull);
 			modalLayerFrame.removeAttribute('hidden');
-			modalLayerFrame.src = staticUrl(c.layerFrame) || dataFbFull;
+			assignImgSrcIfChanged(modalLayerFrame, staticUrl(c.layerFrame) || dataFbFull);
 		}
 
 		detailModal.hidden = false;
@@ -950,8 +962,11 @@
 		bindRightClickOpenCardDetail(copy, c);
 		bindCardTooltip(copy, c);
 		const removeFromDeck = function () {
+			const rid = parseInt(copy.dataset.id, 10);
 			copy.remove();
-			refreshLib();
+			if (!isNaN(rid)) {
+				syncLibRowDeckVisualForCardId(rid);
+			}
 			update();
 		};
 		bindDeckSlotRemove(copy, removeFromDeck);
@@ -1128,6 +1143,39 @@
 		b.textContent = String(n);
 	}
 
+	/** ライブラリ一覧の1行だけ更新（全体 refreshLib による画像の取り直しを避ける） */
+	function syncLibRowDeckVisualForCardId(cardId) {
+		if (!libZone) return;
+		const idStr = String(cardId);
+		const el = libZone.querySelector('.mini-card--lib[data-id="' + idStr + '"]');
+		if (!el) return;
+		const cid = parseInt(idStr, 10);
+		if (isNaN(cid)) return;
+		const seed = seedById(cid);
+		if (!seed) return;
+		const cap = maxPerForId(cid);
+		const inDeck = countInDeck(cid);
+		el.classList.remove('mini-card--deck-1', 'mini-card--deck-2');
+		var deckCls = '';
+		if (inDeck === 1) deckCls = ' mini-card--deck-1';
+		else if (inDeck >= 2) deckCls = ' mini-card--deck-2';
+		el.className = 'mini-card mini-card--lib' + deckCls;
+		const blockedSibling = leagueBlockedSet.has(cid);
+		el.classList.toggle('mini-card--disabled', blockedSibling);
+		const inDeckHint = inDeck > 0 ? '。デッキに' + inDeck + '枚使用中' : '';
+		const blockedHint = blockedSibling ? '。もう一方のリーグデッキで使用中のため追加できません' : '';
+		el.setAttribute(
+			'aria-label',
+			seed.name +
+				(seed.fieldCard ? '（×' : '（強さ' + seed.power + '・×') +
+				seed.qty +
+				inDeckHint +
+				blockedHint +
+				'）。左クリックでデッキへ、右クリックで詳細'
+		);
+		setSelectionBadge(el, inDeck);
+	}
+
 	/** 右クリックで詳細（ブラウザのコンテキストメニューは出さない） */
 	function bindRightClickOpenCardDetail(el, c) {
 		el.addEventListener('contextmenu', function (e) {
@@ -1251,7 +1299,7 @@
 				if (blockedSibling) return;
 				if (!canAddToDeck(c.id, cap)) return;
 				appendPhysicalCardToDeck(c);
-				refreshLib();
+				syncLibRowDeckVisualForCardId(c.id);
 				update();
 			};
 			el.addEventListener('click', function (e) {

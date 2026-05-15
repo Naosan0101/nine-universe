@@ -108,7 +108,7 @@ public class DeckController {
 			int maxBuildable = maxBuildableDeckSlots(library);
 			boolean noOwned = library.stream().noneMatch(LibraryCardView::isOwned);
 			model.addAttribute("library", library);
-			model.addAttribute("deckName", deck.getName());
+			model.addAttribute("deckName", deckService.deckNameForLeagueEditForm(deck));
 			model.addAttribute("selectedIds", deckService.cardIdsForDeck(deckId));
 			model.addAttribute("editDeckId", deckId);
 			model.addAttribute("leagueBlockedCardIds", blocked);

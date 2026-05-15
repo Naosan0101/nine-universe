@@ -35,74 +35,83 @@
 	<p class="ok" th:if="${msg}" th:text="${msg}"></p>
 	<p class="error" th:if="${error}" th:text="${error}"></p>
 
-	<section class="panel">
-		<div class="deck-row">
-			<div class="deck-row__actions">
+	<div class="decks-list-split">
+		<section class="panel decks-list-frame decks-list-frame--casual" aria-labelledby="decks-casual-heading">
+			<h2 id="decks-casual-heading" class="decks-list-frame__title">カジュアルデッキ</h2>
+			<p class="muted decks-list-frame__lead">1デッキ8枚。カジュアル対戦・カジュアルCPU戦で使います。</p>
+			<div class="decks-list-frame__body">
+			<div class="decks-list-frame__actions">
 				<a class="btn btn--primary" th:href="@{/decks/new}">カジュアルデッキを新規作成</a>
 			</div>
-		</div>
-	</section>
 
-	<h2 class="deck-section-title">カジュアルデッキ</h2>
-	<p class="muted deck-section-lead">1デッキ8枚。カジュアル対戦・カジュアルCPU戦で使います。</p>
+			<ul class="deck-names" th:if="${decks != null && !decks.isEmpty()}">
+				<li th:each="d : ${decks}" class="panel deck-row deck-row--card">
+					<div class="deck-row__head">
+						<span class="deck-row__name" th:text="${d.name}">名前</span>
+						<div class="deck-row__actions">
+						<button type="button"
+						        class="btn btn--ghost deck-row__toggle"
+						        data-deck-preview-toggle
+						        th:attr="data-deck-id=${d.id}"
+						        aria-expanded="false"
+						        th:aria-label="|${d.name}のカード一覧を表示|">▼</button>
+						<a class="btn" th:href="@{/decks/{id}/edit(id=${d.id})}">編集</a>
+						<form th:action="@{/decks/{id}/delete(id=${d.id})}" method="post" class="inline deck-delete-form"
+						      th:attr="data-deck-name=${d.name}">
+							<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+							<button type="submit" class="btn btn--danger">削除</button>
+						</form>
+						</div>
+					</div>
+					<div class="deck-row__preview deck-list-preview" hidden></div>
+				</li>
+			</ul>
 
-	<ul class="deck-names" th:if="${decks != null && !decks.isEmpty()}">
-		<li th:each="d : ${decks}" class="panel deck-row deck-row--card">
-			<div class="deck-row__head">
-				<span class="deck-row__name" th:text="${d.name}">名前</span>
-				<div class="deck-row__actions">
-				<button type="button"
-				        class="btn btn--ghost deck-row__toggle"
-				        data-deck-preview-toggle
-				        th:attr="data-deck-id=${d.id}"
-				        aria-expanded="false"
-				        th:aria-label="|${d.name}のカード一覧を表示|">▼</button>
-				<a class="btn" th:href="@{/decks/{id}/edit(id=${d.id})}">編集</a>
-				<form th:action="@{/decks/{id}/delete(id=${d.id})}" method="post" class="inline deck-delete-form"
-				      th:attr="data-deck-name=${d.name}">
+			<p th:if="${decks == null || decks.isEmpty()}" class="muted decks-list-frame__empty">カジュアルデッキがありません。新規作成してください。</p>
+			</div>
+		</section>
+
+		<section class="panel decks-list-frame decks-list-frame--league" aria-labelledby="decks-league-heading">
+			<h2 id="decks-league-heading" class="decks-list-frame__title">リーグデッキ</h2>
+			<p class="muted decks-list-frame__lead">名前をつけたセットでデッキ1・デッキ2の計16枚を管理します。同じカードは両方のデッキに入れられません。リーグ対戦で使います。</p>
+			<div class="decks-list-frame__body">
+			<div class="decks-list-league-create stack">
+				<form th:action="@{/decks/league/set/new}" method="post" class="stack">
 					<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-					<button type="submit" class="btn btn--danger">削除</button>
+					<label>リーグデッキ名
+						<input type="text" name="name" maxlength="64" placeholder="例：大会用" required/>
+					</label>
+					<button type="submit" class="btn btn--primary">リーグデッキを作成</button>
 				</form>
-				</div>
 			</div>
-			<div class="deck-row__preview deck-list-preview" hidden></div>
-		</li>
-	</ul>
-
-	<p th:if="${decks == null || decks.isEmpty()}" class="muted">カジュアルデッキがありません。新規作成してください。</p>
-
-	<h2 class="deck-section-title" style="margin-top:2rem;">リーグデッキ</h2>
-	<p class="muted deck-section-lead">名前をつけたセットでデッキ1・デッキ2の計16枚を管理します。同じカードは両方のデッキに入れられません。リーグ対戦で使います。</p>
-	<section class="panel stack" style="max-width:28rem;">
-		<form th:action="@{/decks/league/set/new}" method="post" class="stack">
-			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-			<label>リーグデッキ名
-				<input type="text" name="name" maxlength="64" placeholder="例：大会用" required/>
-			</label>
-			<button type="submit" class="btn btn--primary">リーグデッキを作成</button>
-		</form>
-	</section>
-	<ul class="deck-names" th:if="${leagueSets != null && !leagueSets.isEmpty()}">
-		<li th:each="s : ${leagueSets}" class="panel deck-row deck-row--card">
-			<div class="deck-row__head">
-				<span class="deck-row__name" th:text="${s.setName}">セット名</span>
-				<div class="deck-row__actions">
-					<a class="btn" th:href="@{/decks/league/set/{id}/slot/1/edit(id=${s.setId})}" th:text="${s.deckSlot1Name}">デッキ1</a>
-					<a class="btn" th:href="@{/decks/league/set/{id}/slot/2/edit(id=${s.setId})}" th:text="${s.deckSlot2Name}">デッキ2</a>
-					<form th:action="@{/decks/league/set/{id}/delete(id=${s.setId})}" method="post"
-					      class="inline deck-delete-form"
-					      th:attr="data-deck-name=${s.setName}">
-						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-						<button type="submit" class="btn btn--danger">セット削除</button>
-					</form>
-				</div>
+			<ul class="deck-names" th:if="${leagueSets != null && !leagueSets.isEmpty()}">
+				<li th:each="s : ${leagueSets}" class="panel deck-row deck-row--card">
+					<div class="deck-row__head">
+						<span class="deck-row__name" th:text="${s.setName}">セット名</span>
+						<div class="deck-row__actions">
+							<a class="btn" th:href="@{/decks/league/set/{id}/slot/1/edit(id=${s.setId})}"
+							   th:text="${#strings.isEmpty(s.deckSlot1Name) ? 'デッキ1' : s.deckSlot1Name}">デッキ1</a>
+							<a class="btn" th:href="@{/decks/league/set/{id}/slot/2/edit(id=${s.setId})}"
+							   th:text="${#strings.isEmpty(s.deckSlot2Name) ? 'デッキ2' : s.deckSlot2Name}">デッキ2</a>
+							<form th:action="@{/decks/league/set/{id}/delete(id=${s.setId})}" method="post"
+							      class="inline deck-delete-form"
+							      th:attr="data-deck-name=${s.setName}">
+								<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+								<button type="submit" class="btn btn--danger">セット削除</button>
+							</form>
+						</div>
+					</div>
+					<p class="muted decks-list-league-slots">
+						<span th:text="${#strings.isEmpty(s.deckSlot1Name) ? 'デッキ1' : s.deckSlot1Name}">D1</span>
+						 ／
+						<span th:text="${#strings.isEmpty(s.deckSlot2Name) ? 'デッキ2' : s.deckSlot2Name}">D2</span>
+					</p>
+				</li>
+			</ul>
+			<p th:if="${leagueSets == null || leagueSets.isEmpty()}" class="muted decks-list-frame__empty">リーグデッキがありません。上のフォームから作成できます。</p>
 			</div>
-			<p class="muted" style="margin:0.35rem 0 0;font-size:0.9rem;">
-				<span th:text="${s.deckSlot1Name}">D1</span> ／ <span th:text="${s.deckSlot2Name}">D2</span>
-			</p>
-		</li>
-	</ul>
-	<p th:if="${leagueSets == null || leagueSets.isEmpty()}" class="muted">リーグデッキがありません。上のフォームから作成できます。</p>
+		</section>
+	</div>
 </div>
 <script th:src="@{/js/card-spark.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/card-face-layer.js(v=${assetVersion})}"></script>

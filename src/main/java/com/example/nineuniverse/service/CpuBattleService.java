@@ -240,11 +240,11 @@ public class CpuBattleService {
 				st.getCpuStones(),
 				st.getHumanDeck().stream().map(CpuBattleService::toBattleCardDto).toList(),
 				st.getHumanHand().stream().map(CpuBattleService::toBattleCardDto).toList(),
-				st.getHumanRest().stream().map(CpuBattleService::toBattleCardDto).toList(),
+				st.getHumanRest().stream().map(c -> toBattleCardDtoForRest(st, c)).toList(),
 				toZoneDto(st.getHumanBattle(), engine.explainDisplayedPowerContributors(true, st, defs)),
 				st.getCpuDeck().stream().map(CpuBattleService::toBattleCardDto).toList(),
 				st.getCpuHand().stream().map(CpuBattleService::toBattleCardDto).toList(),
-				st.getCpuRest().stream().map(CpuBattleService::toBattleCardDto).toList(),
+				st.getCpuRest().stream().map(c -> toBattleCardDtoForRest(st, c)).toList(),
 				toZoneDto(st.getCpuBattle(), engine.explainDisplayedPowerContributors(false, st, defs)),
 				st.getActiveField() != null
 						? toBattleCardDto(st.getActiveField())
@@ -411,6 +411,31 @@ public class CpuBattleService {
 			return null;
 		}
 		int handAdjDisplay = c.getHandDeployCostModifier() + c.getDeathbounceHandCostStacks();
+		return new BattleCardDto(c.getInstanceId(), c.getCardId(), c.isBlankEffects(), handAdjDisplay,
+				c.getBattleTribeOverride(), c.getBattleEndPowerBonus());
+	}
+
+	/**
+	 * 〈化石（フィールド）〉が共有フィールドにある間、両者のレストのカードは種族表示・バーがマーフォークとなる
+	 * （{@link CpuBattleEngine} の fossil レスト上書きと一致）。
+	 */
+	private static boolean fossilFieldMerfolkRestActive(CpuBattleState st) {
+		if (st == null || st.getActiveField() == null) {
+			return false;
+		}
+		Short fid = st.getActiveField().getCardId();
+		return fid != null && fid.shortValue() == GameConstants.FOSSIL_FIELD_TRANSFORMS_TOKEN_CARD_ID;
+	}
+
+	private static BattleCardDto toBattleCardDtoForRest(CpuBattleState st, BattleCard c) {
+		if (c == null) {
+			return null;
+		}
+		int handAdjDisplay = c.getHandDeployCostModifier() + c.getDeathbounceHandCostStacks();
+		if (fossilFieldMerfolkRestActive(st)) {
+			return new BattleCardDto(c.getInstanceId(), c.getCardId(), c.isBlankEffects(), handAdjDisplay, "MERFOLK",
+					c.getBattleEndPowerBonus());
+		}
 		return new BattleCardDto(c.getInstanceId(), c.getCardId(), c.isBlankEffects(), handAdjDisplay,
 				c.getBattleTribeOverride(), c.getBattleEndPowerBonus());
 	}

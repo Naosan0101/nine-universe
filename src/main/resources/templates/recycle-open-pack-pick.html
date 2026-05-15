@@ -6,7 +6,24 @@
 	<title th:text="${recyclePickPackTitle} + ' — ナインユニバース'">パック選択 — ナインユニバース</title>
 	<link rel="stylesheet" th:href="@{/css/app.css(v=${assetVersion})}"/>
 </head>
-<body class="page page--recycle page--recycle-pack-pick">
+<body class="page page--recycle page--recycle-pack-pick"
+      th:attr="data-recycle-crystal=${recycleCrystal},data-recycle-pack-cost=${recyclePickPackCost}">
+<div id="recycle-pack-open-confirm-modal"
+     class="nu-home-quit-modal recycle-pack-open-confirm"
+     hidden
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="recycle-pack-open-confirm-title"
+     aria-hidden="true">
+	<div class="nu-home-quit-modal__panel" role="document">
+		<h2 id="recycle-pack-open-confirm-title" class="nu-home-quit-modal__title">このパックを開封しますか？</h2>
+		<p id="recycle-pack-open-confirm-hint" class="nu-home-quit-modal__hint muted recycle-pack-open-confirm__hint"></p>
+		<div class="nu-home-quit-modal__actions">
+			<button type="button" class="btn btn--ghost" id="recycle-pack-open-confirm-cancel">やめる</button>
+			<button type="button" class="btn btn--primary" id="recycle-pack-open-confirm-ok">開封する</button>
+		</div>
+	</div>
+</div>
 <header class="topbar">
 	<h1 class="game-title" th:text="${recyclePickPackTitle}">レジェンダリー確定パック</h1>
 	<a class="btn btn--ghost" th:href="@{/recycle}">戻る</a>
@@ -25,7 +42,8 @@
 
 		<div class="pack-buy__grid recycle-pack-pick__grid">
 			<div class="pack-buy__cell" th:each="opt : ${recycleStandardPackOptions}">
-				<form th:action="@{'/recycle/open/' + ${recycleUriSuffix}}" method="post" class="recycle-pack-pick__form">
+				<form th:action="@{'/recycle/open/' + ${recycleUriSuffix}}" method="post" class="recycle-pack-pick__form"
+				      th:attr="data-pack-name=${opt.displayName}">
 					<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 					<input type="hidden" name="standardPack" th:value="${opt.packTypeParam}"/>
 					<button type="submit" class="pack-buy__item recycle-pack-pick__submit" th:attr="aria-label=${opt.displayName} + ' で開封'">
@@ -127,7 +145,51 @@
 	</div>
 </div>
 
+<!-- スタンダード3 -->
+<div id="pack-detail-standard-3" class="pack-detail-modal" hidden>
+	<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
+	<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="pack-detail-standard-3-title">
+		<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
+		<h2 id="pack-detail-standard-3-title" class="pack-detail-modal__heading">スタンダードパック3（OT/CS）</h2>
+		<th:block th:if="${recycleOpenLegendary}">
+			<h3 class="pack-detail-modal__sub">1〜3枚目の排出率（レジェンダリー以外）</h3>
+			<ul class="pack-detail-modal__rates">
+				<li th:each="r : ${recycleFirstThreeSlotRates}">
+					<span class="pack-detail-modal__rate-label" th:text="${r.label}">エピック</span>
+					<span class="pack-detail-modal__rate-pct" th:text="${r.percent}">10%</span>
+				</li>
+			</ul>
+		</th:block>
+		<th:block th:unless="${recycleOpenLegendary}">
+			<h3 class="pack-detail-modal__sub">1〜3枚目の排出率（レジェンダリー以外）</h3>
+			<ul class="pack-detail-modal__rates">
+				<li th:each="r : ${recycleFirstThreeSlotRates}">
+					<span class="pack-detail-modal__rate-label" th:text="${r.label}">エピック</span>
+					<span class="pack-detail-modal__rate-pct" th:text="${r.percent}">10%</span>
+				</li>
+			</ul>
+			<h3 class="pack-detail-modal__sub">4枚目の排出率</h3>
+			<ul class="pack-detail-modal__rates">
+				<li th:each="r : ${recycleFourthSlotRates}">
+					<span class="pack-detail-modal__rate-label" th:text="${r.label}">レジェンダリー</span>
+					<span class="pack-detail-modal__rate-pct" th:text="${r.percent}">10%</span>
+				</li>
+			</ul>
+		</th:block>
+		<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
+		<ul class="pack-detail-modal__cards">
+			<li th:each="line : ${standard3PackPreview}"
+			    class="pack-detail-modal__card-row"
+			    th:classappend="${'pack-detail-modal__card-row--' + line.rarityCode}">
+				<span class="pack-detail-modal__card-name" th:text="${line.name}">名前</span>
+				<span class="pack-detail-modal__card-rarity" th:text="${line.rarityLabel}">コモン</span>
+			</li>
+		</ul>
+	</div>
+</div>
+
 <script th:src="@{/js/pack-buy.js(v=${assetVersion})}"></script>
+<script th:src="@{/js/recycle-open-pack-pick.js(v=${assetVersion})}"></script>
 <th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>

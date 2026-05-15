@@ -2352,7 +2352,7 @@
 		const grid = el('div', 'battle-pay-modal__cardgrid');
 		list.forEach(function (c) {
 			const d0 = resolveCardDef(defs, c.cardId);
-			const d = d0 ? cardDefForBattleFace(d0, c, defs) : null;
+			const d = d0 ? cardDefForBattleFace(d0, restBattleCardDtoForFossilFieldFace(battleState, c), defs) : null;
 			const host = el('div', 'battle-pay-modal__card', null);
 			if (c.instanceId != null) host.dataset.battleInstanceId = String(c.instanceId);
 			if (d) {
@@ -2654,7 +2654,7 @@
 
 			if (d) {
 				// 表向き（レスト専用サイズは CSS で）
-				const disp = cardDefForBattleFace(d, c, defs);
+				const disp = cardDefForBattleFace(d, restBattleCardDtoForFossilFieldFace(o.battleState, c), defs);
 				const shell = buildBattleCardFaceShell(
 					disp,
 					'rest',
@@ -3062,6 +3062,13 @@
 
 	function fossilFieldMerfolkRestActive(st) {
 		return st && st.activeField && Number(st.activeField.cardId) === PREVIEW_CARD_IDS.FOSSIL_FIELD_CARD;
+	}
+
+	/** レスト表示用: 化石〈フィールド〉下は DTO/状態に関わらず種族バーをマーフォークに（CpuBattleService.toBattleCardDtoForRest と同趣旨） */
+	function restBattleCardDtoForFossilFieldFace(st, restCard) {
+		if (!restCard) return restCard;
+		if (!fossilFieldMerfolkRestActive(st)) return restCard;
+		return Object.assign({}, restCard, { battleTribeOverride: 'MERFOLK' });
 	}
 
 	/** CpuBattleEngine.restCardHasTribe と同趣旨（レストの種族判定。化石フィールド時は印字に関わらずマーフォークのみ） */
@@ -4781,10 +4788,21 @@
 			const pickRest = pickFromMyZones ? st.humanRest || [] : st.cpuRest || [];
 			ids.forEach(function (inst) {
 				let card = null;
-				pickHand.forEach(function (c) { if (c.instanceId === inst) card = c; });
-				pickRest.forEach(function (c) { if (c.instanceId === inst) card = c; });
+				let fromRest = false;
+				pickHand.forEach(function (c) {
+					if (c.instanceId === inst) card = c;
+				});
+				if (!card) {
+					pickRest.forEach(function (c) {
+						if (c.instanceId === inst) {
+							card = c;
+							fromRest = true;
+						}
+					});
+				}
 				if (!card) return;
-				const d = cardDefForBattleFace(resolveCardDef(st.defs, card.cardId), card, st.defs);
+				const faceCard = fromRest ? restBattleCardDtoForFossilFieldFace(st, card) : card;
+				const d = cardDefForBattleFace(resolveCardDef(st.defs, card.cardId), faceCard, st.defs);
 				const btn = el('button', 'battle-pay-modal__card', null);
 				btn.type = 'button';
 				btn.dataset.instanceId = inst;
@@ -6275,7 +6293,7 @@
 				if (c && String(c.instanceId) === String(inst)) hc = c;
 			});
 		}
-		return hc ? cardDefForBattleFace(base, hc, defs) : base;
+		return hc ? cardDefForBattleFace(base, restBattleCardDtoForFossilFieldFace(st, hc), defs) : base;
 	}
 
 	function attachHandlers() {
