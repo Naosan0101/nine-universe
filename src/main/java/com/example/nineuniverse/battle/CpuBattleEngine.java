@@ -11488,14 +11488,23 @@ public class CpuBattleEngine {
 		if (!isNonFieldFighterCardDef(def)) {
 			return false;
 		}
-		return isBlankAbilityField(def.getDeployHelp())
-				&& isBlankAbilityField(def.getPassiveHelp())
+		return isKoukaNashiOrBlankAbilityText(def.getDeployHelp())
+				&& isKoukaNashiOrBlankAbilityText(def.getPassiveHelp())
 				&& isBlankAbilityField(def.getAbilityDeployCode())
 				&& isBlankAbilityField(def.getAbilityPassiveCode());
 	}
 
 	private static boolean isBlankAbilityField(String s) {
 		return s == null || s.isBlank();
+	}
+
+	/** 能力テキスト未設定、または表示・ルール上「効果なし。」のみ（ソードフィッシュ等） */
+	private static boolean isKoukaNashiOrBlankAbilityText(String s) {
+		if (isBlankAbilityField(s)) {
+			return true;
+		}
+		String t = s.trim();
+		return "効果なし。".equals(t) || "能力なし。".equals(t);
 	}
 
 	/**
