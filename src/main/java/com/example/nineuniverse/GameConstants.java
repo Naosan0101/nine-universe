@@ -58,16 +58,13 @@ public final class GameConstants {
 	/** ミカエル（id=106） */
 	public static final short MIKAEL_FIGHTER_CARD_ID = 106;
 
-	/** ミカエルデッキ6枚（ミカエル効果でデッキが差し替わる。パック・ライブラリ一覧除外） */
+	/** ミカエルデッキ6枚（ミカエル〈配置〉で「奇跡」がランダムに変化し得る。パック・ライブラリ一覧除外） */
 	public static final short MIKAEL_WRATH_CARD_ID = 116;
 	public static final short MIKAEL_PUNCH_CARD_ID = 117;
 	public static final short MIKAEL_STRATEGY_CARD_ID = 118;
 	public static final short MIKAEL_MINION_A_CARD_ID = 119;
 	public static final short MIKAEL_MINION_B_CARD_ID = 120;
 	public static final short MIKAEL_FLASH_CARD_ID = 121;
-
-	/** ミカエル〈配置〉: レストの「奇跡」がこの枚数以上でデッキがミカエルデッキに置き換わる */
-	public static final int MIKAEL_DECK_MIN_MIRACLES_IN_REST = 3;
 
 	/** ルシファー（id=108） */
 	public static final short LUCIFER_FIGHTER_CARD_ID = 108;
@@ -84,11 +81,29 @@ public final class GameConstants {
 	/** ドミニオンが生成する「ミニオンソルジャー」（id=113・パック・ライブラリ一覧除外） */
 	public static final short MINION_SOLDIER_TOKEN_CARD_ID = 113;
 
-	/** ドミニオンが生成する「ミニオンキング」（id=114・パック・ライブラリ一覧除外） */
-	public static final short MINION_KING_TOKEN_CARD_ID = 114;
+	/** ドミニオンが生成する「ミニオンチャンピオン」（id=114・パック・ライブラリ一覧除外） */
+	public static final short MINION_CHAMPION_TOKEN_CARD_ID = 114;
 
 	/** 漫画家（id=96） */
 	public static final short MANGAKA_FIGHTER_CARD_ID = 96;
+
+	/** アーサー（id=43） */
+	public static final short ARTHUR_FIGHTER_CARD_ID = 43;
+
+	/** 信奉者（id=50） */
+	public static final short BELIEVER_FIGHTER_CARD_ID = 50;
+
+	/** ボットバイク（id=57） */
+	public static final short BOT_BIKE_FIGHTER_CARD_ID = 57;
+
+	/** メカニック（id=45・ルール用語「メカニック」の参照元カード） */
+	public static final short MECHANIC_RULE_REFERENCE_CARD_ID = 45;
+
+	/** 決戦の地 カムイ（〈フィールド〉・id=49） */
+	public static final short KAMUI_FIELD_CARD_ID = 49;
+
+	/** 霊園教会 デスバウンス（〈フィールド〉・id=68） */
+	public static final short DEATH_BOUNCE_FIELD_CARD_ID = 68;
 
 	/** ザドキエル（id=98） */
 	public static final short ZADKIEL_FIGHTER_CARD_ID = 98;
@@ -154,7 +169,7 @@ public final class GameConstants {
 				|| v == FALLEN_ANGEL_LUCIFER_CARD_ID
 				|| v == MIKAEL_WRATH_CARD_ID || v == MIKAEL_PUNCH_CARD_ID || v == MIKAEL_STRATEGY_CARD_ID
 				|| v == MIKAEL_MINION_A_CARD_ID || v == MIKAEL_MINION_B_CARD_ID || v == MIKAEL_FLASH_CARD_ID
-				|| v == MINION_SOLDIER_TOKEN_CARD_ID || v == MINION_KING_TOKEN_CARD_ID;
+				|| v == MINION_SOLDIER_TOKEN_CARD_ID || v == MINION_CHAMPION_TOKEN_CARD_ID;
 	}
 
 	/**
@@ -798,6 +813,16 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_80_USERS_MILESTONE_LAST_DAY =
 			ANNOUNCEMENT_80_USERS_MILESTONE_START.plusDays(30 - 1);
 
+	/** おしらせ・自動配布（スタンダード3／海底の激流／創世の神域・リーグ対戦・調整まとめ：30ジェム。初回ホーム表示で付与） */
+	public static final String ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_KEY = "std3_league_ui_update_2026_05_15";
+
+	public static final int ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_GEMS = 30;
+
+	public static final LocalDate ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_START = LocalDate.of(2026, 5, 15);
+
+	public static final LocalDate ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_LAST_DAY =
+			ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_START.plusDays(30 - 1);
+
 	/** ログイン時ポップアップ「次回から表示しない」用（配布受領記録とは別行）。 */
 	public static final String ANNOUNCEMENT_80_USERS_MILESTONE_POPUP_SUPPRESS_KEY =
 			"celebrate_80_users_popup_suppress_2026_05";
@@ -853,7 +878,7 @@ public final class GameConstants {
 	/**
 	 * おしらせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
 	 */
-	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-05-11";
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-05-15";
 
 	/** リサイクル：レア度ごとに得るクリスタル（1枚あたり） */
 	public static final int RECYCLE_CRYSTAL_PER_CARD_C = 20;

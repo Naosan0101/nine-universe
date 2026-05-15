@@ -7,24 +7,24 @@ import com.example.nineuniverse.domain.UserDisplayNames;
 import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.battle.CpuBattleMode;
 import com.example.nineuniverse.service.CpuBattleService;
-import com.example.nineuniverse.service.NicknameEpithetService;
 import com.example.nineuniverse.service.DeckService;
+import com.example.nineuniverse.service.NicknameEpithetService;
 import com.example.nineuniverse.web.dto.CpuBattleCommitRequest;
 import com.example.nineuniverse.web.dto.CpuBattleChoiceRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
-import java.util.List;
 
 @Controller
 @RequestMapping("/battle/cpu")
@@ -48,10 +48,22 @@ public class CpuBattleController {
 	}
 
 	@GetMapping
-	public String menu(Model model) {
+	public String hub() {
+		return "cpu-hub";
+	}
+
+	@GetMapping("/casual")
+	public String casualMenu(Model model) {
 		long uid = CurrentUser.require().getId();
 		model.addAttribute("decks", deckService.listDecks(uid));
 		return "cpu-menu";
+	}
+
+	@GetMapping("/league")
+	public String leagueMenu(Model model) {
+		long uid = CurrentUser.require().getId();
+		model.addAttribute("leagueSets", deckService.listLeagueDeckSetSummaries(uid));
+		return "cpu-league-menu";
 	}
 
 	@PostMapping("/start")
@@ -65,12 +77,27 @@ public class CpuBattleController {
 			return "redirect:/battle/cpu/play";
 		} catch (Exception e) {
 			ra.addFlashAttribute("error", e.getMessage());
-			return "redirect:/battle/cpu";
+			return "redirect:/battle/cpu/casual";
+		}
+	}
+
+	@PostMapping("/league/start")
+	public String startLeague(@RequestParam long leagueSetId, @RequestParam int humanDeckSlot,
+			@RequestParam int level, @RequestParam(defaultValue = "ORIGIN") String cpuMode,
+			HttpSession session, RedirectAttributes ra) {
+		try {
+			long uid = CurrentUser.require().getId();
+			CpuBattleMode mode = parseCpuBattleMode(cpuMode);
+			cpuBattleService.startLeagueBattle(uid, leagueSetId, humanDeckSlot, level, mode, session);
+			return "redirect:/battle/cpu/play";
+		} catch (Exception e) {
+			ra.addFlashAttribute("error", e.getMessage());
+			return "redirect:/battle/cpu/league";
 		}
 	}
 
 	@GetMapping("/play")
-	public String play(Model model, HttpSession session) {
+	public String play(Model model, HttpSession session, HttpServletRequest request) {
 		long uid = CurrentUser.require().getId();
 		var st = cpuBattleService.current(session);
 		if (st == null) {
@@ -82,6 +109,9 @@ public class CpuBattleController {
 		model.addAttribute("cardBack", GameConstants.cardBackUrl());
 		model.addAttribute("cardPlateUrl", GameConstants.CARD_LAYER_BASE);
 		model.addAttribute("cardDataUrl", GameConstants.CARD_LAYER_DATA);
+		String cp = request.getContextPath();
+		model.addAttribute("contextPath", cp != null ? cp : "");
+		model.addAttribute("cpuLeagueActive", cpuBattleService.leagueSession(session) != null);
 		CardDefinition hb = null;
 		CardDefinition cb = null;
 		if (st.getHumanBattle() != null && st.getHumanBattle().getMain() != null) {
@@ -170,6 +200,20 @@ public class CpuBattleController {
 		var dto = cpuBattleService.choose(session, req);
 		if (dto == null) return ResponseEntity.notFound().build();
 		return ResponseEntity.ok(dto);
+	}
+
+	@PostMapping(value = "/league-next", produces = "application/json")
+	@ResponseBody
+	public ResponseEntity<?> leagueNext(HttpSession session) {
+		try {
+			var dto = cpuBattleService.leagueNextCpuBattle(session);
+			if (dto == null) {
+				return ResponseEntity.notFound().build();
+			}
+			return ResponseEntity.ok(dto);
+		} catch (Exception e) {
+			return ResponseEntity.badRequest().build();
+		}
 	}
 
 	@PostMapping("/act")

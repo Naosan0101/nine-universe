@@ -128,6 +128,9 @@ public class HomeController {
 		boolean list80UsersMilestone = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_START);
+		boolean listStd3LeagueUiUpdate202605 = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -156,8 +159,10 @@ public class HomeController {
 		model.addAttribute("announcementListCardDisplayServerOps202605", listCardDisplayServerOps202605);
 		model.addAttribute("announcementListDesktopAppIconDesktop01", listDesktopAppIconDesktop01);
 		model.addAttribute("announcementList80UsersMilestone", list80UsersMilestone);
+		model.addAttribute("announcementListStd3LeagueUiUpdate202605", listStd3LeagueUiUpdate202605);
 
 		announcementRewardService.ensure80UsersMilestoneRewardGranted(uid);
+		announcementRewardService.ensureStd3LeagueUiUpdate202605RewardGranted(uid);
 
 		Set<String> claimedKeys = announcementRewardService.findClaimedKeys(uid);
 
@@ -301,7 +306,6 @@ public class HomeController {
 
 		boolean majorUpdateAnnClaimed = claimedKeys.contains(GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_KEY);
 		boolean majorUpdateAnnInWindow = announcementRewardService.isWithinMajorUpdateAnnouncementWindow(today);
-		boolean majorUpdatePopupSuppress = announcementRewardService.hasSuppressedMajorUpdatePopup(uid);
 		model.addAttribute("majorUpdateAnnouncementClaimed", majorUpdateAnnClaimed);
 		model.addAttribute("majorUpdateAnnouncementClaimable", majorUpdateAnnInWindow && !majorUpdateAnnClaimed);
 		model.addAttribute("majorUpdateAnnouncementExpiredUnclaimed",
@@ -309,8 +313,7 @@ public class HomeController {
 		model.addAttribute("majorUpdateAnnouncementFutureUnclaimed",
 				!majorUpdateAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_START));
 		model.addAttribute("majorUpdateAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_MAJOR_UPDATE_GEMS);
-		model.addAttribute("majorUpdateLoginPopupShow",
-				listMajorUpdate && majorUpdateAnnInWindow && !majorUpdatePopupSuppress);
+		model.addAttribute("majorUpdateLoginPopupShow", false);
 
 		boolean denzirionFixAnnClaimed = claimedKeys.contains(GameConstants.ANNOUNCEMENT_DENZIRION_FIX_KEY);
 		boolean denzirionFixAnnInWindow = announcementRewardService.isWithinDenzirionFixAnnouncementWindow(today);
@@ -496,6 +499,24 @@ public class HomeController {
 				!users80MilestoneAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_START));
 		model.addAttribute("users80MilestoneLoginPopupShow",
 				list80UsersMilestone && users80MilestoneAnnInWindow && !users80MilestonePopupSuppress);
+
+		boolean std3LeagueUiUpdate202605AnnClaimed =
+				claimedKeys.contains(GameConstants.ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_KEY);
+		boolean std3LeagueUiUpdate202605AnnInWindow =
+				announcementRewardService.isWithinStd3LeagueUiUpdate202605AnnouncementWindow(today);
+		model.addAttribute("std3LeagueUiUpdate202605AnnouncementClaimed", std3LeagueUiUpdate202605AnnClaimed);
+		model.addAttribute("std3LeagueUiUpdate202605AnnouncementInWindow", std3LeagueUiUpdate202605AnnInWindow);
+		model.addAttribute(
+				"std3LeagueUiUpdate202605AnnouncementExpiredUnclaimed",
+				!std3LeagueUiUpdate202605AnnClaimed
+						&& today.isAfter(GameConstants.ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_LAST_DAY));
+		model.addAttribute(
+				"std3LeagueUiUpdate202605AnnouncementFutureUnclaimed",
+				!std3LeagueUiUpdate202605AnnClaimed
+						&& today.isBefore(GameConstants.ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_START));
+		model.addAttribute(
+				"std3LeagueUiUpdate202605AnnouncementGemAmount",
+				GameConstants.ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_GEMS);
 
 		int announcementBulkClaimableGemTotal = 0;
 		if (listPerfLight && perfInWindow && !perfClaimed) {

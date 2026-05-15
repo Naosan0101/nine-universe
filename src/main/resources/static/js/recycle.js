@@ -756,11 +756,13 @@
 			}
 			openCardDetailModal(nextC, { preserveStack: true });
 		}
-		function goDominionMinionKingRecycle() {
+		function goDominionMinionChampionRecycle() {
 			if (!FossilUi) return;
 			const compRaw = FossilUi.parseCompanionJson(c.companionDetailJson);
-			if (!compRaw || compRaw.kind !== 'dominionMinionEffectLinks' || !compRaw.minionKing) return;
-			const nextC = FossilUi.normalizeCompanionPlainForDeckRecycleModal(compRaw.minionKing);
+			if (!compRaw || compRaw.kind !== 'dominionMinionEffectLinks') return;
+			const champ = compRaw.minionChampion || compRaw.minionKing;
+			if (!champ) return;
+			const nextC = FossilUi.normalizeCompanionPlainForDeckRecycleModal(champ);
 			if (!nextC) return;
 			try {
 				FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(c)));
@@ -839,7 +841,7 @@
 				if (cr && cr.kind === 'kingMakerEffectLinks') {
 					extraFn = goKingMakerInkKingRecycle;
 				} else if (cr && cr.kind === 'dominionMinionEffectLinks') {
-					extraFn = goDominionMinionKingRecycle;
+					extraFn = goDominionMinionChampionRecycle;
 				} else if (cr && cr.kind === 'luciferMiracleFallenLinks') {
 					extraFn = goLuciferFallenRecycle;
 				} else if (cr && cr.kind === 'mikaelMiracleDeckLinks') {

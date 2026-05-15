@@ -88,7 +88,7 @@
 				onFn &&
 				onExtraFn &&
 				body.indexOf('「ミニオンソルジャー」') !== -1 &&
-				body.indexOf('「ミニオンキング」') !== -1
+				(body.indexOf('「ミニオンチャンピオン」') !== -1 || body.indexOf('「ミニオンキング」') !== -1)
 			) {
 				appendDominionDualLinkBody(pb, body, onFn, onExtraFn);
 			} else if (
@@ -200,10 +200,12 @@
 		appendFragment(body);
 	}
 
-	function appendDominionDualLinkBody(pb, body, onMinionSoldier, onMinionKing) {
+	function appendDominionDualLinkBody(pb, body, onMinionSoldier, onMinionChampion) {
+		var secondTok =
+			body.indexOf('「ミニオンチャンピオン」') !== -1 ? '「ミニオンチャンピオン」' : '「ミニオンキング」';
 		var tokens = [
 			{ tok: '「ミニオンソルジャー」', fn: onMinionSoldier },
-			{ tok: '「ミニオンキング」', fn: onMinionKing }
+			{ tok: secondTok, fn: onMinionChampion }
 		];
 		function appendFragment(remaining) {
 			if (remaining === '') {

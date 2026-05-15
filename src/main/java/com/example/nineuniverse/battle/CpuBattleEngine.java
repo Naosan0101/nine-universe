@@ -52,8 +52,8 @@ public class CpuBattleEngine {
 	private static final short DOMINION_ID = GameConstants.DOMINION_FIGHTER_CARD_ID;
 	/** ミニオンソルジャー（id=113） */
 	private static final short MINION_SOLDIER_ID = GameConstants.MINION_SOLDIER_TOKEN_CARD_ID;
-	/** ミニオンキング（id=114）〈常時〉相手ターン中+4 */
-	private static final short MINION_KING_ID = GameConstants.MINION_KING_TOKEN_CARD_ID;
+	/** ミニオンチャンピオン（id=114）〈常時〉相手ターン中+4 */
+	private static final short MINION_CHAMPION_ID = GameConstants.MINION_CHAMPION_TOKEN_CARD_ID;
 	/** ラミエル（id=99） */
 	private static final short RAMIEL_ID = GameConstants.RAMIEL_FIGHTER_CARD_ID;
 	private static final String SKETCHER_DEPLOY_CODE = "SKETCHER";
@@ -73,8 +73,8 @@ public class CpuBattleEngine {
 	private static final int INK_KING_DEPLOY_TEMPORARY_POWER = 4;
 	/** ミニオンソルジャー〈配置〉: 自分ターン終了までの強さ加算 */
 	private static final int MINION_SOLDIER_DEPLOY_TEMPORARY_POWER = 3;
-	/** ミニオンキング〈常時〉: 相手ターン中の強さ加算 */
-	private static final int MINION_KING_OPPONENT_TURN_POWER_BONUS = 4;
+	/** ミニオンチャンピオン〈常時〉: 相手ターン中の強さ加算 */
+	private static final int MINION_CHAMPION_OPPONENT_TURN_POWER_BONUS = 4;
 	private static final short FROSTKRUL_ID = 32;
 	private static final short MISTYINKUL_ID = 33;
 	private static final short NEMURY_ID = 40;
@@ -150,7 +150,7 @@ public class CpuBattleEngine {
 	/** ガラクタアーム（id=60） */
 	private static final short GARAKUTA_ARM_ID = 60;
 	/** クリスタクル〈配置〉: 任意で支払うストーン数 */
-	private static final int CRYSTAKUL_OPTIONAL_STONE_COST = 3;
+	private static final int CRYSTAKUL_OPTIONAL_STONE_COST = 2;
 	/** フェザリア〈配置〉: 任意で支払うストーン数 */
 	private static final int FEZARIA_OPTIONAL_STONE_COST = 3;
 	/** クリスタクル〈配置〉: 次の配置に与える強さ（次の相手ターン終了まで） */
@@ -385,6 +385,37 @@ public class CpuBattleEngine {
 		return st;
 	}
 
+	/**
+	 * CPU リーグ戦など: 人間・CPU 双方のデッキ構成を固定リストから組み立てる（CPU 側は {@link #buildCpuDeckIds} ではなく呼び出し元で決めた 8 枚）。
+	 */
+	public CpuBattleState newCpuBattleWithFixedCpuDeck(List<Short> humanDeckCardIds, List<Short> cpuDeckCardIds,
+			int cpuLevel, CpuBattleMode cpuBattleMode, Random rnd, Map<Short, CardDefinition> defs) {
+		var st = new CpuBattleState();
+		CpuBattleMode mode = cpuBattleMode != null ? cpuBattleMode : CpuBattleMode.ORIGIN;
+		st.setCpuBattleMode(mode);
+		st.setCpuLevel(cpuLevel);
+		st.setHumanGoesFirst(rnd.nextBoolean());
+		st.setHumansTurn(st.isHumanGoesFirst());
+		st.setHumanStones(0);
+		st.setCpuStones(0);
+		st.setHumanTurnStarts(0);
+		st.setCpuTurnStarts(0);
+
+		st.setHumanDeck(buildShuffledInstances(humanDeckCardIds, rnd));
+		st.setCpuDeck(buildShuffledInstances(cpuDeckCardIds, rnd));
+
+		for (int i = 0; i < 4; i++) {
+			drawOne(st.getHumanDeck(), st.getHumanHand());
+			drawOne(st.getCpuDeck(), st.getCpuHand());
+		}
+
+		st.addLog(st.isHumanGoesFirst() ? "先攻: あなた" : "先攻: CPU");
+		beginTurnGainStone(st, st.isHumansTurn(), defs);
+		captureWorldRebuildOpenLayout(st);
+		st.setLastMessage("バトル開始");
+		return st;
+	}
+
 	/** 対人戦: ホストが human、ゲストが cpu スロット。cpuLevel は未使用。 */
 	public CpuBattleState newPvpBattle(List<Short> hostDeckCardIds, List<Short> guestDeckCardIds, Random rnd,
 			Map<Short, CardDefinition> defs) {
@@ -608,13 +639,82 @@ public class CpuBattleEngine {
 		};
 	}
 
+	/** CPU ランダムデッキ用の基準コスト（〈フィールド〉含む）。 */
+	private static int cpuDeckBaseCost(CardDefinition d) {
+		if (d == null || d.getCost() == null) {
+			return 0;
+		}
+		return Math.max(0, d.getCost().intValue());
+	}
+
+	private static boolean originCanPickAnotherCostGe1(Map<Short, Integer> cnt, Set<Short> forbidden,
+			Map<Short, CardDefinition> defs, int ge2Count) {
+		if (defs == null) {
+			return false;
+		}
+		Set<Short> ban = forbidden != null ? forbidden : Collections.emptySet();
+		for (short id = 1; id <= 30; id++) {
+			if (ban.contains(id)) {
+				continue;
+			}
+			if (cnt.getOrDefault(id, 0) >= 2) {
+				continue;
+			}
+			CardDefinition d = defs.get(id);
+			if (d == null) {
+				continue;
+			}
+			int c = cpuDeckBaseCost(d);
+			if (c <= 0) {
+				continue;
+			}
+			if (c >= 2 && ge2Count >= 1) {
+				continue;
+			}
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * CPU オリジン／アドバンスドのランダムデッキ共通: コスト割合は強さに依らず
+	 * 1コスト以上は4枚まで（取り得る範囲で優先的に入れる）、2コスト以上は1枚まで、残りは0コスト。
+	 */
+	public record CpuLeagueDeckPair(List<Short> cpuSlot1Deck, List<Short> cpuSlot2Deck) {
+	}
+
+	/**
+	 * CPU リーグ戦用: カジュアルと同じ抽選ロジックで2デッキを作り、カード ID の重複はさせない（リーグ原則）。
+	 */
+	public CpuLeagueDeckPair buildCpuLeagueDeckPair(int cpuLevel, CpuBattleMode cpuBattleMode, Random rnd,
+			Map<Short, CardDefinition> defs) {
+		CpuBattleMode mode = cpuBattleMode != null ? cpuBattleMode : CpuBattleMode.ORIGIN;
+		Random r = rnd != null ? rnd : new Random();
+		List<Short> deck1 = mode == CpuBattleMode.ADVANCED
+				? buildCpuDeckIdsAdvanced(cpuLevel, r, defs, Collections.emptySet())
+				: buildCpuDeckIds(cpuLevel, r, defs, Collections.emptySet());
+		Set<Short> used = new HashSet<>(deck1);
+		List<Short> deck2 = mode == CpuBattleMode.ADVANCED
+				? buildCpuDeckIdsAdvanced(cpuLevel, r, defs, used)
+				: buildCpuDeckIds(cpuLevel, r, defs, used);
+		return new CpuLeagueDeckPair(List.copyOf(deck1), List.copyOf(deck2));
+	}
+
 	private List<Short> buildCpuDeckIds(int cpuLevel, Random rnd, Map<Short, CardDefinition> defs) {
+		return buildCpuDeckIds(cpuLevel, rnd, defs, Collections.emptySet());
+	}
+
+	private List<Short> buildCpuDeckIds(int cpuLevel, Random rnd, Map<Short, CardDefinition> defs, Set<Short> forbiddenIds) {
 		final int lvl = clampInt(cpuLevel, 1, 3);
 		final String[] coreTribes = new String[] {"HUMAN", "ELF", "UNDEAD", "DRAGON"};
 
 		List<Short> picked = new ArrayList<>();
 		Map<Short, Integer> cnt = new HashMap<>();
 		Map<String, Integer> tribeCount = new HashMap<>();
+		int ge1Count = 0;
+		int ge2Count = 0;
+
+		Set<Short> forbidden = forbiddenIds != null ? forbiddenIds : Collections.emptySet();
 
 		// Deck "theme" tribe. Higher levels will adhere to it more often, but not always.
 		final String theme = coreTribes[rnd.nextInt(coreTribes.length)];
@@ -625,6 +725,8 @@ public class CpuBattleEngine {
 		final double rarityFactor = clampDouble(0.22 + 0.12 * (lvl - 1), 0.22, 1.3);
 
 		while (picked.size() < 8) {
+			boolean zerosOnly = ge1Count >= 4 || !originCanPickAnotherCostGe1(cnt, forbidden, defs, ge2Count);
+
 			// Determine current dominant tribe in picked cards to encourage convergence.
 			String dominant = theme;
 			int best = -1;
@@ -640,7 +742,7 @@ public class CpuBattleEngine {
 			double totalW = 0.0;
 			double[] w = new double[31];
 			for (short id = 1; id <= 30; id++) {
-				if (cnt.getOrDefault(id, 0) >= 2) {
+				if (forbidden.contains(id) || cnt.getOrDefault(id, 0) >= 2) {
 					w[id] = 0.0;
 					continue;
 				}
@@ -648,6 +750,22 @@ public class CpuBattleEngine {
 				if (d == null) {
 					w[id] = 0.0;
 					continue;
+				}
+				int bc = cpuDeckBaseCost(d);
+				if (zerosOnly) {
+					if (bc != 0) {
+						w[id] = 0.0;
+						continue;
+					}
+				} else {
+					if (bc <= 0) {
+						w[id] = 0.0;
+						continue;
+					}
+					if (bc >= 2 && ge2Count >= 1) {
+						w[id] = 0.0;
+						continue;
+					}
 				}
 				double ww = 1.0;
 
@@ -690,11 +808,53 @@ public class CpuBattleEngine {
 			}
 
 			if (totalW <= 0) {
+				List<Short> zvalid = new ArrayList<>();
+				for (short id = 1; id <= 30; id++) {
+					if (forbidden.contains(id) || cnt.getOrDefault(id, 0) >= 2) {
+						continue;
+					}
+					CardDefinition d = defs != null ? defs.get(id) : null;
+					if (d == null || cpuDeckBaseCost(d) != 0) {
+						continue;
+					}
+					zvalid.add(id);
+				}
+				if (!zvalid.isEmpty()) {
+					short id = zvalid.get(rnd.nextInt(zvalid.size()));
+					picked.add(id);
+					cnt.put(id, cnt.getOrDefault(id, 0) + 1);
+					CardDefinition cd = defs != null ? defs.get(id) : null;
+					if (cd != null) {
+						for (String t : coreTribes) {
+							if (CardAttributes.hasAttribute(cd, t)) {
+								tribeCount.put(t, tribeCount.getOrDefault(t, 0) + 1);
+							}
+						}
+					}
+					continue;
+				}
 				// Fallback (shouldn't happen): uniform random.
 				short id = (short) (1 + rnd.nextInt(30));
-				if (cnt.getOrDefault(id, 0) >= 2) continue;
+				if (forbidden.contains(id) || cnt.getOrDefault(id, 0) >= 2) {
+					continue;
+				}
 				picked.add(id);
 				cnt.put(id, cnt.getOrDefault(id, 0) + 1);
+				int bc = cpuDeckBaseCost(defs != null ? defs.get(id) : null);
+				if (bc >= 2) {
+					ge2Count++;
+				}
+				if (bc >= 1) {
+					ge1Count++;
+				}
+				CardDefinition cd = defs != null ? defs.get(id) : null;
+				if (cd != null) {
+					for (String t : coreTribes) {
+						if (CardAttributes.hasAttribute(cd, t)) {
+							tribeCount.put(t, tribeCount.getOrDefault(t, 0) + 1);
+						}
+					}
+				}
 				continue;
 			}
 
@@ -712,6 +872,13 @@ public class CpuBattleEngine {
 
 			picked.add(chosen);
 			cnt.put(chosen, cnt.getOrDefault(chosen, 0) + 1);
+			int bcc = cpuDeckBaseCost(defs != null ? defs.get(chosen) : null);
+			if (bcc >= 2) {
+				ge2Count++;
+			}
+			if (bcc >= 1) {
+				ge1Count++;
+			}
 
 			CardDefinition cd = defs != null ? defs.get(chosen) : null;
 			if (cd != null) {
@@ -738,6 +905,8 @@ public class CpuBattleEngine {
 	private static final double ADVANCED_L5_VARIETY_OFF_DOMINANT_WEIGHT_MUL = 2.4;
 	/** アドバンスド CPU デッキに含められる〈フィールド〉カードの最大枚数（最小は 1 枚を別途保証） */
 	private static final int ADVANCED_CPU_DECK_MAX_FIELD_CARDS = 2;
+	/** アドバンスド CPU: 〈フィールド〉をデッキに1枚だけ入れる確率（残りは2枚） */
+	private static final double ADVANCED_CPU_DECK_SINGLE_FIELD_PROB = 0.80;
 
 	private static boolean isFieldCardKind(CardDefinition d) {
 		if (d == null || d.getCardKind() == null) {
@@ -759,12 +928,16 @@ public class CpuBattleEngine {
 	}
 
 	private static Short pickAdvancedReplacementFighter(List<Short> candidateIds, Map<Short, Integer> cnt,
-			Map<Short, CardDefinition> defs, Random rnd) {
+			Map<Short, CardDefinition> defs, Random rnd, Set<Short> excludedIds) {
 		if (candidateIds == null || rnd == null || defs == null) {
 			return null;
 		}
+		Set<Short> ex = excludedIds != null ? excludedIds : Collections.emptySet();
 		List<Short> ok = new ArrayList<>();
 		for (Short id : candidateIds) {
+			if (ex.contains(id)) {
+				continue;
+			}
 			if (cnt.getOrDefault(id, 0) >= 2) {
 				continue;
 			}
@@ -780,12 +953,17 @@ public class CpuBattleEngine {
 		return ok.get(rnd.nextInt(ok.size()));
 	}
 
-	private static Short pickAdvancedReplacementField(List<Short> fieldCandidateIds, Map<Short, Integer> cnt, Random rnd) {
+	private static Short pickAdvancedReplacementField(List<Short> fieldCandidateIds, Map<Short, Integer> cnt, Random rnd,
+			Set<Short> excludedIds) {
 		if (fieldCandidateIds == null || rnd == null) {
 			return null;
 		}
+		Set<Short> ex = excludedIds != null ? excludedIds : Collections.emptySet();
 		List<Short> ok = new ArrayList<>();
 		for (Short id : fieldCandidateIds) {
+			if (ex.contains(id)) {
+				continue;
+			}
 			if (cnt.getOrDefault(id, 0) < 2) {
 				ok.add(id);
 			}
@@ -796,14 +974,148 @@ public class CpuBattleEngine {
 		return ok.get(rnd.nextInt(ok.size()));
 	}
 
+	private static boolean advancedCanPickAnotherCostGe1(List<Short> candidateIds, Map<Short, Integer> cnt,
+			Set<Short> forbidden, int fieldInDeck, Map<Short, CardDefinition> defs, int ge2Count) {
+		if (candidateIds == null || defs == null) {
+			return false;
+		}
+		Set<Short> ban = forbidden != null ? forbidden : Collections.emptySet();
+		for (short id : candidateIds) {
+			if (ban.contains(id) || cnt.getOrDefault(id, 0) >= 2) {
+				continue;
+			}
+			CardDefinition d = defs.get(id);
+			if (d == null) {
+				continue;
+			}
+			if (isFieldCardKind(d) && fieldInDeck >= ADVANCED_CPU_DECK_MAX_FIELD_CARDS) {
+				continue;
+			}
+			int bc = cpuDeckBaseCost(d);
+			if (bc <= 0) {
+				continue;
+			}
+			if (bc >= 2 && ge2Count >= 1) {
+				continue;
+			}
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * 〈フィールド〉枚数調整後に崩れたコスト上限（1+ が4枚まで・2+ が1枚まで）を入れ替えで修復する。
+	 */
+	private static void repairAdvancedCpuDeckCostCaps(List<Short> picked, List<Short> candidateIds,
+			List<Short> fieldCandidateIds, Random rnd, Map<Short, CardDefinition> defs, Set<Short> excludedIds) {
+		if (picked == null || picked.size() != 8 || defs == null || candidateIds == null || rnd == null) {
+			return;
+		}
+		Set<Short> ex = excludedIds != null ? excludedIds : Collections.emptySet();
+		for (int guard = 0; guard < 48; guard++) {
+			int ge2 = 0;
+			int ge1 = 0;
+			for (Short id : picked) {
+				int c = cpuDeckBaseCost(defs.get(id));
+				if (c >= 2) {
+					ge2++;
+				}
+				if (c >= 1) {
+					ge1++;
+				}
+			}
+			if (ge2 <= 1 && ge1 <= 4) {
+				return;
+			}
+			Map<Short, Integer> cnt = new HashMap<>();
+			for (Short id : picked) {
+				cnt.put(id, cnt.getOrDefault(id, 0) + 1);
+			}
+			int victimIdx = -1;
+			for (int i = 0; i < picked.size(); i++) {
+				int c = cpuDeckBaseCost(defs.get(picked.get(i)));
+				if (ge2 > 1 && c >= 2) {
+					victimIdx = i;
+					break;
+				}
+			}
+			if (victimIdx < 0 && ge1 > 4) {
+				for (int i = picked.size() - 1; i >= 0; i--) {
+					if (cpuDeckBaseCost(defs.get(picked.get(i))) >= 1) {
+						victimIdx = i;
+						break;
+					}
+				}
+			}
+			if (victimIdx < 0) {
+				return;
+			}
+			Short oldId = picked.get(victimIdx);
+			boolean wantField = isFieldCardKind(defs.get(oldId));
+			Short nid = null;
+			if (wantField && fieldCandidateIds != null) {
+				List<Short> okF = new ArrayList<>();
+				for (Short fid : fieldCandidateIds) {
+					if (ex.contains(fid)) {
+						continue;
+					}
+					if (cpuDeckBaseCost(defs.get(fid)) != 0) {
+						continue;
+					}
+					int n = cnt.getOrDefault(fid, 0);
+					if (fid.equals(oldId)) {
+						n--;
+					}
+					if (n < 2) {
+						okF.add(fid);
+					}
+				}
+				if (!okF.isEmpty()) {
+					nid = okF.get(rnd.nextInt(okF.size()));
+				}
+			}
+			if (nid == null) {
+				List<Short> okZ = new ArrayList<>();
+				for (Short fid : candidateIds) {
+					if (ex.contains(fid)) {
+						continue;
+					}
+					CardDefinition d = defs.get(fid);
+					if (d == null || isFieldCardKind(d) != wantField) {
+						continue;
+					}
+					if (cpuDeckBaseCost(d) != 0) {
+						continue;
+					}
+					int n = cnt.getOrDefault(fid, 0);
+					if (fid.equals(oldId)) {
+						n--;
+					}
+					if (n < 2) {
+						okZ.add(fid);
+					}
+				}
+				if (!okZ.isEmpty()) {
+					nid = okZ.get(rnd.nextInt(okZ.size()));
+				}
+			}
+			if (nid == null) {
+				return;
+			}
+			picked.set(victimIdx, nid);
+		}
+	}
+
 	/**
 	 * 〈フィールド〉が 1〜2 枚になるよう入れ替える（重み抽選の端数で 0 枚や 3 枚以上になりうるため）。
+	 * その後、1 枚:約 80%／2 枚:約 20% になるよう枚数を調整する。
 	 */
 	private static void enforceAdvancedCpuDeckFieldBounds(List<Short> picked, List<Short> candidateIds,
-			List<Short> fieldCandidateIds, Random rnd, Map<Short, CardDefinition> defs) {
+			List<Short> fieldCandidateIds, Random rnd, Map<Short, CardDefinition> defs, Set<Short> excludedIds) {
 		if (picked == null || picked.size() != 8 || defs == null) {
 			return;
 		}
+		Set<Short> ex = excludedIds != null ? excludedIds : Collections.emptySet();
 		Map<Short, Integer> cnt = new HashMap<>();
 		for (Short id : picked) {
 			cnt.put(id, cnt.getOrDefault(id, 0) + 1);
@@ -829,7 +1141,7 @@ public class CpuBattleEngine {
 			}
 			int i = fieldIdx.get(rnd.nextInt(fieldIdx.size()));
 			Short oldId = picked.get(i);
-			Short nid = pickAdvancedReplacementFighter(candidateIds, cnt, defs, rnd);
+			Short nid = pickAdvancedReplacementFighter(candidateIds, cnt, defs, rnd, ex);
 			if (nid == null) {
 				break;
 			}
@@ -858,13 +1170,68 @@ public class CpuBattleEngine {
 			}
 			int i = fighterIdx.get(rnd.nextInt(fighterIdx.size()));
 			Short oldId = picked.get(i);
-			Short nid = pickAdvancedReplacementField(fieldCandidateIds, cnt, rnd);
+			Short nid = pickAdvancedReplacementField(fieldCandidateIds, cnt, rnd, ex);
 			if (nid == null) {
 				break;
 			}
 			adjustCount(cnt, oldId, -1);
 			picked.set(i, nid);
 			adjustCount(cnt, nid, 1);
+		}
+		// 強さにかかわらず〈フィールド〉1枚: 80%、2枚: 20%（上の補正で 1〜2 枚に収まっている前提）
+		int targetFields = rnd.nextDouble() < ADVANCED_CPU_DECK_SINGLE_FIELD_PROB ? 1 : 2;
+		for (int guard = 0; guard < 24; guard++) {
+			int fieldN = 0;
+			for (Short id : picked) {
+				if (isFieldCardKind(defs.get(id))) {
+					fieldN++;
+				}
+			}
+			if (fieldN == targetFields) {
+				break;
+			}
+			if (fieldN > targetFields) {
+				List<Integer> fieldIdx = new ArrayList<>();
+				for (int i = 0; i < picked.size(); i++) {
+					if (isFieldCardKind(defs.get(picked.get(i)))) {
+						fieldIdx.add(i);
+					}
+				}
+				if (fieldIdx.isEmpty()) {
+					break;
+				}
+				int i = fieldIdx.get(rnd.nextInt(fieldIdx.size()));
+				Short oldId = picked.get(i);
+				Short nid = pickAdvancedReplacementFighter(candidateIds, cnt, defs, rnd, ex);
+				if (nid == null) {
+					break;
+				}
+				adjustCount(cnt, oldId, -1);
+				picked.set(i, nid);
+				adjustCount(cnt, nid, 1);
+			} else {
+				if (fieldCandidateIds == null || fieldCandidateIds.isEmpty()) {
+					break;
+				}
+				List<Integer> fighterIdx = new ArrayList<>();
+				for (int i = 0; i < picked.size(); i++) {
+					if (!isFieldCardKind(defs.get(picked.get(i)))) {
+						fighterIdx.add(i);
+					}
+				}
+				if (fighterIdx.isEmpty()) {
+					break;
+				}
+				int i = fighterIdx.get(rnd.nextInt(fighterIdx.size()));
+				Short oldId = picked.get(i);
+				Short nid = pickAdvancedReplacementField(fieldCandidateIds, cnt, rnd, ex);
+				if (nid == null) {
+					break;
+				}
+				adjustCount(cnt, oldId, -1);
+				picked.set(i, nid);
+				adjustCount(cnt, nid, 1);
+			}
 		}
 	}
 
@@ -873,15 +1240,25 @@ public class CpuBattleEngine {
 	 * 強さは 1〜5 段階（レベルが上がるほど種族収束・レアリティが上がりやすい。種族は {@link #ADVANCED_TRIBE_CONVERGENCE_FACTOR} と
 	 * {@link #ADVANCED_TRIBE_CONVERGENCE_QUAD_PER_LEVEL_SQ} でオリジンより寄せ、高レベルほど差をつける）。
 	 * レベル5のみ、残り枚数に応じた多様化ピックでメイン外が1〜2枚入りやすい。
-	 * 〈フィールド〉は必ず 1 枚以上、多くても 2 枚まで。
+	 * 〈フィールド〉は必ず 1 枚以上、多くても 2 枚まで。強さにかかわらず 1 枚が約 80%、2 枚が約 20%。
+	 * コスト割合はオリジン CPU と同様（1+ は4枚まで・2+ は1枚まで・残り0コスト）。
 	 */
 	private List<Short> buildCpuDeckIdsAdvanced(int cpuLevel, Random rnd, Map<Short, CardDefinition> defs) {
+		return buildCpuDeckIdsAdvanced(cpuLevel, rnd, defs, Collections.emptySet());
+	}
+
+	private List<Short> buildCpuDeckIdsAdvanced(int cpuLevel, Random rnd, Map<Short, CardDefinition> defs,
+			Set<Short> forbiddenIds) {
+		final Set<Short> forbidden = forbiddenIds != null ? forbiddenIds : Collections.emptySet();
 		if (defs == null || defs.isEmpty()) {
-			return buildCpuDeckIds(Math.min(cpuLevel, 3), rnd, defs);
+			return buildCpuDeckIds(Math.min(cpuLevel, 3), rnd, defs, forbidden);
 		}
 		List<Short> candidateIds = new ArrayList<>();
 		for (CardDefinition d : defs.values()) {
 			if (d == null || d.getId() == null) {
+				continue;
+			}
+			if (GameConstants.excludedFromPackOpenAndLibraryListing(d.getId())) {
 				continue;
 			}
 			String kind = d.getCardKind();
@@ -894,7 +1271,7 @@ public class CpuBattleEngine {
 			}
 		}
 		if (candidateIds.isEmpty()) {
-			return buildCpuDeckIds(Math.min(cpuLevel, 3), rnd, defs);
+			return buildCpuDeckIds(Math.min(cpuLevel, 3), rnd, defs, forbidden);
 		}
 		Collections.sort(candidateIds);
 
@@ -913,6 +1290,8 @@ public class CpuBattleEngine {
 		Map<Short, Integer> cnt = new HashMap<>();
 		Map<String, Integer> tribeCount = new HashMap<>();
 		int fieldInDeck = 0;
+		int ge1Count = 0;
+		int ge2Count = 0;
 
 		final String theme = coreTribes[rnd.nextInt(coreTribes.length)];
 		final int lvlMinus1 = lvl - 1;
@@ -924,9 +1303,10 @@ public class CpuBattleEngine {
 		int l5VarietyRemaining = 0;
 		if (lvl == 5) {
 			double u = rnd.nextDouble();
+			// 種族: 14% 完全一致、70% が1枚だけ別種族、16% が2枚だけ別種族（多様化ピック回数）
 			if (u < 0.14) {
 				l5VarietyRemaining = 0;
-			} else if (u < 0.54) {
+			} else if (u < 0.84) {
 				l5VarietyRemaining = 1;
 			} else {
 				l5VarietyRemaining = 2;
@@ -936,6 +1316,9 @@ public class CpuBattleEngine {
 		final double convergeBoostNormal = lvl == 5 ? convergeBoost * 0.88 : convergeBoost;
 
 		while (picked.size() < 8) {
+			boolean zerosOnly = ge1Count >= 4
+					|| !advancedCanPickAnotherCostGe1(candidateIds, cnt, forbidden, fieldInDeck, defs, ge2Count);
+
 			String dominant = theme;
 			int best = -1;
 			for (String t : coreTribes) {
@@ -964,7 +1347,7 @@ public class CpuBattleEngine {
 			double totalW = 0.0;
 			Map<Short, Double> w = new HashMap<>();
 			for (short id : candidateIds) {
-				if (cnt.getOrDefault(id, 0) >= 2) {
+				if (forbidden.contains(id) || cnt.getOrDefault(id, 0) >= 2) {
 					continue;
 				}
 				CardDefinition d = defs.get(id);
@@ -973,6 +1356,19 @@ public class CpuBattleEngine {
 				}
 				if (isFieldCardKind(d) && fieldInDeck >= ADVANCED_CPU_DECK_MAX_FIELD_CARDS) {
 					continue;
+				}
+				int bc = cpuDeckBaseCost(d);
+				if (zerosOnly) {
+					if (bc != 0) {
+						continue;
+					}
+				} else {
+					if (bc <= 0) {
+						continue;
+					}
+					if (bc >= 2 && ge2Count >= 1) {
+						continue;
+					}
 				}
 				double ww = 1.0;
 
@@ -1019,9 +1415,43 @@ public class CpuBattleEngine {
 			}
 
 			if (totalW <= 0) {
+				List<Short> zvalid = new ArrayList<>();
+				for (short id : candidateIds) {
+					if (forbidden.contains(id) || cnt.getOrDefault(id, 0) >= 2) {
+						continue;
+					}
+					CardDefinition d = defs.get(id);
+					if (d == null) {
+						continue;
+					}
+					if (isFieldCardKind(d) && fieldInDeck >= ADVANCED_CPU_DECK_MAX_FIELD_CARDS) {
+						continue;
+					}
+					if (cpuDeckBaseCost(d) != 0) {
+						continue;
+					}
+					zvalid.add(id);
+				}
+				if (!zvalid.isEmpty()) {
+					short id = zvalid.get(rnd.nextInt(zvalid.size()));
+					picked.add(id);
+					cnt.put(id, cnt.getOrDefault(id, 0) + 1);
+					CardDefinition addDef = defs.get(id);
+					if (addDef != null && isFieldCardKind(addDef)) {
+						fieldInDeck++;
+					}
+					if (addDef != null) {
+						for (String t : coreTribes) {
+							if (CardAttributes.hasAttribute(addDef, t)) {
+								tribeCount.put(t, tribeCount.getOrDefault(t, 0) + 1);
+							}
+						}
+					}
+					continue;
+				}
 				List<Short> valid = new ArrayList<>();
 				for (short id : candidateIds) {
-					if (cnt.getOrDefault(id, 0) >= 2) {
+					if (forbidden.contains(id) || cnt.getOrDefault(id, 0) >= 2) {
 						continue;
 					}
 					CardDefinition d = defs.get(id);
@@ -1035,7 +1465,7 @@ public class CpuBattleEngine {
 				}
 				if (valid.isEmpty()) {
 					for (short id : candidateIds) {
-						if (cnt.getOrDefault(id, 0) >= 2) {
+						if (forbidden.contains(id) || cnt.getOrDefault(id, 0) >= 2) {
 							continue;
 						}
 						CardDefinition d = defs.get(id);
@@ -1054,6 +1484,13 @@ public class CpuBattleEngine {
 				CardDefinition addDef = defs.get(id);
 				if (addDef != null && isFieldCardKind(addDef)) {
 					fieldInDeck++;
+				}
+				int bcf = cpuDeckBaseCost(addDef);
+				if (bcf >= 2) {
+					ge2Count++;
+				}
+				if (bcf >= 1) {
+					ge1Count++;
 				}
 				if (addDef != null) {
 					for (String t : coreTribes) {
@@ -1084,6 +1521,13 @@ public class CpuBattleEngine {
 
 			CardDefinition cd = defs.get(chosen);
 			if (cd != null) {
+				int bcc = cpuDeckBaseCost(cd);
+				if (bcc >= 2) {
+					ge2Count++;
+				}
+				if (bcc >= 1) {
+					ge1Count++;
+				}
 				if (isFieldCardKind(cd)) {
 					fieldInDeck++;
 				}
@@ -1094,7 +1538,8 @@ public class CpuBattleEngine {
 				}
 			}
 		}
-		enforceAdvancedCpuDeckFieldBounds(picked, candidateIds, fieldCandidateIds, rnd, defs);
+		enforceAdvancedCpuDeckFieldBounds(picked, candidateIds, fieldCandidateIds, rnd, defs, forbidden);
+		repairAdvancedCpuDeckCostCaps(picked, candidateIds, fieldCandidateIds, rnd, defs, forbidden);
 		return picked;
 	}
 
@@ -1208,8 +1653,9 @@ public class CpuBattleEngine {
 		st.addLog("天界門 ヘヴンズゲート: " + who + "は「奇跡」を1枚手札に加えた");
 	}
 
-	/** 天界門 ヘヴンズゲート〈フィールド〉: 各ターン開始時（先攻1ターン目のストーン例外と同様にスキップ後）にお互いに「奇跡」1枚。 */
-	private static void grantHeavensGateTurnStartMiraclesToBothHands(CpuBattleState st, Map<Short, CardDefinition> defs) {
+	/** 天界門 ヘヴンズゲート〈フィールド〉: ターン開始したプレイヤーにのみ「奇跡」1枚（先攻1ターン目のストーン例外と同様にスキップ後）。 */
+	private static void grantHeavensGateTurnStartMiracleForTurnOwner(CpuBattleState st, boolean turnOwnerHuman,
+			Map<Short, CardDefinition> defs) {
 		if (st == null || defs == null) {
 			return;
 		}
@@ -1221,9 +1667,13 @@ public class CpuBattleEngine {
 		if (defs.get(mid) == null && defs.get(GameConstants.FALLEN_ANGEL_LUCIFER_CARD_ID) == null) {
 			return;
 		}
-		addMiracleCopiesToHandForPlayer(st.getHumanHand(), 1, st, true, defs);
-		addMiracleCopiesToHandForPlayer(st.getCpuHand(), 1, st, false, defs);
-		st.addLog("天界門 ヘヴンズゲート: お互いに「奇跡」を1枚手札に加えた");
+		if (turnOwnerHuman) {
+			addMiracleCopiesToHandForPlayer(st.getHumanHand(), 1, st, true, defs);
+		} else {
+			addMiracleCopiesToHandForPlayer(st.getCpuHand(), 1, st, false, defs);
+		}
+		String who = turnOwnerHuman ? humanSlotActorLogLabel(st) : cpuSlotActorLogLabel(st);
+		st.addLog("天界門 ヘヴンズゲート: " + who + "は「奇跡」を1枚手札に加えた");
 	}
 
 	private void setPendingDeployEffectOnly(CpuBattleState st, boolean ownerHuman, CardDefinition mainDef, ZoneFighter zone,
@@ -1355,7 +1805,7 @@ public class CpuBattleEngine {
 			}
 			st.setPendingChoice(new PendingChoice(
 					ChoiceKind.CONFIRM_OPTIONAL_STONE,
-					"クリスタクル（ストーン3・次の配置+3／次の相手ターン終了まで）",
+					"クリスタクル（ストーン2・次の配置+3／次の相手ターン終了まで）",
 					true,
 					"CRYSTAKUL",
 					CRYSTAKUL_OPTIONAL_STONE_COST,
@@ -1382,7 +1832,7 @@ public class CpuBattleEngine {
 			}
 			st.setPendingChoice(new PendingChoice(
 					ChoiceKind.CONFIRM_OPTIONAL_STONE,
-					"クリスタクル（ストーン3・次の配置+3／次の相手ターン終了まで）",
+					"クリスタクル（ストーン2・次の配置+3／次の相手ターン終了まで）",
 					false,
 					"CRYSTAKUL",
 					CRYSTAKUL_OPTIONAL_STONE_COST,
@@ -3167,7 +3617,7 @@ public class CpuBattleEngine {
 			st.setCpuStones(st.getCpuStones() + 1);
 			st.addLog(opponentActorLogLabel(st) + "はストーンを1つ得た");
 		}
-		grantHeavensGateTurnStartMiraclesToBothHands(st, defs);
+		grantHeavensGateTurnStartMiracleForTurnOwner(st, forHuman, defs);
 		applyKrakenPendingAtTurnStart(st, forHuman, defs);
 		applyRamielPendingAtTurnStart(st, forHuman, defs);
 	}
@@ -4336,14 +4786,38 @@ public class CpuBattleEngine {
 		if (st == null || defs == null) {
 			return;
 		}
+		String prefix = cpuAiDeploy ? "CPU漫画家" : "漫画家";
 		ZoneFighter zf = deployerIsHuman ? st.getHumanBattle() : st.getCpuBattle();
 		if (zf == null || zf.getMain() == null) {
 			return;
+		}
+		// 前列の強さが相手に及ばないときは〈配置〉を発動させない（敗北確認の裏で手札が増えるのを防ぐ）
+		if (deployerIsHuman) {
+			if (st.getHumanBattle() != null && st.getCpuBattle() != null) {
+				int me = effectiveBattlePower(st.getHumanBattle(), true, st, defs);
+				int opp = effectiveBattlePower(st.getCpuBattle(), false, st, defs);
+				if (me < opp) {
+					st.addLog(prefix + ": 強さが及ばないため〈配置〉は発動しない");
+					return;
+				}
+			}
+		} else {
+			if (st.getHumanBattle() != null && st.getCpuBattle() != null) {
+				int me = effectiveBattlePower(st.getCpuBattle(), false, st, defs);
+				int opp = effectiveBattlePower(st.getHumanBattle(), true, st, defs);
+				if (me < opp) {
+					st.addLog(prefix + ": 強さが及ばないため〈配置〉は発動しない");
+					return;
+				}
+			}
 		}
 		int p = effectiveBattlePower(zf, deployerIsHuman, st, defs);
 		List<Short> ids = new ArrayList<>();
 		for (CardDefinition cd : defs.values()) {
 			if (cd == null || cd.getId() == null) {
+				continue;
+			}
+			if (GameConstants.excludedFromPackOpenAndLibraryListing(cd.getId())) {
 				continue;
 			}
 			if (!isNonFieldFighterCardDef(cd)) {
@@ -4354,7 +4828,6 @@ public class CpuBattleEngine {
 				ids.add(cd.getId());
 			}
 		}
-		String prefix = cpuAiDeploy ? "CPU漫画家" : "漫画家";
 		if (ids.isEmpty()) {
 			st.addLog(prefix + ": 強さ" + p + "に合うファイターが定義にない");
 			return;
@@ -4560,7 +5033,7 @@ public class CpuBattleEngine {
 	}
 
 	/**
-	 * キングメーカー〈配置〉: 手札に「インクナイト」が3枚以上あるなら「インクキング」を1枚手札に加える（配置済みメインは手札に含まない）。
+	 * キングメーカー〈配置〉: 手札に「インクナイト」が2枚以上あるなら「インクキング」を1枚手札に加える（配置済みメインは手札に含まない）。
 	 */
 	private void applyKingMakerDeployEffect(CpuBattleState st, boolean deployerIsHuman, boolean cpuAiDeploy,
 			Map<Short, CardDefinition> defs) {
@@ -4570,11 +5043,11 @@ public class CpuBattleEngine {
 		List<BattleCard> hand = deployerIsHuman ? st.getHumanHand() : st.getCpuHand();
 		int ink = countInkKnightsInHand(hand);
 		String logP = kingMakerDeployLogPrefix(st, deployerIsHuman, cpuAiDeploy);
-		if (ink >= 3) {
+		if (ink >= 2) {
 			addCopiesOfCardIdToHand(hand, INK_KING_ID, 1, defs);
 			st.addLog(logP + ": 「インクキング」を1枚手札に加えた");
 		} else {
-			st.addLog(logP + ": 手札の「インクナイト」が3枚未満のため効果はなかった");
+			st.addLog(logP + ": 手札の「インクナイト」が2枚未満のため効果はなかった");
 		}
 	}
 
@@ -4642,7 +5115,7 @@ public class CpuBattleEngine {
 	}
 
 	/**
-	 * ドミニオン〈配置〉: 手札に「ミニオンソルジャー」があれば「ミニオンキング」を1枚加える。そうでなければ手札をすべて「ミニオンソルジャー」に変化。
+	 * ドミニオン〈配置〉: 手札に「ミニオンソルジャー」があれば「ミニオンチャンピオン」を1枚加える。そうでなければ手札をすべて「ミニオンソルジャー」に変化。
 	 */
 	private void applyDominionDeployEffect(CpuBattleState st, boolean deployerIsHuman, boolean cpuAiDeploy,
 			Map<Short, CardDefinition> defs) {
@@ -4655,12 +5128,12 @@ public class CpuBattleEngine {
 			return;
 		}
 		if (countMinionSoldiersInHand(hand) >= 1) {
-			if (defs == null || defs.get(MINION_KING_ID) == null) {
-				st.addLog(logP + ": 「ミニオンキング」の定義がない");
+			if (defs == null || defs.get(MINION_CHAMPION_ID) == null) {
+				st.addLog(logP + ": 「ミニオンチャンピオン」の定義がない");
 				return;
 			}
-			addCopiesOfCardIdToHand(hand, MINION_KING_ID, 1, defs);
-			st.addLog(logP + ": 「ミニオンキング」を1枚手札に加えた");
+			addCopiesOfCardIdToHand(hand, MINION_CHAMPION_ID, 1, defs);
+			st.addLog(logP + ": 「ミニオンチャンピオン」を1枚手札に加えた");
 			return;
 		}
 		if (defs == null || defs.get(MINION_SOLDIER_ID) == null) {
@@ -5104,20 +5577,27 @@ public class CpuBattleEngine {
 	}
 
 	/**
-	 * 相手が〈フィールド〉を所有しているとき、書き換え後の盤面で「レベルアップなし」勝利が改善するなら、
-	 * そのフィールドを返す（まだ配置していない前提）。
+	 * アドバンスド CPU: ホスト（ユーザー）側が〈フィールド〉を配置しているとき、ストーンで出せる手札の〈フィールド〉があれば
+	 * 必ず1枚選んで上書きする（強さ条件は後続のファイター探索で満たす前提）。CPU／ゲストが置いた〈フィールド〉は
+	 * {@link CpuBattleState#getActiveFieldOwnerHuman()} が false のためここでは対象にしない。
 	 */
-	private Optional<String> pickAdvancedCpuFieldBeforeFighterIfImprove(CpuBattleState st,
+	private Optional<String> pickAdvancedCpuFieldOverwriteHumanIfPossible(CpuBattleState st,
 			Map<Short, CardDefinition> defs, Random rnd) {
+		if (st == null || defs == null || rnd == null) {
+			return Optional.empty();
+		}
+		if (st.getCpuBattleMode() != CpuBattleMode.ADVANCED) {
+			return Optional.empty();
+		}
 		if (!Boolean.TRUE.equals(st.getActiveFieldOwnerHuman()) || st.getActiveField() == null) {
 			return Optional.empty();
 		}
-		Optional<CpuFighterPick> curWin = findBestWinningNoLevelUpCpuFighterPick(st, defs, rnd);
-		int bestEffCur = curWin.map(CpuFighterPick::cpuEff).orElse(Integer.MAX_VALUE);
-
-		String bestFieldInst = null;
-		int bestEffAfter = Integer.MAX_VALUE;
+		int minCost = Integer.MAX_VALUE;
+		List<String> bestIds = new ArrayList<>();
 		for (BattleCard fc : st.getCpuHand()) {
+			if (fc == null) {
+				continue;
+			}
 			CardDefinition fd = defs.get(fc.getCardId());
 			if (!isFieldCard(fd)) {
 				continue;
@@ -5126,33 +5606,18 @@ public class CpuBattleEngine {
 			if (fcost > st.getCpuStones()) {
 				continue;
 			}
-			CpuBattleState s1 = copyStateForCpuSim(st);
-			s1.setCpuStones(s1.getCpuStones() - fcost);
-			BattleCard removed = removeByInstanceId(s1.getCpuHand(), fc.getInstanceId());
-			if (removed == null) {
-				continue;
-			}
-			replaceActiveField(s1, removed, false, defs);
-			if (fd.getId() != null && fd.getId() == FLEET_HO_IVI_FIELD_ID) {
-				applyFleetHoIviFieldDeployBothSides(s1, defs, rnd);
-			}
-			Optional<CpuFighterPick> after = findBestWinningNoLevelUpCpuFighterPick(s1, defs, rnd);
-			if (after.isEmpty()) {
-				continue;
-			}
-			int eff = after.get().cpuEff;
-			if (eff < bestEffAfter) {
-				bestEffAfter = eff;
-				bestFieldInst = fc.getInstanceId();
+			if (fcost < minCost) {
+				minCost = fcost;
+				bestIds.clear();
+				bestIds.add(fc.getInstanceId());
+			} else if (fcost == minCost) {
+				bestIds.add(fc.getInstanceId());
 			}
 		}
-		if (bestFieldInst == null) {
+		if (bestIds.isEmpty()) {
 			return Optional.empty();
 		}
-		if (curWin.isEmpty()) {
-			return Optional.of(bestFieldInst);
-		}
-		return bestEffAfter < bestEffCur ? Optional.of(bestFieldInst) : Optional.empty();
+		return Optional.of(bestIds.get(rnd.nextInt(bestIds.size())));
 	}
 
 	private Optional<CpuFighterPick> findBestWinningNoLevelUpCpuFighterPick(CpuBattleState st,
@@ -5374,7 +5839,7 @@ public class CpuBattleEngine {
 	}
 
 	private boolean tryAdvancedCpuFieldOnly(CpuBattleState st, Map<Short, CardDefinition> defs, Random rnd) {
-		Optional<String> fid = pickAdvancedCpuFieldBeforeFighterIfImprove(st, defs, rnd);
+		Optional<String> fid = pickAdvancedCpuFieldOverwriteHumanIfPossible(st, defs, rnd);
 		if (fid.isEmpty()) {
 			return false;
 		}
@@ -6829,10 +7294,10 @@ public class CpuBattleEngine {
 			}
 		}
 
-		if (id == MINION_KING_ID) {
+		if (id == MINION_CHAMPION_ID) {
 			boolean oppTurn = ownerIsHuman ? !st.isHumansTurn() : st.isHumansTurn();
 			if (oppTurn) {
-				p += MINION_KING_OPPONENT_TURN_POWER_BONUS;
+				p += MINION_CHAMPION_OPPONENT_TURN_POWER_BONUS;
 			}
 		}
 
@@ -7148,10 +7613,10 @@ public class CpuBattleEngine {
 			}
 		}
 
-		if (id == MINION_KING_ID) {
+		if (id == MINION_CHAMPION_ID) {
 			boolean oppTurn = ownerIsHuman ? !st.isHumansTurn() : st.isHumansTurn();
 			if (oppTurn) {
-				out.add(new BattlePowerModifierDto(MINION_KING_ID, "（相手ターン）"));
+				out.add(new BattlePowerModifierDto(MINION_CHAMPION_ID, "（相手ターン）"));
 			}
 		}
 
@@ -7877,9 +8342,9 @@ public class CpuBattleEngine {
 				boolean oppTurn = ownerIsHuman ? !st.isHumansTurn() : st.isHumansTurn();
 				yield oppTurn ? NEMURY_OPPONENT_TURN_POWER_BONUS : 0;
 			}
-			case MINION_KING_ID -> {
+			case MINION_CHAMPION_ID -> {
 				boolean oppTurn = ownerIsHuman ? !st.isHumansTurn() : st.isHumansTurn();
-				yield oppTurn ? MINION_KING_OPPONENT_TURN_POWER_BONUS : 0;
+				yield oppTurn ? MINION_CHAMPION_OPPONENT_TURN_POWER_BONUS : 0;
 			}
 			case ARTHUR_ID -> {
 				BattleCard field = st.getActiveField();
@@ -8018,19 +8483,6 @@ public class CpuBattleEngine {
 		main.setBattleTribeOverride(cur + "_" + segment);
 	}
 
-	private static int countMiracleTokensInRest(List<BattleCard> rest) {
-		if (rest == null) {
-			return 0;
-		}
-		int n = 0;
-		for (BattleCard c : rest) {
-			if (c != null && c.getCardId() == GameConstants.MIRACLE_TOKEN_CARD_ID) {
-				n++;
-			}
-		}
-		return n;
-	}
-
 	private static boolean restContainsMikaelMinionExcludingTucked(ZoneFighter zf, List<BattleCard> rest, short cardId) {
 		if (rest == null) {
 			return false;
@@ -8049,16 +8501,65 @@ public class CpuBattleEngine {
 		return false;
 	}
 
-	/** ミカエル〈配置〉: レストの奇跡が {@link GameConstants#MIKAEL_DECK_MIN_MIRACLES_IN_REST} 枚以上なら自分のデッキを6枚のミカエルデッキに置き換える。 */
-	private void maybeReplaceDeckWithMikaelSix(CpuBattleState st, boolean ownerHuman, Map<Short, CardDefinition> defs) {
+	/** 〈配置〉コストとして支払っている {@link ZoneFighter#getCostUnder()} 先頭 {@link ZoneFighter#getCostPayCardCount()} 枚の「奇跡」の instanceId を登録（ミカエル効果の対象外）。 */
+	private static void addMiracleInstanceIdsInDeployCostPaymentSlice(ZoneFighter zf, Set<String> out) {
+		if (zf == null || zf.getCostUnder() == null || out == null) {
+			return;
+		}
+		List<BattleCard> under = zf.getCostUnder();
+		int n = Math.min(Math.max(0, zf.getCostPayCardCount()), under.size());
+		for (int i = 0; i < n; i++) {
+			BattleCard c = under.get(i);
+			if (c != null && c.getCardId() == GameConstants.MIRACLE_TOKEN_CARD_ID && c.getInstanceId() != null) {
+				out.add(c.getInstanceId());
+			}
+		}
+	}
+
+	/** ゾーンから「奇跡」（{@link GameConstants#MIRACLE_TOKEN_CARD_ID}）を取り除き {@code pulled} に追加。{@code excludeInstanceIds} にある instanceId は除外。レストでは前列 costUnder に差した枚も除外。 */
+	private static void pullMiracleTokensFromZoneExcluding(List<BattleCard> zone, List<BattleCard> pulled,
+			Set<String> excludeInstanceIds, ZoneFighter ownBattle, boolean skipIfTuckedUnderBattle) {
+		if (zone == null || pulled == null) {
+			return;
+		}
+		Set<String> ex = excludeInstanceIds != null ? excludeInstanceIds : Collections.emptySet();
+		for (int i = zone.size() - 1; i >= 0; i--) {
+			BattleCard c = zone.get(i);
+			if (c == null || c.getCardId() != GameConstants.MIRACLE_TOKEN_CARD_ID) {
+				continue;
+			}
+			if (skipIfTuckedUnderBattle && ownBattle != null && isTuckedUnderOwnFighter(ownBattle, c)) {
+				continue;
+			}
+			String iid = c.getInstanceId();
+			if (iid != null && ex.contains(iid)) {
+				continue;
+			}
+			zone.remove(i);
+			pulled.add(c);
+		}
+	}
+
+	private static void resetBattleCardModifiersForMikaelTransform(BattleCard c) {
+		if (c == null) {
+			return;
+		}
+		c.setBattleEndPowerBonus(0);
+		c.setHandDeployCostModifier(0);
+		c.setDeathbounceHandCostStacks(0);
+		c.setBlankEffects(false);
+		c.setBattleTribeOverride(null);
+	}
+
+	/**
+	 * ミカエル〈配置〉: 自分のレスト・手札・デッキの「奇跡」（この時点の〈配置〉コスト支払い分は除く）をデッキ先頭にまとめ、
+	 * 各枚をミカエルデッキ6種からランダムに変化させる。
+	 */
+	private void applyMikaelMiracleDeckTransformOnDeploy(CpuBattleState st, boolean ownerHuman, Map<Short, CardDefinition> defs) {
 		if (st == null || defs == null) {
 			return;
 		}
-		List<BattleCard> rest = ownerHuman ? st.getHumanRest() : st.getCpuRest();
-		if (countMiracleTokensInRest(rest) < GameConstants.MIKAEL_DECK_MIN_MIRACLES_IN_REST) {
-			return;
-		}
-		short[] ids = {
+		short[] mikaelPool = {
 				GameConstants.MIKAEL_WRATH_CARD_ID,
 				GameConstants.MIKAEL_PUNCH_CARD_ID,
 				GameConstants.MIKAEL_STRATEGY_CARD_ID,
@@ -8066,27 +8567,44 @@ public class CpuBattleEngine {
 				GameConstants.MIKAEL_MINION_B_CARD_ID,
 				GameConstants.MIKAEL_FLASH_CARD_ID
 		};
-		for (short id : ids) {
+		for (short id : mikaelPool) {
 			if (defs.get(id) == null) {
 				st.addLog("ミカエル: ミカエルデッキ用の定義がないため効果はなかった");
 				return;
 			}
 		}
-		List<BattleCard> deck = ownerHuman ? st.getHumanDeck() : st.getCpuDeck();
-		if (deck == null) {
+		if (defs.get(GameConstants.MIRACLE_TOKEN_CARD_ID) == null) {
 			return;
 		}
-		deck.clear();
-		List<BattleCard> incoming = new ArrayList<>(6);
-		for (short id : ids) {
-			incoming.add(new BattleCard(UUID.randomUUID().toString(), id));
+		Set<String> costMiracleIds = new HashSet<>();
+		ZoneFighter zf = ownerHuman ? st.getHumanBattle() : st.getCpuBattle();
+		addMiracleInstanceIdsInDeployCostPaymentSlice(zf, costMiracleIds);
+
+		List<BattleCard> rest = ownerHuman ? st.getHumanRest() : st.getCpuRest();
+		List<BattleCard> hand = ownerHuman ? st.getHumanHand() : st.getCpuHand();
+		List<BattleCard> deck = ownerHuman ? st.getHumanDeck() : st.getCpuDeck();
+		if (rest == null || hand == null || deck == null) {
+			return;
 		}
-		Collections.shuffle(incoming, ThreadLocalRandom.current());
-		deck.addAll(incoming);
+		List<BattleCard> pulled = new ArrayList<>();
+		pullMiracleTokensFromZoneExcluding(rest, pulled, costMiracleIds, zf, true);
+		pullMiracleTokensFromZoneExcluding(hand, pulled, costMiracleIds, zf, false);
+		pullMiracleTokensFromZoneExcluding(deck, pulled, costMiracleIds, zf, false);
+		if (pulled.isEmpty()) {
+			st.addLog("ミカエル: 変化させる「奇跡」がなかった");
+			return;
+		}
+		ThreadLocalRandom rnd = ThreadLocalRandom.current();
+		for (BattleCard c : pulled) {
+			c.setCardId(mikaelPool[rnd.nextInt(mikaelPool.length)]);
+			resetBattleCardModifiersForMikaelTransform(c);
+		}
+		deck.addAll(0, pulled);
 		if (ownerHuman) {
-			st.addLog("ミカエル: 自分のデッキがミカエルデッキになった");
+			st.addLog("ミカエル: 「奇跡」" + pulled.size() + "枚をデッキの上に置き、ミカエルデッキのカードに変化させた");
 		} else {
-			st.addLog("ミカエル: " + opponentActorLogLabel(st) + "のデッキがミカエルデッキになった");
+			st.addLog("ミカエル: 「奇跡」" + pulled.size() + "枚をデッキの上に置き、" + cpuSlotActorLogLabel(st)
+					+ "のミカエルデッキのカードに変化させた");
 		}
 	}
 
@@ -8268,7 +8786,7 @@ public class CpuBattleEngine {
 				st.setHumanStones(st.getHumanStones() + 1);
 				st.addLog("奇跡: ストーンを1つ得た");
 			}
-			case "MIKAEL" -> maybeReplaceDeckWithMikaelSix(st, true, defs);
+			case "MIKAEL" -> applyMikaelMiracleDeckTransformOnDeploy(st, true, defs);
 			case "MIKAEL_WRATH" -> st.addLog("ミカエルの怒りを配置した");
 			case "MIKAEL_PUNCH" -> {
 				ZoneFighter zf = st.getHumanBattle();
@@ -8790,7 +9308,7 @@ public class CpuBattleEngine {
 				if (st.getHumanStones() >= CRYSTAKUL_OPTIONAL_STONE_COST) {
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"クリスタクル（ストーン3・次の配置+3／次の相手ターン終了まで）",
+							"クリスタクル（ストーン2・次の配置+3／次の相手ターン終了まで）",
 							true,
 							"CRYSTAKUL",
 							CRYSTAKUL_OPTIONAL_STONE_COST,
@@ -9004,7 +9522,7 @@ public class CpuBattleEngine {
 				st.setCpuStones(st.getCpuStones() + 1);
 				st.addLog("奇跡: ストーンを1つ得た");
 			}
-			case "MIKAEL" -> maybeReplaceDeckWithMikaelSix(st, false, defs);
+			case "MIKAEL" -> applyMikaelMiracleDeckTransformOnDeploy(st, false, defs);
 			case "MIKAEL_WRATH" -> st.addLog("ミカエルの怒りを配置した");
 			case "MIKAEL_PUNCH" -> {
 				ZoneFighter zf = st.getCpuBattle();
@@ -9540,7 +10058,7 @@ public class CpuBattleEngine {
 				if (st.getCpuStones() >= CRYSTAKUL_OPTIONAL_STONE_COST) {
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"クリスタクル（ストーン3・次の配置+3／次の相手ターン終了まで）",
+							"クリスタクル（ストーン2・次の配置+3／次の相手ターン終了まで）",
 							false,
 							"CRYSTAKUL",
 							CRYSTAKUL_OPTIONAL_STONE_COST,
@@ -9826,7 +10344,7 @@ public class CpuBattleEngine {
 				st.setCpuStones(st.getCpuStones() + 1);
 				st.addLog("CPU奇跡: ストーンを1つ得た");
 			}
-			case "MIKAEL" -> maybeReplaceDeckWithMikaelSix(st, false, defs);
+			case "MIKAEL" -> applyMikaelMiracleDeckTransformOnDeploy(st, false, defs);
 			case "MIKAEL_WRATH" -> st.addLog("CPUミカエルの怒りを配置した");
 			case "MIKAEL_PUNCH" -> {
 				ZoneFighter zf = st.getCpuBattle();

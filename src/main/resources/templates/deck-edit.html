@@ -8,6 +8,7 @@
 	<meta name="nine_universe_context_path" th:content="${contextPath != null ? contextPath : ''}"/>
 	<meta name="card_plate_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|"/>
 	<meta name="card_data_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardDataUrl}|"/>
+	<meta name="nu_league_blocked_card_ids" th:content="${leagueBlockedCsv != null ? leagueBlockedCsv : ''}"/>
 </head>
 <body class="page page--deck">
 <header class="topbar">
@@ -108,6 +109,11 @@
 							<input type="hidden" id="lib-sort" class="tribe-filter__value" value="cost_asc"/>
 						</span>
 					</label>
+					<div class="deck-lib-field deck-lib-field--auto-deck">
+						<button type="button" id="deck-auto-build-open" class="btn btn--ghost deck-auto-build-open">
+							おまかせデッキ
+						</button>
+					</div>
 				</div>
 			</div>
 			<div id="lib-zone" class="card-pool library-pool"></div>
@@ -157,6 +163,16 @@
 		</dl>
 		<p class="deck-tooltip__label">効果</p>
 		<p class="deck-tooltip__ability"></p>
+	</div>
+</div>
+
+<div id="deck-auto-deck-modal" class="deck-auto-deck-modal" hidden>
+	<div class="deck-auto-deck-modal__backdrop" data-deck-auto-deck-close></div>
+	<div class="deck-auto-deck-modal__panel" role="dialog" aria-modal="true" aria-labelledby="deck-auto-deck-modal-title">
+		<button type="button" class="deck-auto-deck-modal__close" data-deck-auto-deck-close aria-label="閉じる">×</button>
+		<h2 id="deck-auto-deck-modal-title" class="deck-auto-deck-modal__title">おまかせデッキ — 種族を選んでください</h2>
+		<p class="deck-auto-deck-modal__hint muted">所持カードのみで8枚組みます。種族が足りない枠は他種族から補います。</p>
+		<div id="deck-auto-deck-tribe-grid" class="deck-auto-deck-modal__grid"></div>
 	</div>
 </div>
 

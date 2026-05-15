@@ -67,7 +67,17 @@ public record CpuBattleStateDto(
 		/** SPEC-666: 次にホスト側スロットへ出すファイターがアンデッド扱いになる予定 */
 		boolean spec666NextHumanUndead,
 		/** SPEC-666: 次にゲスト/CPU 側スロットへ出すファイターがアンデッド扱いになる予定 */
-		boolean spec666NextCpuUndead
+		boolean spec666NextCpuUndead,
+		/** リーグ戦（PvP / CPU）: 自分のゲーム取り数 */
+		Integer leagueSeriesMyWins,
+		/** リーグ戦: 相手のゲーム取り数 */
+		Integer leagueSeriesOppWins,
+		/** リーグ戦: マッチ全体終了 */
+		Boolean leagueSeriesMatchComplete,
+		/** リーグ戦: ゲーム間の「次へ」待ち */
+		Boolean leagueSeriesAwaitingNext,
+		/** リーグ戦: 「次のゲームへ」API を送ってよい */
+		Boolean leagueSeriesMayContinueNext
 ) {
 }
 

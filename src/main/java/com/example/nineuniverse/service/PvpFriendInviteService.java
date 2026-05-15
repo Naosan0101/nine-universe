@@ -2,6 +2,7 @@ package com.example.nineuniverse.service;
 
 import com.example.nineuniverse.domain.PvpFriendInvite;
 import com.example.nineuniverse.domain.PvpInviteNotice;
+import com.example.nineuniverse.pvp.PvpMatch;
 import com.example.nineuniverse.repository.PvpFriendInviteMapper;
 import java.time.Duration;
 import java.time.Instant;
@@ -55,12 +56,15 @@ public class PvpFriendInviteService {
 
 	/**
 	 * フレンドに対戦を申し込み、ホスト待機用の部屋を作成する。
+	 * @param league true のとき {@code selectionId} はリーグデッキセットID
 	 */
-	public PvpInviteCreated createInvite(long challengerUserId, long friendUserId, long challengerDeckId) {
+	public PvpInviteCreated createInvite(long challengerUserId, long friendUserId, long selectionId, boolean league) {
 		if (!friendService.areFriends(challengerUserId, friendUserId)) {
 			throw new IllegalStateException("フレンドのみに対戦申し込みができます");
 		}
-		var m = pvpBattleService.createWaitingRoom(challengerUserId, challengerDeckId, friendUserId);
+		PvpMatch m = league
+				? pvpBattleService.createWaitingRoomLeague(challengerUserId, selectionId, friendUserId)
+				: pvpBattleService.createWaitingRoom(challengerUserId, selectionId, friendUserId);
 		var inv = new PvpFriendInvite();
 		inv.setMatchId(m.getId());
 		inv.setChallengerUserId(challengerUserId);
@@ -81,7 +85,7 @@ public class PvpFriendInviteService {
 	}
 
 	@Transactional
-	public void acceptInvite(long inviteId, long opponentUserId, long opponentDeckId) {
+	public void acceptInvite(long inviteId, long opponentUserId, Long casualDeckId, Long guestLeagueSetId) {
 		PvpFriendInvite inv = pvpFriendInviteMapper.findById(inviteId);
 		if (inv == null || !"PENDING".equals(inv.getStatus())) {
 			throw new IllegalArgumentException("招待が見つからないか、すでに処理されています");
@@ -93,7 +97,22 @@ public class PvpFriendInviteService {
 			pvpFriendInviteMapper.updateStatus(inviteId, "DECLINED");
 			throw new IllegalStateException("招待の有効期限が切れたか、相手が取り消しました（承諾は申し込みから3分以内に行ってください）");
 		}
-		pvpBattleService.join(inv.getMatchId(), opponentUserId, opponentDeckId);
+		PvpMatch m = pvpBattleService.get(inv.getMatchId());
+		if (m == null) {
+			pvpFriendInviteMapper.updateStatus(inviteId, "DECLINED");
+			throw new IllegalStateException("対戦が見つかりません");
+		}
+		if (m.getFormat() == PvpMatch.Format.LEAGUE) {
+			if (guestLeagueSetId == null) {
+				throw new IllegalArgumentException("リーグデッキを選んでください");
+			}
+			pvpBattleService.joinLeagueGuest(inv.getMatchId(), opponentUserId, guestLeagueSetId);
+		} else {
+			if (casualDeckId == null) {
+				throw new IllegalArgumentException("デッキを選んでください");
+			}
+			pvpBattleService.join(inv.getMatchId(), opponentUserId, casualDeckId);
+		}
 		pvpFriendInviteMapper.updateStatus(inviteId, "ACCEPTED");
 	}
 

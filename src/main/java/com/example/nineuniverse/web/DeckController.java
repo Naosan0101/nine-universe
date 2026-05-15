@@ -2,6 +2,7 @@ package com.example.nineuniverse.web;
 
 import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.dev.DevTestUserLoginBaselineService;
+import com.example.nineuniverse.domain.Deck;
 import com.example.nineuniverse.domain.LibraryCardView;
 import com.example.nineuniverse.service.DeckService;
 import com.example.nineuniverse.service.LibraryService;
@@ -38,6 +39,7 @@ public class DeckController {
 		long uid = CurrentUser.require().getId();
 		devTestUserLoginBaselineService.syncTestuserCollectionOnlyIfLocal(request);
 		model.addAttribute("decks", deckService.listDecks(uid));
+		model.addAttribute("leagueSets", deckService.listLeagueDeckSetSummaries(uid));
 		String cp = request.getContextPath();
 		model.addAttribute("contextPath", cp != null ? cp : "");
 		addDeckEditStaticUrls(model);
@@ -55,11 +57,73 @@ public class DeckController {
 		model.addAttribute("deckName", "");
 		model.addAttribute("selectedIds", List.<Short>of());
 		model.addAttribute("editDeckId", null);
+		model.addAttribute("leagueBlockedCsv", "");
 		model.addAttribute("noOwnedCards", noOwned);
 		model.addAttribute("insufficientCardsForDeck", !noOwned && maxBuildable < 8);
 		model.addAttribute("maxBuildableSlots", maxBuildable);
 		addDeckEditStaticUrls(model);
 		return "deck-edit";
+	}
+
+	@PostMapping("/league/set/new")
+	public String createLeagueSet(@RequestParam(defaultValue = "") String name, RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		try {
+			deckService.createLeagueDeckSet(uid, name);
+			ra.addFlashAttribute("msg", "リーグデッキを作成しました。デッキ1・2を編集してください。");
+		} catch (IllegalArgumentException e) {
+			ra.addFlashAttribute("error", e.getMessage());
+		}
+		return "redirect:/decks";
+	}
+
+	@PostMapping("/league/set/{setId}/delete")
+	public String deleteLeagueSet(@PathVariable long setId, RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		try {
+			deckService.deleteLeagueSet(uid, setId);
+			ra.addFlashAttribute("msg", "リーグデッキを削除しました");
+		} catch (IllegalArgumentException e) {
+			ra.addFlashAttribute("error", e.getMessage());
+		}
+		return "redirect:/decks";
+	}
+
+	@GetMapping("/league/set/{setId}/slot/{slot}/edit")
+	public String editLeagueSlot(@PathVariable long setId, @PathVariable int slot, Model model, HttpServletRequest request,
+			RedirectAttributes ra) {
+		if (slot != 1 && slot != 2) {
+			ra.addFlashAttribute("error", "スロットが不正です");
+			return "redirect:/decks";
+		}
+		long uid = CurrentUser.require().getId();
+		devTestUserLoginBaselineService.syncTestuserCollectionOnlyIfLocal(request);
+		try {
+			long deckId = deckService.deckIdForLeagueSlot(uid, setId, slot);
+			var deck = deckService.requireDeck(uid, deckId);
+			int sib = slot == 1 ? 2 : 1;
+			long sibDeckId = deckService.deckIdForLeagueSlot(uid, setId, sib);
+			List<Short> blocked = deckService.cardIdsForDeck(sibDeckId);
+			var library = libraryService.library(uid);
+			int maxBuildable = maxBuildableDeckSlots(library);
+			boolean noOwned = library.stream().noneMatch(LibraryCardView::isOwned);
+			model.addAttribute("library", library);
+			model.addAttribute("deckName", deck.getName());
+			model.addAttribute("selectedIds", deckService.cardIdsForDeck(deckId));
+			model.addAttribute("editDeckId", deckId);
+			model.addAttribute("leagueBlockedCardIds", blocked);
+			model.addAttribute(
+					"leagueBlockedCsv",
+					blocked.stream().map(String::valueOf).collect(Collectors.joining(",")));
+			model.addAttribute("noOwnedCards", noOwned);
+			model.addAttribute("insufficientCardsForDeck", !noOwned && maxBuildable < 8);
+			model.addAttribute("maxBuildableSlots", maxBuildable);
+			addDeckEditStaticUrls(model);
+			return "deck-edit";
+		} catch (IllegalArgumentException e) {
+			ra.addFlashAttribute("error", e.getMessage());
+			return "redirect:/decks";
+		}
 	}
 
 	@GetMapping(value = "/{id}/preview", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -105,6 +169,7 @@ public class DeckController {
 		model.addAttribute("deckName", deck.getName());
 		model.addAttribute("selectedIds", deckService.cardIdsForDeck(id));
 		model.addAttribute("editDeckId", id);
+		model.addAttribute("leagueBlockedCsv", "");
 		addDeckEditStaticUrls(model);
 		return "deck-edit";
 	}
@@ -135,7 +200,18 @@ public class DeckController {
 			return "redirect:/decks";
 		} catch (IllegalArgumentException e) {
 			ra.addFlashAttribute("error", e.getMessage());
-			return editDeckId != null ? "redirect:/decks/" + editDeckId + "/edit" : "redirect:/decks/new";
+			if (editDeckId != null) {
+				try {
+					var d = deckService.requireDeck(uid, editDeckId);
+					if (d.getLeagueSetId() != null && d.getLeagueSlot() != null) {
+						return "redirect:/decks/league/set/" + d.getLeagueSetId() + "/slot/" + d.getLeagueSlot() + "/edit";
+					}
+				} catch (IllegalArgumentException ignored) {
+					/* fall through */
+				}
+				return "redirect:/decks/" + editDeckId + "/edit";
+			}
+			return "redirect:/decks/new";
 		}
 	}
 

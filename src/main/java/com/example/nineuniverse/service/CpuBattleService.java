@@ -6,6 +6,7 @@ import com.example.nineuniverse.battle.CpuBattleEngine;
 import com.example.nineuniverse.battle.BattlePhase;
 import com.example.nineuniverse.battle.CpuBattleMode;
 import com.example.nineuniverse.battle.CpuBattleState;
+import com.example.nineuniverse.battle.CpuLeagueBattleSession;
 import com.example.nineuniverse.battle.ZoneFighter;
 import com.example.nineuniverse.domain.CardDefinition;
 import com.example.nineuniverse.web.dto.BattleCardDto;
@@ -18,6 +19,7 @@ import com.example.nineuniverse.web.dto.CpuBattleStateDto;
 import com.example.nineuniverse.web.dto.BattlePowerModifierDto;
 import com.example.nineuniverse.web.dto.ZoneFighterDto;
 import jakarta.servlet.http.HttpSession;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -71,6 +73,89 @@ public class CpuBattleService {
 
 	public void clear(HttpSession session) {
 		session.removeAttribute(SESSION_KEY);
+		session.removeAttribute(CpuLeagueBattleSession.SESSION_KEY);
+	}
+
+	public CpuLeagueBattleSession leagueSession(HttpSession session) {
+		Object o = session.getAttribute(CpuLeagueBattleSession.SESSION_KEY);
+		return o instanceof CpuLeagueBattleSession s ? s : null;
+	}
+
+	@Transactional
+	public CpuBattleState startLeagueBattle(long userId, long leagueSetId, int humanSlotPick, int level,
+			CpuBattleMode cpuBattleMode, HttpSession session) {
+		clear(session);
+		deckService.requireLeagueSetBattleReady(userId, leagueSetId);
+		int hs = humanSlotPick == 2 ? 2 : 1;
+		int cs = 1 + new Random().nextInt(2);
+		long humanDeckId = deckService.deckIdForLeagueSlot(userId, leagueSetId, hs);
+		List<Short> humanCards = deckService.cardIdsForDeck(humanDeckId);
+		Map<Short, CardDefinition> defs = cardCatalogService.mapById();
+		Random rnd = new Random();
+		CpuBattleMode mode = cpuBattleMode != null ? cpuBattleMode : CpuBattleMode.ORIGIN;
+		int clampedLevel = switch (mode) {
+			case ADVANCED -> Math.min(5, Math.max(1, level));
+			case ORIGIN -> Math.min(3, Math.max(1, level));
+		};
+		CpuLeagueBattleSession lg = new CpuLeagueBattleSession();
+		CpuBattleEngine.CpuLeagueDeckPair cpuPair = engine.buildCpuLeagueDeckPair(clampedLevel, mode, rnd, defs);
+		lg.setCpuLeagueOpponentDeck1(new ArrayList<>(cpuPair.cpuSlot1Deck()));
+		lg.setCpuLeagueOpponentDeck2(new ArrayList<>(cpuPair.cpuSlot2Deck()));
+		List<Short> cpuCards = cs == 1 ? lg.getCpuLeagueOpponentDeck1() : lg.getCpuLeagueOpponentDeck2();
+		CpuBattleState st = engine.newCpuBattleWithFixedCpuDeck(humanCards, cpuCards, clampedLevel, mode, rnd, defs);
+		st.setHumanSlotDeckId(humanDeckId);
+		st.setCpuBattleUserId(userId);
+		st.setPhase(st.isHumansTurn() ? BattlePhase.HUMAN_INPUT : BattlePhase.CPU_THINKING);
+		if (st.getTurnStartedAtMs() <= 0) {
+			st.setTurnStartedAtMs(System.currentTimeMillis());
+		}
+		lg.setCpuBattleUserId(userId);
+		lg.setHumanLeagueSetId(leagueSetId);
+		lg.setCpuLevel(clampedLevel);
+		lg.setCpuBattleMode(mode);
+		lg.setHumanActiveSlot(hs);
+		lg.setCpuActiveSlot(cs);
+		session.setAttribute(CpuLeagueBattleSession.SESSION_KEY, lg);
+		session.setAttribute(SESSION_KEY, st);
+		return st;
+	}
+
+	public CpuBattleStateDto leagueNextCpuBattle(HttpSession session) {
+		CpuLeagueBattleSession lg = leagueSession(session);
+		CpuBattleState st = current(session);
+		if (lg == null || st == null) {
+			return null;
+		}
+		if (!lg.isAwaitingNextGameAck()) {
+			throw new IllegalStateException("次のゲームを開始できません");
+		}
+		if (lg.isMatchComplete()) {
+			lg.setAwaitingNextGameAck(false);
+			return stateDto(session, true);
+		}
+		boolean humanWon = st.isHumanWon();
+		int nh = humanWon ? (3 - lg.getHumanActiveSlot()) : lg.getHumanActiveSlot();
+		int nc = humanWon ? lg.getCpuActiveSlot() : (3 - lg.getCpuActiveSlot());
+		lg.setHumanActiveSlot(nh);
+		lg.setCpuActiveSlot(nc);
+		long uid = lg.getCpuBattleUserId();
+		deckService.requireLeagueSetBattleReady(uid, lg.getHumanLeagueSetId());
+		long humanDeckId = deckService.deckIdForLeagueSlot(uid, lg.getHumanLeagueSetId(), nh);
+		List<Short> humanCards = deckService.cardIdsForDeck(humanDeckId);
+		Map<Short, CardDefinition> defs = cardCatalogService.mapById();
+		List<Short> cpuCards = cpuLeagueCpuDeckForSlot(lg, nc, defs);
+		CpuBattleState nst = engine.newCpuBattleWithFixedCpuDeck(
+				humanCards, cpuCards, lg.getCpuLevel(), lg.getCpuBattleMode(), new Random(), defs);
+		nst.setHumanSlotDeckId(humanDeckId);
+		nst.setCpuBattleUserId(uid);
+		nst.setPhase(nst.isHumansTurn() ? BattlePhase.HUMAN_INPUT : BattlePhase.CPU_THINKING);
+		if (nst.getTurnStartedAtMs() <= 0) {
+			nst.setTurnStartedAtMs(System.currentTimeMillis());
+		}
+		lg.setAwaitingNextGameAck(false);
+		lg.setLeagueLastEndedRoundScored(false);
+		session.setAttribute(SESSION_KEY, nst);
+		return stateDto(session, true);
 	}
 
 	public Map<Short, CardDefinition> defs() {
@@ -107,7 +192,10 @@ public class CpuBattleService {
 			return null;
 		}
 		enforceTimeoutIfNeeded(st, defs());
-		return stateDtoFromState(st, includeDefs);
+		maybeScoreCpuLeagueSession(session, st);
+		CpuBattleStateDto dto = stateDtoFromState(st, includeDefs);
+		maybeNotifyCpuWinMission(st, session);
+		return attachCpuLeagueSeriesIfPresent(dto, session);
 	}
 
 	public CpuBattleStateDto stateDtoFromState(CpuBattleState st) {
@@ -115,7 +203,6 @@ public class CpuBattleService {
 	}
 
 	public CpuBattleStateDto stateDtoFromState(CpuBattleState st, boolean includeDefs) {
-		maybeNotifyCpuWinMission(st);
 		Map<Short, CardDefinition> defs = defs();
 		int hbPow = engine.effectiveBattlePower(st.getHumanBattle(), true, st, defs);
 		int cbPow = engine.effectiveBattlePower(st.getCpuBattle(), false, st, defs);
@@ -208,7 +295,12 @@ public class CpuBattleService {
 				defDtos,
 				st.isPvp() ? null : st.getHumanSlotDeckId(),
 				st.isSpec666NextHumanUndead(),
-				st.isSpec666NextCpuUndead()
+				st.isSpec666NextCpuUndead(),
+				null,
+				null,
+				null,
+				null,
+				null
 		);
 	}
 
@@ -334,12 +426,86 @@ public class CpuBattleService {
 				z.getSpec777RolledPower(), z.getBattleMainLineSeq(), z.getKusuriOpponentDebuffFromDeployStones());
 	}
 
-	private void maybeNotifyCpuWinMission(CpuBattleState st) {
+	private List<Short> cpuLeagueCpuDeckForSlot(CpuLeagueBattleSession lg, int slot1Or2, Map<Short, CardDefinition> defs) {
+		if (lg.getCpuLeagueOpponentDeck1() != null && lg.getCpuLeagueOpponentDeck2() != null
+				&& !lg.getCpuLeagueOpponentDeck1().isEmpty() && !lg.getCpuLeagueOpponentDeck2().isEmpty()) {
+			return slot1Or2 == 2 ? lg.getCpuLeagueOpponentDeck2() : lg.getCpuLeagueOpponentDeck1();
+		}
+		CpuBattleMode mode = lg.getCpuBattleMode() != null ? lg.getCpuBattleMode() : CpuBattleMode.ORIGIN;
+		CpuBattleEngine.CpuLeagueDeckPair pair =
+				engine.buildCpuLeagueDeckPair(lg.getCpuLevel(), mode, new Random(), defs);
+		lg.setCpuLeagueOpponentDeck1(new ArrayList<>(pair.cpuSlot1Deck()));
+		lg.setCpuLeagueOpponentDeck2(new ArrayList<>(pair.cpuSlot2Deck()));
+		return slot1Or2 == 2 ? lg.getCpuLeagueOpponentDeck2() : lg.getCpuLeagueOpponentDeck1();
+	}
+
+	private static void maybeScoreCpuLeagueSession(HttpSession session, CpuBattleState st) {
+		Object o = session.getAttribute(CpuLeagueBattleSession.SESSION_KEY);
+		if (!(o instanceof CpuLeagueBattleSession lg)) {
+			return;
+		}
+		if (st == null || !st.isGameOver() || lg.isMatchComplete()) {
+			return;
+		}
+		if (lg.isLeagueLastEndedRoundScored()) {
+			return;
+		}
+		lg.setLeagueLastEndedRoundScored(true);
+		if (st.isHumanWon()) {
+			lg.setHumanWins(lg.getHumanWins() + 1);
+		} else {
+			lg.setCpuWins(lg.getCpuWins() + 1);
+		}
+		if (lg.getHumanWins() >= 2 || lg.getCpuWins() >= 2) {
+			lg.setMatchComplete(true);
+		}
+		lg.setAwaitingNextGameAck(true);
+	}
+
+	private static CpuBattleStateDto attachCpuLeagueSeriesIfPresent(CpuBattleStateDto d, HttpSession session) {
+		Object o = session.getAttribute(CpuLeagueBattleSession.SESSION_KEY);
+		if (!(o instanceof CpuLeagueBattleSession lg)) {
+			return d;
+		}
+		boolean await = lg.isAwaitingNextGameAck();
+		return new CpuBattleStateDto(
+				d.pvpMatch(), d.cpuBattleMode(), d.cpuLevel(), d.humanGoesFirst(), d.humansTurn(), d.phase(),
+				d.turnStartedAtMs(), d.activeTimeLimitSec(), d.activePenaltyStage(),
+				d.humanStones(), d.cpuStones(), d.humanDeck(), d.humanHand(), d.humanRest(), d.humanBattle(),
+				d.cpuDeck(), d.cpuHand(), d.cpuRest(), d.cpuBattle(), d.activeField(), d.scrapyardFieldTurnsRemaining(),
+				d.deathbounceFieldTurnsRemaining(), d.atlantisFieldCounterDisplay(),
+				d.weeklyShonenCampFieldCounterDisplay(), d.weeklyShonenCampCount2ComicBonus(),
+				d.weeklyShonenCampGlobalDeployCostPlusOneThisTurn(),
+				d.worldRebuildFieldCounterDisplay(),
+				d.paperCityFieldCounterDisplay(),
+				d.humanBattlePower(), d.cpuBattlePower(),
+				d.humanNextDeployBonus(), d.humanNextElfOnlyBonus(), d.humanNextDeployCostBonusTimes(),
+				d.humanNextMechanicStacks(),
+				d.cpuNextDeployBonus(), d.cpuNextElfOnlyBonus(), d.cpuNextDeployCostBonusTimes(), d.cpuNextMechanicStacks(),
+				d.lastMessage(), d.gameOver(), d.humanWon(), d.noLegalDeploy(),
+				d.pendingEffect(), d.pendingChoice(), d.eventLog(), d.defs(), d.myBattleDeckId(),
+				d.spec666NextHumanUndead(), d.spec666NextCpuUndead(),
+				lg.getHumanWins(),
+				lg.getCpuWins(),
+				lg.isMatchComplete(),
+				await,
+				await);
+	}
+
+	private void maybeNotifyCpuWinMission(CpuBattleState st, HttpSession session) {
 		if (st == null || st.isPvp() || st.getCpuBattleUserId() == null) {
 			return;
 		}
 		if (!st.isGameOver() || !st.isHumanWon()) {
 			return;
+		}
+		if (session != null) {
+			Object o = session.getAttribute(CpuLeagueBattleSession.SESSION_KEY);
+			if (o instanceof CpuLeagueBattleSession lg) {
+				if (!lg.isMatchComplete() || lg.getHumanWins() < 2) {
+					return;
+				}
+			}
 		}
 		if (st.isCpuWinMissionNotified()) {
 			return;

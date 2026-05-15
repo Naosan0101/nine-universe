@@ -43,6 +43,12 @@
 					}, 300);
 					return;
 				}
+				if (j && j.needLeagueSlotPick) {
+					window.setTimeout(function () {
+						window.location.href = contextPath + '/battle/pvp/league-pick/' + encodeURIComponent(matchId);
+					}, 300);
+					return;
+				}
 				if (j && j.gone) {
 					if (statusEl) statusEl.textContent = '部屋が閉じられました（相手が断った・取り消された・または承諾の期限が過ぎました）。';
 					window.setTimeout(function () {

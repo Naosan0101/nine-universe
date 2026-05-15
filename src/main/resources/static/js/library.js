@@ -508,11 +508,13 @@
 			}
 			openModalFromPlain(nextP, null);
 		}
-		function goDominionMinionKingFromModal() {
+		function goDominionMinionChampionFromModal() {
 			if (!FossilUi) return;
 			const compRaw = FossilUi.parseCompanionJson(d.companionDetailJson);
-			if (!compRaw || compRaw.kind !== 'dominionMinionEffectLinks' || !compRaw.minionKing) return;
-			const nextP = FossilUi.normalizeCompanionPlainForLibraryModal(compRaw.minionKing);
+			if (!compRaw || compRaw.kind !== 'dominionMinionEffectLinks') return;
+			const champ = compRaw.minionChampion || compRaw.minionKing;
+			if (!champ) return;
+			const nextP = FossilUi.normalizeCompanionPlainForLibraryModal(champ);
 			if (!nextP) return;
 			try {
 				FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(d)));
@@ -574,7 +576,7 @@
 				if (cr && cr.kind === 'kingMakerEffectLinks') {
 					extraFn = goKingMakerInkKingFromModal;
 				} else if (cr && cr.kind === 'dominionMinionEffectLinks') {
-					extraFn = goDominionMinionKingFromModal;
+					extraFn = goDominionMinionChampionFromModal;
 				} else if (cr && cr.kind === 'luciferMiracleFallenLinks') {
 					extraFn = goLuciferFallenFromModal;
 				} else if (cr && cr.kind === 'mikaelMiracleDeckLinks') {

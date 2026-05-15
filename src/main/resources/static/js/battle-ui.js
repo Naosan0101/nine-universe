@@ -611,9 +611,18 @@
 		panel.appendChild(d);
 
 		const actions = el('div', 'battle-result-modal__actions');
-		const close = el('button', 'btn btn--ghost', '閉じる');
-		close.type = 'button';
-		actions.appendChild(close);
+		let primaryBtn = null;
+		if (o.primaryLabel && typeof o.onPrimary === 'function') {
+			primaryBtn = el('button', 'btn btn--primary', String(o.primaryLabel));
+			primaryBtn.type = 'button';
+			actions.appendChild(primaryBtn);
+		}
+		let close = null;
+		if (o.primaryOnly !== true) {
+			close = el('button', 'btn btn--ghost', o.closeLabel != null ? String(o.closeLabel) : '閉じる');
+			close.type = 'button';
+			actions.appendChild(close);
+		}
 		panel.appendChild(actions);
 
 		overlay.appendChild(panel);
@@ -626,10 +635,19 @@
 				o.onClose();
 			}
 		}
-		close.addEventListener('click', onClose);
+		if (primaryBtn) {
+			primaryBtn.addEventListener('click', function () {
+				if (typeof o.onPrimary === 'function') {
+					o.onPrimary(onClose);
+				}
+			});
+		}
+		if (close) {
+			close.addEventListener('click', onClose);
+		}
 		// IMPORTANT: result modal must stay until user presses a button.
 		// So we intentionally do NOT close on backdrop click or Escape.
-		close.focus();
+		(primaryBtn || close).focus();
 	}
 
 	function showSurrenderConfirmModal(form) {
@@ -769,6 +787,51 @@
 		);
 	}
 
+	function leagueSeriesFromState(st) {
+		return st && st.leagueSeriesMyWins != null && st.leagueSeriesOppWins != null;
+	}
+
+	function leagueSeriesIntermission(st) {
+		return (
+			leagueSeriesFromState(st) &&
+			st.leagueSeriesAwaitingNext &&
+			!st.leagueSeriesMatchComplete
+		);
+	}
+
+	async function runBattleIntroFromStateOrMeta(st) {
+		if (!st || st.gameOver) return;
+		const league = leagueSeriesFromState(st);
+		const iAmFirst =
+			st.humanGoesFirst === true ||
+			st.humanGoesFirst === false ||
+			st.humanGoesFirst === 'true' ||
+			st.humanGoesFirst === 'false'
+				? st.humanGoesFirst === true || st.humanGoesFirst === 'true'
+				: undefined;
+		await runBattleIntroCore({
+			showLeagueScores: league,
+			leagueMyWins: league ? Number(st.leagueSeriesMyWins) : null,
+			leagueOppWins: league ? Number(st.leagueSeriesOppWins) : null,
+			iAmFirst: iAmFirst
+		});
+	}
+
+	async function postCpuOrPvpLeagueNext() {
+		const url = battleIsPvp ? (battleApiBase + '/league-next') : (contextPath + '/battle/cpu/league-next');
+		const headers = { Accept: 'application/json' };
+		if (csrfHeader && csrfToken) {
+			headers[csrfHeader] = csrfToken;
+		}
+		const res = await fetch(url, { method: 'POST', headers });
+		if (!res.ok) {
+			const err = new Error('league-next failed: ' + res.status);
+			err.status = res.status;
+			throw err;
+		}
+		return res.json();
+	}
+
 	function maybeShowGameOverModal(st) {
 		if (!st) return;
 		if (!st.gameOver) {
@@ -791,6 +854,78 @@
 		persistLastPvpOpponentForMenu();
 
 		const msg = st.lastMessage != null ? String(st.lastMessage) : '';
+		const myW = Number(st.leagueSeriesMyWins);
+		const opW = Number(st.leagueSeriesOppWins);
+		const league = leagueSeriesFromState(st);
+		const intermission = league && leagueSeriesIntermission(st);
+		const matchDone = league && st.leagueSeriesMatchComplete;
+
+		if (intermission) {
+			const scoreLine = 'マッチスコア ' + String(myW) + ' — ' + String(opW) + '（先に2本取った方の勝ち）';
+			const detail =
+				scoreLine +
+				'\n次のゲームでは、前ゲームに勝った側はもう片方のデッキに自動で切り替わります。';
+			const title = st.humanWon ? 'このゲームは勝利' : 'このゲームは敗北';
+			const kind = st.humanWon ? 'victory' : 'defeat';
+			showResultModal(kind, title, (msg ? msg + '\n\n' : '') + detail, {
+				primaryOnly: true,
+				primaryLabel: '次のゲームへ',
+				onPrimary: async function () {
+					teardownResultModal();
+					ui._resultShown = false;
+					try {
+						const next = await postCpuOrPvpLeagueNext();
+						primeBattleStateDefs(next);
+						if (!next.gameOver) {
+							await runBattleIntroFromStateOrMeta(next);
+						}
+						const prev = captureAnimRects();
+						render(next);
+						requestAnimationFrame(function () {
+							playFLIP(prev);
+						});
+					} catch (e) {
+						// eslint-disable-next-line no-console
+						console.error(e);
+						ui._resultShown = true;
+						showResultModal('defeat', 'エラー', '次のゲームへ進めませんでした。通信状況を確認して、もう一度お試しください。', {
+							closeLabel: '閉じる',
+							onClose: function () {
+								rerenderWithFreshState().catch(function (err) {
+									// eslint-disable-next-line no-console
+									console.error(err);
+								});
+							}
+						});
+					}
+				}
+			});
+			return;
+		}
+
+		if (matchDone) {
+			const wonMatch = myW >= 2;
+			const title = wonMatch ? '勝利' : '敗北';
+			const kind = wonMatch ? 'victory' : 'defeat';
+			const detail =
+				'リーグのマッチ結果 ' +
+				String(myW) +
+				' — ' +
+				String(opW) +
+				(wonMatch ? '。先に2本取りました。' : '。先に2本取られました。');
+			const showy = wonMatch && msg.indexOf('勝利（CPUが相手以上のファイターを出せません）') >= 0;
+			showResultModal(kind, title, (msg ? msg + '\n\n' : '') + detail, {
+				showy: showy,
+				onClose: function () {
+					enterBattleEndedLeaveMode();
+					postCpuOrPvpLeagueNext().catch(function () {
+						/* サーバ側の「待ち」解除のみ。失敗してもホーム遷移は可能 */
+					});
+				}
+			});
+			return;
+		}
+
 		if (st.humanWon) {
 			const showy = msg.indexOf('勝利（CPUが相手以上のファイターを出せません）') >= 0;
 			showResultModal('victory', '勝利', msg || '勝利しました。', {
@@ -1540,8 +1675,22 @@
 		return row;
 	}
 
-	/** メタタグからバトル開始イントロ（名前衝突 → 先攻/後攻）を実行。メタが無い場合は何もしない。 */
 	async function runBattleIntroFromMeta() {
+		await runBattleIntroCore({ showLeagueScores: false });
+	}
+
+	/**
+	 * メタタグから名前・二つ名・先後を読み、オプションでリーグの現在勝数を各プレート上に表示する。
+	 */
+	async function runBattleIntroCore(opts) {
+		opts = opts || {};
+		const showLeague =
+			opts.showLeagueScores === true &&
+			Number.isFinite(opts.leagueMyWins) &&
+			Number.isFinite(opts.leagueOppWins);
+		const myWins = showLeague ? opts.leagueMyWins : null;
+		const oppWins = showLeague ? opts.leagueOppWins : null;
+
 		const myMeta = document.querySelector('meta[name="battle_intro_my_name"]');
 		const oppMeta = document.querySelector('meta[name="battle_intro_opp_name"]');
 		const firstMeta = document.querySelector('meta[name="battle_intro_i_am_first"]');
@@ -1549,7 +1698,10 @@
 		const oppName = oppMeta && oppMeta.content != null ? String(oppMeta.content).trim() : '';
 		if (!myName || !oppName) return;
 
-		const iAmFirst = firstMeta && String(firstMeta.content).toLowerCase() === 'true';
+		const iAmFirst =
+			typeof opts.iAmFirst === 'boolean'
+				? opts.iAmFirst
+				: firstMeta && String(firstMeta.content).toLowerCase() === 'true';
 
 		document.body.classList.add('battle-intro-is-running');
 
@@ -1557,6 +1709,11 @@
 		const arena = el('div', 'battle-intro-overlay__arena');
 
 		const plateMe = el('div', 'battle-intro-overlay__plate battle-intro-overlay__plate--me');
+		if (showLeague) {
+			plateMe.appendChild(
+				el('div', 'battle-intro-overlay__league-wins', String(myWins) + '勝')
+			);
+		}
 		const myEp = battleIntroEpithetRow(
 			metaContent('battle_intro_my_epithet_upper'),
 			metaContent('battle_intro_my_epithet_lower'),
@@ -1576,6 +1733,11 @@
 		sparkHost.appendChild(el('div', 'battle-intro-overlay__spark'));
 
 		const plateOpp = el('div', 'battle-intro-overlay__plate battle-intro-overlay__plate--opp');
+		if (showLeague) {
+			plateOpp.appendChild(
+				el('div', 'battle-intro-overlay__league-wins', String(oppWins) + '勝')
+			);
+		}
 		const oppEp = battleIntroEpithetRow(
 			metaContent('battle_intro_opp_epithet_upper'),
 			metaContent('battle_intro_opp_epithet_lower'),
@@ -2715,8 +2877,8 @@
 		DOMINION: 102,
 		/** ミニオンソルジャー / GameConstants.MINION_SOLDIER_TOKEN_CARD_ID */
 		MINION_SOLDIER: 113,
-		/** ミニオンキング / GameConstants.MINION_KING_TOKEN_CARD_ID */
-		MINION_KING: 114,
+		/** ミニオンチャンピオン / GameConstants.MINION_CHAMPION_TOKEN_CARD_ID */
+		MINION_CHAMPION: 114,
 		/** インクキング / GameConstants.INK_KING_FIGHTER_CARD_ID */
 		INK_KING: 111,
 		/** スケッチャー / GameConstants.SKETCHER_FIGHTER_CARD_ID */
@@ -4772,9 +4934,9 @@
 			battleState && battleState.defs
 				? resolveCardDef(battleState.defs, PREVIEW_CARD_IDS.MINION_SOLDIER)
 				: null;
-		const minionKingDefNav =
+		const minionChampionDefNav =
 			battleState && battleState.defs
-				? resolveCardDef(battleState.defs, PREVIEW_CARD_IDS.MINION_KING)
+				? resolveCardDef(battleState.defs, PREVIEW_CARD_IDS.MINION_CHAMPION)
 				: null;
 		function buildMikaelZoneNavChain(st) {
 			if (!st || !st.defs) return null;
@@ -4807,9 +4969,9 @@
 			battleState.defs &&
 			Number(def.id) === PREVIEW_CARD_IDS.DOMINION &&
 			minionSoldierDefNav &&
-			minionKingDefNav
+			minionChampionDefNav
 		) {
-			navChain = [minionSoldierDefNav, minionKingDefNav];
+			navChain = [minionSoldierDefNav, minionChampionDefNav];
 		}
 		if (
 			(!navChain || navChain.length === 0) &&
@@ -5117,15 +5279,19 @@
 		if (
 			Number(def.id) === PREVIEW_CARD_IDS.DOMINION &&
 			minionSoldierDefNav &&
-			minionKingDefNav &&
+			minionChampionDefNav &&
 			displayed.indexOf('「ミニオンソルジャー」') !== -1 &&
-			displayed.indexOf('「ミニオンキング」') !== -1
+			(displayed.indexOf('「ミニオンチャンピオン」') !== -1 || displayed.indexOf('「ミニオンキング」') !== -1)
 		) {
+			const minionSecondTok =
+				displayed.indexOf('「ミニオンチャンピオン」') !== -1
+					? '「ミニオンチャンピオン」'
+					: '「ミニオンキング」';
 			function appendDominionBattleFrag(remaining) {
 				if (remaining === '') return;
 				const tokens = [
-					{ tok: '「ミニオンソルジャー」', def: minionSoldierDefNav, chain: [minionKingDefNav] },
-					{ tok: '「ミニオンキング」', def: minionKingDefNav, chain: undefined }
+					{ tok: '「ミニオンソルジャー」', def: minionSoldierDefNav, chain: [minionChampionDefNav] },
+					{ tok: minionSecondTok, def: minionChampionDefNav, chain: undefined }
 				];
 				let bestIdx = -1;
 				let best = null;
@@ -5606,7 +5772,9 @@
 			ui._cpuThinkTimer = null;
 		}
 
-		if (st.pvpMatch && st.phase === 'OPPONENT_TURN' && !st.gameOver) {
+		const pvpOppTurnPoll = st.pvpMatch && st.phase === 'OPPONENT_TURN' && !st.gameOver;
+		const pvpLeagueIntermissionPoll = st.pvpMatch && leagueSeriesIntermission(st);
+		if (pvpOppTurnPoll || pvpLeagueIntermissionPoll) {
 			if (ui._pvpPollTimer == null) {
 				ui._pvpPollTimer = window.setInterval(function () {
 					rerenderWithFreshState().catch(function (e) {
@@ -6246,7 +6414,9 @@
 			ensureBattleTurnPopupHost();
 			const st = await fetchState();
 			/* 先攻/後攻・名前のイントロが終わるまで描画しない（描画内で CPU_THINKING タイマーが走るのを防ぐ） */
-			await runBattleIntroFromMeta();
+			if (!st.gameOver) {
+				await runBattleIntroFromStateOrMeta(st);
+			}
 			render(st);
 			attachHandlers();
 		} catch (e) {

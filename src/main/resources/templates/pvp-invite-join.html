@@ -9,32 +9,53 @@
 <body class="page page--theme-arcane">
 <header class="topbar">
 	<h1 class="game-title">対戦申し込み</h1>
-	<a class="btn btn--ghost" th:href="@{/battle/pvp}">だれかと対戦へ</a>
+	<a class="btn btn--ghost" th:href="@{/battle/pvp}">対戦モード</a>
 </header>
 
 <div class="container stack">
 	<p class="muted" th:if="${challengerName != null}">
-		<span th:text="${challengerName}">ユーザー</span>さんから対戦の申し込みです。使うデッキを選んで承諾してください。
+		<span th:text="${challengerName}">ユーザー</span>さんから対戦の申し込みです。
 	</p>
 	<p class="error" th:if="${error}" th:text="${error}"></p>
 
-	<p th:if="${decks == null || decks.isEmpty()}" class="muted">
-		デッキがありません。先にデッキを8枚作成してください。
-	</p>
+	<th:block th:if="${pvpMatchFormat == 'LEAGUE'}">
+		<p th:if="${leagueSets == null || leagueSets.isEmpty()}" class="muted">
+			リーグデッキがありません。先にデッキ作成でリーグデッキを用意してください。
+		</p>
+		<form th:if="${leagueSets != null && !leagueSets.isEmpty()}"
+		      th:action="@{/battle/pvp/invite/{inviteId}/join(inviteId=${inviteId})}"
+		      method="post" class="stack panel panel--narrow">
+			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+			<label>使うリーグデッキ
+				<select name="leagueSetId" required>
+					<option th:each="s : ${leagueSets}" th:value="${s.setId}"
+					        th:text="|${s.setName}（${s.deckSlot1Name} / ${s.deckSlot2Name}）|">セット</option>
+				</select>
+			</label>
+			<div class="friends-page__actions" style="margin-top:0.75rem">
+				<button type="submit" class="btn btn--primary">承諾する</button>
+			</div>
+		</form>
+	</th:block>
 
-	<form th:if="${decks != null && !decks.isEmpty()}"
-	      th:action="@{/battle/pvp/invite/{inviteId}/join(inviteId=${inviteId})}"
-	      method="post" class="stack panel panel--narrow">
-		<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-		<label>使うデッキ
-			<select name="deckId" required>
-				<option th:each="d : ${decks}" th:value="${d.id}" th:text="${d.name}">デッキ</option>
-			</select>
-		</label>
-		<div class="friends-page__actions" style="margin-top:0.75rem">
-			<button type="submit" class="btn btn--primary">承諾してバトル開始</button>
-		</div>
-	</form>
+	<th:block th:if="${pvpMatchFormat != 'LEAGUE'}">
+		<p th:if="${decks == null || decks.isEmpty()}" class="muted">
+			デッキがありません。先にデッキを8枚作成してください。
+		</p>
+		<form th:if="${decks != null && !decks.isEmpty()}"
+		      th:action="@{/battle/pvp/invite/{inviteId}/join(inviteId=${inviteId})}"
+		      method="post" class="stack panel panel--narrow">
+			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+			<label>使うデッキ
+				<select name="deckId" required>
+					<option th:each="d : ${decks}" th:value="${d.id}" th:text="${d.name}">デッキ</option>
+				</select>
+			</label>
+			<div class="friends-page__actions" style="margin-top:0.75rem">
+				<button type="submit" class="btn btn--primary">承諾してバトル開始</button>
+			</div>
+		</form>
+	</th:block>
 
 	<form th:action="@{/battle/pvp/invite/{inviteId}/decline(inviteId=${inviteId})}" method="post" class="stack" style="margin-top:1rem">
 		<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>

@@ -996,4 +996,28 @@ public class AnnouncementRewardService {
 	public void suppress80UsersMilestoneLoginPopup(long userId) {
 		userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_POPUP_SUPPRESS_KEY);
 	}
+
+	public boolean isWithinStd3LeagueUiUpdate202605AnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_LAST_DAY);
+	}
+
+	/**
+	 * スタンダード3／リーグ対戦等の記念ジェムを、初回ホーム表示時に付与する（冪等）。
+	 */
+	@Transactional
+	public void ensureStd3LeagueUiUpdate202605RewardGranted(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (!isWithinStd3LeagueUiUpdate202605AnnouncementWindow(today)) {
+			return;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(
+				userId, GameConstants.ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_KEY);
+		if (inserted == 0) {
+			return;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_GEMS);
+	}
 }

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>対戦モード — ナインユニバース</title>
+	<link rel="stylesheet" th:href="@{/css/app.css(v=${assetVersion})}"/>
+</head>
+<body class="page page--theme-arcane">
+<header class="topbar">
+	<h1 class="game-title">対戦モード</h1>
+	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
+</header>
+
+<div class="container stack" style="max-width:36rem">
+	<p class="muted">遊び方に応じてモードを選んでください。</p>
+	<section class="panel stack">
+		<h2 style="margin-top:0;">カジュアル対戦</h2>
+		<p class="muted" style="margin:0 0 0.75rem;">1デッキで1ゲーム。これまで通りのフレンド対戦です。</p>
+		<a class="btn btn--primary" th:href="@{/battle/pvp/casual}">カジュアル対戦へ</a>
+	</section>
+	<section class="panel stack">
+		<h2 style="margin-top:0;">リーグ対戦</h2>
+		<p class="muted" style="margin:0 0 0.75rem;">リーグデッキ（2デッキセット）で2本先取。各ゲーム前に使用デッキを選び、勝者は必ずもう片方のデッキに切り替えます。</p>
+		<a class="btn btn--primary" th:href="@{/battle/pvp/league}">リーグ対戦へ</a>
+	</section>
+</div>
+<th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
+</body>
+</html>

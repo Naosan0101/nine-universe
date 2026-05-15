@@ -52,6 +52,10 @@
 	const tooltipPower = tooltipEl.querySelector('.deck-tooltip__power');
 	const tooltipAbility = tooltipEl.querySelector('.deck-tooltip__ability');
 
+	const autoDeckModal = document.getElementById('deck-auto-deck-modal');
+	const autoDeckOpenBtn = document.getElementById('deck-auto-build-open');
+	const autoDeckTribeGrid = document.getElementById('deck-auto-deck-tribe-grid');
+
 	const ATTR_LABEL = {
 		HUMAN: '人間',
 		ELF: 'エルフ',
@@ -434,11 +438,13 @@
 			}
 			openCardDetailModal(nextC, { preserveStack: true });
 		}
-		function goDominionMinionKingDeck() {
+		function goDominionMinionChampionDeck() {
 			if (!FossilUi) return;
 			const compRaw = FossilUi.parseCompanionJson(c.companionDetailJson);
-			if (!compRaw || compRaw.kind !== 'dominionMinionEffectLinks' || !compRaw.minionKing) return;
-			const nextC = FossilUi.normalizeCompanionPlainForDeckRecycleModal(compRaw.minionKing);
+			if (!compRaw || compRaw.kind !== 'dominionMinionEffectLinks') return;
+			const champ = compRaw.minionChampion || compRaw.minionKing;
+			if (!champ) return;
+			const nextC = FossilUi.normalizeCompanionPlainForDeckRecycleModal(champ);
 			if (!nextC) return;
 			try {
 				FossilUi.pushDetailPlain(JSON.parse(JSON.stringify(c)));
@@ -517,7 +523,7 @@
 				if (cr && cr.kind === 'kingMakerEffectLinks') {
 					extraFn = goKingMakerInkKingDeck;
 				} else if (cr && cr.kind === 'dominionMinionEffectLinks') {
-					extraFn = goDominionMinionKingDeck;
+					extraFn = goDominionMinionChampionDeck;
 				} else if (cr && cr.kind === 'luciferMiracleFallenLinks') {
 					extraFn = goLuciferFallenDeck;
 				} else if (cr && cr.kind === 'mikaelMiracleDeckLinks') {
@@ -703,6 +709,16 @@
 		};
 	}).filter(function (c) { return c.qty > 0 && !isNaN(c.id); });
 
+	const leagueBlockedMeta = document.querySelector('meta[name="nu_league_blocked_card_ids"]');
+	const leagueBlockedSet = (function () {
+		var raw = leagueBlockedMeta && leagueBlockedMeta.getAttribute('content');
+		if (!raw || !String(raw).trim()) return new Set();
+		return new Set(String(raw).split(',').map(function (x) {
+			var n = parseInt(x.trim(), 10);
+			return isNaN(n) ? null : n;
+		}).filter(function (n) { return n != null; }));
+	})();
+
 	const selectedSpans = document.querySelectorAll('#selected-seed span');
 	const initialDeck = Array.from(selectedSpans).map(function (s) { return parseInt(s.textContent.trim(), 10); })
 		.filter(function (n) { return !isNaN(n); });
@@ -714,6 +730,7 @@
 	}
 
 	function canAddToDeck(id, maxPerCard) {
+		if (leagueBlockedSet.has(id)) return false;
 		if (deckZone.querySelectorAll('.mini-card').length >= 8) return false;
 		return countInDeck(id) < maxPerCard;
 	}
@@ -722,6 +739,225 @@
 		const row = seeds.find(function (s) { return s.id === id; });
 		const owned = row ? row.qty : 0;
 		return Math.min(2, owned);
+	}
+
+	function seedById(id) {
+		return seeds.find(function (s) {
+			return s.id === id;
+		});
+	}
+
+	function rarityRankForAuto(code) {
+		const c = rarityCode4(code);
+		if (c === 'Reg') return 4;
+		if (c === 'Ep') return 3;
+		if (c === 'R') return 2;
+		return 1;
+	}
+
+	function statsAutoDeck(deckIds) {
+		let ge1 = 0;
+		let ge2 = 0;
+		let fld = 0;
+		for (let i = 0; i < deckIds.length; i++) {
+			const c = seedById(deckIds[i]);
+			if (!c) continue;
+			if (c.cost >= 1) ge1++;
+			if (c.cost >= 2) ge2++;
+			if (c.fieldCard) fld++;
+		}
+		return { ge1: ge1, ge2: ge2, fld: fld };
+	}
+
+	function canAppendAutoDeck(deckIds, id, tribe) {
+		const c = seedById(id);
+		if (!c || c.qty <= 0) return false;
+		if (deckIds.length >= 8) return false;
+		const cap = maxPerForId(id);
+		const n = deckIds.filter(function (x) {
+			return x === id;
+		}).length;
+		if (n >= cap) return false;
+		const st = statsAutoDeck(deckIds);
+		if (c.fieldCard) {
+			if (!matchesTribeFilter(c.attribute, tribe)) return false;
+			if (st.fld >= 1) return false;
+		}
+		if (c.cost >= 2 && st.ge2 >= 1) return false;
+		if (c.cost >= 1 && st.ge1 >= 4) return false;
+		return true;
+	}
+
+	function shuffleCopy(arr) {
+		const a = arr.slice();
+		for (let i = a.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			const t = a[i];
+			a[i] = a[j];
+			a[j] = t;
+		}
+		return a;
+	}
+
+	/**
+	 * おまかせデッキ: 8枚・同一2枚まで・〈フィールド〉は選択種族のみ最大1・コスト2+は1・コスト1+は4まで・残り0。
+	 */
+	function buildAutoDeckIds(tribe) {
+		const primary = seeds.filter(function (c) {
+			return matchesTribeFilter(c.attribute, tribe);
+		});
+		const other = seeds.filter(function (c) {
+			return !matchesTribeFilter(c.attribute, tribe);
+		});
+		const deck = [];
+
+		const fieldCand = primary
+			.filter(function (c) {
+				return c.fieldCard;
+			})
+			.sort(function (a, b) {
+				const rr = rarityRankForAuto(b.rarity) - rarityRankForAuto(a.rarity);
+				if (rr !== 0) return rr;
+				return b.id - a.id;
+			});
+		for (let fi = 0; fi < fieldCand.length; fi++) {
+			if (canAppendAutoDeck(deck, fieldCand[fi].id, tribe)) {
+				deck.push(fieldCand[fi].id);
+				break;
+			}
+		}
+
+		function ge2Sort(a, b) {
+			const dc = b.cost - a.cost;
+			if (dc !== 0) return dc;
+			const rr = rarityRankForAuto(b.rarity) - rarityRankForAuto(a.rarity);
+			if (rr !== 0) return rr;
+			return b.id - a.id;
+		}
+		if (statsAutoDeck(deck).ge2 < 1) {
+			const stMid = statsAutoDeck(deck);
+			const ge2Pri = primary
+				.filter(function (c) {
+					if (c.cost < 2) return false;
+					if (c.fieldCard && stMid.fld >= 1) return false;
+					return true;
+				})
+				.sort(ge2Sort);
+			let ok = false;
+			for (let i = 0; i < ge2Pri.length; i++) {
+				if (canAppendAutoDeck(deck, ge2Pri[i].id, tribe)) {
+					deck.push(ge2Pri[i].id);
+					ok = true;
+					break;
+				}
+			}
+			if (!ok) {
+				const ge2Oth = shuffleCopy(
+					other.filter(function (c) {
+						return c.cost >= 2 && !c.fieldCard;
+					})
+				);
+				for (let i = 0; i < ge2Oth.length; i++) {
+					if (canAppendAutoDeck(deck, ge2Oth[i].id, tribe)) {
+						deck.push(ge2Oth[i].id);
+						break;
+					}
+				}
+			}
+		}
+
+		function fillCostOneFrom(list) {
+			while (deck.length < 8) {
+				const st = statsAutoDeck(deck);
+				if (st.ge1 >= 4) return;
+				const pool = shuffleCopy(
+					list.filter(function (c) {
+						return c.cost === 1;
+					})
+				);
+				let progressed = false;
+				for (let i = 0; i < pool.length; i++) {
+					if (canAppendAutoDeck(deck, pool[i].id, tribe)) {
+						deck.push(pool[i].id);
+						progressed = true;
+						break;
+					}
+				}
+				if (!progressed) return;
+			}
+		}
+		fillCostOneFrom(primary);
+		fillCostOneFrom(
+			other.filter(function (c) {
+				return !c.fieldCard;
+			})
+		);
+
+		function fillCostZeroFrom(list) {
+			while (deck.length < 8) {
+				const pool = shuffleCopy(
+					list.filter(function (c) {
+						return c.cost === 0;
+					})
+				);
+				let progressed = false;
+				for (let i = 0; i < pool.length; i++) {
+					if (canAppendAutoDeck(deck, pool[i].id, tribe)) {
+						deck.push(pool[i].id);
+						progressed = true;
+						break;
+					}
+				}
+				if (!progressed) return;
+			}
+		}
+		fillCostZeroFrom(primary);
+		fillCostZeroFrom(
+			other.filter(function (c) {
+				return !c.fieldCard;
+			})
+		);
+
+		let guard = 0;
+		while (deck.length < 8 && guard++ < 400) {
+			const pool = shuffleCopy(
+				seeds.filter(function (c) {
+					return !c.fieldCard || matchesTribeFilter(c.attribute, tribe);
+				})
+			);
+			let progressed = false;
+			for (let i = 0; i < pool.length; i++) {
+				if (canAppendAutoDeck(deck, pool[i].id, tribe)) {
+					deck.push(pool[i].id);
+					progressed = true;
+					break;
+				}
+			}
+			if (!progressed) break;
+		}
+
+		return deck.length === 8 ? deck : null;
+	}
+
+	function appendPhysicalCardToDeck(c) {
+		const copy = document.createElement('div');
+		copy.className = 'mini-card mini-card--deck';
+		copy.dataset.id = String(c.id);
+		copy.setAttribute('role', 'button');
+		copy.setAttribute('tabindex', '0');
+		copy.setAttribute('aria-label', c.name + '。左クリックでデッキから戻す、右クリックで詳細');
+		appendCardImage(copy, c);
+		bindRightClickOpenCardDetail(copy, c);
+		bindCardTooltip(copy, c);
+		const removeFromDeck = function () {
+			copy.remove();
+			refreshLib();
+			update();
+		};
+		bindDeckSlotRemove(copy, removeFromDeck);
+		deckZone.appendChild(copy);
+		sortUpperZoneByTribeThenId(deckZone);
+		refitMiniCardFaceName(copy);
 	}
 
 	function cmpPower(a, b) {
@@ -992,13 +1228,19 @@
 			else if (inDeck >= 2) deckCls = ' mini-card--deck-2';
 			el.className = 'mini-card mini-card--lib' + deckCls;
 			el.dataset.id = String(c.id);
+			const blockedSibling = leagueBlockedSet.has(c.id);
+			if (blockedSibling) {
+				el.classList.add('mini-card--disabled');
+			}
 			const inDeckHint = inDeck > 0 ? '。デッキに' + inDeck + '枚使用中' : '';
+			const blockedHint = blockedSibling ? '。もう一方のリーグデッキで使用中のため追加できません' : '';
 			el.setAttribute(
 				'aria-label',
 				c.name +
 					(c.fieldCard ? '（×' : '（強さ' + c.power + '・×') +
 					c.qty +
 					inDeckHint +
+					blockedHint +
 					'）。左クリックでデッキへ、右クリックで詳細'
 			);
 			appendLibCardFace(el, c);
@@ -1006,28 +1248,9 @@
 			bindRightClickOpenCardDetail(el, c);
 			bindCardTooltip(el, c);
 			const addToDeck = function () {
+				if (blockedSibling) return;
 				if (!canAddToDeck(c.id, cap)) return;
-				const copy = document.createElement('div');
-				copy.className = 'mini-card mini-card--deck';
-				copy.dataset.id = String(c.id);
-				copy.setAttribute('role', 'button');
-				copy.setAttribute('tabindex', '0');
-				copy.setAttribute(
-					'aria-label',
-					c.name + '。左クリックでデッキから戻す、右クリックで詳細'
-				);
-				appendCardImage(copy, c);
-				bindRightClickOpenCardDetail(copy, c);
-				bindCardTooltip(copy, c);
-				const removeFromDeck = function () {
-					copy.remove();
-					refreshLib();
-					update();
-				};
-				bindDeckSlotRemove(copy, removeFromDeck);
-				deckZone.appendChild(copy);
-				sortUpperZoneByTribeThenId(deckZone);
-				refitMiniCardFaceName(copy);
+				appendPhysicalCardToDeck(c);
 				refreshLib();
 				update();
 			};
@@ -1077,6 +1300,20 @@
 		update();
 	}
 
+	function openAutoDeckModal() {
+		if (!autoDeckModal) return;
+		autoDeckModal.hidden = false;
+		document.body.style.overflow = 'hidden';
+	}
+
+	function closeAutoDeckModal() {
+		if (!autoDeckModal) return;
+		autoDeckModal.hidden = true;
+		if (!detailModal || detailModal.hidden) {
+			document.body.style.overflow = '';
+		}
+	}
+
 	if (clearAllDeckBtn) {
 		clearAllDeckBtn.addEventListener('click', function () {
 			clearDeckToLibrary();
@@ -1089,26 +1326,7 @@
 			if (!c) return;
 			const cap = maxPerForId(id);
 			if (!canAddToDeck(id, cap)) return;
-			const copy = document.createElement('div');
-			copy.className = 'mini-card mini-card--deck';
-			copy.dataset.id = String(id);
-			copy.setAttribute('role', 'button');
-			copy.setAttribute('tabindex', '0');
-			copy.setAttribute(
-				'aria-label',
-				c.name + '。左クリックでデッキから戻す、右クリックで詳細'
-			);
-			appendCardImage(copy, c);
-			bindRightClickOpenCardDetail(copy, c);
-			bindCardTooltip(copy, c);
-			const removeFromDeck = function () {
-				copy.remove();
-				refreshLib();
-				update();
-			};
-			bindDeckSlotRemove(copy, removeFromDeck);
-			deckZone.appendChild(copy);
-			refitMiniCardFaceName(copy);
+			appendPhysicalCardToDeck(c);
 		});
 		sortUpperZoneByTribeThenId(deckZone);
 	}
@@ -1142,6 +1360,48 @@
 		libFilterCardKind.addEventListener('change', onFilterChange);
 	}
 
+	if (autoDeckTribeGrid) {
+		TRIBE_SORT_ORDER.forEach(function (code) {
+			const b = document.createElement('button');
+			b.type = 'button';
+			b.className = 'btn btn--ghost deck-auto-deck-tribe-btn';
+			b.dataset.tribe = code;
+			b.textContent = ATTR_LABEL[code] || code;
+			b.addEventListener('click', function () {
+				const ids = buildAutoDeckIds(code);
+				if (!ids || ids.length !== 8) {
+					window.alert(
+						'条件を満たす8枚のデッキを組めませんでした。コレクションを増やすか、別の種族でお試しください。'
+					);
+					return;
+				}
+				closeAutoDeckModal();
+				clearDeckToLibrary();
+				for (let i = 0; i < ids.length; i++) {
+					const c = seedById(ids[i]);
+					if (c) appendPhysicalCardToDeck(c);
+				}
+				refreshLib();
+				update();
+			});
+			autoDeckTribeGrid.appendChild(b);
+		});
+	}
+
+	if (autoDeckOpenBtn) {
+		autoDeckOpenBtn.addEventListener('click', function () {
+			openAutoDeckModal();
+		});
+	}
+
+	if (autoDeckModal) {
+		autoDeckModal.querySelectorAll('[data-deck-auto-deck-close]').forEach(function (el) {
+			el.addEventListener('click', function () {
+				closeAutoDeckModal();
+			});
+		});
+	}
+
 	document.addEventListener('scroll', hideTooltip, true);
 	window.addEventListener('blur', hideTooltip);
 
@@ -1152,10 +1412,15 @@
 		detailModal.querySelectorAll('[data-library-detail-close]').forEach(function (el) {
 			el.addEventListener('click', closeCardDetailModal);
 		});
-		document.addEventListener('keydown', function (e) {
-			if (e.key === 'Escape' && detailModal && !detailModal.hidden) closeCardDetailModal();
-		});
 	}
+	document.addEventListener('keydown', function (e) {
+		if (e.key !== 'Escape') return;
+		if (autoDeckModal && !autoDeckModal.hidden) {
+			closeAutoDeckModal();
+			return;
+		}
+		if (detailModal && !detailModal.hidden) closeCardDetailModal();
+	});
 
 	bootstrapDeck();
 	refreshLib();

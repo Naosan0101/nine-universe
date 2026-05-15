@@ -203,13 +203,19 @@ public class LibraryService {
 			} else if (c.getId() != null && c.getId() == GameConstants.DOMINION_FIGHTER_CARD_ID) {
 				v.setCompanionDetailJson(buildDominionMinionEffectLinksCompanionDetailJson());
 			} else if (c.getId() != null && c.getId() == GameConstants.MINION_SOLDIER_TOKEN_CARD_ID) {
-				v.setCompanionDetailJson(buildMinionSoldierNextKingCompanionDetailJson());
+				v.setCompanionDetailJson(buildMinionSoldierNextChampionCompanionDetailJson());
 			} else if (c.getId() != null && c.getId() == GameConstants.INK_KING_FIGHTER_CARD_ID) {
 				v.setCompanionDetailJson(buildPaperCityInkKnightCompanionDetailJson());
 			} else if (c.getId() != null && c.getId() == GameConstants.SKETCHER_FIGHTER_CARD_ID) {
 				v.setCompanionDetailJson(buildPaperCityInkKnightCompanionDetailJson());
 			} else if (c.getId() != null && c.getId() == GameConstants.COMIC_WITCH_FIGHTER_CARD_ID) {
 				v.setCompanionDetailJson(buildPaperCityInkKnightCompanionDetailJson());
+			} else if (c.getId() != null && c.getId() == GameConstants.BELIEVER_FIGHTER_CARD_ID) {
+				v.setCompanionDetailJson(buildDeathBounceFieldLinkCompanionDetailJson());
+			} else if (c.getId() != null && c.getId() == GameConstants.ARTHUR_FIGHTER_CARD_ID) {
+				v.setCompanionDetailJson(buildKamuiFieldLinkCompanionDetailJson());
+			} else if (c.getId() != null && c.getId() == GameConstants.BOT_BIKE_FIGHTER_CARD_ID) {
+				v.setCompanionDetailJson(buildMechanicRuleCardLinkCompanionDetailJson());
 			} else {
 				v.setCompanionDetailJson(null);
 			}
@@ -282,7 +288,7 @@ public class LibraryService {
 
 	/**
 	 * 「ミカエル」: 効果文の「奇跡」「ミカエルデッキ（ミカエルのカード6枚からなるデッキ）」リンクと
-	 * ›（奇跡→ミカエルの怒り→…→ミカエルの一閃）。
+	 * ›（奇跡→ミカエルの怒り→…→ミカエルの一閃）。〈配置〉はレスト・手札・デッキの奇跡をデッキ上へ集めランダム変化する。
 	 */
 	private String buildMikaelMiracleDeckLinksCompanionDetailJson() {
 		try {
@@ -577,22 +583,22 @@ public class LibraryService {
 	}
 
 	/**
-	 * ドミニオン拡大詳細: 「ミニオンソルジャー」「ミニオンキング」リンクと ›（ソルジャー→キング）。
+	 * ドミニオン拡大詳細: 「ミニオンソルジャー」「ミニオンチャンピオン」リンクと ›（ソルジャー→チャンピオン）。
 	 */
 	private String buildDominionMinionEffectLinksCompanionDetailJson() {
 		try {
 			LinkedHashMap<String, Object> soldier = companionCardFaceJsonMap(GameConstants.MINION_SOLDIER_TOKEN_CARD_ID, false);
-			LinkedHashMap<String, Object> king = companionCardFaceJsonMap(GameConstants.MINION_KING_TOKEN_CARD_ID, false);
-			if (soldier == null || king == null) {
+			LinkedHashMap<String, Object> champion = companionCardFaceJsonMap(GameConstants.MINION_CHAMPION_TOKEN_CARD_ID, false);
+			if (soldier == null || champion == null) {
 				return null;
 			}
 			soldier.put("linkToken", "「ミニオンソルジャー」");
-			king.put("linkToken", "「ミニオンキング」");
-			soldier.put("nextCompanionDetailJson", OBJECT_MAPPER.writeValueAsString(king));
+			champion.put("linkToken", "「ミニオンチャンピオン」");
+			soldier.put("nextCompanionDetailJson", OBJECT_MAPPER.writeValueAsString(champion));
 			LinkedHashMap<String, Object> root = new LinkedHashMap<>();
 			root.put("kind", "dominionMinionEffectLinks");
 			root.put("minionSoldier", soldier);
-			root.put("minionKing", king);
+			root.put("minionChampion", champion);
 			return OBJECT_MAPPER.writeValueAsString(root);
 		} catch (JsonProcessingException e) {
 			return null;
@@ -601,18 +607,72 @@ public class LibraryService {
 		}
 	}
 
-	/** ミニオンソルジャー単体: › でミニオンキングへ。 */
-	private String buildMinionSoldierNextKingCompanionDetailJson() {
+	/** ミニオンソルジャー単体: › でミニオンチャンピオンへ。 */
+	private String buildMinionSoldierNextChampionCompanionDetailJson() {
 		try {
 			LinkedHashMap<String, Object> soldier = companionCardFaceJsonMap(GameConstants.MINION_SOLDIER_TOKEN_CARD_ID, false);
-			LinkedHashMap<String, Object> king = companionCardFaceJsonMap(GameConstants.MINION_KING_TOKEN_CARD_ID, false);
-			if (soldier == null || king == null) {
+			LinkedHashMap<String, Object> champion = companionCardFaceJsonMap(GameConstants.MINION_CHAMPION_TOKEN_CARD_ID, false);
+			if (soldier == null || champion == null) {
 				return null;
 			}
 			soldier.put("linkToken", "「ミニオンソルジャー」");
-			king.put("linkToken", "「ミニオンキング」");
-			soldier.put("nextCompanionDetailJson", OBJECT_MAPPER.writeValueAsString(king));
+			champion.put("linkToken", "「ミニオンチャンピオン」");
+			soldier.put("nextCompanionDetailJson", OBJECT_MAPPER.writeValueAsString(champion));
 			return OBJECT_MAPPER.writeValueAsString(soldier);
+		} catch (JsonProcessingException e) {
+			return null;
+		} catch (RuntimeException e) {
+			return null;
+		}
+	}
+
+	/**
+	 * 信奉者拡大詳細: 効果文中の「霊園教会 デスバウンス」を化石リンクと同様にクリック可能にする。
+	 */
+	private String buildDeathBounceFieldLinkCompanionDetailJson() {
+		try {
+			LinkedHashMap<String, Object> m = companionCardFaceJsonMap(GameConstants.DEATH_BOUNCE_FIELD_CARD_ID, false);
+			if (m == null) {
+				return null;
+			}
+			m.put("linkToken", "「霊園教会 デスバウンス」");
+			return OBJECT_MAPPER.writeValueAsString(m);
+		} catch (JsonProcessingException e) {
+			return null;
+		} catch (RuntimeException e) {
+			return null;
+		}
+	}
+
+	/**
+	 * アーサー拡大詳細: 効果文中の「決戦の地 カムイ」を化石リンクと同様にクリック可能にする。
+	 */
+	private String buildKamuiFieldLinkCompanionDetailJson() {
+		try {
+			LinkedHashMap<String, Object> m = companionCardFaceJsonMap(GameConstants.KAMUI_FIELD_CARD_ID, false);
+			if (m == null) {
+				return null;
+			}
+			m.put("linkToken", "「決戦の地 カムイ」");
+			return OBJECT_MAPPER.writeValueAsString(m);
+		} catch (JsonProcessingException e) {
+			return null;
+		} catch (RuntimeException e) {
+			return null;
+		}
+	}
+
+	/**
+	 * ボットバイク拡大詳細: 効果文中の「メカニック」（カード名）を化石リンクと同様にクリック可能にする。
+	 */
+	private String buildMechanicRuleCardLinkCompanionDetailJson() {
+		try {
+			LinkedHashMap<String, Object> m = companionCardFaceJsonMap(GameConstants.MECHANIC_RULE_REFERENCE_CARD_ID, false);
+			if (m == null) {
+				return null;
+			}
+			m.put("linkToken", "「メカニック」");
+			return OBJECT_MAPPER.writeValueAsString(m);
 		} catch (JsonProcessingException e) {
 			return null;
 		} catch (RuntimeException e) {

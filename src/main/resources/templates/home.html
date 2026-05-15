@@ -334,6 +334,26 @@
 			</div>
 		</article>
 
+		<article class="announcement-modal__card" data-announce-sort="2026051501"
+		         th:if="${announcementListStd3LeagueUiUpdate202605 and (std3LeagueUiUpdate202605AnnouncementClaimed or std3LeagueUiUpdate202605AnnouncementExpiredUnclaimed or std3LeagueUiUpdate202605AnnouncementFutureUnclaimed or std3LeagueUiUpdate202605AnnouncementInWindow)}">
+			<div class="announcement-modal__mailbox">
+				<div class="announcement-modal__mailbox-body">
+					<p class="announcement-modal__card-text">・新カードパック「スタンダードパック3」「海底の激流パック」「創世の神域パック」を追加しました。</p>
+					<p class="announcement-modal__card-text">・新カードパックにともない、新カード40枚を追加しました。</p>
+					<p class="announcement-modal__card-text">・「リーグ対戦」を追加しました。</p>
+					<p class="announcement-modal__card-text">・各カードの効果を見直しました。</p>
+					<p class="announcement-modal__card-text">・各UIを見直しました。</p>
+					<p class="announcement-modal__card-text muted">※初回にホームを開いたとき、記念として
+						<span th:text="${std3LeagueUiUpdate202605AnnouncementGemAmount}">30</span>ジェムを付与しています（受け取り期限 30 日）。</p>
+				</div>
+				<aside class="announcement-modal__mailbox-aside">
+					<p th:if="${std3LeagueUiUpdate202605AnnouncementClaimed}" class="announcement-modal__card-status ok">配布済み</p>
+					<p th:if="${std3LeagueUiUpdate202605AnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">配布期限が過ぎました</p>
+					<p th:if="${std3LeagueUiUpdate202605AnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">配布開始前です</p>
+				</aside>
+			</div>
+		</article>
+
 		<article class="announcement-modal__card" data-announce-sort="2026042001"
 		         th:if="${announcementListMajorUpdate and (majorUpdateAnnouncementClaimable or majorUpdateAnnouncementClaimed or majorUpdateAnnouncementExpiredUnclaimed or majorUpdateAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">

@@ -3,15 +3,27 @@
 <mapper namespace="com.example.nineuniverse.repository.DeckMapper">
 
 	<select id="findByUserId" resultType="com.example.nineuniverse.domain.Deck">
-		SELECT id, user_id AS userId, name FROM deck WHERE user_id = #{userId} ORDER BY id
+		SELECT id, user_id AS userId, name, league_set_id AS leagueSetId, league_slot AS leagueSlot
+		FROM deck WHERE user_id = #{userId} ORDER BY id
+	</select>
+
+	<select id="findCasualByUserId" resultType="com.example.nineuniverse.domain.Deck">
+		SELECT id, user_id AS userId, name, league_set_id AS leagueSetId, league_slot AS leagueSlot
+		FROM deck WHERE user_id = #{userId} AND league_set_id IS NULL ORDER BY id
 	</select>
 
 	<select id="findByIdAndUserId" resultType="com.example.nineuniverse.domain.Deck">
-		SELECT id, user_id AS userId, name FROM deck WHERE id = #{id} AND user_id = #{userId}
+		SELECT id, user_id AS userId, name, league_set_id AS leagueSetId, league_slot AS leagueSlot
+		FROM deck WHERE id = #{id} AND user_id = #{userId}
+	</select>
+
+	<select id="findIdByLeagueSetAndSlot" resultType="long">
+		SELECT id FROM deck WHERE league_set_id = #{leagueSetId} AND league_slot = #{slot}
 	</select>
 
 	<insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
-		INSERT INTO deck (user_id, name) VALUES (#{userId}, #{name})
+		INSERT INTO deck (user_id, name, league_set_id, league_slot)
+		VALUES (#{userId}, #{name}, #{leagueSetId}, #{leagueSlot})
 	</insert>
 
 	<update id="updateName">

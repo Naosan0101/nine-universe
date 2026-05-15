@@ -35,7 +35,19 @@ public class PvpBattleService {
 			throw new IllegalArgumentException("自分自身とは対戦できません");
 		}
 		String id = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-		var m = new PvpMatch(id, hostUserId, hostDeckId, invitedGuestUserId);
+		var m = PvpMatch.casual(id, hostUserId, hostDeckId, invitedGuestUserId);
+		matches.put(id, m);
+		return m;
+	}
+
+	public PvpMatch createWaitingRoomLeague(long hostUserId, long hostLeagueSetId, long invitedGuestUserId) {
+		if (invitedGuestUserId == hostUserId) {
+			throw new IllegalArgumentException("自分自身とは対戦できません");
+		}
+		var sum = deckService.requireLeagueSummary(hostUserId, hostLeagueSetId);
+		String id = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+		var m = PvpMatch.league(id, hostUserId, invitedGuestUserId, hostLeagueSetId,
+				sum.getDeckSlot1Id(), sum.getDeckSlot2Id());
 		matches.put(id, m);
 		return m;
 	}
@@ -47,6 +59,9 @@ public class PvpBattleService {
 	public void join(String matchId, long guestUserId, long guestDeckId) {
 		PvpMatch m = require(matchId);
 		synchronized (m) {
+			if (m.getFormat() != PvpMatch.Format.CASUAL) {
+				throw new IllegalStateException("この部屋はカジュアル対戦用ではありません");
+			}
 			if (m.getGuestUserId() != null) {
 				throw new IllegalStateException("この対戦部屋はすでに埋まっています");
 			}
@@ -59,24 +74,139 @@ public class PvpBattleService {
 			deckService.requireDeck(guestUserId, guestDeckId);
 			m.setGuestUserId(guestUserId);
 			m.setGuestDeckId(guestDeckId);
-			var defs = cardCatalogService.mapById();
-			var rnd = new Random();
-			List<Short> hostCards = deckService.cardIdsForDeck(m.getHostDeckId());
-			List<Short> guestCards = deckService.cardIdsForDeck(guestDeckId);
-			CpuBattleState st = engine.newPvpBattle(hostCards, guestCards, rnd, defs);
-			st.setHumanSlotDeckId(m.getHostDeckId());
-			st.setCpuSlotDeckId(guestDeckId);
-			st.setPhase(st.isHumansTurn() ? BattlePhase.HUMAN_INPUT : BattlePhase.CPU_THINKING);
-			if (st.getTurnStartedAtMs() <= 0) {
-				st.setTurnStartedAtMs(System.currentTimeMillis());
-			}
-			m.setState(st);
+			startPvpBattleFromCurrentDeckIds(m);
 		}
+	}
+
+	public void joinLeagueGuest(String matchId, long guestUserId, long guestLeagueSetId) {
+		PvpMatch m = require(matchId);
+		synchronized (m) {
+			if (m.getFormat() != PvpMatch.Format.LEAGUE) {
+				throw new IllegalStateException("この部屋はリーグ対戦用ではありません");
+			}
+			if (m.getGuestUserId() != null) {
+				throw new IllegalStateException("この対戦部屋はすでに埋まっています");
+			}
+			if (m.getHostUserId() == guestUserId) {
+				throw new IllegalStateException("自分の部屋には参加できません");
+			}
+			if (guestUserId != m.getInvitedGuestUserId()) {
+				throw new IllegalStateException("この対戦は招待された相手のみが参加できます");
+			}
+			var gsum = deckService.requireLeagueSummary(guestUserId, guestLeagueSetId);
+			m.setGuestUserId(guestUserId);
+			m.setGuestLeagueSetId(guestLeagueSetId);
+			m.setGuestDeckSlot1Id(gsum.getDeckSlot1Id());
+			m.setGuestDeckSlot2Id(gsum.getDeckSlot2Id());
+		}
+	}
+
+	public void submitLeagueFirstGameSlot(String matchId, long userId, int slot1Or2) {
+		if (slot1Or2 != 1 && slot1Or2 != 2) {
+			throw new IllegalArgumentException("デッキは1か2を選んでください");
+		}
+		PvpMatch m = require(matchId);
+		synchronized (m) {
+			requireParticipant(m, userId);
+			if (m.getFormat() != PvpMatch.Format.LEAGUE) {
+				throw new IllegalStateException("リーグ対戦ではありません");
+			}
+			if (m.getGuestUserId() == null) {
+				throw new IllegalStateException("相手の参加を待っています");
+			}
+			if (m.getState() != null) {
+				return;
+			}
+			if (m.getHostUserId() == userId) {
+				m.setHostFirstGameSlotPick(slot1Or2);
+			} else if (m.getGuestUserId() == userId) {
+				m.setGuestFirstGameSlotPick(slot1Or2);
+			} else {
+				throw new IllegalStateException("この対戦に参加していません");
+			}
+			tryStartLeagueFirstGame(m);
+		}
+	}
+
+	private void tryStartLeagueFirstGame(PvpMatch m) {
+		if (m.getHostFirstGameSlotPick() == null || m.getGuestFirstGameSlotPick() == null) {
+			return;
+		}
+		deckService.requireLeagueSetBattleReady(m.getHostUserId(), m.getHostLeagueSetId());
+		deckService.requireLeagueSetBattleReady(m.getGuestUserId(), m.getGuestLeagueSetId());
+		int hs = m.getHostFirstGameSlotPick();
+		int gs = m.getGuestFirstGameSlotPick();
+		m.setHostActiveSlot(hs);
+		m.setGuestActiveSlot(gs);
+		long hd = hs == 1 ? m.getHostDeckSlot1Id() : m.getHostDeckSlot2Id();
+		long gd = gs == 1 ? m.getGuestDeckSlot1Id() : m.getGuestDeckSlot2Id();
+		m.setHostDeckId(hd);
+		m.setGuestDeckId(gd);
+		startPvpBattleFromCurrentDeckIds(m);
+	}
+
+	private void startPvpBattleFromCurrentDeckIds(PvpMatch m) {
+		Long hd = m.getHostDeckId();
+		Long gd = m.getGuestDeckId();
+		if (hd == null || gd == null) {
+			throw new IllegalStateException("デッキが未設定です");
+		}
+		var defs = cardCatalogService.mapById();
+		var rnd = new Random();
+		List<Short> hostCards = deckService.cardIdsForDeck(hd);
+		List<Short> guestCards = deckService.cardIdsForDeck(gd);
+		CpuBattleState st = engine.newPvpBattle(hostCards, guestCards, rnd, defs);
+		st.setHumanSlotDeckId(hd);
+		st.setCpuSlotDeckId(gd);
+		st.setPhase(st.isHumansTurn() ? BattlePhase.HUMAN_INPUT : BattlePhase.CPU_THINKING);
+		if (st.getTurnStartedAtMs() <= 0) {
+			st.setTurnStartedAtMs(System.currentTimeMillis());
+		}
+		m.setState(st);
+	}
+
+	public boolean isGuestJoined(String matchId) {
+		PvpMatch m = matches.get(matchId);
+		return m != null && m.getGuestUserId() != null;
 	}
 
 	public boolean isStarted(String matchId) {
 		PvpMatch m = matches.get(matchId);
 		return m != null && m.getState() != null;
+	}
+
+	public CpuBattleStateDto leagueNextGame(String matchId, long userId) {
+		PvpMatch m = require(matchId);
+		synchronized (m) {
+			requireParticipant(m, userId);
+			if (m.getFormat() != PvpMatch.Format.LEAGUE || !m.isLeagueAwaitingNextGameAck()) {
+				throw new IllegalStateException("次のゲームを開始できません");
+			}
+			CpuBattleState st = m.getState();
+			if (st == null) {
+				return null;
+			}
+			boolean host = m.getHostUserId() == userId;
+			if (m.isLeagueMatchComplete()) {
+				m.setLeagueAwaitingNextGameAck(false);
+				return wrapPvpState(m, st, host);
+			}
+			boolean hostWonLast = st.isHumanWon();
+			int nh = hostWonLast ? (3 - m.getHostActiveSlot()) : m.getHostActiveSlot();
+			int ng = hostWonLast ? m.getGuestActiveSlot() : (3 - m.getGuestActiveSlot());
+			m.setHostActiveSlot(nh);
+			m.setGuestActiveSlot(ng);
+			long hd = nh == 1 ? m.getHostDeckSlot1Id() : m.getHostDeckSlot2Id();
+			long gd = ng == 1 ? m.getGuestDeckSlot1Id() : m.getGuestDeckSlot2Id();
+			m.setHostDeckId(hd);
+			m.setGuestDeckId(gd);
+			m.setLeagueAwaitingNextGameAck(false);
+			m.setLeagueLastEndedRoundScored(false);
+			deckService.requireLeagueSetBattleReady(m.getHostUserId(), m.getHostLeagueSetId());
+			deckService.requireLeagueSetBattleReady(m.getGuestUserId(), m.getGuestLeagueSetId());
+			startPvpBattleFromCurrentDeckIds(m);
+			return wrapPvpState(m, m.getState(), host);
+		}
 	}
 
 	public CpuBattleStateDto stateForUser(String matchId, long userId) {
@@ -98,8 +228,12 @@ public class PvpBattleService {
 		synchronized (m) {
 			requireParticipant(m, userId);
 			CpuBattleState st = m.getState();
-			if (st == null || st.isGameOver()) {
+			if (st == null) {
 				return null;
+			}
+			if (st.isGameOver()) {
+				boolean host = m.getHostUserId() == userId;
+				return wrapPvpState(m, st, host);
 			}
 			enforceTimeoutIfNeeded(st);
 			boolean host = m.getHostUserId() == userId;
@@ -194,13 +328,41 @@ public class PvpBattleService {
 	}
 
 	private CpuBattleStateDto wrapPvpState(PvpMatch m, CpuBattleState st, boolean host) {
+		maybeScoreLeagueRound(m, st);
 		CpuBattleStateDto base = cpuBattleService.stateDtoFromState(st);
 		notifyPvpMissionIfNeeded(m, st);
-		return adaptForViewer(base, st, host);
+		CpuBattleStateDto adapted = adaptForViewer(base, st, host);
+		return attachLeagueSeriesOverlay(adapted, m, host);
+	}
+
+	private static void maybeScoreLeagueRound(PvpMatch m, CpuBattleState st) {
+		if (m.getFormat() != PvpMatch.Format.LEAGUE || st == null || !st.isGameOver()) {
+			return;
+		}
+		if (m.isLeagueMatchComplete()) {
+			return;
+		}
+		if (m.isLeagueLastEndedRoundScored()) {
+			return;
+		}
+		m.setLeagueLastEndedRoundScored(true);
+		boolean hostWon = st.isHumanWon();
+		if (hostWon) {
+			m.setHostWins(m.getHostWins() + 1);
+		} else {
+			m.setGuestWins(m.getGuestWins() + 1);
+		}
+		if (m.getHostWins() >= 2 || m.getGuestWins() >= 2) {
+			m.setLeagueMatchComplete(true);
+		}
+		m.setLeagueAwaitingNextGameAck(true);
 	}
 
 	private void notifyPvpMissionIfNeeded(PvpMatch m, CpuBattleState st) {
 		if (st == null || !st.isPvp() || !st.isGameOver()) {
+			return;
+		}
+		if (m.getFormat() == PvpMatch.Format.LEAGUE && !m.isLeagueMatchComplete()) {
 			return;
 		}
 		if (m.isMissionCompletionNotified()) {
@@ -211,6 +373,34 @@ public class PvpBattleService {
 		if (m.getGuestUserId() != null) {
 			missionService.onPvpBattlePlayed(m.getGuestUserId());
 		}
+	}
+
+	private static CpuBattleStateDto attachLeagueSeriesOverlay(CpuBattleStateDto d, PvpMatch m, boolean host) {
+		if (m.getFormat() != PvpMatch.Format.LEAGUE) {
+			return d;
+		}
+		Integer myW = host ? m.getHostWins() : m.getGuestWins();
+		Integer opW = host ? m.getGuestWins() : m.getHostWins();
+		boolean done = m.isLeagueMatchComplete();
+		boolean await = m.isLeagueAwaitingNextGameAck();
+		return new CpuBattleStateDto(
+				d.pvpMatch(), d.cpuBattleMode(), d.cpuLevel(), d.humanGoesFirst(), d.humansTurn(), d.phase(),
+				d.turnStartedAtMs(), d.activeTimeLimitSec(), d.activePenaltyStage(),
+				d.humanStones(), d.cpuStones(), d.humanDeck(), d.humanHand(), d.humanRest(), d.humanBattle(),
+				d.cpuDeck(), d.cpuHand(), d.cpuRest(), d.cpuBattle(), d.activeField(), d.scrapyardFieldTurnsRemaining(),
+				d.deathbounceFieldTurnsRemaining(), d.atlantisFieldCounterDisplay(),
+				d.weeklyShonenCampFieldCounterDisplay(), d.weeklyShonenCampCount2ComicBonus(),
+				d.weeklyShonenCampGlobalDeployCostPlusOneThisTurn(),
+				d.worldRebuildFieldCounterDisplay(),
+				d.paperCityFieldCounterDisplay(),
+				d.humanBattlePower(), d.cpuBattlePower(),
+				d.humanNextDeployBonus(), d.humanNextElfOnlyBonus(), d.humanNextDeployCostBonusTimes(),
+				d.humanNextMechanicStacks(),
+				d.cpuNextDeployBonus(), d.cpuNextElfOnlyBonus(), d.cpuNextDeployCostBonusTimes(), d.cpuNextMechanicStacks(),
+				d.lastMessage(), d.gameOver(), d.humanWon(), d.noLegalDeploy(),
+				d.pendingEffect(), d.pendingChoice(), d.eventLog(), d.defs(), d.myBattleDeckId(),
+				d.spec666NextHumanUndead(), d.spec666NextCpuUndead(),
+				myW, opW, done, await, await);
 	}
 
 	private void enforceTimeoutIfNeeded(CpuBattleState st) {
@@ -235,6 +425,7 @@ public class PvpBattleService {
 			st.setPhase(BattlePhase.GAME_OVER);
 			st.setLastMessage(host ? "ホストが降参しました" : "ゲストが降参しました");
 			st.addLog(host ? "ホストが降参" : "ゲストが降参");
+			// リーグ戦: このゲームのみ相手の勝ちとして扱う（スコアは wrap/maybeScoreLeagueRound に任せる）
 		}
 	}
 
@@ -287,7 +478,8 @@ public class PvpBattleService {
 				b.pendingEffect(), b.pendingChoice(), b.eventLog(), b.defs(),
 				myBattleDeckId,
 				b.spec666NextHumanUndead(),
-				b.spec666NextCpuUndead());
+				b.spec666NextCpuUndead(),
+				null, null, null, null, null);
 	}
 
 	private CpuBattleStateDto withPhaseForHost(CpuBattleStateDto base, CpuBattleState raw) {
@@ -405,7 +597,8 @@ public class PvpBattleService {
 				b.defs(),
 				b.myBattleDeckId(),
 				raw.isSpec666NextCpuUndead(),
-				raw.isSpec666NextHumanUndead()
+				raw.isSpec666NextHumanUndead(),
+				null, null, null, null, null
 		);
 	}
 
@@ -426,7 +619,8 @@ public class PvpBattleService {
 				b.cpuNextDeployBonus(), b.cpuNextElfOnlyBonus(), b.cpuNextDeployCostBonusTimes(), b.cpuNextMechanicStacks(),
 				b.lastMessage(), b.gameOver(), b.humanWon(), b.noLegalDeploy(),
 				b.pendingEffect(), b.pendingChoice(), b.eventLog(), b.defs(), b.myBattleDeckId(),
-				b.spec666NextHumanUndead(), b.spec666NextCpuUndead());
+				b.spec666NextHumanUndead(), b.spec666NextCpuUndead(),
+				null, null, null, null, null);
 	}
 
 	private CpuBattleStateDto replacePendingViewer(CpuBattleStateDto b, PendingChoice rawPc, boolean host) {
@@ -456,6 +650,7 @@ public class PvpBattleService {
 				b.cpuNextDeployBonus(), b.cpuNextElfOnlyBonus(), b.cpuNextDeployCostBonusTimes(), b.cpuNextMechanicStacks(),
 				b.lastMessage(), b.gameOver(), b.humanWon(), b.noLegalDeploy(),
 				b.pendingEffect(), npc, b.eventLog(), b.defs(), b.myBattleDeckId(),
-				b.spec666NextHumanUndead(), b.spec666NextCpuUndead());
+				b.spec666NextHumanUndead(), b.spec666NextCpuUndead(),
+				null, null, null, null, null);
 	}
 }

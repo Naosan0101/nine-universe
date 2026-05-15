@@ -18,6 +18,7 @@
 	<meta name="cpu_think_speed" th:content="${cpuThinkSpeed}"/>
 	<meta name="battle_intro_opp_name" th:content="${battleIntroOppName}"/>
 	<meta name="battle_intro_i_am_first" th:content="${battleIntroIAmFirst}"/>
+	<meta name="cpu_league_active" th:content="${cpuLeagueActive ? '1' : '0'}"/>
 	<meta name="card_plate_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|"/>
 	<meta name="card_data_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardDataUrl}|"/>
 </head>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.nineuniverse.repository.LeagueDeckSetMapper">
+
+	<select id="findByUserId" resultType="com.example.nineuniverse.domain.LeagueDeckSet">
+		SELECT id, user_id AS userId, name FROM league_deck_set WHERE user_id = #{userId} ORDER BY id
+	</select>
+
+	<select id="findByIdAndUserId" resultType="com.example.nineuniverse.domain.LeagueDeckSet">
+		SELECT id, user_id AS userId, name FROM league_deck_set WHERE id = #{id} AND user_id = #{userId}
+	</select>
+
+	<select id="findSummaryByIdAndUserId" resultType="com.example.nineuniverse.domain.LeagueDeckSetSummary">
+		SELECT
+			s.id AS setId,
+			s.name AS setName,
+			d1.id AS deckSlot1Id,
+			d2.id AS deckSlot2Id,
+			d1.name AS deckSlot1Name,
+			d2.name AS deckSlot2Name
+		FROM league_deck_set s
+		JOIN deck d1 ON d1.league_set_id = s.id AND d1.league_slot = 1
+		JOIN deck d2 ON d2.league_set_id = s.id AND d2.league_slot = 2
+		WHERE s.id = #{id} AND s.user_id = #{userId}
+	</select>
+
+	<insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+		INSERT INTO league_deck_set (user_id, name) VALUES (#{userId}, #{name})
+	</insert>
+
+	<update id="updateName">
+		UPDATE league_deck_set SET name = #{name} WHERE id = #{id} AND user_id = #{userId}
+	</update>
+
+	<delete id="delete">
+		DELETE FROM league_deck_set WHERE id = #{id} AND user_id = #{userId}
+	</delete>
+</mapper>
