@@ -3405,18 +3405,36 @@ public class CpuBattleEngine {
 					: "深海神殿 アトランティス: " + opponentActorLogLabel(st) + "はレストにマーフォークがいなかった");
 		}
 		st.setAtlantisAwaitingCount0(false);
-		st.setActiveField(null);
-		st.setActiveFieldOwnerHuman(null);
+		removeActiveAtlantisFieldToOwnerRestNow(st, defs);
+	}
+
+	/** アトランティス: カウント0解決後は効果の成否にかかわらず所有者のレストへ */
+	private void removeActiveAtlantisFieldToOwnerRestNow(CpuBattleState st, Map<Short, CardDefinition> defs) {
+		BattleCard field = st.getActiveField();
+		if (field == null || field.getCardId() != GameConstants.ATLANTIS_FIELD_CARD_ID) {
+			return;
+		}
+		Boolean ownerHuman = st.getActiveFieldOwnerHuman();
+		if (ownerHuman == null) {
+			return;
+		}
+		st.setAtlantisAwaitingCount0(false);
 		st.setAtlantisFieldCounterDisplay(0);
-		CardDefinition atlDef = defs.get(field.getCardId());
-		String nm = atlDef != null && atlDef.getName() != null ? atlDef.getName() : "深海神殿 アトランティス";
-		if (fieldOwnerIsHuman) {
+		CardDefinition fd = defs != null ? defs.get(field.getCardId()) : null;
+		String nm = fd != null && fd.getName() != null ? fd.getName() : "深海神殿 アトランティス";
+		if (ownerHuman) {
 			st.getHumanRest().add(field);
-			st.addLog(st.isPvp() ? "〈フィールド〉「" + nm + "」はホストのレストに置かれた" : "〈フィールド〉「" + nm + "」はあなたのレストに置かれた");
+			st.addLog(st.isPvp()
+					? "〈フィールド〉「" + nm + "」はホストのレストに置かれた"
+					: "〈フィールド〉「" + nm + "」はあなたのレストに置かれた");
 		} else {
 			st.getCpuRest().add(field);
-			st.addLog(st.isPvp() ? "〈フィールド〉「" + nm + "」はゲストのレストに置かれた" : "〈フィールド〉「" + nm + "」は相手のレストに置かれた");
+			st.addLog(st.isPvp()
+					? "〈フィールド〉「" + nm + "」はゲストのレストに置かれた"
+					: "〈フィールド〉「" + nm + "」は相手のレストに置かれた");
 		}
+		st.setActiveField(null);
+		st.setActiveFieldOwnerHuman(null);
 	}
 
 	/**
@@ -3450,6 +3468,7 @@ public class CpuBattleEngine {
 		}
 		int n = st.getWorldRebuildFieldCounterDisplay();
 		if (n <= 0) {
+			maybeExecuteWorldRebuildFieldCount0(st, defs);
 			return;
 		}
 		int next = n - 1;
@@ -3491,12 +3510,41 @@ public class CpuBattleEngine {
 				}
 			}
 		}
-		if (comics < 3) {
+		if (comics >= 3) {
+			executeWorldRebuildResetToBattleOpen(st, ownerHuman.booleanValue(), defs);
+			st.addLog("世界の再構築: カウント0 — バトル開始時の手札・デッキ・ストーンに戻した");
+		} else {
 			st.addLog("世界の再構築: レストに「種族：コミック」が3枚未満のため、バトル開始時の状態への復元は行われなかった");
+		}
+		removeActiveWorldRebuildFieldToOwnerRestNow(st, defs);
+	}
+
+	/** 世界の再構築: カウント0到達後は効果の成否にかかわらず所有者のレストへ */
+	private void removeActiveWorldRebuildFieldToOwnerRestNow(CpuBattleState st, Map<Short, CardDefinition> defs) {
+		BattleCard field = st.getActiveField();
+		if (field == null || field.getCardId() != GameConstants.WORLD_REBUILD_FIELD_CARD_ID) {
 			return;
 		}
-		executeWorldRebuildResetToBattleOpen(st, ownerHuman.booleanValue(), defs);
-		st.addLog("世界の再構築: カウント0 — バトル開始時の手札・デッキ・ストーンに戻した");
+		Boolean ownerHuman = st.getActiveFieldOwnerHuman();
+		if (ownerHuman == null) {
+			return;
+		}
+		CardDefinition fd = defs != null ? defs.get(field.getCardId()) : null;
+		String nm = fd != null && fd.getName() != null ? fd.getName() : "世界の再構築";
+		if (ownerHuman) {
+			st.getHumanRest().add(field);
+			st.addLog(st.isPvp()
+					? "〈フィールド〉「" + nm + "」はホストのレストに置かれた"
+					: "〈フィールド〉「" + nm + "」はあなたのレストに置かれた");
+		} else {
+			st.getCpuRest().add(field);
+			st.addLog(st.isPvp()
+					? "〈フィールド〉「" + nm + "」はゲストのレストに置かれた"
+					: "〈フィールド〉「" + nm + "」は相手のレストに置かれた");
+		}
+		st.setActiveField(null);
+		st.setActiveFieldOwnerHuman(null);
+		st.setWorldRebuildFieldCounterDisplay(0);
 	}
 
 	private void executeWorldRebuildResetToBattleOpen(CpuBattleState st, boolean ownerHuman, Map<Short, CardDefinition> defs) {
@@ -3658,11 +3706,12 @@ public class CpuBattleEngine {
 			st.setCpuTurnStarts(st.getCpuTurnStarts() + 1);
 		}
 
-		tickScrapyardFieldAtTurnStart(st);
-		tickDeathbounceFieldAtTurnStart(st);
-		tickWeeklyShonenCampFieldAtTurnStart(st);
+		tickScrapyardFieldAtTurnStart(st, defs);
+		tickDeathbounceFieldAtTurnStart(st, defs);
+		tickWeeklyShonenCampFieldAtTurnStart(st, defs);
 		tickWorldRebuildFieldAtTurnStart(st, defs);
 		tickPaperCityFieldAtTurnStart(st, defs);
+		expireActiveCountedFieldAtCountZero(st, defs);
 
 		if (isFirstPlayersFirstTurn) {
 			st.addLog(forHuman ? "あなたの先攻1ターン目: ストーン獲得なし"
@@ -6394,8 +6443,37 @@ public class CpuBattleEngine {
 		return md != null && md.getName() != null && md.getName().contains("ガラクタ");
 	}
 
+	/**
+	 * カウントが 0 なのに場に残っている〈フィールド〉を所有者レストへ（各 tick／解決の取りこぼし防止）。
+	 */
+	private void expireActiveCountedFieldAtCountZero(CpuBattleState st, Map<Short, CardDefinition> defs) {
+		if (st == null || st.isGameOver() || defs == null || st.getActiveField() == null) {
+			return;
+		}
+		BattleCard f = st.getActiveField();
+		short id = f.getCardId();
+		if (id == SCRAPYARD_FIELD_ID && st.getScrapyardFieldTurnsRemaining() <= 0) {
+			removeActiveScrapyardFieldToOwnerRestNow(st, defs);
+		} else if (id == DEATHBOUNCE_FIELD_ID && st.getDeathbounceFieldTurnsRemaining() <= 0) {
+			removeActiveDeathbounceFieldToOwnerRestNow(st, defs);
+		} else if (id == GameConstants.WEEKLY_SHONEN_CAMP_FIELD_CARD_ID
+				&& st.getWeeklyShonenCampFieldCounterDisplay() <= 0) {
+			removeActiveWeeklyShonenCampToOwnerRestNow(st, defs);
+		} else if (id == GameConstants.PAPER_CITY_FIELD_CARD_ID && st.getPaperCityFieldCounterDisplay() <= 0) {
+			removeActivePaperCityFieldToOwnerRestNow(st, defs);
+		} else if (id == GameConstants.WORLD_REBUILD_FIELD_CARD_ID && st.getWorldRebuildFieldCounterDisplay() <= 0) {
+			maybeExecuteWorldRebuildFieldCount0(st, defs);
+		} else if (id == GameConstants.ATLANTIS_FIELD_CARD_ID && st.isAtlantisAwaitingCount0()
+				&& st.getAtlantisFieldCounterDisplay() <= 0) {
+			Boolean owner = st.getActiveFieldOwnerHuman();
+			if (owner != null) {
+				executeAtlantisFieldCount0Resolution(st, owner.booleanValue(), defs);
+			}
+		}
+	}
+
 	/** 廃棄工場: ターン開始時に 4→3→2→1（1 の間は減らさない） */
-	private static void tickScrapyardFieldAtTurnStart(CpuBattleState st) {
+	private static void tickScrapyardFieldAtTurnStart(CpuBattleState st, Map<Short, CardDefinition> defs) {
 		if (st == null) {
 			return;
 		}
@@ -6453,7 +6531,7 @@ public class CpuBattleEngine {
 	}
 
 	/** 霊園教会 デスバウンス: ターン開始時に 6→5→…→1（1 の間は減らさない） */
-	private static void tickDeathbounceFieldAtTurnStart(CpuBattleState st) {
+	private static void tickDeathbounceFieldAtTurnStart(CpuBattleState st, Map<Short, CardDefinition> defs) {
 		if (st == null) {
 			return;
 		}
@@ -6480,7 +6558,7 @@ public class CpuBattleEngine {
 	}
 
 	/** 週刊少年 CAMP: ターン開始時に 6→5→…→1（1 の間は減らさない） */
-	private static void tickWeeklyShonenCampFieldAtTurnStart(CpuBattleState st) {
+	private static void tickWeeklyShonenCampFieldAtTurnStart(CpuBattleState st, Map<Short, CardDefinition> defs) {
 		if (st == null) {
 			return;
 		}
@@ -6599,6 +6677,7 @@ public class CpuBattleEngine {
 		}
 		int n = st.getPaperCityFieldCounterDisplay();
 		if (n <= 0) {
+			removeActivePaperCityFieldToOwnerRestNow(st, defs);
 			return;
 		}
 		for (int i = 0; i < steps && n > 0; i++) {
@@ -6833,6 +6912,7 @@ public class CpuBattleEngine {
 			if (next <= 0) {
 				st.addLog("リヴァイアサン: 〈フィールド〉のカウントを進めた（世界の再構築を解決）");
 				maybeExecuteWorldRebuildFieldCount0(st, defs);
+				return;
 			} else {
 				st.addLog("リヴァイアサン: 〈フィールド〉のカウントが " + n + " から " + next + " になった（世界の再構築）");
 			}
