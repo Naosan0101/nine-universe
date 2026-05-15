@@ -31,6 +31,12 @@ public class CpuBattleEngine {
 	private static final short AQUA_GUARDIAN_ID = 75;
 	/** ポセイドン〈配置〉: 自分ターン終了までの強さ加算 */
 	private static final int POSEIDON_DEPLOY_TEMPORARY_POWER = 3;
+	/** ポセイドン〈配置〉: レストから手札に戻せる「ソードフィッシュ」の上限 */
+	private static final int POSEIDON_DEPLOY_MAX_SWORDFISH_FROM_REST = 3;
+	/** ミカエル〈配置〉: 発動に必要な手札の「奇跡」枚数 */
+	private static final int MIKAEL_DEPLOY_HAND_MIRACLE_MIN = 3;
+	/** ミカエル〈配置〉: ミカエルデッキからデッキ上に置く枚数 */
+	private static final int MIKAEL_DEPLOY_DECK_TOP_COUNT = 2;
 	private static final short GAIKOTSU_ID = 18;
 	private static final short SHIREI_ID = 20;
 	private static final short HONE_ID = 24;
@@ -77,6 +83,8 @@ public class CpuBattleEngine {
 	private static final int MINION_CHAMPION_OPPONENT_TURN_POWER_BONUS = 4;
 	private static final short FROSTKRUL_ID = 32;
 	private static final short MISTYINKUL_ID = 33;
+	/** ワイバーン: ミスティンクルと同様、相手の〈配置〉のみ封じる（〈常時〉は対象外） */
+	private static final short WYVERN_ID = 80;
 	private static final short NEMURY_ID = 40;
 	/** ネムリィ〈常時〉: 相手ターンの間に加算する強さ */
 	private static final int NEMURY_OPPONENT_TURN_POWER_BONUS = 4;
@@ -262,6 +270,36 @@ public class CpuBattleEngine {
 		return d.getId() != null && d.getId() == COMIC_DINOSAUR_ID;
 	}
 
+	private static boolean isBehemothCardDefinition(CardDefinition d) {
+		if (d == null) {
+			return false;
+		}
+		if ("BEHEMOTH".equals(d.getAbilityDeployCode())) {
+			return true;
+		}
+		return d.getId() != null && d.getId() == GameConstants.BEHEMOTH_FIGHTER_CARD_ID;
+	}
+
+	private static boolean isFafnirCardDefinition(CardDefinition d) {
+		if (d == null) {
+			return false;
+		}
+		if ("FAFNIR".equals(d.getAbilityDeployCode())) {
+			return true;
+		}
+		return d.getId() != null && d.getId() == GameConstants.FAFNIR_FIGHTER_CARD_ID;
+	}
+
+	private static boolean isBahamutCardDefinition(CardDefinition d) {
+		if (d == null) {
+			return false;
+		}
+		if ("BAHAMUT".equals(d.getAbilityDeployCode())) {
+			return true;
+		}
+		return d.getId() != null && d.getId() == GameConstants.BAHAMUT_FIGHTER_CARD_ID;
+	}
+
 	/**
 	 * 墓守神父: 手札から選べる「種族：アンデッド」のファイター（〈フィールド〉除外）。
 	 * 「墓守神父」自身は対象に含めない。
@@ -320,6 +358,26 @@ public class CpuBattleEngine {
 			}
 		}
 		return n;
+	}
+
+	/** {@link ZoneFighter#getCostUnder()} の先頭 {@link ZoneFighter#getCostPayCardCount()} 枚に指定カードがあるか */
+	private static boolean zoneCharacteristicCostContainsCardId(ZoneFighter zf, short cardId) {
+		if (zf == null) {
+			return false;
+		}
+		int n = zf.getCostPayCardCount();
+		List<BattleCard> under = zf.getCostUnder();
+		if (under == null || n <= 0) {
+			return false;
+		}
+		int limit = Math.min(n, under.size());
+		for (int i = 0; i < limit; i++) {
+			BattleCard c = under.get(i);
+			if (c != null && c.getCardId() == cardId) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** {@code costUnder} の先頭 {@code costPayCardCount} 枚にメカニックが含まれるか */
@@ -1925,7 +1983,7 @@ public class CpuBattleEngine {
 					}
 				}
 			}
-			// 相手の竜王、または（クリスタクル以外なら）ミスティンクルで〈配置〉が無効
+			// 相手の竜王、ミスティンクル／ワイバーン、または相手側フレイムガルド〈フィールド〉で〈配置〉が無効（クリスタクル任意ストーンは例外）
 			boolean deploySuppressed = deployAbilitySuppressedByOpponentLine(st, deployerActsAsHuman, fighterDefForFieldTriggers);
 			// pendingEffect の cardId と defs の不整合でも、ゾーン上の実カードで〈配置〉を解決する
 			CardDefinition abilityDefToResolve = fighterDefForFieldTriggers != null ? fighterDefForFieldTriggers : d;
@@ -2263,8 +2321,10 @@ public class CpuBattleEngine {
 						st.setHumanNextCrystakulDeployBonus(st.getHumanNextCrystakulDeployBonus() + CRYSTAKUL_NEXT_DEPLOY_POWER);
 						st.addLog("クリスタクル: 次の配置+3（次の相手ターン終了まで）");
 					} else if ("SEASERPENT".equals(pc.getAbilityDeployCode())) {
-						addCopiesOfCardIdToHand(st.getHumanHand(), GameConstants.SWORDFISH_TOKEN_CARD_ID, 2, defs);
-						st.addLog("シーサーペント: 「ソードフィッシュ」を2枚手札に加えた");
+						addCopiesOfCardIdToHand(st.getHumanHand(), GameConstants.SWORDFISH_TOKEN_CARD_ID, 1, defs);
+						st.addLog("シーサーペント: 「ソードフィッシュ」を1枚手札に加えた");
+					} else if (RAMIEL_DEPLOY_CODE.equals(pc.getAbilityDeployCode())) {
+						applyRamielDeployEffect(st, true, false);
 					} else if (CELESTIA_DEPLOY_CODE.equals(pc.getAbilityDeployCode())) {
 						if (canGrantMiracleSlotCard(st, true, defs)) {
 							addMiracleCopiesToHandForPlayer(st.getHumanHand(), 2, st, true, defs);
@@ -2884,8 +2944,10 @@ public class CpuBattleEngine {
 						st.setCpuNextCrystakulDeployBonus(st.getCpuNextCrystakulDeployBonus() + CRYSTAKUL_NEXT_DEPLOY_POWER);
 						st.addLog("クリスタクル: 次の配置+3（次の相手ターン終了まで）");
 					} else if ("SEASERPENT".equals(pc.getAbilityDeployCode())) {
-						addCopiesOfCardIdToHand(st.getCpuHand(), GameConstants.SWORDFISH_TOKEN_CARD_ID, 2, defs);
-						st.addLog("シーサーペント: 「ソードフィッシュ」を2枚手札に加えた");
+						addCopiesOfCardIdToHand(st.getCpuHand(), GameConstants.SWORDFISH_TOKEN_CARD_ID, 1, defs);
+						st.addLog("シーサーペント: 「ソードフィッシュ」を1枚手札に加えた");
+					} else if (RAMIEL_DEPLOY_CODE.equals(pc.getAbilityDeployCode())) {
+						applyRamielDeployEffect(st, false, false);
 					} else if (CELESTIA_DEPLOY_CODE.equals(pc.getAbilityDeployCode())) {
 						if (canGrantMiracleSlotCard(st, false, defs)) {
 							addMiracleCopiesToHandForPlayer(st.getCpuHand(), 2, st, false, defs);
@@ -4960,7 +5022,7 @@ public class CpuBattleEngine {
 	}
 
 	/**
-	 * ポセイドン〈配置〉: 自分のターンの終わりまでこの前列の強さ+3。自分のレストの「ソードフィッシュ」をすべて手札に加える。
+	 * ポセイドン〈配置〉: 自分のターンの終わりまでこの前列の強さ+3。レストの「ソードフィッシュ」を最大3枚手札に加える。
 	 */
 	private void applyPoseidonDeployEffect(CpuBattleState st, boolean deployerIsHuman, boolean cpuAiDeploy,
 			Map<Short, CardDefinition> defs) {
@@ -4989,6 +5051,9 @@ public class CpuBattleEngine {
 					rest.remove(i);
 					hand.add(0, c);
 					moved++;
+					if (moved >= POSEIDON_DEPLOY_MAX_SWORDFISH_FROM_REST) {
+						break;
+					}
 				}
 			}
 		}
@@ -5185,7 +5250,7 @@ public class CpuBattleEngine {
 		return cpuSlotActorLogLabel(st) + "のラミエル";
 	}
 
-	/** ラミエル〈配置〉: 次の自分のターン開始時に「奇跡」を1枚手札に加える（重ねがけ可）。 */
+	/** ラミエル〈配置〉（ストーン1使用後）: 次の自分のターン開始時に「奇跡」を1枚手札に加える（重ねがけ可）。 */
 	private void applyRamielDeployEffect(CpuBattleState st, boolean deployerIsHuman, boolean cpuAiDeploy) {
 		if (st == null) {
 			return;
@@ -7751,14 +7816,41 @@ public class CpuBattleEngine {
 		return false;
 	}
 
-	/** ミスティンクル（33）: 相手の〈配置〉のみ封じる（〈常時〉は対象外） */
-	private static boolean hasMistyinkle(ZoneFighter z) {
-		return z != null && z.getMain() != null && z.getMain().getCardId() == MISTYINKUL_ID;
+	/** ミスティンクル（33）・ワイバーン（80）: 相手の〈配置〉のみ封じる（〈常時〉は対象外） */
+	private static boolean opponentLineSuppressesDeployOnly(ZoneFighter z) {
+		if (z == null || z.getMain() == null) {
+			return false;
+		}
+		short id = z.getMain().getCardId();
+		return id == MISTYINKUL_ID || id == WYVERN_ID;
 	}
 
 	/**
-	 * 〈配置〉能力1枚分が、相手前列（竜王／ミスティンクル）に封じられるか。
-	 * 〈クリスタクル〉の〈配置〉（任意ストーン）のみミスティンクルでは封じない。ネビュラ坑道で先にストーンが増えたあとに確認を出せるようにする。竜王は従来どおりすべて無効。
+	 * 紅蓮峡谷 フレイムガルド: 〈フィールド〉が場にある間、その〈フィールド〉を置いたプレイヤーの相手の〈配置〉を封じる（〈常時〉は対象外）。
+	 * 〈クリスタクル〉の任意ストーン〈配置〉のみ例外（ミスティンクル／ワイバーンと同様）。
+	 */
+	private boolean activeFieldFlameguardSuppressesOpponentDeploy(CpuBattleState st, boolean deployerIsHuman,
+			CardDefinition abilityDef) {
+		if (st == null) {
+			return false;
+		}
+		BattleCard field = st.getActiveField();
+		if (field == null || field.getCardId() != GameConstants.FLAMEGUARD_FIELD_CARD_ID) {
+			return false;
+		}
+		Boolean ownerHuman = st.getActiveFieldOwnerHuman();
+		if (ownerHuman == null) {
+			return false;
+		}
+		if (deployerIsHuman == ownerHuman.booleanValue()) {
+			return false;
+		}
+		return abilityDef == null || !isCrystakulCardDefinition(abilityDef);
+	}
+
+	/**
+	 * 〈配置〉能力1枚分が、相手前列（竜王／ミスティンクル／ワイバーン）または相手側のフレイムガルド〈フィールド〉に封じられるか。
+	 * 〈クリスタクル〉の〈配置〉（任意ストーン）のみミスティンクル／ワイバーン／フレイムガルドでは封じない。ネビュラ坑道で先にストーンが増えたあとに確認を出せるようにする。竜王は従来どおりすべて無効。
 	 */
 	private boolean deployAbilitySuppressedByOpponentLine(CpuBattleState st, boolean deployerIsHuman,
 			CardDefinition abilityDef) {
@@ -7769,8 +7861,11 @@ public class CpuBattleEngine {
 		if (hasRyuoh(opp)) {
 			return true;
 		}
-		if (hasMistyinkle(opp)) {
+		if (opponentLineSuppressesDeployOnly(opp)) {
 			return abilityDef == null || !isCrystakulCardDefinition(abilityDef);
+		}
+		if (activeFieldFlameguardSuppressesOpponentDeploy(st, deployerIsHuman, abilityDef)) {
+			return true;
 		}
 		return false;
 	}
@@ -7809,7 +7904,7 @@ public class CpuBattleEngine {
 		int stones = mirageOwnerIsHuman ? st.getHumanStones() : st.getCpuStones();
 		return switch (code) {
 			case "SAMURAI" -> stones >= 3;
-			case "YOSEI", "NOROWARETA", "FUWAFUWA", "NIDONEBI", "KORYU", "SEASERPENT", "CELESTIA", "RESEARCHER_FLORA", "COMIC_WITCH" -> stones >= 1;
+			case "YOSEI", "NOROWARETA", "FUWAFUWA", "NIDONEBI", "KORYU", "SEASERPENT", "CELESTIA", RAMIEL_DEPLOY_CODE, "RESEARCHER_FLORA", "COMIC_WITCH" -> stones >= 1;
 			case "CRYSTAKUL" -> stones >= CRYSTAKUL_OPTIONAL_STONE_COST;
 			case "FEZARIA" -> stones >= FEZARIA_OPTIONAL_STONE_COST;
 			default -> true;
@@ -7945,23 +8040,144 @@ public class CpuBattleEngine {
 	 * 特性コストとして使用したカード（レベルアップで下に重ねた枚は含まない）のうちに「奇跡」があるか。
 	 */
 	private static boolean gabrielCharacteristicCostContainsMiracle(ZoneFighter zf) {
-		if (zf == null) {
+		return zoneCharacteristicCostContainsCardId(zf, GameConstants.MIRACLE_TOKEN_CARD_ID)
+				|| zoneCharacteristicCostContainsCardId(zf, GameConstants.FALLEN_ANGEL_LUCIFER_CARD_ID);
+	}
+
+	private void applyBehemothDeployStoneGain(CpuBattleState st, ZoneFighter zone, boolean ownerHuman) {
+		if (st == null || zone == null || zone.getMain() == null
+				|| zone.getMain().getCardId() != GameConstants.BEHEMOTH_FIGHTER_CARD_ID) {
+			return;
+		}
+		if (!zoneCharacteristicCostContainsCardId(zone, GameConstants.DRAGON_EGG_CARD_ID)) {
+			return;
+		}
+		if (ownerHuman) {
+			st.setHumanStones(st.getHumanStones() + 3);
+			st.addLog("ベヒモス: コストの「ドラゴンの卵」でストーン+3");
+		} else {
+			st.setCpuStones(st.getCpuStones() + 3);
+			st.addLog("CPUベヒモス: コストの「ドラゴンの卵」でストーン+3");
+		}
+	}
+
+	private static String fafnirDeployLogPrefix(CpuBattleState st, boolean deployerIsHuman, boolean cpuAiDeploy) {
+		if (deployerIsHuman) {
+			return "ファフニール";
+		}
+		if (cpuAiDeploy) {
+			return "CPUファフニール";
+		}
+		return cpuSlotActorLogLabel(st) + "のファフニール";
+	}
+
+	/**
+	 * ファフニール〈配置〉: 相手前列のファイターをレストへ。退けたファイターのその時点の強さと同じ分を、
+	 * バトル終了までこのファイターに加算する。
+	 */
+	private void applyFafnirDeployEffect(CpuBattleState st, boolean deployerIsHuman, boolean cpuAiDeploy,
+			Map<Short, CardDefinition> defs) {
+		if (st == null || defs == null) {
+			return;
+		}
+		String logP = fafnirDeployLogPrefix(st, deployerIsHuman, cpuAiDeploy);
+		ZoneFighter selfZone = deployerIsHuman ? st.getHumanBattle() : st.getCpuBattle();
+		if (selfZone == null || selfZone.getMain() == null
+				|| selfZone.getMain().getCardId() != GameConstants.FAFNIR_FIGHTER_CARD_ID) {
+			return;
+		}
+		ZoneFighter oppZone = deployerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
+		if (oppZone == null || oppZone.getMain() == null) {
+			st.addLog(logP + ": 相手バトルゾーンにファイターがいなかった");
+			return;
+		}
+		CardDefinition oppDef = defs.get(oppZone.getMain().getCardId());
+		if (oppDef == null || isFieldCard(oppDef)) {
+			st.addLog(logP + ": 相手バトルゾーンにファイターがいなかった");
+			return;
+		}
+		boolean oppOwnerIsHuman = !deployerIsHuman;
+		int powerTaken = effectiveBattlePower(oppZone, oppOwnerIsHuman, st, defs);
+		List<BattleCard> oppRest = deployerIsHuman ? st.getCpuRest() : st.getHumanRest();
+		List<BattleCard> oppHand = deployerIsHuman ? st.getCpuHand() : st.getHumanHand();
+		moveZoneToRest(oppZone, oppRest, st, oppHand, defs);
+		if (deployerIsHuman) {
+			st.setCpuBattle(null);
+		} else {
+			st.setHumanBattle(null);
+		}
+		BattleCard selfMain = selfZone.getMain();
+		selfMain.setBattleEndPowerBonus(selfMain.getBattleEndPowerBonus() + powerTaken);
+		st.addLog(logP + ": 相手のファイターをレストへ、バトル終了まで強さ+" + powerTaken);
+	}
+
+	private static String bahamutDeployLogPrefix(CpuBattleState st, boolean deployerIsHuman, boolean cpuAiDeploy) {
+		if (deployerIsHuman) {
+			return "バハムート";
+		}
+		if (cpuAiDeploy) {
+			return "CPUバハムート";
+		}
+		return cpuSlotActorLogLabel(st) + "のバハムート";
+	}
+
+	/**
+	 * 相手前列のファイターをレストへ（いなければ false）。
+	 */
+	private boolean knockOpponentFighterToRest(CpuBattleState st, boolean deployerIsHuman,
+			Map<Short, CardDefinition> defs) {
+		if (st == null || defs == null) {
 			return false;
 		}
-		int n = zf.getCostPayCardCount();
-		List<BattleCard> under = zf.getCostUnder();
-		if (under == null || n <= 0) {
+		ZoneFighter oppZone = deployerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
+		if (oppZone == null || oppZone.getMain() == null) {
 			return false;
 		}
-		int limit = Math.min(n, under.size());
-		for (int i = 0; i < limit; i++) {
-			BattleCard c = under.get(i);
-			if (c != null && (c.getCardId() == GameConstants.MIRACLE_TOKEN_CARD_ID
-					|| c.getCardId() == GameConstants.FALLEN_ANGEL_LUCIFER_CARD_ID)) {
-				return true;
-			}
+		CardDefinition oppDef = defs.get(oppZone.getMain().getCardId());
+		if (oppDef == null || isFieldCard(oppDef)) {
+			return false;
 		}
-		return false;
+		List<BattleCard> oppRest = deployerIsHuman ? st.getCpuRest() : st.getHumanRest();
+		List<BattleCard> oppHand = deployerIsHuman ? st.getCpuHand() : st.getHumanHand();
+		moveZoneToRest(oppZone, oppRest, st, oppHand, defs);
+		if (deployerIsHuman) {
+			st.setCpuBattle(null);
+		} else {
+			st.setHumanBattle(null);
+		}
+		return true;
+	}
+
+	/**
+	 * バハムート〈配置〉: ストーン+2、相手ファイターをレストへ、場の〈フィールド〉を配置者側のレストへ。
+	 */
+	private void applyBahamutDeployEffect(CpuBattleState st, boolean deployerIsHuman, boolean cpuAiDeploy,
+			Map<Short, CardDefinition> defs) {
+		if (st == null || defs == null) {
+			return;
+		}
+		String logP = bahamutDeployLogPrefix(st, deployerIsHuman, cpuAiDeploy);
+		ZoneFighter selfZone = deployerIsHuman ? st.getHumanBattle() : st.getCpuBattle();
+		if (selfZone == null || selfZone.getMain() == null
+				|| selfZone.getMain().getCardId() != GameConstants.BAHAMUT_FIGHTER_CARD_ID) {
+			return;
+		}
+		if (deployerIsHuman) {
+			st.setHumanStones(st.getHumanStones() + 2);
+		} else {
+			st.setCpuStones(st.getCpuStones() + 2);
+		}
+		st.addLog(logP + ": ストーン+2");
+		if (knockOpponentFighterToRest(st, deployerIsHuman, defs)) {
+			st.addLog(logP + ": 相手のファイターをレストへ");
+		} else {
+			st.addLog(logP + ": 相手バトルゾーンにファイターがいなかった");
+		}
+		if (st.getActiveField() != null) {
+			replaceActiveField(st, null, deployerIsHuman, defs);
+		} else {
+			st.addLog(logP + ": 場に〈フィールド〉がなかった");
+		}
 	}
 
 	private static boolean isTuckedUnderOwnFighter(ZoneFighter ownBattle, BattleCard restCard) {
@@ -8540,20 +8756,28 @@ public class CpuBattleEngine {
 		}
 	}
 
-	private static void resetBattleCardModifiersForMikaelTransform(BattleCard c) {
-		if (c == null) {
-			return;
+	private static int countMiracleTokensInHandExcluding(List<BattleCard> hand, Set<String> excludeInstanceIds) {
+		if (hand == null) {
+			return 0;
 		}
-		c.setBattleEndPowerBonus(0);
-		c.setHandDeployCostModifier(0);
-		c.setDeathbounceHandCostStacks(0);
-		c.setBlankEffects(false);
-		c.setBattleTribeOverride(null);
+		Set<String> ex = excludeInstanceIds != null ? excludeInstanceIds : Collections.emptySet();
+		int n = 0;
+		for (BattleCard c : hand) {
+			if (c == null || c.getCardId() != GameConstants.MIRACLE_TOKEN_CARD_ID) {
+				continue;
+			}
+			String iid = c.getInstanceId();
+			if (iid != null && ex.contains(iid)) {
+				continue;
+			}
+			n++;
+		}
+		return n;
 	}
 
 	/**
-	 * ミカエル〈配置〉: 自分のレスト・手札・デッキの「奇跡」（この時点の〈配置〉コスト支払い分は除く）をデッキ先頭にまとめ、
-	 * 各枚をミカエルデッキ6種からランダムに変化させる。
+	 * ミカエル〈配置〉: 手札に「奇跡」が3枚以上あるとき、手札の「奇跡」をすべてレストへ置き、
+	 * ミカエルデッキ6種からランダム2枚をデッキの上に置く（〈配置〉コスト支払い中の奇跡は対象外）。
 	 */
 	private void applyMikaelMiracleDeckTransformOnDeploy(CpuBattleState st, boolean ownerHuman, Map<Short, CardDefinition> defs) {
 		if (st == null || defs == null) {
@@ -8586,25 +8810,26 @@ public class CpuBattleEngine {
 		if (rest == null || hand == null || deck == null) {
 			return;
 		}
-		List<BattleCard> pulled = new ArrayList<>();
-		pullMiracleTokensFromZoneExcluding(rest, pulled, costMiracleIds, zf, true);
-		pullMiracleTokensFromZoneExcluding(hand, pulled, costMiracleIds, zf, false);
-		pullMiracleTokensFromZoneExcluding(deck, pulled, costMiracleIds, zf, false);
-		if (pulled.isEmpty()) {
-			st.addLog("ミカエル: 変化させる「奇跡」がなかった");
+		if (countMiracleTokensInHandExcluding(hand, costMiracleIds) < MIKAEL_DEPLOY_HAND_MIRACLE_MIN) {
+			st.addLog("ミカエル: 手札に「奇跡」が3枚未満のため効果はなかった");
 			return;
 		}
-		ThreadLocalRandom rnd = ThreadLocalRandom.current();
-		for (BattleCard c : pulled) {
-			c.setCardId(mikaelPool[rnd.nextInt(mikaelPool.length)]);
-			resetBattleCardModifiersForMikaelTransform(c);
+		List<BattleCard> toRest = new ArrayList<>();
+		pullMiracleTokensFromZoneExcluding(hand, toRest, costMiracleIds, zf, false);
+		for (BattleCard c : toRest) {
+			rest.add(c);
 		}
-		deck.addAll(0, pulled);
+		ThreadLocalRandom rnd = ThreadLocalRandom.current();
+		for (int i = 0; i < MIKAEL_DEPLOY_DECK_TOP_COUNT; i++) {
+			short pick = mikaelPool[rnd.nextInt(mikaelPool.length)];
+			deck.add(0, new BattleCard(UUID.randomUUID().toString(), pick));
+		}
 		if (ownerHuman) {
-			st.addLog("ミカエル: 「奇跡」" + pulled.size() + "枚をデッキの上に置き、ミカエルデッキのカードに変化させた");
+			st.addLog("ミカエル: 手札の「奇跡」" + toRest.size() + "枚をレストへ置き、ミカエルデッキから"
+					+ MIKAEL_DEPLOY_DECK_TOP_COUNT + "枚をデッキの上に置いた");
 		} else {
-			st.addLog("ミカエル: 「奇跡」" + pulled.size() + "枚をデッキの上に置き、" + cpuSlotActorLogLabel(st)
-					+ "のミカエルデッキのカードに変化させた");
+			st.addLog("ミカエル: 手札の「奇跡」" + toRest.size() + "枚をレストへ置き、" + cpuSlotActorLogLabel(st)
+					+ "のミカエルデッキから" + MIKAEL_DEPLOY_DECK_TOP_COUNT + "枚をデッキの上に置いた");
 		}
 	}
 
@@ -8706,6 +8931,12 @@ public class CpuBattleEngine {
 				code = "MANGAKA";
 			} else if (d != null && isComicDinosaurCardDefinition(d)) {
 				code = "COMIC_DINOSAUR";
+			} else if (d != null && isBehemothCardDefinition(d)) {
+				code = "BEHEMOTH";
+			} else if (d != null && isFafnirCardDefinition(d)) {
+				code = "FAFNIR";
+			} else if (d != null && isBahamutCardDefinition(d)) {
+				code = "BAHAMUT";
 			} else if (d != null && d.getId() != null && d.getId() == GameConstants.PAGE_WALKER_FIGHTER_CARD_ID) {
 				code = "PAGE_WALKER";
 			} else if (d != null && d.getId() != null && d.getId() == KING_MAKER_ID) {
@@ -8968,7 +9199,22 @@ public class CpuBattleEngine {
 				st.setHumanKrakenNextTurnSwordfishAdds(st.getHumanKrakenNextTurnSwordfishAdds() + 1);
 				st.addLog("クラーケン: 次の自分のターンの開始時に「ソードフィッシュ」を1枚加える");
 			}
-			case "RAMIEL" -> applyRamielDeployEffect(st, true, false);
+			case "RAMIEL" -> {
+				if (st.getHumanStones() >= 1 && canGrantMiracleSlotCard(st, true, defs)) {
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.CONFIRM_OPTIONAL_STONE,
+							"ラミエル（ストーン1・次の自分のターン開始時に「奇跡」1枚）",
+							true,
+							RAMIEL_DEPLOY_CODE,
+							1,
+							List.of()
+					));
+				} else if (st.getHumanStones() < 1) {
+					st.addLog("ラミエル: ストーンがないため効果はなかった");
+				} else {
+					st.addLog("ラミエル: 「奇跡」の定義がない");
+				}
+			}
 			case "LUCIFER" -> applyLuciferDeployEffect(st, true, false, defs);
 			case "LEVIATHAN" -> {
 				List<String> levOpts = leviathanDragonMerfolkRestOptionIds(st, true, defs);
@@ -9021,6 +9267,9 @@ public class CpuBattleEngine {
 					st.addLog("信奉者: レストに「霊園教会 デスバウンス」がない");
 				}
 			}
+			case "BEHEMOTH" -> applyBehemothDeployStoneGain(st, st.getHumanBattle(), true);
+			case "FAFNIR" -> applyFafnirDeployEffect(st, true, false, defs);
+			case "BAHAMUT" -> applyBahamutDeployEffect(st, true, false, defs);
 			case "HALF_ELF" -> {
 				ZoneFighter hzHe = st.getHumanBattle();
 				if (hzHe != null) {
@@ -9445,6 +9694,12 @@ public class CpuBattleEngine {
 				code = "MANGAKA";
 			} else if (d != null && isComicDinosaurCardDefinition(d)) {
 				code = "COMIC_DINOSAUR";
+			} else if (d != null && isBehemothCardDefinition(d)) {
+				code = "BEHEMOTH";
+			} else if (d != null && isFafnirCardDefinition(d)) {
+				code = "FAFNIR";
+			} else if (d != null && isBahamutCardDefinition(d)) {
+				code = "BAHAMUT";
 			} else if (d != null && d.getId() != null && d.getId() == GameConstants.PAGE_WALKER_FIGHTER_CARD_ID) {
 				code = "PAGE_WALKER";
 			} else if (d != null && d.getId() != null && d.getId() == KING_MAKER_ID) {
@@ -9711,7 +9966,23 @@ public class CpuBattleEngine {
 				st.setCpuKrakenNextTurnSwordfishAdds(st.getCpuKrakenNextTurnSwordfishAdds() + 1);
 				st.addLog("クラーケン: 次の自分のターンの開始時に「ソードフィッシュ」を1枚加える");
 			}
-			case "RAMIEL" -> applyRamielDeployEffect(st, false, false);
+			case "RAMIEL" -> {
+				if (st.getCpuStones() >= 1 && canGrantMiracleSlotCard(st, false, defs)) {
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.CONFIRM_OPTIONAL_STONE,
+							"ラミエル（ストーン1・次の自分のターン開始時に「奇跡」1枚）",
+							false,
+							RAMIEL_DEPLOY_CODE,
+							1,
+							List.of(),
+							true
+					));
+				} else if (st.getCpuStones() < 1) {
+					st.addLog("ラミエル: ストーンがないため効果はなかった");
+				} else {
+					st.addLog("ラミエル: 「奇跡」の定義がない");
+				}
+			}
 			case "LUCIFER" -> applyLuciferDeployEffect(st, false, false, defs);
 			case "LEVIATHAN" -> {
 				List<String> levGuestOpts = leviathanDragonMerfolkRestOptionIds(st, false, defs);
@@ -9766,6 +10037,9 @@ public class CpuBattleEngine {
 					st.addLog("信奉者: レストに「霊園教会 デスバウンス」がない");
 				}
 			}
+			case "BEHEMOTH" -> applyBehemothDeployStoneGain(st, st.getCpuBattle(), false);
+			case "FAFNIR" -> applyFafnirDeployEffect(st, false, false, defs);
+			case "BAHAMUT" -> applyBahamutDeployEffect(st, false, false, defs);
 			case "HALF_ELF" -> {
 				ZoneFighter hzHeG = st.getCpuBattle();
 				if (hzHeG != null) {
@@ -10195,6 +10469,12 @@ public class CpuBattleEngine {
 				code = "MANGAKA";
 			} else if (d != null && isComicDinosaurCardDefinition(d)) {
 				code = "COMIC_DINOSAUR";
+			} else if (d != null && isBehemothCardDefinition(d)) {
+				code = "BEHEMOTH";
+			} else if (d != null && isFafnirCardDefinition(d)) {
+				code = "FAFNIR";
+			} else if (d != null && isBahamutCardDefinition(d)) {
+				code = "BAHAMUT";
 			} else if (d != null && d.getId() != null && d.getId() == GameConstants.PAGE_WALKER_FIGHTER_CARD_ID) {
 				code = "PAGE_WALKER";
 			} else if (d != null && d.getId() != null && d.getId() == KING_MAKER_ID) {
@@ -10388,8 +10668,8 @@ public class CpuBattleEngine {
 			case "SEASERPENT" -> {
 				if (st.getCpuStones() >= 1 && defs.get(GameConstants.SWORDFISH_TOKEN_CARD_ID) != null) {
 					st.setCpuStones(st.getCpuStones() - 1);
-					addCopiesOfCardIdToHand(st.getCpuHand(), GameConstants.SWORDFISH_TOKEN_CARD_ID, 2, defs);
-					st.addLog("CPUシーサーペント: ストーン1使用。「ソードフィッシュ」を2枚手札に加えた");
+					addCopiesOfCardIdToHand(st.getCpuHand(), GameConstants.SWORDFISH_TOKEN_CARD_ID, 1, defs);
+					st.addLog("CPUシーサーペント: ストーン1使用。「ソードフィッシュ」を1枚手札に加えた");
 				}
 			}
 			case "CELESTIA" -> {
@@ -10531,7 +10811,16 @@ public class CpuBattleEngine {
 				st.setCpuKrakenNextTurnSwordfishAdds(st.getCpuKrakenNextTurnSwordfishAdds() + 1);
 				st.addLog("CPUクラーケン: 次の自分のターンの開始時に「ソードフィッシュ」を1枚加える");
 			}
-			case "RAMIEL" -> applyRamielDeployEffect(st, false, true);
+			case "RAMIEL" -> {
+				if (st.getCpuStones() >= 1 && canGrantMiracleSlotCard(st, false, defs)) {
+					st.setCpuStones(st.getCpuStones() - 1);
+					applyRamielDeployEffect(st, false, true);
+				} else if (st.getCpuStones() < 1) {
+					st.addLog("CPUラミエル: ストーンがないため効果はなかった");
+				} else {
+					st.addLog("CPUラミエル: 「奇跡」の定義がない");
+				}
+			}
 			case "LUCIFER" -> applyLuciferDeployEffect(st, false, true, defs);
 			case "LEVIATHAN" -> {
 				int pickedLv = 0;
@@ -10599,6 +10888,9 @@ public class CpuBattleEngine {
 					st.addLog("CPU信奉者: レストに「霊園教会 デスバウンス」がない");
 				}
 			}
+			case "BEHEMOTH" -> applyBehemothDeployStoneGain(st, st.getCpuBattle(), false);
+			case "FAFNIR" -> applyFafnirDeployEffect(st, false, true, defs);
+			case "BAHAMUT" -> applyBahamutDeployEffect(st, false, true, defs);
 			case "HALF_ELF" -> {
 				ZoneFighter hzHeCpu = st.getCpuBattle();
 				if (hzHeCpu != null) {

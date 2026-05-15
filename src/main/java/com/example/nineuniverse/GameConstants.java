@@ -58,7 +58,7 @@ public final class GameConstants {
 	/** ミカエル（id=106） */
 	public static final short MIKAEL_FIGHTER_CARD_ID = 106;
 
-	/** ミカエルデッキ6枚（ミカエル〈配置〉で「奇跡」がランダムに変化し得る。パック・ライブラリ一覧除外） */
+	/** ミカエルデッキ6枚（ミカエル〈配置〉でデッキ上に置き得る。パック・ライブラリ一覧除外） */
 	public static final short MIKAEL_WRATH_CARD_ID = 116;
 	public static final short MIKAEL_PUNCH_CARD_ID = 117;
 	public static final short MIKAEL_STRATEGY_CARD_ID = 118;
@@ -102,6 +102,9 @@ public final class GameConstants {
 	/** 決戦の地 カムイ（〈フィールド〉・id=49） */
 	public static final short KAMUI_FIELD_CARD_ID = 49;
 
+	/** 紅蓮峡谷 フレイムガルド（〈フィールド〉・id=84） */
+	public static final short FLAMEGUARD_FIELD_CARD_ID = 84;
+
 	/** 霊園教会 デスバウンス（〈フィールド〉・id=68） */
 	public static final short DEATH_BOUNCE_FIELD_CARD_ID = 68;
 
@@ -122,6 +125,15 @@ public final class GameConstants {
 
 	/** ドラゴンの卵（id=27） */
 	public static final short DRAGON_EGG_CARD_ID = 27;
+
+	/** ベヒモス（id=81） */
+	public static final short BEHEMOTH_FIGHTER_CARD_ID = 81;
+
+	/** ファフニール（id=83） */
+	public static final short FAFNIR_FIGHTER_CARD_ID = 83;
+
+	/** バハムート（id=82） */
+	public static final short BAHAMUT_FIGHTER_CARD_ID = 82;
 
 	/** コミックダイナソー（id=97） */
 	public static final short COMIC_DINOSAUR_FIGHTER_CARD_ID = 97;
