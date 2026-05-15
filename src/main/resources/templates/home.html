@@ -899,13 +899,13 @@
 		</div>
 	</div>
 
-	<!-- ボーナスパック：スタンダード1/2 選択 -->
+	<!-- ボーナスパック：スタンダード1/2/3 または二つ名ガチャ -->
 	<div id="time-pack-choice-modal" class="time-pack-choice-layer" hidden role="dialog" aria-modal="true" aria-labelledby="time-pack-choice-title">
 		<div class="pack-detail-modal__backdrop" data-time-pack-choice-close tabindex="-1" aria-hidden="true"></div>
 		<div class="pack-detail-modal__panel time-pack-choice-modal__panel">
 			<button type="button" class="pack-detail-modal__close" data-time-pack-choice-close aria-label="閉じる">×</button>
 			<h2 id="time-pack-choice-title" class="pack-detail-modal__heading">ボーナスパックを開封</h2>
-			<p class="time-pack-choice-modal__lead">開封する内容を選んでください（1回につき1パック＝カード4枚分。スタンダードパック1・2、または二つ名ガチャ）。</p>
+			<p class="time-pack-choice-modal__lead">開封する内容を選んでください（1回につき1パック＝カード4枚分。スタンダードパック1・2・3、または二つ名ガチャ）。</p>
 			<form th:action="@{/home/time-pack/open}" method="post" class="time-pack-choice-modal__form" id="time-pack-choice-form">
 				<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 				<div class="time-pack-choice-modal__slot">
@@ -926,6 +926,14 @@
 								<span class="time-pack-choice-modal__name">スタンダードパック2（JU+IF）</span>
 							</label>
 							<button type="button" class="btn btn--ghost time-pack-choice-modal__detail" data-open-pack-detail="home-pack-detail-standard-2">詳細を見る</button>
+						</div>
+						<div class="time-pack-choice-modal__cell">
+							<label class="time-pack-choice-modal__opt">
+								<input type="radio" name="pack0" value="STANDARD_3"/>
+								<img class="time-pack-choice-modal__img" th:src="|${contextPath != null ? contextPath : ''}${timePackChoiceArtStandard3}?v=${packArtCacheKey}|" alt="" onerror="this.hidden=true; this.removeAttribute('src');"/>
+								<span class="time-pack-choice-modal__name">スタンダードパック3（OT/CS）</span>
+							</label>
+							<button type="button" class="btn btn--ghost time-pack-choice-modal__detail" data-open-pack-detail="home-pack-detail-standard-3">詳細を見る</button>
 						</div>
 						<div class="time-pack-choice-modal__cell time-pack-choice-modal__cell--epithet">
 							<label class="time-pack-choice-modal__opt">
@@ -985,6 +993,31 @@
 			<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
 			<ul class="pack-detail-modal__cards">
 				<li th:each="line : ${standard2PackPreview}"
+				    class="pack-detail-modal__card-row"
+				    th:classappend="${'pack-detail-modal__card-row--' + line.rarityCode}">
+					<span class="pack-detail-modal__card-name" th:text="${line.name}">名前</span>
+					<span class="pack-detail-modal__card-rarity" th:text="${line.rarityLabel}">コモン</span>
+				</li>
+			</ul>
+		</div>
+	</div>
+
+	<div id="home-pack-detail-standard-3" class="pack-detail-modal" hidden>
+		<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
+		<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="home-pack-detail-standard-3-title">
+			<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
+			<h2 id="home-pack-detail-standard-3-title" class="pack-detail-modal__heading">スタンダードパック3（OT/CS）</h2>
+			<p class="pack-detail-modal__price"><span class="muted">ボーナス開封（0ジェム）</span></p>
+			<h3 class="pack-detail-modal__sub">レア度別の排出率</h3>
+			<ul class="pack-detail-modal__rates">
+				<li th:each="r : ${packRarityRates}">
+					<span class="pack-detail-modal__rate-label" th:text="${r.label}">レジェンダリー</span>
+					<span class="pack-detail-modal__rate-pct" th:text="${r.percent}">2%</span>
+				</li>
+			</ul>
+			<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
+			<ul class="pack-detail-modal__cards">
+				<li th:each="line : ${standard3PackPreview}"
 				    class="pack-detail-modal__card-row"
 				    th:classappend="${'pack-detail-modal__card-row--' + line.rarityCode}">
 					<span class="pack-detail-modal__card-name" th:text="${line.name}">名前</span>

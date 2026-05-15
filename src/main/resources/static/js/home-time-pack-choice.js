@@ -10,7 +10,8 @@
 	function anyHomeDetailOpen() {
 		var a = document.getElementById('home-pack-detail-standard');
 		var b = document.getElementById('home-pack-detail-standard-2');
-		return (a && !a.hidden) || (b && !b.hidden);
+		var c = document.getElementById('home-pack-detail-standard-3');
+		return (a && !a.hidden) || (b && !b.hidden) || (c && !c.hidden);
 	}
 
 	function epithetBonusOpen() {
@@ -41,7 +42,7 @@
 	}
 
 	function closeDetailModals() {
-		document.querySelectorAll('#home-pack-detail-standard, #home-pack-detail-standard-2').forEach(function (m) {
+		document.querySelectorAll('#home-pack-detail-standard, #home-pack-detail-standard-2, #home-pack-detail-standard-3').forEach(function (m) {
 			if (m) m.hidden = true;
 		});
 		syncBodyScroll();
@@ -142,7 +143,7 @@
 		});
 	});
 
-	document.querySelectorAll('#home-pack-detail-standard [data-pack-detail-close], #home-pack-detail-standard-2 [data-pack-detail-close]').forEach(function (el) {
+	document.querySelectorAll('#home-pack-detail-standard [data-pack-detail-close], #home-pack-detail-standard-2 [data-pack-detail-close], #home-pack-detail-standard-3 [data-pack-detail-close]').forEach(function (el) {
 		el.addEventListener('click', function () {
 			closeDetailModals();
 		});

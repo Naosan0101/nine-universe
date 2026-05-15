@@ -2070,7 +2070,7 @@ html.nu-has-desktop-app-update-gate body {
 }
 .time-pack-choice-modal__grid {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 0.65rem;
 }
 .time-pack-choice-modal__epithet-art {
@@ -2158,7 +2158,8 @@ html.nu-has-desktop-app-update-gate body {
 	border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 #home-pack-detail-standard.pack-detail-modal,
-#home-pack-detail-standard-2.pack-detail-modal {
+#home-pack-detail-standard-2.pack-detail-modal,
+#home-pack-detail-standard-3.pack-detail-modal {
 	z-index: 910;
 }
 @media (max-width: 420px) {

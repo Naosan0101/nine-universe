@@ -614,9 +614,11 @@ public class HomeController {
 		model.addAttribute("packArtCacheKey", PackController.getPackArtCacheKey());
 		model.addAttribute("timePackChoiceArtStandard1", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_1));
 		model.addAttribute("timePackChoiceArtStandard2", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_2));
+		model.addAttribute("timePackChoiceArtStandard3", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_3));
 		model.addAttribute("packRarityRates", PackController.getPackRarityRatesForView());
 		model.addAttribute("standardPackPreview", PackController.buildPackPreviewLines(packService, PackType.STANDARD));
 		model.addAttribute("standard2PackPreview", PackController.buildPackPreviewLines(packService, PackType.STANDARD_2));
+		model.addAttribute("standard3PackPreview", PackController.buildPackPreviewLines(packService, PackType.STANDARD_3));
 		model.addAttribute("announcementUiEpoch", GameConstants.ANNOUNCEMENT_UI_EPOCH);
 
 		int granted = appUserMapper.grantWelcomeHomeBonusIfPending(uid, GameConstants.WELCOME_HOME_BONUS_GEMS);
@@ -1313,8 +1315,9 @@ public class HomeController {
 		return switch (s) {
 			case "STANDARD" -> PackType.STANDARD;
 			case "STANDARD_2" -> PackType.STANDARD_2;
+			case "STANDARD_3" -> PackType.STANDARD_3;
 			case "BONUS_EPITHET_GACHA" -> PackType.BONUS_EPITHET_GACHA;
-			default -> throw new IllegalArgumentException("開封できるのはスタンダードパック1・2、または二つ名ガチャです。");
+			default -> throw new IllegalArgumentException("開封できるのはスタンダードパック1・2・3、または二つ名ガチャです。");
 		};
 	}
 }

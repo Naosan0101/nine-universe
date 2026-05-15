@@ -76,12 +76,12 @@ public class PackService {
 	}
 
 	/**
-	 * ボーナス開封（時間ゲージなど）：ジェム消費なし。スタンダード1または2のみ。
+	 * ボーナス開封（時間ゲージなど）：ジェム消費なし。スタンダード1・2・3のみ。
 	 */
 	@Transactional
 	public List<PackOpenRow> openBonusPackWithoutGemCost(long userId, PackType type) {
-		if (type != PackType.STANDARD && type != PackType.STANDARD_2) {
-			throw new IllegalArgumentException("ボーナスパックではスタンダードパック1または2のみ選べます");
+		if (type != PackType.STANDARD && type != PackType.STANDARD_2 && type != PackType.STANDARD_3) {
+			throw new IllegalArgumentException("ボーナスパックではスタンダードパック1・2・3のみ選べます");
 		}
 		return pullPackIntoCollection(userId, type, false);
 	}

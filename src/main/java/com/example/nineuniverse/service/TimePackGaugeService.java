@@ -62,8 +62,9 @@ public class TimePackGaugeService {
 	 */
 	@Transactional
 	public TimePackClaimResult claimOneBonusPackFromGauge(long userId, PackType choice) {
-		if (choice != PackType.STANDARD && choice != PackType.STANDARD_2 && choice != PackType.BONUS_EPITHET_GACHA) {
-			throw new IllegalArgumentException("開封できるのはスタンダードパック1・2、または二つ名ガチャです。");
+		if (choice != PackType.STANDARD && choice != PackType.STANDARD_2 && choice != PackType.STANDARD_3
+				&& choice != PackType.BONUS_EPITHET_GACHA) {
+			throw new IllegalArgumentException("開封できるのはスタンダードパック1・2・3、または二つ名ガチャです。");
 		}
 		AppUser u = appUserMapper.findByIdForUpdate(userId);
 		if (u == null) {
