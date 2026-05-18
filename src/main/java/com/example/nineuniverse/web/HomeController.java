@@ -137,6 +137,9 @@ public class HomeController {
 		boolean listDragonRiderParamFix202605 = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_START);
+		boolean listComicDinosaurParamFix202605 = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -168,6 +171,7 @@ public class HomeController {
 		model.addAttribute("announcementListStd3LeagueUiUpdate202605", listStd3LeagueUiUpdate202605);
 		model.addAttribute("announcementListFossilFieldFix202605", listFossilFieldFix202605);
 		model.addAttribute("announcementListDragonRiderParamFix202605", listDragonRiderParamFix202605);
+		model.addAttribute("announcementListComicDinosaurParamFix202605", listComicDinosaurParamFix202605);
 
 		announcementRewardService.ensure80UsersMilestoneRewardGranted(uid);
 		announcementRewardService.ensureStd3LeagueUiUpdate202605RewardGranted(uid);
@@ -564,6 +568,25 @@ public class HomeController {
 				"dragonRiderParamFix202605AnnouncementGemAmount",
 				GameConstants.ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_GEMS);
 
+		boolean comicDinosaurParamFix202605AnnClaimed =
+				claimedKeys.contains(GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_KEY);
+		boolean comicDinosaurParamFix202605AnnInWindow =
+				announcementRewardService.isWithinComicDinosaurParamFix202605AnnouncementWindow(today);
+		model.addAttribute("comicDinosaurParamFix202605AnnouncementClaimed", comicDinosaurParamFix202605AnnClaimed);
+		model.addAttribute("comicDinosaurParamFix202605AnnouncementClaimable",
+				comicDinosaurParamFix202605AnnInWindow && !comicDinosaurParamFix202605AnnClaimed);
+		model.addAttribute(
+				"comicDinosaurParamFix202605AnnouncementExpiredUnclaimed",
+				!comicDinosaurParamFix202605AnnClaimed
+						&& today.isAfter(GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_LAST_DAY));
+		model.addAttribute(
+				"comicDinosaurParamFix202605AnnouncementFutureUnclaimed",
+				!comicDinosaurParamFix202605AnnClaimed
+						&& today.isBefore(GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_START));
+		model.addAttribute(
+				"comicDinosaurParamFix202605AnnouncementGemAmount",
+				GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_GEMS);
+
 		int announcementBulkClaimableGemTotal = 0;
 		if (listPerfLight && perfInWindow && !perfClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PERF_LIGHT_GEMS;
@@ -652,6 +675,10 @@ public class HomeController {
 		if (listDragonRiderParamFix202605 && dragonRiderParamFix202605AnnInWindow
 				&& !dragonRiderParamFix202605AnnClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_GEMS;
+		}
+		if (listComicDinosaurParamFix202605 && comicDinosaurParamFix202605AnnInWindow
+				&& !comicDinosaurParamFix202605AnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_GEMS;
 		}
 		model.addAttribute("announcementBulkClaimableGemTotal", announcementBulkClaimableGemTotal);
 		model.addAttribute("announcementAnyGemClaimable", announcementBulkClaimableGemTotal > 0);
@@ -1267,6 +1294,28 @@ public class HomeController {
 		switch (outcome) {
 			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
 					GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/comic-dinosaur-param-fix-2026-05/claim")
+	public String claimComicDinosaurParamFix202605Announcement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimComicDinosaurParamFix202605AnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_GEMS + "ジェムを受け取りました。");
 			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
 			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
 		}

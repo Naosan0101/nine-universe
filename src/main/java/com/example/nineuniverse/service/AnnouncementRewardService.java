@@ -300,6 +300,13 @@ public class AnnouncementRewardService {
 		return !today.isAfter(GameConstants.ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_LAST_DAY);
 	}
 
+	public boolean isWithinComicDinosaurParamFix202605AnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_LAST_DAY);
+	}
+
 	public boolean isWithin80UsersMilestoneAnnouncementWindow(LocalDate today) {
 		if (today.isBefore(GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_START)) {
 			return false;
@@ -524,6 +531,13 @@ public class AnnouncementRewardService {
 				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_START)) {
 			if (claimDragonRiderParamFix202605AnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
 				totalGems += GameConstants.ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_START)) {
+			if (claimComicDinosaurParamFix202605AnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_GEMS;
 				claimed++;
 			}
 		}
@@ -1029,6 +1043,24 @@ public class AnnouncementRewardService {
 			return ClaimOutcome.ALREADY_CLAIMED;
 		}
 		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimComicDinosaurParamFix202605AnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(
+				userId, GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_GEMS);
 		return ClaimOutcome.SUCCESS;
 	}
 

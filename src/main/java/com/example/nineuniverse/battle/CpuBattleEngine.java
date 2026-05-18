@@ -270,6 +270,92 @@ public class CpuBattleEngine {
 		return d.getId() != null && d.getId() == COMIC_DINOSAUR_ID;
 	}
 
+	private static List<String> comicDinosaurPickableHandInstanceIds(CpuBattleState st, List<BattleCard> hand,
+			Map<Short, CardDefinition> defs) {
+		List<String> out = new ArrayList<>();
+		if (st == null || hand == null || defs == null) {
+			return out;
+		}
+		for (BattleCard hc : hand) {
+			if (hc == null || hc.getInstanceId() == null) {
+				continue;
+			}
+			CardDefinition hd = defs.get(hc.getCardId());
+			if (hd != null && restCardHasTribe(st, hd, hc, "COMIC")) {
+				out.add(hc.getInstanceId());
+			}
+		}
+		return out;
+	}
+
+	private void finishComicDinosaurDeployFollowUp(CpuBattleState st, boolean ownerHuman,
+			Map<Short, CardDefinition> defs) {
+		if (st == null || defs == null) {
+			return;
+		}
+		List<BattleCard> hand = ownerHuman ? st.getHumanHand() : st.getCpuHand();
+		addCopiesOfCardIdToHand(hand, GameConstants.DRAGON_EGG_CARD_ID, 2, defs);
+		if (ownerHuman) {
+			st.addLog("コミックダイナソー: 「ドラゴンの卵」を2枚手札に加えた");
+		} else if (st.isPvp()) {
+			st.addLog("コミックダイナソー: 「ドラゴンの卵」を2枚手札に加えた");
+		} else {
+			st.addLog("CPUコミックダイナソー: 「ドラゴンの卵」を2枚手札に加えた");
+		}
+	}
+
+	private void beginComicDinosaurDeployHandChoice(CpuBattleState st, boolean forHuman, boolean cpuSlotChooses,
+			Map<Short, CardDefinition> defs) {
+		if (st == null || defs == null) {
+			return;
+		}
+		boolean ownerHuman = forHuman && !cpuSlotChooses;
+		List<BattleCard> hand = ownerHuman ? st.getHumanHand() : st.getCpuHand();
+		List<String> opts = comicDinosaurPickableHandInstanceIds(st, hand, defs);
+		if (!opts.isEmpty()) {
+			st.setPendingChoice(new PendingChoice(
+					ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
+					"コミックダイナソー（手札の「種族：コミック」を1枚レストへ）",
+					forHuman,
+					"COMIC_DINOSAUR",
+					0,
+					opts,
+					cpuSlotChooses));
+		} else {
+			if (ownerHuman) {
+				st.addLog("コミックダイナソー: 手札に「種族：コミック」がない");
+			} else if (st.isPvp()) {
+				st.addLog("コミックダイナソー: 手札に「種族：コミック」がない");
+			} else {
+				st.addLog("CPUコミックダイナソー: 手札に「種族：コミック」がない");
+			}
+			finishComicDinosaurDeployFollowUp(st, ownerHuman, defs);
+		}
+	}
+
+	private void applyComicDinosaurDeployForCpu(CpuBattleState st, Map<Short, CardDefinition> defs, Random rnd) {
+		if (st == null || defs == null) {
+			return;
+		}
+		List<String> comics = comicDinosaurPickableHandInstanceIds(st, st.getCpuHand(), defs);
+		if (!comics.isEmpty()) {
+			List<BattleCard> pickPool = new ArrayList<>();
+			for (BattleCard hc : st.getCpuHand()) {
+				if (hc != null && hc.getInstanceId() != null && comics.contains(hc.getInstanceId())) {
+					pickPool.add(hc);
+				}
+			}
+			int ri = rnd != null ? rnd.nextInt(pickPool.size())
+					: ThreadLocalRandom.current().nextInt(pickPool.size());
+			BattleCard pick = pickPool.get(ri);
+			st.getCpuHand().remove(pick);
+			st.getCpuRest().add(pick);
+		} else {
+			st.addLog("CPUコミックダイナソー: 手札に「種族：コミック」がない");
+		}
+		finishComicDinosaurDeployFollowUp(st, false, defs);
+	}
+
 	private static boolean isBehemothCardDefinition(CardDefinition d) {
 		if (d == null) {
 			return false;
@@ -2503,9 +2589,7 @@ public class CpuBattleEngine {
 					st.addLog("剣闘士: " + cpuSlotActorLogLabel(st) + "も手札を1枚レストへ");
 				}
 				if (c != null && "COMIC_DINOSAUR".equals(pc.getAbilityDeployCode())) {
-					st.setHumanStones(st.getHumanStones() + 1);
-					addCopiesOfCardIdToHand(st.getHumanHand(), GameConstants.DRAGON_EGG_CARD_ID, 2, defs);
-					st.addLog("コミックダイナソー: ストーン+1。「ドラゴンの卵」を2枚手札に加えた");
+					finishComicDinosaurDeployFollowUp(st, true, defs);
 				}
 			}
 			case SELECT_ONE_FROM_HAND_FOR_SKETCHER_COPY -> {
@@ -3126,9 +3210,7 @@ public class CpuBattleEngine {
 					return;
 				}
 				if (c != null && "COMIC_DINOSAUR".equals(pc.getAbilityDeployCode())) {
-					st.setCpuStones(st.getCpuStones() + 1);
-					addCopiesOfCardIdToHand(st.getCpuHand(), GameConstants.DRAGON_EGG_CARD_ID, 2, defs);
-					st.addLog("コミックダイナソー: ストーン+1。「ドラゴンの卵」を2枚手札に加えた");
+					finishComicDinosaurDeployFollowUp(st, false, defs);
 				}
 			}
 			case SELECT_ONE_FROM_HAND_FOR_SKETCHER_COPY -> {
@@ -8028,7 +8110,7 @@ public class CpuBattleEngine {
 		if (st == null || abilityDeployCode == null) {
 			return true;
 		}
-		if ("COMIC_DINOSAUR".equals(abilityDeployCode.trim()) || SKETCHER_DEPLOY_CODE.equals(abilityDeployCode.trim())) {
+		if (SKETCHER_DEPLOY_CODE.equals(abilityDeployCode.trim())) {
 			List<BattleCard> h = mirageOwnerIsHuman ? st.getHumanHand() : st.getCpuHand();
 			return h != null && !h.isEmpty();
 		}
@@ -9220,25 +9302,7 @@ public class CpuBattleEngine {
 				}
 			}
 			case "MANGAKA" -> applyMangakaDeployEffect(st, true, false, defs, null);
-			case "COMIC_DINOSAUR" -> {
-				List<String> dinoOpts = new ArrayList<>();
-				for (BattleCard hc : st.getHumanHand()) {
-					if (hc != null && hc.getInstanceId() != null) {
-						dinoOpts.add(hc.getInstanceId());
-					}
-				}
-				if (!dinoOpts.isEmpty()) {
-					st.setPendingChoice(new PendingChoice(
-							ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
-							"コミックダイナソー（手札を1枚レストへ）",
-							true,
-							"COMIC_DINOSAUR",
-							0,
-							dinoOpts));
-				} else {
-					st.addLog("コミックダイナソー: 手札にレストへ置けるカードがない");
-				}
-			}
+			case "COMIC_DINOSAUR" -> beginComicDinosaurDeployHandChoice(st, true, false, defs);
 			case "ZADKIEL" -> {
 				List<String> mirOpts = new ArrayList<>();
 				for (BattleCard hc : st.getHumanHand()) {
@@ -9980,26 +10044,7 @@ public class CpuBattleEngine {
 				}
 			}
 			case "MANGAKA" -> applyMangakaDeployEffect(st, false, false, defs, null);
-			case "COMIC_DINOSAUR" -> {
-				List<String> dinoGuestOpts = new ArrayList<>();
-				for (BattleCard hc : st.getCpuHand()) {
-					if (hc != null && hc.getInstanceId() != null) {
-						dinoGuestOpts.add(hc.getInstanceId());
-					}
-				}
-				if (!dinoGuestOpts.isEmpty()) {
-					st.setPendingChoice(new PendingChoice(
-							ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
-							"コミックダイナソー（手札を1枚レストへ）",
-							false,
-							"COMIC_DINOSAUR",
-							0,
-							dinoGuestOpts,
-							true));
-				} else {
-					st.addLog("コミックダイナソー: 手札にレストへ置けるカードがない");
-				}
-			}
+			case "COMIC_DINOSAUR" -> beginComicDinosaurDeployHandChoice(st, false, true, defs);
 			case "ZADKIEL" -> {
 				List<String> mirGuestOpts = new ArrayList<>();
 				for (BattleCard hc : st.getCpuHand()) {
@@ -10813,19 +10858,7 @@ public class CpuBattleEngine {
 				}
 			}
 			case "MANGAKA" -> applyMangakaDeployEffect(st, false, true, defs, rnd);
-			case "COMIC_DINOSAUR" -> {
-				if (!st.getCpuHand().isEmpty()) {
-					int ri = rnd != null ? rnd.nextInt(st.getCpuHand().size())
-							: ThreadLocalRandom.current().nextInt(st.getCpuHand().size());
-					BattleCard pick = st.getCpuHand().remove(ri);
-					st.getCpuRest().add(pick);
-					st.setCpuStones(st.getCpuStones() + 1);
-					addCopiesOfCardIdToHand(st.getCpuHand(), GameConstants.DRAGON_EGG_CARD_ID, 2, defs);
-					st.addLog("CPUコミックダイナソー: 手札を1枚レストへ。ストーン+1。「ドラゴンの卵」を2枚手札に加えた");
-				} else {
-					st.addLog("CPUコミックダイナソー: 手札がない");
-				}
-			}
+			case "COMIC_DINOSAUR" -> applyComicDinosaurDeployForCpu(st, defs, rnd);
 			case "ZADKIEL" -> {
 				String miracleInst = null;
 				for (BattleCard c : st.getCpuHand()) {
