@@ -2486,7 +2486,7 @@ public class CpuBattleEngine {
 						if (!mirSerAfterConfirm.isEmpty()) {
 							st.setPendingChoice(new PendingChoice(
 									ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
-									"セラフィム（「奇跡」を1枚レストへ置いてもよい。置いたなら、自分のレストの「種族：エンジェル」を2枚まで手札に）",
+									"セラフィム（「奇跡」を1枚レストへ置いてもよい。置いたなら、自分のレストの「種族：エンジェル」を1枚手札に）",
 									true,
 									SERAPHIM_DEPLOY_CODE,
 									0,
@@ -2549,8 +2549,8 @@ public class CpuBattleEngine {
 					List<String> serOpts = seraphimAngelRestOptionIds(st, true, defs);
 					if (!serOpts.isEmpty()) {
 						st.setPendingChoice(new PendingChoice(
-								ChoiceKind.SELECT_UP_TO_TWO_FROM_REST_TO_HAND,
-								"セラフィム（レストの「種族：エンジェル」を2枚まで手札に）",
+								ChoiceKind.SELECT_ONE_FROM_REST_TO_HAND,
+								"セラフィム（レストの「種族：エンジェル」を1枚手札に）",
 								true,
 								SERAPHIM_DEPLOY_CODE,
 								0,
@@ -2669,6 +2669,14 @@ public class CpuBattleEngine {
 						st.addLog("ドラゴンの卵: レストのドラゴンを手札へ");
 					} else if ("RESEARCHER_FLORA".equals(pc.getAbilityDeployCode())) {
 						st.addLog("研究者フローラ: レストの「種族：エルフ」を手札へ");
+					} else if (SERAPHIM_DEPLOY_CODE.equals(pc.getAbilityDeployCode())) {
+						if (pc.getOptionInstanceIds() == null
+								|| !pc.getOptionInstanceIds().contains(pickedInstanceIds.get(0))
+								|| !isSeraphimPickableAngelInRest(st, c, st.getHumanBattle(), defs)) {
+							st.getHumanRest().add(c);
+							return;
+						}
+						st.addLog("セラフィム: レストの「種族：エンジェル」を手札へ");
 					} else {
 						st.addLog("レストから手札へ");
 					}
@@ -2761,27 +2769,6 @@ public class CpuBattleEngine {
 						nInk++;
 					}
 					st.addLog("コミックウィッチ: 「インクナイト」に" + nInk + "枚変化して手札へ");
-				} else if (SERAPHIM_DEPLOY_CODE.equals(pc.getAbilityDeployCode())) {
-					List<String> allowedSer = pc.getOptionInstanceIds();
-					for (String id : pickedInstanceIds) {
-						if (allowedSer == null || !allowedSer.contains(id)) {
-							return;
-						}
-					}
-					int nSer = 0;
-					for (String id : pickedInstanceIds) {
-						BattleCard c = removeByInstanceId(st.getHumanRest(), id);
-						if (c == null) {
-							continue;
-						}
-						if (isSeraphimPickableAngelInRest(st, c, st.getHumanBattle(), defs)) {
-							st.getHumanHand().add(0, c);
-							nSer++;
-						} else {
-							st.getHumanRest().add(c);
-						}
-					}
-					st.addLog("セラフィム: レストから手札へ（" + nSer + "枚）");
 				} else {
 					int n = 0;
 					for (String id : pickedInstanceIds) {
@@ -3110,7 +3097,7 @@ public class CpuBattleEngine {
 						if (!mirSerGuestAfterConfirm.isEmpty()) {
 							st.setPendingChoice(new PendingChoice(
 									ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
-									"セラフィム（「奇跡」を1枚レストへ置いてもよい。置いたなら、自分のレストの「種族：エンジェル」を2枚まで手札に）",
+									"セラフィム（「奇跡」を1枚レストへ置いてもよい。置いたなら、自分のレストの「種族：エンジェル」を1枚手札に）",
 									false,
 									SERAPHIM_DEPLOY_CODE,
 									0,
@@ -3174,8 +3161,8 @@ public class CpuBattleEngine {
 					List<String> serGuestOpts = seraphimAngelRestOptionIds(st, false, defs);
 					if (!serGuestOpts.isEmpty()) {
 						st.setPendingChoice(new PendingChoice(
-								ChoiceKind.SELECT_UP_TO_TWO_FROM_REST_TO_HAND,
-								"セラフィム（レストの「種族：エンジェル」を2枚まで手札に）",
+								ChoiceKind.SELECT_ONE_FROM_REST_TO_HAND,
+								"セラフィム（レストの「種族：エンジェル」を1枚手札に）",
 								false,
 								SERAPHIM_DEPLOY_CODE,
 								0,
@@ -3290,6 +3277,14 @@ public class CpuBattleEngine {
 						st.addLog("ドラゴンの卵: レストのドラゴンを手札へ");
 					} else if ("RESEARCHER_FLORA".equals(pc.getAbilityDeployCode())) {
 						st.addLog("研究者フローラ: レストの「種族：エルフ」を手札へ");
+					} else if (SERAPHIM_DEPLOY_CODE.equals(pc.getAbilityDeployCode())) {
+						if (pc.getOptionInstanceIds() == null
+								|| !pc.getOptionInstanceIds().contains(pickedInstanceIds.get(0))
+								|| !isSeraphimPickableAngelInRest(st, c, st.getCpuBattle(), defs)) {
+							st.getCpuRest().add(c);
+							return;
+						}
+						st.addLog("セラフィム: レストの「種族：エンジェル」を手札へ");
 					} else {
 						st.addLog("レストから手札へ");
 					}
@@ -3381,27 +3376,6 @@ public class CpuBattleEngine {
 						nInkG++;
 					}
 					st.addLog("コミックウィッチ: 「インクナイト」に" + nInkG + "枚変化して手札へ");
-				} else if (SERAPHIM_DEPLOY_CODE.equals(pc.getAbilityDeployCode())) {
-					List<String> allowedSerG = pc.getOptionInstanceIds();
-					for (String id : pickedInstanceIds) {
-						if (allowedSerG == null || !allowedSerG.contains(id)) {
-							return;
-						}
-					}
-					int nSerG = 0;
-					for (String id : pickedInstanceIds) {
-						BattleCard c = removeByInstanceId(st.getCpuRest(), id);
-						if (c == null) {
-							continue;
-						}
-						if (isSeraphimPickableAngelInRest(st, c, st.getCpuBattle(), defs)) {
-							st.getCpuHand().add(0, c);
-							nSerG++;
-						} else {
-							st.getCpuRest().add(c);
-						}
-					}
-					st.addLog("セラフィム: レストから手札へ（" + nSerG + "枚）");
 				} else {
 					int ng = 0;
 					for (String id : pickedInstanceIds) {
@@ -5444,7 +5418,7 @@ public class CpuBattleEngine {
 		return cpuSlotActorLogLabel(st) + "の堕天使ルシファー";
 	}
 
-	/** ルシファー〈配置〉: 以降の「奇跡」付与は堕天使となり、既存の奇跡も変化する。 */
+	/** ルシファー〈配置〉: 「奇跡」1枚を手札に加え、以降の「奇跡」付与は堕天使となり、既存の奇跡も変化する。 */
 	private void applyLuciferDeployEffect(CpuBattleState st, boolean deployerIsHuman, boolean cpuAiDeploy,
 			Map<Short, CardDefinition> defs) {
 		if (st == null || defs == null) {
@@ -5455,13 +5429,22 @@ public class CpuBattleEngine {
 			st.addLog(logP + ": 「堕天使ルシファー」の定義がない");
 			return;
 		}
+		List<BattleCard> hand = deployerIsHuman ? st.getHumanHand() : st.getCpuHand();
+		boolean addedMiracle = defs.get(GameConstants.MIRACLE_TOKEN_CARD_ID) != null;
+		if (addedMiracle) {
+			addCopiesOfCardIdToHand(hand, GameConstants.MIRACLE_TOKEN_CARD_ID, 1, defs);
+		}
 		if (deployerIsHuman) {
 			st.setHumanMiraclesBecomeFallenLucifer(true);
 		} else {
 			st.setCpuMiraclesBecomeFallenLucifer(true);
 		}
 		replaceMiraclesWithFallenLuciferInPlayerZones(st, deployerIsHuman, defs);
-		st.addLog(logP + ": バトル終了まで、自分の「奇跡」はすべて「堕天使ルシファー」になった");
+		if (addedMiracle) {
+			st.addLog(logP + ": 「奇跡」を1枚手札に加えた。バトル終了まで、自分の「奇跡」はすべて「堕天使ルシファー」になった");
+		} else {
+			st.addLog(logP + ": 「奇跡」の定義がない。バトル終了まで、自分の「奇跡」はすべて「堕天使ルシファー」になった");
+		}
 	}
 
 	/** 堕天使ルシファー〈配置〉: 手札の「種族：アンデッド」ファイターにバトル終了まで強さ+1。 */
@@ -9334,7 +9317,7 @@ public class CpuBattleEngine {
 				if (!mirSerOpts.isEmpty()) {
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"セラフィム（「奇跡」を1枚レストへ置いてもよい。置いたなら、自分のレストの「種族：エンジェル」を2枚まで手札に）",
+							"セラフィム（「奇跡」を1枚レストへ置いてもよい。置いたなら、自分のレストの「種族：エンジェル」を1枚手札に）",
 							true,
 							SERAPHIM_DEPLOY_CODE,
 							0,
@@ -10077,7 +10060,7 @@ public class CpuBattleEngine {
 				if (!mirSerGuestOpts.isEmpty()) {
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"セラフィム（「奇跡」を1枚レストへ置いてもよい。置いたなら、自分のレストの「種族：エンジェル」を2枚まで手札に）",
+							"セラフィム（「奇跡」を1枚レストへ置いてもよい。置いたなら、自分のレストの「種族：エンジェル」を1枚手札に）",
 							false,
 							SERAPHIM_DEPLOY_CODE,
 							0,
@@ -10895,17 +10878,15 @@ public class CpuBattleEngine {
 					}
 					Random rSer = rnd != null ? rnd : ThreadLocalRandom.current();
 					List<String> serPickList = seraphimAngelRestOptionIds(st, false, defs);
-					int takenSer = 0;
-					while (takenSer < 2 && !serPickList.isEmpty()) {
+					if (!serPickList.isEmpty()) {
 						int pickI = rSer.nextInt(serPickList.size());
-						String instS = serPickList.remove(pickI);
+						String instS = serPickList.get(pickI);
 						BattleCard movedSer = removeByInstanceId(st.getCpuRest(), instS);
 						if (movedSer != null) {
 							st.getCpuHand().add(0, movedSer);
-							takenSer++;
+							st.addLog("CPUセラフィム: レストの「種族：エンジェル」を手札へ");
 						}
 					}
-					st.addLog("CPUセラフィム: レストの「種族：エンジェル」を" + takenSer + "枚手札へ");
 				} else if (miracleInstSer == null) {
 					st.addLog("CPUセラフィム: 手札に「奇跡」がない");
 				} else {
