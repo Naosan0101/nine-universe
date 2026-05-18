@@ -2233,6 +2233,10 @@ public class CpuBattleEngine {
 
 						st.setHumanPendingZadkielNextDeployOppTurnPower3(snap.isHumanPendingZadkielNextDeployOppTurnPower3());
 						st.setCpuPendingZadkielNextDeployOppTurnPower3(snap.isCpuPendingZadkielNextDeployOppTurnPower3());
+						st.setHumanPendingMinionChampionNextDeployOppTurnPower3(
+								snap.isHumanPendingMinionChampionNextDeployOppTurnPower3());
+						st.setCpuPendingMinionChampionNextDeployOppTurnPower3(
+								snap.isCpuPendingMinionChampionNextDeployOppTurnPower3());
 
 						st.setHumanDeck(copyCards(snap.getHumanDeck()));
 						st.setHumanHand(copyCards(snap.getHumanHand()));
@@ -2844,6 +2848,10 @@ public class CpuBattleEngine {
 
 						st.setHumanPendingZadkielNextDeployOppTurnPower3(snap.isHumanPendingZadkielNextDeployOppTurnPower3());
 						st.setCpuPendingZadkielNextDeployOppTurnPower3(snap.isCpuPendingZadkielNextDeployOppTurnPower3());
+						st.setHumanPendingMinionChampionNextDeployOppTurnPower3(
+								snap.isHumanPendingMinionChampionNextDeployOppTurnPower3());
+						st.setCpuPendingMinionChampionNextDeployOppTurnPower3(
+								snap.isCpuPendingMinionChampionNextDeployOppTurnPower3());
 
 						st.setHumanDeck(copyCards(snap.getHumanDeck()));
 						st.setHumanHand(copyCards(snap.getHumanHand()));
@@ -3744,6 +3752,7 @@ public class CpuBattleEngine {
 			if (st.getHumanBattle() != null) {
 				st.getHumanBattle().setBotBikeMechanicPowerBonus(0);
 				st.getHumanBattle().setZadkielOpponentTurnPowerBonus(0);
+				st.getHumanBattle().setMinionChampionOpponentTurnPowerBonus(0);
 			}
 		} else {
 			st.setCpuKoryuBonus(0);
@@ -3751,6 +3760,7 @@ public class CpuBattleEngine {
 			if (st.getCpuBattle() != null) {
 				st.getCpuBattle().setBotBikeMechanicPowerBonus(0);
 				st.getCpuBattle().setZadkielOpponentTurnPowerBonus(0);
+				st.getCpuBattle().setMinionChampionOpponentTurnPowerBonus(0);
 			}
 		}
 
@@ -3838,6 +3848,8 @@ public class CpuBattleEngine {
 		ns.setCpuRamielNextTurnMiracleAdds(st.getCpuRamielNextTurnMiracleAdds());
 		ns.setHumanPendingZadkielNextDeployOppTurnPower3(st.isHumanPendingZadkielNextDeployOppTurnPower3());
 		ns.setCpuPendingZadkielNextDeployOppTurnPower3(st.isCpuPendingZadkielNextDeployOppTurnPower3());
+		ns.setHumanPendingMinionChampionNextDeployOppTurnPower3(st.isHumanPendingMinionChampionNextDeployOppTurnPower3());
+		ns.setCpuPendingMinionChampionNextDeployOppTurnPower3(st.isCpuPendingMinionChampionNextDeployOppTurnPower3());
 		ns.setHumanMiraclesBecomeFallenLucifer(st.isHumanMiraclesBecomeFallenLucifer());
 		ns.setCpuMiraclesBecomeFallenLucifer(st.isCpuMiraclesBecomeFallenLucifer());
 		ns.setLastMessage(st.getLastMessage());
@@ -4659,6 +4671,7 @@ public class CpuBattleEngine {
 			st.setCpuNextMechanicStacks(0);
 			retireOwnBattleZoneBeforeNewDeploy(st, false, true, defs);
 			st.setCpuBattle(z);
+			armMinionChampionNextDeployBonusIfApplicable(st, z, false);
 			st.addLog("相手は「" + mainDef.getName() + "」を配置した");
 			applyFieldNebulaWhenCarbuncleFighterDeployed(st, mainDef, main, false);
 			stageInteractiveDeployEffectWithCrystakulOptionalFirst(st, false, mainDef, z, defs, mechanicStacksForPendingDeployGuest);
@@ -5650,6 +5663,7 @@ public class CpuBattleEngine {
 		nz.setSpec777RolledPower(z.getSpec777RolledPower());
 		nz.setBotBikeMechanicPowerBonus(z.getBotBikeMechanicPowerBonus());
 		nz.setZadkielOpponentTurnPowerBonus(z.getZadkielOpponentTurnPowerBonus());
+		nz.setMinionChampionOpponentTurnPowerBonus(z.getMinionChampionOpponentTurnPowerBonus());
 		nz.setBattleMainLineSeq(z.getBattleMainLineSeq());
 		nz.setKusuriOpponentDebuffFromDeployStones(z.getKusuriOpponentDebuffFromDeployStones());
 		return nz;
@@ -5766,6 +5780,8 @@ public class CpuBattleEngine {
 		ns.setCpuRamielNextTurnMiracleAdds(st.getCpuRamielNextTurnMiracleAdds());
 		ns.setHumanPendingZadkielNextDeployOppTurnPower3(st.isHumanPendingZadkielNextDeployOppTurnPower3());
 		ns.setCpuPendingZadkielNextDeployOppTurnPower3(st.isCpuPendingZadkielNextDeployOppTurnPower3());
+		ns.setHumanPendingMinionChampionNextDeployOppTurnPower3(st.isHumanPendingMinionChampionNextDeployOppTurnPower3());
+		ns.setCpuPendingMinionChampionNextDeployOppTurnPower3(st.isCpuPendingMinionChampionNextDeployOppTurnPower3());
 		ns.setHumanMiraclesBecomeFallenLucifer(st.isHumanMiraclesBecomeFallenLucifer());
 		ns.setCpuMiraclesBecomeFallenLucifer(st.isCpuMiraclesBecomeFallenLucifer());
 		ns.setLastMessage(st.getLastMessage());
@@ -5996,6 +6012,7 @@ public class CpuBattleEngine {
 						applyPendingOpponentTurnDeployBonusesToNewlyDeployedZone(simSt, z, false);
 						retireOwnBattleZoneBeforeNewDeploy(simSt, false, false, defs);
 						simSt.setCpuBattle(z);
+						armMinionChampionNextDeployBonusIfApplicable(simSt, z, false);
 
 						Random simRnd = new Random(31_337L ^ simSalt);
 						cpuSimApplyDeployAbilitiesAfterZonePlaced(simSt, mainDef, defs, simRnd);
@@ -6354,6 +6371,7 @@ public class CpuBattleEngine {
 						applyPendingOpponentTurnDeployBonusesToNewlyDeployedZone(simSt, z, false);
 						retireOwnBattleZoneBeforeNewDeploy(simSt, false, false, defs);
 						simSt.setCpuBattle(z);
+						armMinionChampionNextDeployBonusIfApplicable(simSt, z, false);
 
 						Random simRnd = new Random(31_337L ^ simSalt);
 						cpuSimApplyDeployAbilitiesAfterZonePlaced(simSt, mainDef, defs, simRnd);
@@ -7415,6 +7433,9 @@ public class CpuBattleEngine {
 			if (oppTurnForZadkielOwner && zf.getZadkielOpponentTurnPowerBonus() > 0) {
 				p += zf.getZadkielOpponentTurnPowerBonus();
 			}
+			if (oppTurnForZadkielOwner && zf.getMinionChampionOpponentTurnPowerBonus() > 0) {
+				p += zf.getMinionChampionOpponentTurnPowerBonus();
+			}
 		}
 
 		// 薬売り〈配置〉: 配置時点の所持ストーン数ぶん、相手ファイター強さ-1（スナップショット）
@@ -7738,6 +7759,10 @@ public class CpuBattleEngine {
 			if (oppTurnZ && zf.getZadkielOpponentTurnPowerBonus() > 0) {
 				out.add(new BattlePowerModifierDto(GameConstants.ZADKIEL_FIGHTER_CARD_ID,
 						"（ザドキエル・相手ターン中+" + zf.getZadkielOpponentTurnPowerBonus() + "）"));
+			}
+			if (oppTurnZ && zf.getMinionChampionOpponentTurnPowerBonus() > 0) {
+				out.add(new BattlePowerModifierDto(MINION_CHAMPION_ID,
+						"（ミニオンチャンピオン・相手ターン中+" + zf.getMinionChampionOpponentTurnPowerBonus() + "）"));
 			}
 		}
 
@@ -11921,6 +11946,7 @@ public class CpuBattleEngine {
 								retireOwnBattleZoneBeforeNewDeploy(sim2, forHuman, false, defs);
 								if (forHuman) sim2.setHumanBattle(z);
 								else sim2.setCpuBattle(z);
+								armMinionChampionNextDeployBonusIfApplicable(sim2, z, forHuman);
 
 								applyFieldNebulaWhenCarbuncleFighterDeployed(sim2, mainDef, pickedMain, forHuman);
 
