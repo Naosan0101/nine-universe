@@ -139,13 +139,13 @@ public class CpuBattleState implements Serializable {
 	 * ターン開始ごとに 1 減らす。6 で配置直後にインクナイト、4 でインクナイト、2 でストーン+2、0 で場から所有者レストへ。
 	 */
 	private int paperCityFieldCounterDisplay;
-	/**
-	 * 鳥獣戯画〈フィールド〉が場にある間、次にホスト側（human スロット）が配置するファイターにドラゴン種族を付与する予約。
-	 */
+	/** 鳥獣戯画: 次に human スロットが配置するファイターへドラゴン種族（配置直後の自分側用）。 */
 	private boolean chojuGigaPendingHumanSlotNextDeployDragon;
-	/**
-	 * 鳥獣戯画〈フィールド〉が場にある間、次にゲスト／CPU 側が配置するファイターに人間種族を付与する予約。
-	 */
+	/** 鳥獣戯画: 次に cpu スロットが配置するファイターへドラゴン種族（ゲストが鳥獣戯画を置いたときの自分側用）。 */
+	private boolean chojuGigaPendingCpuSlotNextDeployDragon;
+	/** 鳥獣戯画: 次に human スロットが配置するファイターへ人間種族（相手が鳥獣戯画を置いたとき用）。 */
+	private boolean chojuGigaPendingHumanSlotNextDeployHuman;
+	/** 鳥獣戯画: 次に cpu スロットが配置するファイターへ人間種族（ホストが鳥獣戯画を置いたときの相手側用）。 */
 	private boolean chojuGigaPendingCpuSlotNextDeployHuman;
 
 	/** バトル開始直後のホスト手札（不変スナップショット） */

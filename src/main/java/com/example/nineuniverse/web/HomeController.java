@@ -502,15 +502,13 @@ public class HomeController {
 
 		boolean users80MilestoneAnnClaimed = claimedKeys.contains(GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_KEY);
 		boolean users80MilestoneAnnInWindow = announcementRewardService.isWithin80UsersMilestoneAnnouncementWindow(today);
-		boolean users80MilestonePopupSuppress = announcementRewardService.hasSuppressed80UsersMilestonePopup(uid);
 		model.addAttribute("users80MilestoneAnnouncementClaimed", users80MilestoneAnnClaimed);
 		model.addAttribute("users80MilestoneAnnouncementInWindow", users80MilestoneAnnInWindow);
 		model.addAttribute("users80MilestoneAnnouncementExpiredUnclaimed",
 				!users80MilestoneAnnClaimed && today.isAfter(GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_LAST_DAY));
 		model.addAttribute("users80MilestoneAnnouncementFutureUnclaimed",
 				!users80MilestoneAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_START));
-		model.addAttribute("users80MilestoneLoginPopupShow",
-				list80UsersMilestone && users80MilestoneAnnInWindow && !users80MilestonePopupSuppress);
+		model.addAttribute("users80MilestoneLoginPopupShow", false);
 
 		boolean std3LeagueUiUpdate202605AnnClaimed =
 				claimedKeys.contains(GameConstants.ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_KEY);

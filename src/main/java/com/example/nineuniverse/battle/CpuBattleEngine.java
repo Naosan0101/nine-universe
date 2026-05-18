@@ -3878,6 +3878,8 @@ public class CpuBattleEngine {
 		ns.setWorldRebuildFieldCounterDisplay(st.getWorldRebuildFieldCounterDisplay());
 		ns.setPaperCityFieldCounterDisplay(st.getPaperCityFieldCounterDisplay());
 		ns.setChojuGigaPendingHumanSlotNextDeployDragon(st.isChojuGigaPendingHumanSlotNextDeployDragon());
+		ns.setChojuGigaPendingCpuSlotNextDeployDragon(st.isChojuGigaPendingCpuSlotNextDeployDragon());
+		ns.setChojuGigaPendingHumanSlotNextDeployHuman(st.isChojuGigaPendingHumanSlotNextDeployHuman());
 		ns.setChojuGigaPendingCpuSlotNextDeployHuman(st.isChojuGigaPendingCpuSlotNextDeployHuman());
 		ns.setWorldRebuildOpenHumanHand(copyCards(st.getWorldRebuildOpenHumanHand()));
 		ns.setWorldRebuildOpenHumanDeck(copyCards(st.getWorldRebuildOpenHumanDeck()));
@@ -3998,10 +4000,11 @@ public class CpuBattleEngine {
 			clearWeeklyShonenCampFieldTracking(st);
 		}
 		boolean chojuGigaActive = newField != null && newField.getCardId() == GameConstants.CHOJU_GIGA_FIELD_CARD_ID;
-		st.setChojuGigaPendingHumanSlotNextDeployDragon(chojuGigaActive);
-		st.setChojuGigaPendingCpuSlotNextDeployHuman(chojuGigaActive);
 		if (chojuGigaActive) {
-			st.addLog("鳥獣戯画: 次のホスト側ファイターをバトル終了まで種族・ドラゴンにし、次のゲスト／CPU側ファイターをバトル終了まで種族・人間にする");
+			armChojuGigaTribePendingOnFieldDeploy(st, newFieldPlacedByHost);
+			st.addLog("鳥獣戯画: 次に自分が配置するファイターをバトル終了まで種族・ドラゴンにし、次に相手が配置するファイターをバトル終了まで種族・人間にする");
+		} else {
+			clearChojuGigaTribePending(st);
 		}
 		if (oldWasSkya && !newIsSkya) {
 			stripSkyaPersistedElfDeployBonusesOnFieldLoss(st, defs);
@@ -5810,6 +5813,8 @@ public class CpuBattleEngine {
 		ns.setWorldRebuildFieldCounterDisplay(st.getWorldRebuildFieldCounterDisplay());
 		ns.setPaperCityFieldCounterDisplay(st.getPaperCityFieldCounterDisplay());
 		ns.setChojuGigaPendingHumanSlotNextDeployDragon(st.isChojuGigaPendingHumanSlotNextDeployDragon());
+		ns.setChojuGigaPendingCpuSlotNextDeployDragon(st.isChojuGigaPendingCpuSlotNextDeployDragon());
+		ns.setChojuGigaPendingHumanSlotNextDeployHuman(st.isChojuGigaPendingHumanSlotNextDeployHuman());
 		ns.setChojuGigaPendingCpuSlotNextDeployHuman(st.isChojuGigaPendingCpuSlotNextDeployHuman());
 		ns.setWorldRebuildOpenHumanHand(copyCards(st.getWorldRebuildOpenHumanHand()));
 		ns.setWorldRebuildOpenHumanDeck(copyCards(st.getWorldRebuildOpenHumanDeck()));
@@ -8909,7 +8914,34 @@ public class CpuBattleEngine {
 		st.addLog("メカニック: 配置したファイターを種族・マシンとして扱う（バトル終了まで）");
 	}
 
-	/** 鳥獣戯画〈フィールド〉: 各スロットの次のファイター配置にドラゴン／人間を付与（場に鳥獣戯画がある間のみ・各1回）。 */
+	private static void clearChojuGigaTribePending(CpuBattleState st) {
+		if (st == null) {
+			return;
+		}
+		st.setChojuGigaPendingHumanSlotNextDeployDragon(false);
+		st.setChojuGigaPendingCpuSlotNextDeployDragon(false);
+		st.setChojuGigaPendingHumanSlotNextDeployHuman(false);
+		st.setChojuGigaPendingCpuSlotNextDeployHuman(false);
+	}
+
+	/**
+	 * 鳥獣戯画配置直後: 配置者の次のファイター配置→ドラゴン、相手の次の配置→人間（同一ターンの続き配置を含む）。
+	 */
+	private static void armChojuGigaTribePendingOnFieldDeploy(CpuBattleState st, boolean fieldPlacedByHost) {
+		clearChojuGigaTribePending(st);
+		if (st == null) {
+			return;
+		}
+		if (fieldPlacedByHost) {
+			st.setChojuGigaPendingHumanSlotNextDeployDragon(true);
+			st.setChojuGigaPendingCpuSlotNextDeployHuman(true);
+		} else {
+			st.setChojuGigaPendingCpuSlotNextDeployDragon(true);
+			st.setChojuGigaPendingHumanSlotNextDeployHuman(true);
+		}
+	}
+
+	/** 鳥獣戯画〈フィールド〉: 予約済みの次のファイター配置にドラゴン／人間を付与（場に鳥獣戯画がある間のみ・各1回）。 */
 	private void applyChojuGigaTribeIfPending(CpuBattleState st, boolean humanSlot, Map<Short, CardDefinition> defs) {
 		if (st == null || defs == null) {
 			return;
@@ -8929,6 +8961,14 @@ public class CpuBattleEngine {
 		}
 		if (humanSlot && st.isChojuGigaPendingHumanSlotNextDeployDragon()) {
 			st.setChojuGigaPendingHumanSlotNextDeployDragon(false);
+			appendBattleTribeSegmentIfMissing(main, "DRAGON");
+			st.addLog("鳥獣戯画: 配置したファイターを種族・ドラゴンとして扱う（バトル終了まで）");
+		} else if (humanSlot && st.isChojuGigaPendingHumanSlotNextDeployHuman()) {
+			st.setChojuGigaPendingHumanSlotNextDeployHuman(false);
+			appendBattleTribeSegmentIfMissing(main, "HUMAN");
+			st.addLog("鳥獣戯画: 配置したファイターを種族・人間として扱う（バトル終了まで）");
+		} else if (!humanSlot && st.isChojuGigaPendingCpuSlotNextDeployDragon()) {
+			st.setChojuGigaPendingCpuSlotNextDeployDragon(false);
 			appendBattleTribeSegmentIfMissing(main, "DRAGON");
 			st.addLog("鳥獣戯画: 配置したファイターを種族・ドラゴンとして扱う（バトル終了まで）");
 		} else if (!humanSlot && st.isChojuGigaPendingCpuSlotNextDeployHuman()) {
@@ -9119,8 +9159,7 @@ public class CpuBattleEngine {
 		st.setWorldRebuildFieldCounterDisplay(0);
 		st.setPaperCityFieldCounterDisplay(0);
 		clearWeeklyShonenCampFieldTracking(st);
-		st.setChojuGigaPendingHumanSlotNextDeployDragon(false);
-		st.setChojuGigaPendingCpuSlotNextDeployHuman(false);
+		clearChojuGigaTribePending(st);
 		targetRest.add(old);
 		st.addLog("ミカエルの一閃: 〈フィールド〉「" + nm + "」をレストに置いた");
 		if (defs != null) {

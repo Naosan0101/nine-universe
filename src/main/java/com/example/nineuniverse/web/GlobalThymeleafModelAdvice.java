@@ -13,7 +13,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @ControllerAdvice
 public class GlobalThymeleafModelAdvice {
 
-	@Value("${app.web-desktop-migration-notice.enabled:true}")
+	@Value("${app.web-desktop-migration-notice.enabled:false}")
 	private boolean webDesktopMigrationNoticeEnabled;
 
 	/** 空でなければポップアップのリンク先をこの絶対 URL に差し替え（CDN 等）。未設定時は {@code /downloads/nine-universe-setup-0.1.5.exe}。 */
@@ -79,9 +79,6 @@ public class GlobalThymeleafModelAdvice {
 	 */
 	@ModelAttribute("webDesktopMigrationInstallerHref")
 	public String webDesktopMigrationInstallerHref(HttpServletRequest request) {
-		if (!this.webDesktopMigrationNoticeEnabled) {
-			return "";
-		}
 		return resolveWindowsInstallerHref(request);
 	}
 
