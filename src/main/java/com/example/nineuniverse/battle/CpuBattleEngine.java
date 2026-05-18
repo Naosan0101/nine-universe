@@ -4106,7 +4106,7 @@ public class CpuBattleEngine {
 			z.setCostPayCardCount(cost);
 			int levelUpDeployPwr = levelUpRest * 2 + levelUpStones * 2;
 			applyCrystakulBonusesToDeployedZone(st, z, deployBonus, levelUpDeployPwr, true);
-			applyPendingZadkielBonusToNewlyDeployedZone(st, z, true);
+			applyPendingOpponentTurnDeployBonusesToNewlyDeployedZone(st, z, true);
 			// 次回配置ボーナス消費
 			int mechanicStacksConsumedForTribe = st.getHumanNextMechanicStacks();
 			st.setHumanNextDeployBonus(0);
@@ -4115,6 +4115,7 @@ public class CpuBattleEngine {
 			st.setHumanNextMechanicStacks(0);
 			retireOwnBattleZoneBeforeNewDeploy(st, true, true, defs);
 			st.setHumanBattle(z);
+			armMinionChampionNextDeployBonusIfApplicable(st, z, true);
 			st.addLog("あなたは「" + mainDef.getName() + "」を配置した");
 			applyFieldNebulaWhenCarbuncleFighterDeployed(st, mainDef, main, true);
 			CardDefinition deployAbilityDef = mainDef;
@@ -4396,7 +4397,7 @@ public class CpuBattleEngine {
 			z.setCostPayCardCount(payIds.size());
 			int levelUpDeployPwr = levelUpRest * 2 + levelUpStones * 2;
 			applyCrystakulBonusesToDeployedZone(st, z, deployBonus, levelUpDeployPwr, true);
-			applyPendingZadkielBonusToNewlyDeployedZone(st, z, true);
+			applyPendingOpponentTurnDeployBonusesToNewlyDeployedZone(st, z, true);
 			int mechanicStacksForPendingDeploy = st.getHumanNextMechanicStacks();
 			st.setHumanNextDeployBonus(0);
 			st.setHumanNextElfOnlyBonus(0);
@@ -4404,6 +4405,7 @@ public class CpuBattleEngine {
 			st.setHumanNextMechanicStacks(0);
 			retireOwnBattleZoneBeforeNewDeploy(st, true, true, defs);
 			st.setHumanBattle(z);
+			armMinionChampionNextDeployBonusIfApplicable(st, z, true);
 			st.addLog("あなたは「" + mainDef.getName() + "」を配置した");
 			// 〈探鉱の洞窟〉: 配置確定直後にストーン+1（UI の「決定」直後に数字が増える）。resolve では二重付与防止でスキップ。
 			applyFieldNebulaWhenCarbuncleFighterDeployed(st, mainDef, main, true);
@@ -4649,7 +4651,7 @@ public class CpuBattleEngine {
 			z.setCostPayCardCount(payIds.size());
 			int levelUpDeployPwrGuest = levelUpRest * 2 + levelUpStones * 2;
 			applyCrystakulBonusesToDeployedZone(st, z, deployBonus, levelUpDeployPwrGuest, false);
-			applyPendingZadkielBonusToNewlyDeployedZone(st, z, false);
+			applyPendingOpponentTurnDeployBonusesToNewlyDeployedZone(st, z, false);
 			int mechanicStacksForPendingDeployGuest = st.getCpuNextMechanicStacks();
 			st.setCpuNextDeployBonus(0);
 			st.setCpuNextElfOnlyBonus(0);
@@ -4854,9 +4856,10 @@ public class CpuBattleEngine {
 			z.setCostUnder(paid);
 			z.setCostPayCardCount(payCards);
 			applyCrystakulBonusesToDeployedZone(trial, z, deployBonus, levelUpDeployPowerBonus, false);
-			applyPendingZadkielBonusToNewlyDeployedZone(trial, z, false);
+			applyPendingOpponentTurnDeployBonusesToNewlyDeployedZone(trial, z, false);
 			retireOwnBattleZoneBeforeNewDeploy(trial, false, false, defs);
 			trial.setCpuBattle(z);
+			armMinionChampionNextDeployBonusIfApplicable(trial, z, false);
 			long salt = simSalt ^ (cand.getCardId() * 31L);
 			String cid = cand.getInstanceId();
 			if (cid != null) {
@@ -5990,7 +5993,7 @@ public class CpuBattleEngine {
 						z.setCostUnder(paid);
 						z.setCostPayCardCount(payCards);
 						applyCrystakulBonusesToDeployedZone(simSt, z, deployBonus, levelUpDeployPwrSimAdv, false);
-						applyPendingZadkielBonusToNewlyDeployedZone(simSt, z, false);
+						applyPendingOpponentTurnDeployBonusesToNewlyDeployedZone(simSt, z, false);
 						retireOwnBattleZoneBeforeNewDeploy(simSt, false, false, defs);
 						simSt.setCpuBattle(z);
 
@@ -6188,13 +6191,14 @@ public class CpuBattleEngine {
 		z.setCostPayCardCount(payCards);
 		int levelUpDeployPick = pick.levelUpRest * 2 + pick.levelUpStones * 2;
 		applyCrystakulBonusesToDeployedZone(st, z, pick.deployBonus, levelUpDeployPick, false);
-		applyPendingZadkielBonusToNewlyDeployedZone(st, z, false);
-		st.setCpuNextDeployBonus(0);
-		st.setCpuNextElfOnlyBonus(0);
-		st.setCpuNextDeployCostBonusTimes(0);
-		st.setCpuNextMechanicStacks(0);
-		retireOwnBattleZoneBeforeNewDeploy(st, false, true, defs);
-		st.setCpuBattle(z);
+			applyPendingOpponentTurnDeployBonusesToNewlyDeployedZone(st, z, false);
+			st.setCpuNextDeployBonus(0);
+			st.setCpuNextElfOnlyBonus(0);
+			st.setCpuNextDeployCostBonusTimes(0);
+			st.setCpuNextMechanicStacks(0);
+			retireOwnBattleZoneBeforeNewDeploy(st, false, true, defs);
+			st.setCpuBattle(z);
+			armMinionChampionNextDeployBonusIfApplicable(st, z, false);
 		if (payCostStones > 0 && payCards > 0) {
 			st.addLog("CPUは「" + bestDef.getName() + "」を配置（コスト: ストーン" + payCostStones + "＋カード" + payCards + "）");
 		} else if (payCostStones > 0) {
@@ -6347,7 +6351,7 @@ public class CpuBattleEngine {
 						z.setCostUnder(paid);
 						z.setCostPayCardCount(payCards);
 						applyCrystakulBonusesToDeployedZone(simSt, z, deployBonus, levelUpDeployPwrSimOrig, false);
-						applyPendingZadkielBonusToNewlyDeployedZone(simSt, z, false);
+						applyPendingOpponentTurnDeployBonusesToNewlyDeployedZone(simSt, z, false);
 						retireOwnBattleZoneBeforeNewDeploy(simSt, false, false, defs);
 						simSt.setCpuBattle(z);
 
@@ -6463,13 +6467,14 @@ public class CpuBattleEngine {
 							z.setCostPayCardCount(payCards);
 							int levelUpDeployBest = bestLevelUpRest * 2 + bestLevelUpStones * 2;
 							applyCrystakulBonusesToDeployedZone(st, z, bestDeployBonus, levelUpDeployBest, false);
-							applyPendingZadkielBonusToNewlyDeployedZone(st, z, false);
-							st.setCpuNextDeployBonus(0);
-							st.setCpuNextElfOnlyBonus(0);
-							st.setCpuNextDeployCostBonusTimes(0);
-							st.setCpuNextMechanicStacks(0);
-							retireOwnBattleZoneBeforeNewDeploy(st, false, true, defs);
-							st.setCpuBattle(z);
+			applyPendingOpponentTurnDeployBonusesToNewlyDeployedZone(st, z, false);
+			st.setCpuNextDeployBonus(0);
+			st.setCpuNextElfOnlyBonus(0);
+			st.setCpuNextDeployCostBonusTimes(0);
+			st.setCpuNextMechanicStacks(0);
+			retireOwnBattleZoneBeforeNewDeploy(st, false, true, defs);
+			st.setCpuBattle(z);
+			armMinionChampionNextDeployBonusIfApplicable(st, z, false);
 							// 〈探鉱の洞窟〉は resolve 内で〈配置〉より先に適用する
 							if (payCostStones > 0 && payCards > 0) {
 								st.addLog("CPUは「" + bestDef.getName() + "」を配置（コスト: ストーン" + payCostStones + "＋カード" + payCards + "）");
@@ -11912,7 +11917,7 @@ public class CpuBattleEngine {
 								z.setCostPayCardCount(needCards);
 								int levelUpDeployCan = luRest * 2 + luSt * 2;
 								applyCrystakulBonusesToDeployedZone(sim2, z, deployBonus, levelUpDeployCan, forHuman);
-								applyPendingZadkielBonusToNewlyDeployedZone(sim2, z, forHuman);
+								applyPendingOpponentTurnDeployBonusesToNewlyDeployedZone(sim2, z, forHuman);
 								retireOwnBattleZoneBeforeNewDeploy(sim2, forHuman, false, defs);
 								if (forHuman) sim2.setHumanBattle(z);
 								else sim2.setCpuBattle(z);
