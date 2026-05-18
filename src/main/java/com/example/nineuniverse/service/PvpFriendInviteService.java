@@ -7,6 +7,7 @@ import com.example.nineuniverse.repository.PvpFriendInviteMapper;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -31,11 +32,30 @@ public class PvpFriendInviteService {
 	}
 
 	public List<PvpInviteNotice> listPendingInbound(long userId) {
-		return pvpFriendInviteMapper.findPendingInboundForUser(userId);
+		List<PvpInviteNotice> rows = pvpFriendInviteMapper.findPendingInboundForUser(userId);
+		rows.forEach(this::enrichInviteFormat);
+		return rows;
+	}
+
+	public List<PvpInviteNotice> listPendingInbound(long userId, PvpMatch.Format format) {
+		String want = format.name();
+		return listPendingInbound(userId).stream()
+				.filter(n -> want.equals(n.getFormat()))
+				.collect(Collectors.toList());
 	}
 
 	public List<PvpInviteNotice> listPendingOutbound(long userId) {
 		return pvpFriendInviteMapper.findPendingOutboundForUser(userId);
+	}
+
+	private void enrichInviteFormat(PvpInviteNotice notice) {
+		if (notice == null || notice.getMatchId() == null) {
+			return;
+		}
+		PvpMatch m = pvpBattleService.get(notice.getMatchId());
+		if (m != null) {
+			notice.setFormat(m.getFormat().name());
+		}
 	}
 
 	public Long findPendingInviteIdForChallengerRoom(String matchId, long challengerUserId) {

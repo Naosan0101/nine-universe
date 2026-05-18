@@ -134,6 +134,9 @@ public class HomeController {
 		boolean listFossilFieldFix202605 = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_START);
+		boolean listDragonRiderParamFix202605 = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -164,6 +167,7 @@ public class HomeController {
 		model.addAttribute("announcementList80UsersMilestone", list80UsersMilestone);
 		model.addAttribute("announcementListStd3LeagueUiUpdate202605", listStd3LeagueUiUpdate202605);
 		model.addAttribute("announcementListFossilFieldFix202605", listFossilFieldFix202605);
+		model.addAttribute("announcementListDragonRiderParamFix202605", listDragonRiderParamFix202605);
 
 		announcementRewardService.ensure80UsersMilestoneRewardGranted(uid);
 		announcementRewardService.ensureStd3LeagueUiUpdate202605RewardGranted(uid);
@@ -541,6 +545,25 @@ public class HomeController {
 				"fossilFieldFix202605AnnouncementGemAmount",
 				GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_GEMS);
 
+		boolean dragonRiderParamFix202605AnnClaimed =
+				claimedKeys.contains(GameConstants.ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_KEY);
+		boolean dragonRiderParamFix202605AnnInWindow =
+				announcementRewardService.isWithinDragonRiderParamFix202605AnnouncementWindow(today);
+		model.addAttribute("dragonRiderParamFix202605AnnouncementClaimed", dragonRiderParamFix202605AnnClaimed);
+		model.addAttribute("dragonRiderParamFix202605AnnouncementClaimable",
+				dragonRiderParamFix202605AnnInWindow && !dragonRiderParamFix202605AnnClaimed);
+		model.addAttribute(
+				"dragonRiderParamFix202605AnnouncementExpiredUnclaimed",
+				!dragonRiderParamFix202605AnnClaimed
+						&& today.isAfter(GameConstants.ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_LAST_DAY));
+		model.addAttribute(
+				"dragonRiderParamFix202605AnnouncementFutureUnclaimed",
+				!dragonRiderParamFix202605AnnClaimed
+						&& today.isBefore(GameConstants.ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_START));
+		model.addAttribute(
+				"dragonRiderParamFix202605AnnouncementGemAmount",
+				GameConstants.ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_GEMS);
+
 		int announcementBulkClaimableGemTotal = 0;
 		if (listPerfLight && perfInWindow && !perfClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PERF_LIGHT_GEMS;
@@ -625,6 +648,10 @@ public class HomeController {
 		}
 		if (listFossilFieldFix202605 && fossilFieldFix202605AnnInWindow && !fossilFieldFix202605AnnClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_GEMS;
+		}
+		if (listDragonRiderParamFix202605 && dragonRiderParamFix202605AnnInWindow
+				&& !dragonRiderParamFix202605AnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_GEMS;
 		}
 		model.addAttribute("announcementBulkClaimableGemTotal", announcementBulkClaimableGemTotal);
 		model.addAttribute("announcementAnyGemClaimable", announcementBulkClaimableGemTotal > 0);
@@ -1240,6 +1267,28 @@ public class HomeController {
 		switch (outcome) {
 			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
 					GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/dragon-rider-param-fix-2026-05/claim")
+	public String claimDragonRiderParamFix202605Announcement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimDragonRiderParamFix202605AnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_GEMS + "ジェムを受け取りました。");
 			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
 			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
 		}

@@ -44,10 +44,28 @@ public class PvpController {
 
 	@GetMapping(value = "/pending-inbound.json", produces = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseBody
-	public Map<String, Integer> pendingInboundPoll() {
+	public Map<String, Object> pendingInboundPoll() {
 		pvpFriendInviteService.expireStalePendingInvites();
-		int count = pvpFriendInviteService.countPendingInbound(CurrentUser.require().getId());
-		return Map.of("count", count);
+		long uid = CurrentUser.require().getId();
+		var inbound = pvpFriendInviteService.listPendingInbound(uid);
+		int count = inbound.size();
+		String navigateUrl = "/battle/pvp";
+		String latestFormat = null;
+		if (!inbound.isEmpty()) {
+			latestFormat = inbound.get(0).getFormat();
+			if (PvpMatch.Format.LEAGUE.name().equals(latestFormat)) {
+				navigateUrl = "/battle/pvp/league";
+			} else if (PvpMatch.Format.CASUAL.name().equals(latestFormat)) {
+				navigateUrl = "/battle/pvp/casual";
+			}
+		}
+		Map<String, Object> body = new HashMap<>();
+		body.put("count", count);
+		body.put("navigateUrl", navigateUrl);
+		if (latestFormat != null) {
+			body.put("latestFormat", latestFormat);
+		}
+		return body;
 	}
 
 	@GetMapping
@@ -61,7 +79,8 @@ public class PvpController {
 		long uid = CurrentUser.require().getId();
 		model.addAttribute("decks", deckService.listDecks(uid));
 		model.addAttribute("friends", friendService.listFriends(uid));
-		model.addAttribute("pvpPendingInbound", pvpFriendInviteService.listPendingInbound(uid));
+		model.addAttribute("pvpPendingInbound",
+				pvpFriendInviteService.listPendingInbound(uid, PvpMatch.Format.CASUAL));
 		model.addAttribute("pvpPendingOutbound", pvpFriendInviteService.listPendingOutbound(uid));
 		return "pvp-menu";
 	}
@@ -72,7 +91,8 @@ public class PvpController {
 		long uid = CurrentUser.require().getId();
 		model.addAttribute("leagueSets", deckService.listLeagueDeckSetSummaries(uid));
 		model.addAttribute("friends", friendService.listFriends(uid));
-		model.addAttribute("pvpPendingInbound", pvpFriendInviteService.listPendingInbound(uid));
+		model.addAttribute("pvpPendingInbound",
+				pvpFriendInviteService.listPendingInbound(uid, PvpMatch.Format.LEAGUE));
 		model.addAttribute("pvpPendingOutbound", pvpFriendInviteService.listPendingOutbound(uid));
 		return "pvp-league-menu";
 	}

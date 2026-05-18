@@ -849,6 +849,16 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_LAST_DAY =
 			ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_START.plusDays(30 - 1);
 
+	/** おしらせ配布（ドラゴンライダーのパラメータ修正） */
+	public static final String ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_KEY = "dragon_rider_param_fix_2026_05_15";
+
+	public static final int ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_GEMS = 3;
+
+	public static final LocalDate ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_START = LocalDate.of(2026, 5, 15);
+
+	public static final LocalDate ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_LAST_DAY =
+			ANNOUNCEMENT_DRAGON_RIDER_PARAM_FIX_2026_05_START.plusDays(30 - 1);
+
 	/** ログイン時ポップアップ「次回から表示しない」用（配布受領記録とは別行）。 */
 	public static final String ANNOUNCEMENT_80_USERS_MILESTONE_POPUP_SUPPRESS_KEY =
 			"celebrate_80_users_popup_suppress_2026_05";
@@ -904,7 +914,7 @@ public final class GameConstants {
 	/**
 	 * おしらせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
 	 */
-	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-05-16";
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-05-15-dragon-rider";
 
 	/** リサイクル：レア度ごとに得るクリスタル（1枚あたり） */
 	public static final int RECYCLE_CRYSTAL_PER_CARD_C = 20;
