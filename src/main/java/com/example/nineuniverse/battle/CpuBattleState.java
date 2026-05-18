@@ -79,6 +79,10 @@ public class CpuBattleState implements Serializable {
 	/** ザドキエル: ゲスト／CPU が「奇跡」をレストに置いた直後の同上 */
 	private boolean cpuPendingZadkielNextDeployOppTurnPower3;
 
+	/** ミニオンチャンピオン〈常時〉: バトルゾーンにいる間、次のバトルゾーン配置に相手ターン中 +3 を付与する予約 */
+	private boolean humanPendingMinionChampionNextDeployOppTurnPower3;
+	private boolean cpuPendingMinionChampionNextDeployOppTurnPower3;
+
 	/**
 	 * ルシファー〈配置〉: バトル終了まで、当該スロットの手札へ加わる「奇跡」は「堕天使ルシファー」として扱う（既存の奇跡も変化済み）。
 	 */

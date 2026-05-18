@@ -33,6 +33,11 @@ public class ZoneFighter implements Serializable {
 	 * {@link CpuBattleEngine#beginTurnGainStone} で解除。
 	 */
 	private int zadkielOpponentTurnPowerBonus;
+	/**
+	 * ミニオンチャンピオン〈常時〉: 次に配置したファイターの、相手ターン中の強さ加算（所有者の次ターン開始で 0）。
+	 * {@link CpuBattleEngine#beginTurnGainStone} で解除。
+	 */
+	private int minionChampionOpponentTurnPowerBonus;
 	/** ふわふわゴースト等: 次にレストへ置かれる代わりに手札へ戻る */
 	private boolean returnToHandOnKnock;
 	/**

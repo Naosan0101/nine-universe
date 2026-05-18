@@ -81,6 +81,8 @@ public class CpuBattleEngine {
 	private static final int MINION_SOLDIER_DEPLOY_TEMPORARY_POWER = 3;
 	/** ミニオンチャンピオン〈常時〉: 相手ターン中の強さ加算 */
 	private static final int MINION_CHAMPION_OPPONENT_TURN_POWER_BONUS = 4;
+	/** ミニオンチャンピオン〈常時〉: 次に配置するファイターの相手ターン中の強さ加算 */
+	private static final int MINION_CHAMPION_NEXT_DEPLOY_OPPONENT_TURN_POWER_BONUS = 3;
 	private static final short FROSTKRUL_ID = 32;
 	private static final short MISTYINKUL_ID = 33;
 	/** ワイバーン: ミスティンクルと同様、相手の〈配置〉のみ封じる（〈常時〉は対象外） */
@@ -5655,6 +5657,54 @@ public class CpuBattleEngine {
 		z.setBattleMainLineSeq(st.takeNextBattleMainLineSeq());
 		if (main == null || main.getCardId() != KUSURI_ID) {
 			z.setKusuriOpponentDebuffFromDeployStones(0);
+		}
+	}
+
+	/** ザドキエル／ミニオンチャンピオン等: 予約済みの「次配置・相手ターン中強さ」を、今バトルゾーンに置いたファイターへ適用する */
+	private void applyPendingOpponentTurnDeployBonusesToNewlyDeployedZone(CpuBattleState st, ZoneFighter z,
+			boolean deployerIsHumanSlot) {
+		applyPendingZadkielBonusToNewlyDeployedZone(st, z, deployerIsHumanSlot);
+		applyPendingMinionChampionBonusToNewlyDeployedZone(st, z, deployerIsHumanSlot);
+	}
+
+	/** ミニオンチャンピオンがバトルゾーンに出たとき、次の配置用ボーナスを予約する */
+	private void armMinionChampionNextDeployBonusIfApplicable(CpuBattleState st, ZoneFighter z,
+			boolean deployerIsHumanSlot) {
+		if (st == null || z == null || z.getMain() == null || z.getMain().getCardId() != MINION_CHAMPION_ID) {
+			return;
+		}
+		if (deployerIsHumanSlot) {
+			st.setHumanPendingMinionChampionNextDeployOppTurnPower3(true);
+			st.addLog("ミニオンチャンピオン: 次に配置するファイターは相手ターン中強さ+"
+					+ MINION_CHAMPION_NEXT_DEPLOY_OPPONENT_TURN_POWER_BONUS);
+		} else {
+			st.setCpuPendingMinionChampionNextDeployOppTurnPower3(true);
+			st.addLog((st.isPvp() ? "ゲスト" : "CPU") + "のミニオンチャンピオン: 次に配置するファイターは相手ターン中強さ+"
+					+ MINION_CHAMPION_NEXT_DEPLOY_OPPONENT_TURN_POWER_BONUS);
+		}
+	}
+
+	private void applyPendingMinionChampionBonusToNewlyDeployedZone(CpuBattleState st, ZoneFighter z,
+			boolean deployerIsHumanSlot) {
+		if (st == null || z == null || z.getMain() == null) {
+			return;
+		}
+		if (deployerIsHumanSlot) {
+			if (!st.isHumanPendingMinionChampionNextDeployOppTurnPower3()) {
+				return;
+			}
+			z.setMinionChampionOpponentTurnPowerBonus(MINION_CHAMPION_NEXT_DEPLOY_OPPONENT_TURN_POWER_BONUS);
+			st.setHumanPendingMinionChampionNextDeployOppTurnPower3(false);
+			st.addLog("ミニオンチャンピオン: 配置したファイターは相手ターン中強さ+"
+					+ MINION_CHAMPION_NEXT_DEPLOY_OPPONENT_TURN_POWER_BONUS);
+		} else {
+			if (!st.isCpuPendingMinionChampionNextDeployOppTurnPower3()) {
+				return;
+			}
+			z.setMinionChampionOpponentTurnPowerBonus(MINION_CHAMPION_NEXT_DEPLOY_OPPONENT_TURN_POWER_BONUS);
+			st.setCpuPendingMinionChampionNextDeployOppTurnPower3(false);
+			st.addLog((st.isPvp() ? "ゲスト" : "CPU") + "のミニオンチャンピオン: 配置したファイターは相手ターン中強さ+"
+					+ MINION_CHAMPION_NEXT_DEPLOY_OPPONENT_TURN_POWER_BONUS);
 		}
 	}
 
