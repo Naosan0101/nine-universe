@@ -135,6 +135,11 @@ public class CpuBattleState implements Serializable {
 	 * ターン開始ごとに 1 減らす。6 で配置直後にインクナイト、4 でインクナイト、2 でストーン+2、0 で場から所有者レストへ。
 	 */
 	private int paperCityFieldCounterDisplay;
+	/**
+	 * 天界門 ヘヴンズゲート〈フィールド〉のカウント（2→0）。該当でないときは 0。
+	 * 2: 配置直後に配置者へ奇跡（相手ターン開始で相手へ奇跡→1）、1: 所有者ターン開始で所有者へ奇跡→0 で所有者レストへ。
+	 */
+	private int heavensGateFieldCounterDisplay;
 	/** 鳥獣戯画: 次に human スロットが配置するファイターへドラゴン種族（配置直後の自分側用）。 */
 	private boolean chojuGigaPendingHumanSlotNextDeployDragon;
 	/** 鳥獣戯画: 次に cpu スロットが配置するファイターへドラゴン種族（ゲストが鳥獣戯画を置いたときの自分側用）。 */

@@ -2934,6 +2934,8 @@
 			r = Math.max(0, Math.floor(Number(st.worldRebuildFieldCounterDisplay)));
 		} else if (id === PREVIEW_CARD_IDS.FIELD_PAPER_CITY && st.paperCityFieldCounterDisplay != null) {
 			r = Math.max(0, Math.floor(Number(st.paperCityFieldCounterDisplay)));
+		} else if (id === PREVIEW_CARD_IDS.HEAVENS_GATE_FIELD && st.heavensGateFieldCounterDisplay != null) {
+			r = Math.max(0, Math.floor(Number(st.heavensGateFieldCounterDisplay)));
 		}
 		if (r < 1 || !Array.isArray(d.abilityBlocks)) return d;
 		const blocks = d.abilityBlocks.map(function (b) {
@@ -4072,9 +4074,13 @@
 		if (st && Number(d.id) === PREVIEW_CARD_IDS.FIELD_PAPER_CITY && st.paperCityFieldCounterDisplay != null) {
 			paperCityCounter = Math.max(0, Math.floor(Number(st.paperCityFieldCounterDisplay)));
 		}
+		let heavensGateCounter = null;
+		if (st && Number(d.id) === PREVIEW_CARD_IDS.HEAVENS_GATE_FIELD && st.heavensGateFieldCounterDisplay != null) {
+			heavensGateCounter = Math.max(0, Math.floor(Number(st.heavensGateFieldCounterDisplay)));
+		}
 		const dForFace =
 			rem > 0 || atlantisCounter != null || shonenCampCounter != null || worldRebuildCounter != null
-				|| paperCityCounter != null
+				|| paperCityCounter != null || heavensGateCounter != null
 				? defWithTimedFieldTurnOverlay(d, st)
 				: d;
 		const wrap = el('div', 'library-card battle-zone-card battle-field-card', null);
@@ -4118,6 +4124,10 @@
 		} else if (paperCityCounter != null) {
 			const badge = el('span', 'battle-field-turn-badge', String(paperCityCounter));
 			badge.setAttribute('aria-label', 'カウント ' + String(paperCityCounter));
+			wrap.appendChild(badge);
+		} else if (heavensGateCounter != null) {
+			const badge = el('span', 'battle-field-turn-badge', String(heavensGateCounter));
+			badge.setAttribute('aria-label', 'カウント ' + String(heavensGateCounter));
 			wrap.appendChild(badge);
 		}
 		box.appendChild(wrap);
@@ -5363,6 +5373,8 @@
 				rr = Math.max(0, Math.floor(Number(stCost.worldRebuildFieldCounterDisplay)));
 			} else if (Number(def.id) === PREVIEW_CARD_IDS.FIELD_PAPER_CITY && stCost.paperCityFieldCounterDisplay != null) {
 				rr = Math.max(0, Math.floor(Number(stCost.paperCityFieldCounterDisplay)));
+			} else if (Number(def.id) === PREVIEW_CARD_IDS.HEAVENS_GATE_FIELD && stCost.heavensGateFieldCounterDisplay != null) {
+				rr = Math.max(0, Math.floor(Number(stCost.heavensGateFieldCounterDisplay)));
 			}
 			if (rr > 0) {
 				raw = adjustScrapyardFieldAbilityTextForRemaining(raw, rr);

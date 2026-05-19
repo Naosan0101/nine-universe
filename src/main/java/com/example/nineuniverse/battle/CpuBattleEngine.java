@@ -1798,8 +1798,8 @@ public class CpuBattleEngine {
 		}
 	}
 
-	/** 天界門 ヘヴンズゲート〈フィールド〉: 〈場〉に置いたプレイヤーにのみ「奇跡」を1枚。 */
-	private void grantHeavensGateDeployMiracleToPlacer(CpuBattleState st, boolean newFieldPlacedByHost,
+	/** 天界門 ヘヴンズゲート〈フィールド〉: カウント2/1/0の各段階で対象プレイヤーに「奇跡」を1枚。 */
+	private void grantHeavensGateMiracleToPlayer(CpuBattleState st, boolean targetHuman,
 			Map<Short, CardDefinition> defs) {
 		if (st == null || defs == null) {
 			return;
@@ -1808,36 +1808,19 @@ public class CpuBattleEngine {
 		if (defs.get(mid) == null && defs.get(GameConstants.FALLEN_ANGEL_LUCIFER_CARD_ID) == null) {
 			return;
 		}
-		if (newFieldPlacedByHost) {
+		if (targetHuman) {
 			addMiracleCopiesToHandForPlayer(st.getHumanHand(), 1, st, true, defs);
 		} else {
 			addMiracleCopiesToHandForPlayer(st.getCpuHand(), 1, st, false, defs);
 		}
-		String who = newFieldPlacedByHost ? humanSlotActorLogLabel(st) : cpuSlotActorLogLabel(st);
+		String who = targetHuman ? humanSlotActorLogLabel(st) : cpuSlotActorLogLabel(st);
 		st.addLog("天界門 ヘヴンズゲート: " + who + "は「奇跡」を1枚手札に加えた");
 	}
 
-	/** 天界門 ヘヴンズゲート〈フィールド〉: ターン開始したプレイヤーにのみ「奇跡」1枚（先攻1ターン目のストーン例外と同様にスキップ後）。 */
-	private static void grantHeavensGateTurnStartMiracleForTurnOwner(CpuBattleState st, boolean turnOwnerHuman,
+	/** 天界門 ヘヴンズゲート〈フィールド〉: 配置時（カウント2）に配置者へ奇跡。 */
+	private void grantHeavensGateDeployMiracleToPlacer(CpuBattleState st, boolean newFieldPlacedByHost,
 			Map<Short, CardDefinition> defs) {
-		if (st == null || defs == null) {
-			return;
-		}
-		BattleCard field = st.getActiveField();
-		if (field == null || field.getCardId() != GameConstants.HEAVENS_GATE_FIELD_CARD_ID) {
-			return;
-		}
-		short mid = GameConstants.MIRACLE_TOKEN_CARD_ID;
-		if (defs.get(mid) == null && defs.get(GameConstants.FALLEN_ANGEL_LUCIFER_CARD_ID) == null) {
-			return;
-		}
-		if (turnOwnerHuman) {
-			addMiracleCopiesToHandForPlayer(st.getHumanHand(), 1, st, true, defs);
-		} else {
-			addMiracleCopiesToHandForPlayer(st.getCpuHand(), 1, st, false, defs);
-		}
-		String who = turnOwnerHuman ? humanSlotActorLogLabel(st) : cpuSlotActorLogLabel(st);
-		st.addLog("天界門 ヘヴンズゲート: " + who + "は「奇跡」を1枚手札に加えた");
+		grantHeavensGateMiracleToPlayer(st, newFieldPlacedByHost, defs);
 	}
 
 	private void setPendingDeployEffectOnly(CpuBattleState st, boolean ownerHuman, CardDefinition mainDef, ZoneFighter zone,
@@ -3783,6 +3766,7 @@ public class CpuBattleEngine {
 		tickWeeklyShonenCampFieldAtTurnStart(st, defs);
 		tickWorldRebuildFieldAtTurnStart(st, defs);
 		tickPaperCityFieldAtTurnStart(st, defs);
+		tickHeavensGateFieldAtTurnStart(st, forHuman, defs);
 		expireActiveCountedFieldAtCountZero(st, defs);
 
 		if (isFirstPlayersFirstTurn) {
@@ -3800,7 +3784,6 @@ public class CpuBattleEngine {
 			st.setCpuStones(st.getCpuStones() + 1);
 			st.addLog(opponentActorLogLabel(st) + "はストーンを1つ得た");
 		}
-		grantHeavensGateTurnStartMiracleForTurnOwner(st, forHuman, defs);
 		applyKrakenPendingAtTurnStart(st, forHuman, defs);
 		applyRamielPendingAtTurnStart(st, forHuman, defs);
 	}
@@ -3879,6 +3862,7 @@ public class CpuBattleEngine {
 		ns.setWeeklyShonenCampFieldCounterDisplay(st.getWeeklyShonenCampFieldCounterDisplay());
 		ns.setWorldRebuildFieldCounterDisplay(st.getWorldRebuildFieldCounterDisplay());
 		ns.setPaperCityFieldCounterDisplay(st.getPaperCityFieldCounterDisplay());
+		ns.setHeavensGateFieldCounterDisplay(st.getHeavensGateFieldCounterDisplay());
 		ns.setChojuGigaPendingHumanSlotNextDeployDragon(st.isChojuGigaPendingHumanSlotNextDeployDragon());
 		ns.setChojuGigaPendingCpuSlotNextDeployDragon(st.isChojuGigaPendingCpuSlotNextDeployDragon());
 		ns.setChojuGigaPendingHumanSlotNextDeployHuman(st.isChojuGigaPendingHumanSlotNextDeployHuman());
@@ -3935,6 +3919,7 @@ public class CpuBattleEngine {
 			st.setAtlantisAwaitingCount0(false);
 			st.setWorldRebuildFieldCounterDisplay(0);
 			st.setPaperCityFieldCounterDisplay(0);
+			st.setHeavensGateFieldCounterDisplay(0);
 			clearWeeklyShonenCampFieldTracking(st);
 		} else if (newField != null && newField.getCardId() == DEATHBOUNCE_FIELD_ID) {
 			st.setScrapyardFieldTurnsRemaining(0);
@@ -3943,6 +3928,7 @@ public class CpuBattleEngine {
 			st.setAtlantisAwaitingCount0(false);
 			st.setWorldRebuildFieldCounterDisplay(0);
 			st.setPaperCityFieldCounterDisplay(0);
+			st.setHeavensGateFieldCounterDisplay(0);
 			clearWeeklyShonenCampFieldTracking(st);
 		} else if (newField != null && newField.getCardId() == GameConstants.ATLANTIS_FIELD_CARD_ID) {
 			st.setScrapyardFieldTurnsRemaining(0);
@@ -3951,6 +3937,7 @@ public class CpuBattleEngine {
 			st.setAtlantisAwaitingCount0(true);
 			st.setWorldRebuildFieldCounterDisplay(0);
 			st.setPaperCityFieldCounterDisplay(0);
+			st.setHeavensGateFieldCounterDisplay(0);
 			clearWeeklyShonenCampFieldTracking(st);
 			applyAtlantisCount2OnDeploy(st, newFieldPlacedByHost, defs);
 		} else if (newField != null && newField.getCardId() == GameConstants.WEEKLY_SHONEN_CAMP_FIELD_CARD_ID) {
@@ -3960,6 +3947,7 @@ public class CpuBattleEngine {
 			st.setAtlantisAwaitingCount0(false);
 			st.setWorldRebuildFieldCounterDisplay(0);
 			st.setPaperCityFieldCounterDisplay(0);
+			st.setHeavensGateFieldCounterDisplay(0);
 			st.setWeeklyShonenCampFieldCounterDisplay(6);
 			st.addLog("週刊少年 CAMP: カウント6 — 種族：コミックの強さ+2（このターン中）");
 		} else if (newField != null && newField.getCardId() == GameConstants.WORLD_REBUILD_FIELD_CARD_ID) {
@@ -3968,6 +3956,7 @@ public class CpuBattleEngine {
 			st.setAtlantisFieldCounterDisplay(0);
 			st.setAtlantisAwaitingCount0(false);
 			st.setPaperCityFieldCounterDisplay(0);
+			st.setHeavensGateFieldCounterDisplay(0);
 			clearWeeklyShonenCampFieldTracking(st);
 			st.setWorldRebuildFieldCounterDisplay(4);
 			st.addLog("世界の再構築: カウント4");
@@ -3978,14 +3967,18 @@ public class CpuBattleEngine {
 			st.setAtlantisAwaitingCount0(false);
 			st.setWorldRebuildFieldCounterDisplay(0);
 			st.setPaperCityFieldCounterDisplay(0);
+			st.setHeavensGateFieldCounterDisplay(0);
 			clearWeeklyShonenCampFieldTracking(st);
+			st.setHeavensGateFieldCounterDisplay(2);
 			grantHeavensGateDeployMiracleToPlacer(st, newFieldPlacedByHost, defs);
+			st.addLog("天界門 ヘヴンズゲート: カウント2");
 		} else if (newField != null && newField.getCardId() == GameConstants.PAPER_CITY_FIELD_CARD_ID) {
 			st.setScrapyardFieldTurnsRemaining(0);
 			st.setDeathbounceFieldTurnsRemaining(0);
 			st.setAtlantisFieldCounterDisplay(0);
 			st.setAtlantisAwaitingCount0(false);
 			st.setWorldRebuildFieldCounterDisplay(0);
+			st.setHeavensGateFieldCounterDisplay(0);
 			clearWeeklyShonenCampFieldTracking(st);
 			st.setPaperCityFieldCounterDisplay(6);
 			applyPaperCityInkKnightToFieldOwner(st, newFieldPlacedByHost, defs);
@@ -3997,6 +3990,7 @@ public class CpuBattleEngine {
 			st.setAtlantisAwaitingCount0(false);
 			st.setWorldRebuildFieldCounterDisplay(0);
 			st.setPaperCityFieldCounterDisplay(0);
+			st.setHeavensGateFieldCounterDisplay(0);
 			clearWeeklyShonenCampFieldTracking(st);
 		}
 		boolean chojuGigaActive = newField != null && newField.getCardId() == GameConstants.CHOJU_GIGA_FIELD_CARD_ID;
@@ -5817,6 +5811,7 @@ public class CpuBattleEngine {
 		ns.setWeeklyShonenCampFieldCounterDisplay(st.getWeeklyShonenCampFieldCounterDisplay());
 		ns.setWorldRebuildFieldCounterDisplay(st.getWorldRebuildFieldCounterDisplay());
 		ns.setPaperCityFieldCounterDisplay(st.getPaperCityFieldCounterDisplay());
+		ns.setHeavensGateFieldCounterDisplay(st.getHeavensGateFieldCounterDisplay());
 		ns.setChojuGigaPendingHumanSlotNextDeployDragon(st.isChojuGigaPendingHumanSlotNextDeployDragon());
 		ns.setChojuGigaPendingCpuSlotNextDeployDragon(st.isChojuGigaPendingCpuSlotNextDeployDragon());
 		ns.setChojuGigaPendingHumanSlotNextDeployHuman(st.isChojuGigaPendingHumanSlotNextDeployHuman());
@@ -6609,6 +6604,8 @@ public class CpuBattleEngine {
 			removeActiveWeeklyShonenCampToOwnerRestNow(st, defs);
 		} else if (id == GameConstants.PAPER_CITY_FIELD_CARD_ID && st.getPaperCityFieldCounterDisplay() <= 0) {
 			removeActivePaperCityFieldToOwnerRestNow(st, defs);
+		} else if (id == GameConstants.HEAVENS_GATE_FIELD_CARD_ID && st.getHeavensGateFieldCounterDisplay() <= 0) {
+			removeActiveHeavensGateFieldToOwnerRestNow(st, defs);
 		} else if (id == GameConstants.WORLD_REBUILD_FIELD_CARD_ID && st.getWorldRebuildFieldCounterDisplay() <= 0) {
 			maybeExecuteWorldRebuildFieldCount0(st, defs);
 		} else if (id == GameConstants.ATLANTIS_FIELD_CARD_ID && st.isAtlantisAwaitingCount0()
@@ -6805,6 +6802,93 @@ public class CpuBattleEngine {
 	 */
 	private void tickPaperCityFieldAtTurnStart(CpuBattleState st, Map<Short, CardDefinition> defs) {
 		advancePaperCityFieldCountSteps(st, 1, defs);
+	}
+
+	/**
+	 * 天界門 ヘヴンズゲート: カウント2は相手ターン開始、1は所有者ターン開始で奇跡。0で所有者レストへ。
+	 */
+	private void tickHeavensGateFieldAtTurnStart(CpuBattleState st, boolean turnOwnerHuman,
+			Map<Short, CardDefinition> defs) {
+		if (st == null || defs == null) {
+			return;
+		}
+		BattleCard f = st.getActiveField();
+		if (f == null || f.getCardId() != GameConstants.HEAVENS_GATE_FIELD_CARD_ID) {
+			return;
+		}
+		Boolean ownerHuman = st.getActiveFieldOwnerHuman();
+		if (ownerHuman == null) {
+			return;
+		}
+		int n = st.getHeavensGateFieldCounterDisplay();
+		if (n == 2 && turnOwnerHuman != ownerHuman.booleanValue()) {
+			grantHeavensGateMiracleToPlayer(st, turnOwnerHuman, defs);
+			st.setHeavensGateFieldCounterDisplay(1);
+			st.addLog("天界門 ヘヴンズゲート: カウント1");
+		} else if (n == 1 && turnOwnerHuman == ownerHuman.booleanValue()) {
+			grantHeavensGateMiracleToPlayer(st, turnOwnerHuman, defs);
+			st.setHeavensGateFieldCounterDisplay(0);
+			st.addLog("天界門 ヘヴンズゲート: カウント0");
+			removeActiveHeavensGateFieldToOwnerRestNow(st, defs);
+		}
+	}
+
+	private void advanceHeavensGateFieldCountSteps(CpuBattleState st, int steps, Map<Short, CardDefinition> defs) {
+		if (st == null || defs == null || steps <= 0) {
+			return;
+		}
+		BattleCard f = st.getActiveField();
+		if (f == null || f.getCardId() != GameConstants.HEAVENS_GATE_FIELD_CARD_ID) {
+			return;
+		}
+		Boolean ownerHuman = st.getActiveFieldOwnerHuman();
+		if (ownerHuman == null) {
+			return;
+		}
+		int n = st.getHeavensGateFieldCounterDisplay();
+		for (int i = 0; i < steps && n > 0; i++) {
+			if (n == 2) {
+				grantHeavensGateMiracleToPlayer(st, !ownerHuman.booleanValue(), defs);
+				n = 1;
+				st.setHeavensGateFieldCounterDisplay(n);
+				st.addLog("天界門 ヘヴンズゲート: カウント1");
+			} else if (n == 1) {
+				grantHeavensGateMiracleToPlayer(st, ownerHuman.booleanValue(), defs);
+				n = 0;
+				st.setHeavensGateFieldCounterDisplay(n);
+				st.addLog("天界門 ヘヴンズゲート: カウント0");
+				removeActiveHeavensGateFieldToOwnerRestNow(st, defs);
+				break;
+			} else {
+				removeActiveHeavensGateFieldToOwnerRestNow(st, defs);
+				break;
+			}
+		}
+	}
+
+	private void removeActiveHeavensGateFieldToOwnerRestNow(CpuBattleState st, Map<Short, CardDefinition> defs) {
+		BattleCard field = st.getActiveField();
+		if (field == null || field.getCardId() != GameConstants.HEAVENS_GATE_FIELD_CARD_ID) {
+			return;
+		}
+		Boolean ownerHuman = st.getActiveFieldOwnerHuman();
+		if (ownerHuman == null) {
+			return;
+		}
+		st.setHeavensGateFieldCounterDisplay(0);
+		CardDefinition fd = defs != null ? defs.get(field.getCardId()) : null;
+		String nm = fd != null && fd.getName() != null ? fd.getName() : "天界門 ヘヴンズゲート";
+		if (ownerHuman) {
+			st.getHumanRest().add(field);
+			st.addLog("〈フィールド〉「" + nm + "」の効果が切れ、あなたのレストに置かれた");
+		} else {
+			st.getCpuRest().add(field);
+			st.addLog(st.isPvp()
+					? "〈フィールド〉「" + nm + "」の効果が切れ、ゲストのレストに置かれた"
+					: "〈フィールド〉「" + nm + "」の効果が切れ、相手のレストに置かれた");
+		}
+		st.setActiveField(null);
+		st.setActiveFieldOwnerHuman(null);
 	}
 
 	private void advancePaperCityFieldCountSteps(CpuBattleState st, int steps, Map<Short, CardDefinition> defs) {
@@ -7069,6 +7153,15 @@ public class CpuBattleEngine {
 			}
 			st.addLog("リヴァイアサン: 〈フィールド〉のカウントを進めた（ペーパーシティ）");
 			advancePaperCityFieldCountSteps(st, steps, defs);
+			return;
+		}
+		if (id == GameConstants.HEAVENS_GATE_FIELD_CARD_ID) {
+			int n = st.getHeavensGateFieldCounterDisplay();
+			if (n <= 0) {
+				return;
+			}
+			st.addLog("リヴァイアサン: 〈フィールド〉のカウントを進めた（天界門 ヘヴンズゲート）");
+			advanceHeavensGateFieldCountSteps(st, steps, defs);
 			return;
 		}
 		st.addLog("リヴァイアサン: 現在の〈フィールド〉にカウントがないためカウントは進まなかった");
@@ -9132,6 +9225,7 @@ public class CpuBattleEngine {
 		st.setAtlantisAwaitingCount0(false);
 		st.setWorldRebuildFieldCounterDisplay(0);
 		st.setPaperCityFieldCounterDisplay(0);
+			st.setHeavensGateFieldCounterDisplay(0);
 		clearWeeklyShonenCampFieldTracking(st);
 		clearChojuGigaTribePending(st);
 		targetRest.add(old);

@@ -38,6 +38,8 @@ public record CpuBattleStateDto(
 		int worldRebuildFieldCounterDisplay,
 		/** ペーパーシティ〈フィールド〉のカウント（6→0）。該当でないときは 0 */
 		int paperCityFieldCounterDisplay,
+		/** 天界門 ヘヴンズゲート〈フィールド〉のカウント（2→0）。該当でないときは 0 */
+		int heavensGateFieldCounterDisplay,
 		int humanBattlePower,
 		int cpuBattlePower,
 		int humanNextDeployBonus,
