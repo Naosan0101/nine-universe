@@ -140,6 +140,9 @@ public class HomeController {
 		boolean listComicDinosaurParamFix202605 = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_START);
+		boolean listCsAngelBalanceFix202605 = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -172,6 +175,7 @@ public class HomeController {
 		model.addAttribute("announcementListFossilFieldFix202605", listFossilFieldFix202605);
 		model.addAttribute("announcementListDragonRiderParamFix202605", listDragonRiderParamFix202605);
 		model.addAttribute("announcementListComicDinosaurParamFix202605", listComicDinosaurParamFix202605);
+		model.addAttribute("announcementListCsAngelBalanceFix202605", listCsAngelBalanceFix202605);
 
 		announcementRewardService.ensure80UsersMilestoneRewardGranted(uid);
 		announcementRewardService.ensureStd3LeagueUiUpdate202605RewardGranted(uid);
@@ -585,6 +589,25 @@ public class HomeController {
 				"comicDinosaurParamFix202605AnnouncementGemAmount",
 				GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_GEMS);
 
+		boolean csAngelBalanceFix202605AnnClaimed =
+				claimedKeys.contains(GameConstants.ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_KEY);
+		boolean csAngelBalanceFix202605AnnInWindow =
+				announcementRewardService.isWithinCsAngelBalanceFix202605AnnouncementWindow(today);
+		model.addAttribute("csAngelBalanceFix202605AnnouncementClaimed", csAngelBalanceFix202605AnnClaimed);
+		model.addAttribute("csAngelBalanceFix202605AnnouncementClaimable",
+				csAngelBalanceFix202605AnnInWindow && !csAngelBalanceFix202605AnnClaimed);
+		model.addAttribute(
+				"csAngelBalanceFix202605AnnouncementExpiredUnclaimed",
+				!csAngelBalanceFix202605AnnClaimed
+						&& today.isAfter(GameConstants.ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_LAST_DAY));
+		model.addAttribute(
+				"csAngelBalanceFix202605AnnouncementFutureUnclaimed",
+				!csAngelBalanceFix202605AnnClaimed
+						&& today.isBefore(GameConstants.ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_START));
+		model.addAttribute(
+				"csAngelBalanceFix202605AnnouncementGemAmount",
+				GameConstants.ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_GEMS);
+
 		int announcementBulkClaimableGemTotal = 0;
 		if (listPerfLight && perfInWindow && !perfClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PERF_LIGHT_GEMS;
@@ -677,6 +700,9 @@ public class HomeController {
 		if (listComicDinosaurParamFix202605 && comicDinosaurParamFix202605AnnInWindow
 				&& !comicDinosaurParamFix202605AnnClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_GEMS;
+		}
+		if (listCsAngelBalanceFix202605 && csAngelBalanceFix202605AnnInWindow && !csAngelBalanceFix202605AnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_GEMS;
 		}
 		model.addAttribute("announcementBulkClaimableGemTotal", announcementBulkClaimableGemTotal);
 		model.addAttribute("announcementAnyGemClaimable", announcementBulkClaimableGemTotal > 0);
@@ -1292,6 +1318,28 @@ public class HomeController {
 		switch (outcome) {
 			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
 					GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/cs-angel-balance-fix-2026-05/claim")
+	public String claimCsAngelBalanceFix202605Announcement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimCsAngelBalanceFix202605AnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_GEMS + "ジェムを受け取りました。");
 			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
 			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
 		}

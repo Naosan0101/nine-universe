@@ -890,6 +890,16 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_LAST_DAY =
 			ANNOUNCEMENT_COMIC_DINOSAUR_PARAM_FIX_2026_05_START.plusDays(30 - 1);
 
+	/** おしらせ配布（創世の神域カード調整・不具合修正まとめ） */
+	public static final String ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_KEY = "cs_angel_balance_fix_2026_05_19";
+
+	public static final int ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_GEMS = 15;
+
+	public static final LocalDate ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_START = LocalDate.of(2026, 5, 19);
+
+	public static final LocalDate ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_LAST_DAY =
+			ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_START.plusDays(30 - 1);
+
 	/** ログイン時ポップアップ「次回から表示しない」用（配布受領記録とは別行）。 */
 	public static final String ANNOUNCEMENT_80_USERS_MILESTONE_POPUP_SUPPRESS_KEY =
 			"celebrate_80_users_popup_suppress_2026_05";

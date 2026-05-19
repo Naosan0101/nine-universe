@@ -46,9 +46,10 @@ public class CpuBattleEngine {
 	private static final short INK_KNIGHT_ID = GameConstants.INK_KNIGHT_FIGHTER_CARD_ID;
 	/** コミックヒーロー（id=91） */
 	private static final short COMIC_HERO_ID = GameConstants.COMIC_HERO_FIGHTER_CARD_ID;
-	/** エンジェルメイジ（id=105）〈常時〉: 自分レストに「エンジェルメイジ」があると強さ+2 */
+	/** エンジェルメイジ（id=105）〈常時〉: 自分レストに「エンジェルメイジ」があると強さ+3 */
 	private static final short ANGEL_MAGE_ID = GameConstants.ANGEL_MAGE_FIGHTER_CARD_ID;
-	/** ガブリエル（id=104）〈常時〉: 特性コストに「奇跡」が含まれると強さ+1 */
+	private static final int ANGEL_MAGE_REST_SELF_POWER_BONUS = 3;
+	/** ガブリエル（id=104）〈常時〉: 特性コストに「奇跡」が含まれると強さ+2 */
 	private static final short GABRIEL_ID = GameConstants.GABRIEL_FIGHTER_CARD_ID;
 	/** インクキング（id=111） */
 	private static final short INK_KING_ID = GameConstants.INK_KING_FIGHTER_CARD_ID;
@@ -1739,6 +1740,23 @@ public class CpuBattleEngine {
 		addCopiesOfCardIdToHand(hand, id, count, defs);
 	}
 
+	/** セレスティア〈配置〉: 「奇跡」を2枚手札に加える。 */
+	private void applyCelestiaDeployEffect(CpuBattleState st, boolean deployerIsHuman, boolean cpuAiDeploy,
+			Map<Short, CardDefinition> defs) {
+		if (st == null || defs == null) {
+			return;
+		}
+		String logP = cpuAiDeploy ? "CPUセレスティア"
+				: (deployerIsHuman ? "セレスティア" : cpuSlotActorLogLabel(st) + "のセレスティア");
+		if (!canGrantMiracleSlotCard(st, deployerIsHuman, defs)) {
+			st.addLog(logP + ": 「奇跡」の定義がない");
+			return;
+		}
+		List<BattleCard> hand = deployerIsHuman ? st.getHumanHand() : st.getCpuHand();
+		addMiracleCopiesToHandForPlayer(hand, 2, st, deployerIsHuman, defs);
+		st.addLog(logP + ": 「奇跡」を2枚手札に加えた");
+	}
+
 	/** ルシファー〈配置〉: 当該プレイヤーゾーン内の「奇跡」をすべて「堕天使ルシファー」に置き換える（cardId のみ）。 */
 	private static void replaceMiraclesWithFallenLuciferInPlayerZones(CpuBattleState st, boolean humanSlot,
 			Map<Short, CardDefinition> defs) {
@@ -2071,7 +2089,7 @@ public class CpuBattleEngine {
 					}
 				}
 			}
-			// 相手の竜王、ミスティンクル／ワイバーン、または相手側フレイムガルド〈フィールド〉で〈配置〉が無効（クリスタクル任意ストーンは例外）
+			// 相手の竜王、ミスティンクル／ワイバーンで〈配置〉が無効（クリスタクル任意ストーンは例外）
 			boolean deploySuppressed = deployAbilitySuppressedByOpponentLine(st, deployerActsAsHuman, fighterDefForFieldTriggers);
 			// pendingEffect の cardId と defs の不整合でも、ゾーン上の実カードで〈配置〉を解決する
 			CardDefinition abilityDefToResolve = fighterDefForFieldTriggers != null ? fighterDefForFieldTriggers : d;
@@ -2417,13 +2435,6 @@ public class CpuBattleEngine {
 						st.addLog("シーサーペント: 「ソードフィッシュ」を1枚手札に加えた");
 					} else if (RAMIEL_DEPLOY_CODE.equals(pc.getAbilityDeployCode())) {
 						applyRamielDeployEffect(st, true, false);
-					} else if (CELESTIA_DEPLOY_CODE.equals(pc.getAbilityDeployCode())) {
-						if (canGrantMiracleSlotCard(st, true, defs)) {
-							addMiracleCopiesToHandForPlayer(st.getHumanHand(), 2, st, true, defs);
-							st.addLog("セレスティア: 「奇跡」を2枚手札に加えた");
-						} else {
-							st.addLog("セレスティア: 「奇跡」の定義がない");
-						}
 					} else if ("RESEARCHER_FLORA".equals(pc.getAbilityDeployCode())) {
 						List<String> floraOpts = new ArrayList<>();
 						for (BattleCard bc : st.getHumanRest()) {
@@ -3029,13 +3040,6 @@ public class CpuBattleEngine {
 						st.addLog("シーサーペント: 「ソードフィッシュ」を1枚手札に加えた");
 					} else if (RAMIEL_DEPLOY_CODE.equals(pc.getAbilityDeployCode())) {
 						applyRamielDeployEffect(st, false, false);
-					} else if (CELESTIA_DEPLOY_CODE.equals(pc.getAbilityDeployCode())) {
-						if (canGrantMiracleSlotCard(st, false, defs)) {
-							addMiracleCopiesToHandForPlayer(st.getCpuHand(), 2, st, false, defs);
-							st.addLog("セレスティア: 「奇跡」を2枚手札に加えた");
-						} else {
-							st.addLog("セレスティア: 「奇跡」の定義がない");
-						}
 					} else if ("RESEARCHER_FLORA".equals(pc.getAbilityDeployCode())) {
 						List<String> floraGuestOpts = new ArrayList<>();
 						for (BattleCard bc : st.getCpuRest()) {
@@ -5220,21 +5224,28 @@ public class CpuBattleEngine {
 	}
 
 	/**
-	 * キングメーカー〈配置〉: 手札に「インクナイト」が2枚以上あるなら「インクキング」を1枚手札に加える（配置済みメインは手札に含まない）。
+	 * キングメーカー〈配置〉: 手札に「インクナイト」が2枚以上なら「インクキング」、そうでなければ「インクナイト」を1枚手札に加える（配置済みメインは手札に含まない）。
 	 */
 	private void applyKingMakerDeployEffect(CpuBattleState st, boolean deployerIsHuman, boolean cpuAiDeploy,
 			Map<Short, CardDefinition> defs) {
-		if (st == null || defs == null || defs.get(INK_KING_ID) == null) {
+		if (st == null || defs == null) {
 			return;
 		}
 		List<BattleCard> hand = deployerIsHuman ? st.getHumanHand() : st.getCpuHand();
 		int ink = countInkKnightsInHand(hand);
 		String logP = kingMakerDeployLogPrefix(st, deployerIsHuman, cpuAiDeploy);
 		if (ink >= 2) {
+			if (defs.get(INK_KING_ID) == null) {
+				return;
+			}
 			addCopiesOfCardIdToHand(hand, INK_KING_ID, 1, defs);
 			st.addLog(logP + ": 「インクキング」を1枚手札に加えた");
 		} else {
-			st.addLog(logP + ": 手札の「インクナイト」が2枚未満のため効果はなかった");
+			if (defs.get(INK_KNIGHT_ID) == null) {
+				return;
+			}
+			addCopiesOfCardIdToHand(hand, INK_KNIGHT_ID, 1, defs);
+			st.addLog(logP + ": 「インクナイト」を1枚手札に加えた");
 		}
 	}
 
@@ -7577,7 +7588,7 @@ public class CpuBattleEngine {
 						continue;
 					}
 					if (c.getCardId() == ANGEL_MAGE_ID) {
-						p += 2;
+						p += ANGEL_MAGE_REST_SELF_POWER_BONUS;
 						break;
 					}
 				}
@@ -7585,7 +7596,7 @@ public class CpuBattleEngine {
 		}
 
 		if (id == GABRIEL_ID && gabrielCharacteristicCostContainsMiracle(zf)) {
-			p += 1;
+			p += 2;
 		}
 
 		if (id == FROSTKRUL_ID) {
@@ -7903,12 +7914,12 @@ public class CpuBattleEngine {
 				}
 			}
 			if (angelMageInRest) {
-				out.add(new BattlePowerModifierDto(ANGEL_MAGE_ID, "（レストに「エンジェルメイジ」+2）"));
+				out.add(new BattlePowerModifierDto(ANGEL_MAGE_ID, "（レストに「エンジェルメイジ」+3）"));
 			}
 		}
 
 		if (id == GABRIEL_ID && gabrielCharacteristicCostContainsMiracle(zf)) {
-			out.add(new BattlePowerModifierDto(GABRIEL_ID, "（コストに「奇跡」+1）"));
+			out.add(new BattlePowerModifierDto(GABRIEL_ID, "（コストに「奇跡」+2）"));
 		}
 
 		if (id == FROSTKRUL_ID) {
@@ -8074,31 +8085,8 @@ public class CpuBattleEngine {
 	}
 
 	/**
-	 * 紅蓮峡谷 フレイムガルド: 〈フィールド〉が場にある間、その〈フィールド〉を置いたプレイヤーの相手の〈配置〉を封じる（〈常時〉は対象外）。
-	 * 〈クリスタクル〉の任意ストーン〈配置〉のみ例外（ミスティンクル／ワイバーンと同様）。
-	 */
-	private boolean activeFieldFlameguardSuppressesOpponentDeploy(CpuBattleState st, boolean deployerIsHuman,
-			CardDefinition abilityDef) {
-		if (st == null) {
-			return false;
-		}
-		BattleCard field = st.getActiveField();
-		if (field == null || field.getCardId() != GameConstants.FLAMEGUARD_FIELD_CARD_ID) {
-			return false;
-		}
-		Boolean ownerHuman = st.getActiveFieldOwnerHuman();
-		if (ownerHuman == null) {
-			return false;
-		}
-		if (deployerIsHuman == ownerHuman.booleanValue()) {
-			return false;
-		}
-		return abilityDef == null || !isCrystakulCardDefinition(abilityDef);
-	}
-
-	/**
-	 * 〈配置〉能力1枚分が、相手前列（竜王／ミスティンクル／ワイバーン）または相手側のフレイムガルド〈フィールド〉に封じられるか。
-	 * 〈クリスタクル〉の〈配置〉（任意ストーン）のみミスティンクル／ワイバーン／フレイムガルドでは封じない。ネビュラ坑道で先にストーンが増えたあとに確認を出せるようにする。竜王は従来どおりすべて無効。
+	 * 〈配置〉能力1枚分が、相手前列（竜王／ミスティンクル／ワイバーン）に封じられるか。
+	 * 〈クリスタクル〉の〈配置〉（任意ストーン）のみミスティンクル／ワイバーンでは封じない。ネビュラ坑道で先にストーンが増えたあとに確認を出せるようにする。竜王は従来どおりすべて無効。
 	 */
 	private boolean deployAbilitySuppressedByOpponentLine(CpuBattleState st, boolean deployerIsHuman,
 			CardDefinition abilityDef) {
@@ -8111,9 +8099,6 @@ public class CpuBattleEngine {
 		}
 		if (opponentLineSuppressesDeployOnly(opp)) {
 			return abilityDef == null || !isCrystakulCardDefinition(abilityDef);
-		}
-		if (activeFieldFlameguardSuppressesOpponentDeploy(st, deployerIsHuman, abilityDef)) {
-			return true;
 		}
 		return false;
 	}
@@ -8152,7 +8137,7 @@ public class CpuBattleEngine {
 		int stones = mirageOwnerIsHuman ? st.getHumanStones() : st.getCpuStones();
 		return switch (code) {
 			case "SAMURAI" -> stones >= 3;
-			case "YOSEI", "NOROWARETA", "FUWAFUWA", "NIDONEBI", "KORYU", "SEASERPENT", "CELESTIA", RAMIEL_DEPLOY_CODE, "RESEARCHER_FLORA", "COMIC_WITCH" -> stones >= 1;
+			case "YOSEI", "NOROWARETA", "FUWAFUWA", "NIDONEBI", "KORYU", "SEASERPENT", RAMIEL_DEPLOY_CODE, "RESEARCHER_FLORA", "COMIC_WITCH" -> stones >= 1;
 			case "CRYSTAKUL" -> stones >= CRYSTAKUL_OPTIONAL_STONE_COST;
 			case "FEZARIA" -> stones >= FEZARIA_OPTIONAL_STONE_COST;
 			default -> true;
@@ -9353,22 +9338,7 @@ public class CpuBattleEngine {
 					));
 				}
 			}
-			case "CELESTIA" -> {
-				if (st.getHumanStones() >= 1 && canGrantMiracleSlotCard(st, true, defs)) {
-					st.setPendingChoice(new PendingChoice(
-							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"セレスティア（ストーン1・「奇跡」を2枚手札に）",
-							true,
-							CELESTIA_DEPLOY_CODE,
-							1,
-							List.of()
-					));
-				} else if (st.getHumanStones() < 1) {
-					st.addLog("セレスティア: ストーンがないため効果はなかった");
-				} else {
-					st.addLog("セレスティア: 「奇跡」の定義がない");
-				}
-			}
+			case "CELESTIA" -> applyCelestiaDeployEffect(st, true, false, defs);
 			case "VIRTUAL" -> {
 				st.setHumanStones(st.getHumanStones() + 2);
 				st.addLog("ヴァーチャー: ストーンを2つ得た");
@@ -10094,22 +10064,7 @@ public class CpuBattleEngine {
 					));
 				}
 			}
-			case "CELESTIA" -> {
-				if (st.getCpuStones() >= 1 && canGrantMiracleSlotCard(st, false, defs)) {
-					st.setPendingChoice(new PendingChoice(
-							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"セレスティア（ストーン1・「奇跡」を2枚手札に）",
-							false,
-							CELESTIA_DEPLOY_CODE,
-							1,
-							List.of(),
-							true));
-				} else if (st.getCpuStones() < 1) {
-					st.addLog("セレスティア: ストーンがないため効果はなかった");
-				} else {
-					st.addLog("セレスティア: 「奇跡」の定義がない");
-				}
-			}
+			case "CELESTIA" -> applyCelestiaDeployEffect(st, false, false, defs);
 			case "VIRTUAL" -> {
 				st.setCpuStones(st.getCpuStones() + 2);
 				st.addLog("ヴァーチャー: ストーンを2つ得た");
@@ -10908,17 +10863,7 @@ public class CpuBattleEngine {
 					st.addLog("CPUシーサーペント: ストーン1使用。「ソードフィッシュ」を1枚手札に加えた");
 				}
 			}
-			case "CELESTIA" -> {
-				if (st.getCpuStones() >= 1 && canGrantMiracleSlotCard(st, false, defs)) {
-					st.setCpuStones(st.getCpuStones() - 1);
-					addMiracleCopiesToHandForPlayer(st.getCpuHand(), 2, st, false, defs);
-					st.addLog("CPUセレスティア: ストーン1使用。「奇跡」を2枚手札に加えた");
-				} else if (st.getCpuStones() < 1) {
-					st.addLog("CPUセレスティア: ストーンがないため効果はなかった");
-				} else {
-					st.addLog("CPUセレスティア: 「奇跡」の定義がない");
-				}
-			}
+			case "CELESTIA" -> applyCelestiaDeployEffect(st, false, true, defs);
 			case "VIRTUAL" -> {
 				st.setCpuStones(st.getCpuStones() + 2);
 				st.addLog("CPUヴァーチャー: ストーンを2つ得た");
@@ -11489,6 +11434,41 @@ public class CpuBattleEngine {
 		return fid != null && fid.shortValue() == WEAPON_DEPOT_FIELD_ID;
 	}
 
+	/** 紅蓮峡谷 フレイムガルド: 〈フィールド〉が場にある間、双方の「種族：ドラゴン」ファイターのコストを -1。 */
+	private static boolean flameguardFieldActive(CpuBattleState st) {
+		if (st == null || st.getActiveField() == null) {
+			return false;
+		}
+		Short fid = st.getActiveField().getCardId();
+		return fid != null && fid.shortValue() == GameConstants.FLAMEGUARD_FIELD_CARD_ID;
+	}
+
+	/** 〈フィールド〉以外のドラゴン・ファイター（種族は {@link CardAttributes#hasAttribute(CardDefinition, BattleCard, String)} と同じ） */
+	private static boolean isDragonFighterForFlameguardCost(CardDefinition d, BattleCard c, CpuBattleState st,
+			List<BattleCard> ownersRestForDiscount) {
+		if (d == null || !isNonFieldFighterCardDef(d)) {
+			return false;
+		}
+		if (st != null && ownersRestForDiscount != null && c != null) {
+			boolean ownerHuman = ownersRestForDiscount == st.getHumanRest();
+			boolean spec666 = ownerHuman ? st.isSpec666NextHumanUndead() : st.isSpec666NextCpuUndead();
+			int mechStacks = ownerHuman ? st.getHumanNextMechanicStacks() : st.getCpuNextMechanicStacks();
+			if (CardAttributes.hasAttributeForDeployPreview(d, c, spec666, mechStacks, "DRAGON")) {
+				return true;
+			}
+		}
+		return CardAttributes.hasAttribute(d, c, "DRAGON");
+	}
+
+	private static int applyFlameguardDragonCostDiscount(int core, CardDefinition d, BattleCard deployedMain,
+			CpuBattleState st, List<BattleCard> ownersRestForDiscount) {
+		if (st != null && flameguardFieldActive(st)
+				&& isDragonFighterForFlameguardCost(d, deployedMain, st, ownersRestForDiscount)) {
+			return Math.max(0, core - 1);
+		}
+		return core;
+	}
+
 	/** 〈フィールド〉以外のマシン・ファイター（種族は {@link CardAttributes#hasAttribute(CardDefinition, BattleCard, String)} と同じ） */
 	private static boolean isMachineFighterForWeaponDepotCost(CardDefinition d, BattleCard c, CpuBattleState st,
 			List<BattleCard> ownersRestForDiscount) {
@@ -11525,7 +11505,8 @@ public class CpuBattleEngine {
 				? deployedMain.getHandDeployCostModifier() + deployedMain.getDeathbounceHandCostStacks()
 				: 0;
 		if (deployedMain != null && deployedMain.isBlankEffects()) {
-			int c = Math.max(0, base + mechanicExtraCost + handAdj);
+			int c = applyFlameguardDragonCostDiscount(base, d, deployedMain, st, ownersRestForDiscount);
+			c = Math.max(0, c + mechanicExtraCost + handAdj);
 			if (st != null && weeklyShonenCampGlobalDeployCostPlusOne(st)) {
 				c += 1;
 			}
@@ -11538,6 +11519,7 @@ public class CpuBattleEngine {
 			int disc = countAttributeInRest(st, ownersRestForDiscount, defs, "CARBUNCLE");
 			core = Math.max(0, base - disc);
 		}
+		core = applyFlameguardDragonCostDiscount(core, d, deployedMain, st, ownersRestForDiscount);
 		int shonen = st != null && weeklyShonenCampGlobalDeployCostPlusOne(st) ? 1 : 0;
 		return Math.max(0, core + mechanicExtraCost + handAdj + shonen);
 	}
@@ -11558,15 +11540,15 @@ public class CpuBattleEngine {
 		}
 		if (deployedMain != null && deployedMain.isBlankEffects()) {
 			int sh = st != null && weeklyShonenCampGlobalDeployCostPlusOne(st) ? 1 : 0;
-			return Math.max(0, base + sh);
+			return applyFlameguardDragonCostDiscount(Math.max(0, base + sh), d, deployedMain, st, discountRest);
 		}
 		if (d.getId() != null && d.getId() == NEMURY_ID) {
 			int disc = countAttributeInRest(st, discountRest, defs, "CARBUNCLE");
 			int sh = st != null && weeklyShonenCampGlobalDeployCostPlusOne(st) ? 1 : 0;
-			return Math.max(0, base - disc) + sh;
+			return applyFlameguardDragonCostDiscount(Math.max(0, base - disc) + sh, d, deployedMain, st, discountRest);
 		}
 		int shonen = st != null && weeklyShonenCampGlobalDeployCostPlusOne(st) ? 1 : 0;
-		return base + shonen;
+		return applyFlameguardDragonCostDiscount(base + shonen, d, deployedMain, st, discountRest);
 	}
 
 	/**

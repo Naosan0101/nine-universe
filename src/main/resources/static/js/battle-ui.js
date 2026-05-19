@@ -2801,9 +2801,13 @@
 		HONE: 24,
 		ARTHUR: 43,
 		FIELD_GLORIA: 41,
+		/** 龍鱗海峡 ラグナロク（〈フィールド〉・効果なしファイター強さ+3） */
+		FIELD_RAGNAROK_STRAIT: 78,
 		FIELD_KAMUI: 49,
 		/** 武器庫 VV-E4-PON（〈フィールド〉・マシン・ファイターコスト1） */
 		WEAPON_DEPOT_FIELD: 64,
+		/** 紅蓮峡谷 フレイムガルド（〈フィールド〉・ドラゴン・ファイターコスト-1） */
+		FLAMEGUARD_FIELD: 84,
 		/** ネムリィ（CpuBattleEngine.NEMURY_ID） */
 		NEMURY: 40,
 		/** ノクスクル（id=37 / STONIA：所持ストーン1つにつき強さ+1 / CpuBattleEngine） */
@@ -2975,6 +2979,10 @@
 		return st && st.activeField && Number(st.activeField.cardId) === PREVIEW_CARD_IDS.WEAPON_DEPOT_FIELD;
 	}
 
+	function flameguardFieldActive(st) {
+		return st && st.activeField && Number(st.activeField.cardId) === PREVIEW_CARD_IDS.FLAMEGUARD_FIELD;
+	}
+
 	/** 〈フィールド〉以外のマシン・ファイター（印字コストとの差で緑／赤表示） */
 	function weaponDepotMachineFighterForCost(def, handCard, st) {
 		if (!def || def.fieldCard) return false;
@@ -2992,6 +3000,29 @@
 		return hasCardAttributeResolved(def, handCard, 'MACHINE');
 	}
 
+	/** 〈フィールド〉以外のドラゴン・ファイター（フレイムガルドのコスト-1対象） */
+	function flameguardDragonFighterForCost(def, handCard, st) {
+		if (!def || def.fieldCard) return false;
+		const ck = String(def.cardKind || '').trim().toUpperCase();
+		if (ck !== '' && ck !== 'FIGHTER') return false;
+		if (st && handCard) {
+			const humanSlot = deployPreviewUsesHumanSlotBonuses(st, handCard);
+			const p666 = humanSlot
+				? st.spec666NextHumanUndead === true || st.spec666NextHumanUndead === 'true'
+				: st.spec666NextCpuUndead === true || st.spec666NextCpuUndead === 'true';
+			const mech = Number((humanSlot ? st.humanNextMechanicStacks : st.cpuNextMechanicStacks) || 0);
+			return hasCardAttributeForDeployPreview(def, handCard, p666, mech, 'DRAGON');
+		}
+		return hasCardAttributeResolved(def, handCard, 'DRAGON');
+	}
+
+	function applyFlameguardDragonCostDiscount(core, def, handCard, st) {
+		if (flameguardFieldActive(st) && flameguardDragonFighterForCost(def, handCard, st)) {
+			return Math.max(0, core - 1);
+		}
+		return core;
+	}
+
 	/** 隊長「コストぶん強化」用: 武器庫・ネムリィを反映（メカニック/手札コスト補正は含めない） */
 	function characteristicDeployCostForCaptainBonus(def, handCard, st) {
 		if (!def) return 0;
@@ -3001,15 +3032,15 @@
 		}
 		const sh = weeklyShonenCampDeployCostPlusOne(st);
 		if (handCard && (handCard.blankEffects === true || handCard.blankEffects === 'true')) {
-			return Math.max(0, base + sh);
+			return applyFlameguardDragonCostDiscount(Math.max(0, base + sh), def, handCard, st);
 		}
 		if (Number(def.id) === PREVIEW_CARD_IDS.NEMURY) {
 			const defs = st && st.defs ? st.defs : {};
 			const discountRest = deployPreviewUsesHumanSlotBonuses(st, handCard) ? st && st.humanRest : st && st.cpuRest;
 			const disc = countAttributeInRest(discountRest ? discountRest : [], defs, 'CARBUNCLE', st);
-			return Math.max(0, base - disc) + sh;
+			return applyFlameguardDragonCostDiscount(Math.max(0, base - disc) + sh, def, handCard, st);
 		}
-		return base + sh;
+		return applyFlameguardDragonCostDiscount(base + sh, def, handCard, st);
 	}
 
 	/**
@@ -3020,6 +3051,46 @@
 		if (!st.activeField || Number(st.activeField.cardId) !== PREVIEW_CARD_IDS.FIELD_GLORIA) return 0;
 		if (!hasCardAttributeResolved(def, battleCard, 'CARBUNCLE')) return 0;
 		return 2;
+	}
+
+	function isKoukaNashiOrBlankAbilityText(s) {
+		if (s == null || String(s).trim() === '') return true;
+		const t = String(s).trim();
+		return t === '効果なし。' || t === '能力なし。';
+	}
+
+	/** CpuBattleEngine.fighterQualifiesRagnarokKoukaNashi と同条件（手札プレビュー用） */
+	function fighterQualifiesRagnarokKoukaNashi(def, handCard) {
+		if (handCard && (handCard.blankEffects === true || handCard.blankEffects === 'true')) {
+			return true;
+		}
+		if (!def || def.fieldCard) return false;
+		const ck = String(def.cardKind || '').trim().toUpperCase();
+		if (ck !== '' && ck !== 'FIGHTER') return false;
+		if (def.abilityDeployCode != null && String(def.abilityDeployCode).trim() !== '') {
+			return false;
+		}
+		const blocks = def.abilityBlocks;
+		if (!blocks || blocks.length === 0) return true;
+		if (blocks.length === 1) {
+			const b = blocks[0];
+			const body = b && b.body != null ? String(b.body).trim() : '';
+			const head = b && b.headline != null ? String(b.headline).trim() : '';
+			if (head === '' && isKoukaNashiOrBlankAbilityText(body)) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * 〈龍鱗海峡 ラグナロク〉: 場にある間、効果「効果なし。」のファイターは強さ+3（CpuBattleEngine.fieldRagnarokKoukaNashiPowerBonus と同順）
+	 */
+	function fieldRagnarokKoukaNashiPowerBonus(st, def, battleCard) {
+		if (!st || !def || def.fieldCard) return 0;
+		if (!st.activeField || Number(st.activeField.cardId) !== PREVIEW_CARD_IDS.FIELD_RAGNAROK_STRAIT) {
+			return 0;
+		}
+		if (!fighterQualifiesRagnarokKoukaNashi(def, battleCard)) return 0;
+		return 3;
 	}
 
 	/** 週刊少年 CAMP のカウント表示（CpuBattleEngine.weeklyShonenCampFieldCounter と同趣旨） */
@@ -3545,7 +3616,8 @@
 			base = 1;
 		}
 		if (blank) {
-			return Math.max(0, base + mechanic + handAdj + shonenCampCost);
+			const coreBlank = applyFlameguardDragonCostDiscount(base, def, handCard, st);
+			return Math.max(0, coreBlank + mechanic + handAdj + shonenCampCost);
 		}
 		let core = base;
 		if (Number(def.id) === PREVIEW_CARD_IDS.NEMURY) {
@@ -3553,6 +3625,7 @@
 			const disc = countAttributeInRest(discountRest ? discountRest : [], defs, 'CARBUNCLE', st);
 			core = Math.max(0, base - disc);
 		}
+		core = applyFlameguardDragonCostDiscount(core, def, handCard, st);
 		return Math.max(0, core + mechanic + handAdj + shonenCampCost);
 	}
 
@@ -3590,6 +3663,7 @@
 			p += instBonus;
 		}
 		p += fieldGloriaCarbunclePowerBonus(st, mainDef, handCard);
+		p += fieldRagnarokKoukaNashiPowerBonus(st, mainDef, handCard);
 		p += weeklyShonenCampComicPowerBonusPreview(st, mainDef, handCard);
 
 		// ノクスクル(id=37/STONIA): 自分のターンの終わりまで所持ストーン数を加算（CpuBattleEngine と同様）
@@ -3693,7 +3767,7 @@
 
 		if (id === PREVIEW_CARD_IDS.ANGEL_MAGE) {
 			if (countAngelMagesInRestForPreview(st.humanRest || [], st.humanBattle) >= 1) {
-				p += 2;
+				p += 3;
 			}
 		}
 
@@ -3730,6 +3804,7 @@
 			p += instBonusP;
 		}
 		p += fieldGloriaCarbunclePowerBonus(st, mainDef, handCard);
+		p += fieldRagnarokKoukaNashiPowerBonus(st, mainDef, handCard);
 		p += weeklyShonenCampComicPowerBonusPreview(st, mainDef, handCard);
 
 		if (id === PREVIEW_CARD_IDS.STONIA && st.humansTurn) {
@@ -3828,7 +3903,7 @@
 
 		if (id === PREVIEW_CARD_IDS.ANGEL_MAGE) {
 			if (countAngelMagesInRestForPreview(simRest, st.humanBattle) >= 1) {
-				p += 2;
+				p += 3;
 			}
 		}
 
