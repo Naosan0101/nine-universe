@@ -34,7 +34,7 @@ public class CpuBattleEngine {
 	/** ポセイドン〈配置〉: レストから手札に戻せる「ソードフィッシュ」の上限 */
 	private static final int POSEIDON_DEPLOY_MAX_SWORDFISH_FROM_REST = 3;
 	/** ミカエル〈配置〉: 発動に必要な手札の「奇跡」枚数 */
-	private static final int MIKAEL_DEPLOY_HAND_MIRACLE_MIN = 3;
+	private static final int MIKAEL_DEPLOY_HAND_MIRACLE_MIN = 2;
 	/** ミカエル〈配置〉: ミカエルデッキからデッキ上に置く枚数 */
 	private static final int MIKAEL_DEPLOY_DECK_TOP_COUNT = 2;
 	private static final short GAIKOTSU_ID = 18;
@@ -9059,7 +9059,7 @@ public class CpuBattleEngine {
 	}
 
 	/**
-	 * ミカエル〈配置〉: 手札に「奇跡」が3枚以上あるとき、手札の「奇跡」をすべてレストへ置き、
+	 * ミカエル〈配置〉: 手札に「奇跡」が2枚以上あるとき、手札の「奇跡」をすべてレストへ置き、
 	 * ミカエルデッキ6種からランダム2枚をデッキの上に置く（〈配置〉コスト支払い中の奇跡は対象外）。
 	 */
 	private void applyMikaelMiracleDeckTransformOnDeploy(CpuBattleState st, boolean ownerHuman, Map<Short, CardDefinition> defs) {
@@ -9094,7 +9094,7 @@ public class CpuBattleEngine {
 			return;
 		}
 		if (countMiracleTokensInHandExcluding(hand, costMiracleIds) < MIKAEL_DEPLOY_HAND_MIRACLE_MIN) {
-			st.addLog("ミカエル: 手札に「奇跡」が3枚未満のため効果はなかった");
+			st.addLog("ミカエル: 手札に「奇跡」が2枚未満のため効果はなかった");
 			return;
 		}
 		List<BattleCard> toRest = new ArrayList<>();
