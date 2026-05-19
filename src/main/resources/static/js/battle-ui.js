@@ -3217,6 +3217,60 @@
 		return countAttributeInRest(rest, defs, 'UNDEAD', st);
 	}
 
+	/** CpuBattleEngine.zoneCharacteristicCostContainsCardId 相当（特性コスト先頭のみ） */
+	function zoneCharacteristicCostHasMiracleOrFallen(zone) {
+		if (!zone || !Array.isArray(zone.costUnder)) return false;
+		const n = zone.costPayCardCount != null ? Math.max(0, Math.floor(Number(zone.costPayCardCount))) : 0;
+		const limit = Math.min(n, zone.costUnder.length);
+		for (let i = 0; i < limit; i++) {
+			const c = zone.costUnder[i];
+			if (!c) continue;
+			const cid = Number(c.cardId);
+			if (cid === PREVIEW_CARD_IDS.MIRACLE || cid === PREVIEW_CARD_IDS.FALLEN_ANGEL_LUCIFER) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	function handInstanceIdsIncludeMiracleOrFallen(st, instanceIds) {
+		if (!st || !instanceIds || !instanceIds.length) return false;
+		const hand = (st.humanHand || []).concat(st.cpuHand || []);
+		for (let i = 0; i < instanceIds.length; i++) {
+			const inst = instanceIds[i];
+			for (let j = 0; j < hand.length; j++) {
+				const c = hand[j];
+				if (!c || String(c.instanceId) !== String(inst)) continue;
+				const cid = Number(c.cardId);
+				if (cid === PREVIEW_CARD_IDS.MIRACLE || cid === PREVIEW_CARD_IDS.FALLEN_ANGEL_LUCIFER) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/** ガブリエル〈常時〉: 特性コストに「奇跡」または堕天使ルシファー（CpuBattleEngine.gabrielCharacteristicCostContainsMiracle） */
+	function gabrielMiracleCostPassiveBonusPreview(st, mainDef, handCard) {
+		if (!st || !mainDef || Number(mainDef.id) !== PREVIEW_CARD_IDS.GABRIEL) return 0;
+		const slotHuman = deployPreviewUsesHumanSlotBonuses(st, handCard);
+		const zone = slotHuman ? st.humanBattle : st.cpuBattle;
+		if (
+			handCard &&
+			zone &&
+			zone.main &&
+			String(zone.main.instanceId) === String(handCard.instanceId) &&
+			zoneCharacteristicCostHasMiracleOrFallen(zone)
+		) {
+			return 2;
+		}
+		const payIds = ui.pay && ui.pay.cardInstanceIds ? ui.pay.cardInstanceIds : [];
+		if (payIds.length && handInstanceIdsIncludeMiracleOrFallen(st, payIds)) {
+			return 2;
+		}
+		return 0;
+	}
+
 	/** CpuBattleEngine.battleCostUnderInstanceIds 相当（自分バトルのコスト下） */
 	function battleCostUnderInstanceIdSet(zone) {
 		const o = Object.create(null);
@@ -3773,6 +3827,8 @@
 			}
 		}
 
+		p += gabrielMiracleCostPassiveBonusPreview(st, mainDef, handCard);
+
 		if (id === PREVIEW_CARD_IDS.MIKAEL_MINION_A && handCard) {
 			const slotHuman = deployPreviewUsesHumanSlotBonuses(st, handCard);
 			const r = slotHuman ? st.humanRest || [] : st.cpuRest || [];
@@ -3912,6 +3968,8 @@
 		if (id === PREVIEW_CARD_IDS.ARTHUR && activeFieldIsKamui(st)) {
 			p += 3;
 		}
+
+		p += gabrielMiracleCostPassiveBonusPreview(st, mainDef, handCard);
 
 		return Math.max(0, p);
 	}

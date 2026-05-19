@@ -5469,13 +5469,14 @@ public class CpuBattleEngine {
 		}
 	}
 
-	/** 堕天使ルシファー〈配置〉: 手札の「種族：アンデッド」ファイターにバトル終了まで強さ+1。 */
+	/** 堕天使ルシファー〈配置〉: 手札と配置した自分の「種族：アンデッド」ファイターにバトル終了まで強さ+1。 */
 	private void applyFallenAngelLuciferDeployEffect(CpuBattleState st, boolean deployerIsHuman, boolean cpuAiDeploy,
 			Map<Short, CardDefinition> defs) {
 		if (st == null || defs == null) {
 			return;
 		}
 		List<BattleCard> hand = deployerIsHuman ? st.getHumanHand() : st.getCpuHand();
+		ZoneFighter zone = deployerIsHuman ? st.getHumanBattle() : st.getCpuBattle();
 		String logP = fallenAngelLuciferDeployLogPrefix(st, deployerIsHuman, cpuAiDeploy);
 		int n = 0;
 		if (hand != null) {
@@ -5494,7 +5495,27 @@ public class CpuBattleEngine {
 				n++;
 			}
 		}
-		st.addLog(logP + ": 手札のアンデッド・ファイター" + n + "枚にバトル終了まで強さ+1");
+		if (zone != null && zone.getMain() != null) {
+			BattleCard main = zone.getMain();
+			CardDefinition md = defs.get(main.getCardId());
+			if (isNonFieldFighterCardDef(md) && restCardHasTribe(st, md, main, "UNDEAD")) {
+				boolean alreadyCounted = false;
+				if (hand != null) {
+					for (BattleCard c : hand) {
+						if (c != null && main.getInstanceId() != null
+								&& main.getInstanceId().equals(c.getInstanceId())) {
+							alreadyCounted = true;
+							break;
+						}
+					}
+				}
+				if (!alreadyCounted) {
+					main.setBattleEndPowerBonus(main.getBattleEndPowerBonus() + 1);
+					n++;
+				}
+			}
+		}
+		st.addLog(logP + ": アンデッド・ファイター" + n + "枚にバトル終了まで強さ+1");
 	}
 
 	private String sketcherDeployLogPrefix(CpuBattleState st, boolean deployerIsHuman, boolean cpuAiDeploy) {

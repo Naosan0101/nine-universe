@@ -143,6 +143,15 @@ public class HomeController {
 		boolean listCsAngelBalanceFix202605 = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_START);
+		boolean listFallenAngelComicStatFix202605 = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_FALLEN_ANGEL_COMIC_STAT_FIX_2026_05_START);
+		boolean listAquaGuardianStatFix202605 = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_AQUA_GUARDIAN_STAT_FIX_2026_05_START);
+		boolean listNecromancerGriffinArcherHarpStatFix202605 = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_NECROMANCER_GRIFFIN_ARCHER_HARP_STAT_FIX_2026_05_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -176,6 +185,10 @@ public class HomeController {
 		model.addAttribute("announcementListDragonRiderParamFix202605", listDragonRiderParamFix202605);
 		model.addAttribute("announcementListComicDinosaurParamFix202605", listComicDinosaurParamFix202605);
 		model.addAttribute("announcementListCsAngelBalanceFix202605", listCsAngelBalanceFix202605);
+		model.addAttribute("announcementListFallenAngelComicStatFix202605", listFallenAngelComicStatFix202605);
+		model.addAttribute("announcementListAquaGuardianStatFix202605", listAquaGuardianStatFix202605);
+		model.addAttribute("announcementListNecromancerGriffinArcherHarpStatFix202605",
+				listNecromancerGriffinArcherHarpStatFix202605);
 
 		announcementRewardService.ensure80UsersMilestoneRewardGranted(uid);
 		announcementRewardService.ensureStd3LeagueUiUpdate202605RewardGranted(uid);
@@ -608,6 +621,67 @@ public class HomeController {
 				"csAngelBalanceFix202605AnnouncementGemAmount",
 				GameConstants.ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_GEMS);
 
+		boolean fallenAngelComicStatFix202605AnnClaimed =
+				claimedKeys.contains(GameConstants.ANNOUNCEMENT_FALLEN_ANGEL_COMIC_STAT_FIX_2026_05_KEY);
+		boolean fallenAngelComicStatFix202605AnnInWindow =
+				announcementRewardService.isWithinFallenAngelComicStatFix202605AnnouncementWindow(today);
+		model.addAttribute("fallenAngelComicStatFix202605AnnouncementClaimed", fallenAngelComicStatFix202605AnnClaimed);
+		model.addAttribute("fallenAngelComicStatFix202605AnnouncementClaimable",
+				fallenAngelComicStatFix202605AnnInWindow && !fallenAngelComicStatFix202605AnnClaimed);
+		model.addAttribute(
+				"fallenAngelComicStatFix202605AnnouncementExpiredUnclaimed",
+				!fallenAngelComicStatFix202605AnnClaimed
+						&& today.isAfter(GameConstants.ANNOUNCEMENT_FALLEN_ANGEL_COMIC_STAT_FIX_2026_05_LAST_DAY));
+		model.addAttribute(
+				"fallenAngelComicStatFix202605AnnouncementFutureUnclaimed",
+				!fallenAngelComicStatFix202605AnnClaimed
+						&& today.isBefore(GameConstants.ANNOUNCEMENT_FALLEN_ANGEL_COMIC_STAT_FIX_2026_05_START));
+		model.addAttribute(
+				"fallenAngelComicStatFix202605AnnouncementGemAmount",
+				GameConstants.ANNOUNCEMENT_FALLEN_ANGEL_COMIC_STAT_FIX_2026_05_GEMS);
+
+		boolean aquaGuardianStatFix202605AnnClaimed =
+				claimedKeys.contains(GameConstants.ANNOUNCEMENT_AQUA_GUARDIAN_STAT_FIX_2026_05_KEY);
+		boolean aquaGuardianStatFix202605AnnInWindow =
+				announcementRewardService.isWithinAquaGuardianStatFix202605AnnouncementWindow(today);
+		model.addAttribute("aquaGuardianStatFix202605AnnouncementClaimed", aquaGuardianStatFix202605AnnClaimed);
+		model.addAttribute("aquaGuardianStatFix202605AnnouncementClaimable",
+				aquaGuardianStatFix202605AnnInWindow && !aquaGuardianStatFix202605AnnClaimed);
+		model.addAttribute(
+				"aquaGuardianStatFix202605AnnouncementExpiredUnclaimed",
+				!aquaGuardianStatFix202605AnnClaimed
+						&& today.isAfter(GameConstants.ANNOUNCEMENT_AQUA_GUARDIAN_STAT_FIX_2026_05_LAST_DAY));
+		model.addAttribute(
+				"aquaGuardianStatFix202605AnnouncementFutureUnclaimed",
+				!aquaGuardianStatFix202605AnnClaimed
+						&& today.isBefore(GameConstants.ANNOUNCEMENT_AQUA_GUARDIAN_STAT_FIX_2026_05_START));
+		model.addAttribute(
+				"aquaGuardianStatFix202605AnnouncementGemAmount",
+				GameConstants.ANNOUNCEMENT_AQUA_GUARDIAN_STAT_FIX_2026_05_GEMS);
+
+		boolean necromancerGriffinArcherHarpStatFix202605AnnClaimed = claimedKeys
+				.contains(GameConstants.ANNOUNCEMENT_NECROMANCER_GRIFFIN_ARCHER_HARP_STAT_FIX_2026_05_KEY);
+		boolean necromancerGriffinArcherHarpStatFix202605AnnInWindow = announcementRewardService
+				.isWithinNecromancerGriffinArcherHarpStatFix202605AnnouncementWindow(today);
+		model.addAttribute("necromancerGriffinArcherHarpStatFix202605AnnouncementClaimed",
+				necromancerGriffinArcherHarpStatFix202605AnnClaimed);
+		model.addAttribute("necromancerGriffinArcherHarpStatFix202605AnnouncementClaimable",
+				necromancerGriffinArcherHarpStatFix202605AnnInWindow
+						&& !necromancerGriffinArcherHarpStatFix202605AnnClaimed);
+		model.addAttribute(
+				"necromancerGriffinArcherHarpStatFix202605AnnouncementExpiredUnclaimed",
+				!necromancerGriffinArcherHarpStatFix202605AnnClaimed
+						&& today.isAfter(
+								GameConstants.ANNOUNCEMENT_NECROMANCER_GRIFFIN_ARCHER_HARP_STAT_FIX_2026_05_LAST_DAY));
+		model.addAttribute(
+				"necromancerGriffinArcherHarpStatFix202605AnnouncementFutureUnclaimed",
+				!necromancerGriffinArcherHarpStatFix202605AnnClaimed
+						&& today.isBefore(
+								GameConstants.ANNOUNCEMENT_NECROMANCER_GRIFFIN_ARCHER_HARP_STAT_FIX_2026_05_START));
+		model.addAttribute(
+				"necromancerGriffinArcherHarpStatFix202605AnnouncementGemAmount",
+				GameConstants.ANNOUNCEMENT_NECROMANCER_GRIFFIN_ARCHER_HARP_STAT_FIX_2026_05_GEMS);
+
 		int announcementBulkClaimableGemTotal = 0;
 		if (listPerfLight && perfInWindow && !perfClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PERF_LIGHT_GEMS;
@@ -703,6 +777,19 @@ public class HomeController {
 		}
 		if (listCsAngelBalanceFix202605 && csAngelBalanceFix202605AnnInWindow && !csAngelBalanceFix202605AnnClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_GEMS;
+		}
+		if (listFallenAngelComicStatFix202605 && fallenAngelComicStatFix202605AnnInWindow
+				&& !fallenAngelComicStatFix202605AnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_FALLEN_ANGEL_COMIC_STAT_FIX_2026_05_GEMS;
+		}
+		if (listAquaGuardianStatFix202605 && aquaGuardianStatFix202605AnnInWindow
+				&& !aquaGuardianStatFix202605AnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_AQUA_GUARDIAN_STAT_FIX_2026_05_GEMS;
+		}
+		if (listNecromancerGriffinArcherHarpStatFix202605 && necromancerGriffinArcherHarpStatFix202605AnnInWindow
+				&& !necromancerGriffinArcherHarpStatFix202605AnnClaimed) {
+			announcementBulkClaimableGemTotal +=
+					GameConstants.ANNOUNCEMENT_NECROMANCER_GRIFFIN_ARCHER_HARP_STAT_FIX_2026_05_GEMS;
 		}
 		model.addAttribute("announcementBulkClaimableGemTotal", announcementBulkClaimableGemTotal);
 		model.addAttribute("announcementAnyGemClaimable", announcementBulkClaimableGemTotal > 0);
@@ -1318,6 +1405,74 @@ public class HomeController {
 		switch (outcome) {
 			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
 					GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/necromancer-griffin-archer-harp-stat-fix-2026-05/claim")
+	public String claimNecromancerGriffinArcherHarpStatFix202605Announcement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_NECROMANCER_GRIFFIN_ARCHER_HARP_STAT_FIX_2026_05_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome =
+				announcementRewardService.claimNecromancerGriffinArcherHarpStatFix202605AnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_NECROMANCER_GRIFFIN_ARCHER_HARP_STAT_FIX_2026_05_GEMS
+							+ "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/aqua-guardian-stat-fix-2026-05/claim")
+	public String claimAquaGuardianStatFix202605Announcement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_AQUA_GUARDIAN_STAT_FIX_2026_05_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimAquaGuardianStatFix202605AnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_AQUA_GUARDIAN_STAT_FIX_2026_05_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/fallen-angel-comic-stat-fix-2026-05/claim")
+	public String claimFallenAngelComicStatFix202605Announcement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_FALLEN_ANGEL_COMIC_STAT_FIX_2026_05_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimFallenAngelComicStatFix202605AnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_FALLEN_ANGEL_COMIC_STAT_FIX_2026_05_GEMS + "ジェムを受け取りました。");
 			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
 			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
 		}

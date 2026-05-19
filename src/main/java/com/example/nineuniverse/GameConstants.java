@@ -900,6 +900,39 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_LAST_DAY =
 			ANNOUNCEMENT_CS_ANGEL_BALANCE_FIX_2026_05_START.plusDays(30 - 1);
 
+	/** おしらせ配布（堕天使ルシファー・コミックダイナソーのステータス調整） */
+	public static final String ANNOUNCEMENT_FALLEN_ANGEL_COMIC_STAT_FIX_2026_05_KEY =
+			"fallen_angel_comic_stat_fix_2026_05_19";
+
+	public static final int ANNOUNCEMENT_FALLEN_ANGEL_COMIC_STAT_FIX_2026_05_GEMS = 3;
+
+	public static final LocalDate ANNOUNCEMENT_FALLEN_ANGEL_COMIC_STAT_FIX_2026_05_START = LocalDate.of(2026, 5, 19);
+
+	public static final LocalDate ANNOUNCEMENT_FALLEN_ANGEL_COMIC_STAT_FIX_2026_05_LAST_DAY =
+			ANNOUNCEMENT_FALLEN_ANGEL_COMIC_STAT_FIX_2026_05_START.plusDays(30 - 1);
+
+	/** おしらせ配布（アクアガーディアンのステータス調整） */
+	public static final String ANNOUNCEMENT_AQUA_GUARDIAN_STAT_FIX_2026_05_KEY = "aqua_guardian_stat_fix_2026_05_19";
+
+	public static final int ANNOUNCEMENT_AQUA_GUARDIAN_STAT_FIX_2026_05_GEMS = 3;
+
+	public static final LocalDate ANNOUNCEMENT_AQUA_GUARDIAN_STAT_FIX_2026_05_START = LocalDate.of(2026, 5, 19);
+
+	public static final LocalDate ANNOUNCEMENT_AQUA_GUARDIAN_STAT_FIX_2026_05_LAST_DAY =
+			ANNOUNCEMENT_AQUA_GUARDIAN_STAT_FIX_2026_05_START.plusDays(30 - 1);
+
+	/** おしらせ配布（ネクロマンサー・グリフォン・アーチャー・森のハープ弾きのステータス調整） */
+	public static final String ANNOUNCEMENT_NECROMANCER_GRIFFIN_ARCHER_HARP_STAT_FIX_2026_05_KEY =
+			"necromancer_griffin_archer_harp_stat_fix_2026_05_19";
+
+	public static final int ANNOUNCEMENT_NECROMANCER_GRIFFIN_ARCHER_HARP_STAT_FIX_2026_05_GEMS = 3;
+
+	public static final LocalDate ANNOUNCEMENT_NECROMANCER_GRIFFIN_ARCHER_HARP_STAT_FIX_2026_05_START =
+			LocalDate.of(2026, 5, 19);
+
+	public static final LocalDate ANNOUNCEMENT_NECROMANCER_GRIFFIN_ARCHER_HARP_STAT_FIX_2026_05_LAST_DAY =
+			ANNOUNCEMENT_NECROMANCER_GRIFFIN_ARCHER_HARP_STAT_FIX_2026_05_START.plusDays(30 - 1);
+
 	/** ログイン時ポップアップ「次回から表示しない」用（配布受領記録とは別行）。 */
 	public static final String ANNOUNCEMENT_80_USERS_MILESTONE_POPUP_SUPPRESS_KEY =
 			"celebrate_80_users_popup_suppress_2026_05";
@@ -955,7 +988,7 @@ public final class GameConstants {
 	/**
 	 * おしらせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
 	 */
-	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-05-15-comic-dinosaur";
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-05-19-necromancer-griffin-archer-harp-stat";
 
 	/** リサイクル：レア度ごとに得るクリスタル（1枚あたり） */
 	public static final int RECYCLE_CRYSTAL_PER_CARD_C = 20;
