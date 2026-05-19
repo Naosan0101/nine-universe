@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +41,16 @@ public class CpuBattleService {
 	private final MissionService missionService;
 
 	private volatile Map<Short, CardDefDto> cachedDefDtos;
+
+	/** カード定義の image_file 更新後にバトル用 defs キャッシュを捨てる。 */
+	public void invalidateDefDtoCache() {
+		cachedDefDtos = null;
+	}
+
+	@EventListener
+	void onCardCatalogRefreshed(CardCatalogRefreshedEvent event) {
+		invalidateDefDtoCache();
+	}
 
 	@Transactional
 	public CpuBattleState start(long userId, long deckId, int level, CpuBattleMode cpuBattleMode, HttpSession session) {
@@ -253,8 +264,6 @@ public class CpuBattleService {
 				st.getDeathbounceFieldTurnsRemaining(),
 				st.getAtlantisFieldCounterDisplay(),
 				st.getWeeklyShonenCampFieldCounterDisplay(),
-				st.isWeeklyShonenCampCount2ComicBonus(),
-				st.isWeeklyShonenCampGlobalDeployCostPlusOneThisTurn(),
 				st.getWorldRebuildFieldCounterDisplay(),
 				st.getPaperCityFieldCounterDisplay(),
 				hbPow,
@@ -325,6 +334,7 @@ public class CpuBattleService {
 										? "—"
 										: (pi != null && !pi.isBlank() ? pi.trim() : "STD");
 								boolean isField = d.getCardKind() != null && d.getCardKind().trim().equalsIgnoreCase("FIELD");
+								String portraitImageFile = GameConstants.effectiveCardImageFile(d.getId(), d.getImageFile());
 								return new CardDefDto(
 									d.getId(),
 									d.getName(),
@@ -334,15 +344,15 @@ public class CpuBattleService {
 									packInitialOut,
 									rar,
 									rar,
-									d.getImageFile(),
+									portraitImageFile,
 									d.getAbilityDeployCode(),
 									CardAttributeLabels.japaneseName(d.getAttribute()),
 									CardAttributeLabels.japaneseNameLines(d.getAttribute()),
 									GameConstants.CARD_LAYER_BASE,
 									GameConstants.cardLayerBarPath(d.getAttribute()),
 									isField ? GameConstants.CARD_LAYER_DATA_FIELD : GameConstants.CARD_LAYER_DATA,
-									GameConstants.cardFacePortraitLayerPath(d.getAttribute(), d.getName(), d.getImageFile(), d.getId()),
-									GameConstants.cardFacePortraitLayerPathAltNfc(d.getAttribute(), d.getName(), d.getImageFile(), d.getId()),
+									GameConstants.cardFacePortraitLayerPath(d.getAttribute(), d.getName(), portraitImageFile, d.getId()),
+									GameConstants.cardFacePortraitLayerPathAltNfc(d.getAttribute(), d.getName(), portraitImageFile, d.getId()),
 									isField,
 									d.getCardKind(),
 									CardFaceAbilityFormatter.blocksForCardId(d.getId()).stream()
@@ -499,8 +509,7 @@ public class CpuBattleService {
 				d.humanStones(), d.cpuStones(), d.humanDeck(), d.humanHand(), d.humanRest(), d.humanBattle(),
 				d.cpuDeck(), d.cpuHand(), d.cpuRest(), d.cpuBattle(), d.activeField(), d.scrapyardFieldTurnsRemaining(),
 				d.deathbounceFieldTurnsRemaining(), d.atlantisFieldCounterDisplay(),
-				d.weeklyShonenCampFieldCounterDisplay(), d.weeklyShonenCampCount2ComicBonus(),
-				d.weeklyShonenCampGlobalDeployCostPlusOneThisTurn(),
+				d.weeklyShonenCampFieldCounterDisplay(),
 				d.worldRebuildFieldCounterDisplay(),
 				d.paperCityFieldCounterDisplay(),
 				d.humanBattlePower(), d.cpuBattlePower(),

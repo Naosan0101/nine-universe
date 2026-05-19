@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 public class CardCatalogService {
 
 	private final CardDefinitionMapper cardDefinitionMapper;
+	private final ApplicationEventPublisher eventPublisher;
 	private volatile Map<Short, CardDefinition> byId = Map.of();
 	private volatile boolean cacheReady;
 
@@ -35,6 +37,7 @@ public class CardCatalogService {
 			m.put(c.getId(), c);
 		}
 		byId = Map.copyOf(m);
+		eventPublisher.publishEvent(new CardCatalogRefreshedEvent());
 	}
 
 	public List<CardDefinition> all() {

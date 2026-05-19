@@ -125,9 +125,10 @@ public class LibraryService {
 		String rarity = c.getRarity();
 		v.setRarity(rarity != null && !rarity.isBlank() ? rarity : "C");
 		v.setRarityLabel(v.getRarity());
-		v.setImagePath(GameConstants.cardPortraitPath(c.getImageFile()));
-		v.setLayerPortraitPath(GameConstants.cardFacePortraitLayerPath(c.getAttribute(), c.getName(), c.getImageFile(), c.getId()));
-		v.setLayerPortraitPathAlt(GameConstants.cardFacePortraitLayerPathAltNfc(c.getAttribute(), c.getName(), c.getImageFile(), c.getId()));
+		String portraitImageFile = GameConstants.effectiveCardImageFile(c.getId(), c.getImageFile());
+		v.setImagePath(GameConstants.cardPortraitPath(c.getId(), portraitImageFile));
+		v.setLayerPortraitPath(GameConstants.cardFacePortraitLayerPath(c.getAttribute(), c.getName(), portraitImageFile, c.getId()));
+		v.setLayerPortraitPathAlt(GameConstants.cardFacePortraitLayerPathAltNfc(c.getAttribute(), c.getName(), portraitImageFile, c.getId()));
 		v.setCost(c.getCost() != null ? c.getCost() : 0);
 		v.setBasePower(c.getBasePower() != null ? c.getBasePower() : 0);
 		String canon = CanonicalLibraryCardText.lineForId(c.getId());

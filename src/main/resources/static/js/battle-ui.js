@@ -2999,12 +2999,7 @@
 		if (weaponDepotFieldActive(st) && weaponDepotMachineFighterForCost(def, handCard, st)) {
 			base = 1;
 		}
-		const sh =
-			st &&
-			(st.weeklyShonenCampGlobalDeployCostPlusOneThisTurn === true ||
-				st.weeklyShonenCampGlobalDeployCostPlusOneThisTurn === 'true')
-				? 1
-				: 0;
+		const sh = weeklyShonenCampDeployCostPlusOne(st);
 		if (handCard && (handCard.blankEffects === true || handCard.blankEffects === 'true')) {
 			return Math.max(0, base + sh);
 		}
@@ -3027,15 +3022,27 @@
 		return 2;
 	}
 
+	/** 週刊少年 CAMP のカウント表示（CpuBattleEngine.weeklyShonenCampFieldCounter と同趣旨） */
+	function weeklyShonenCampFieldCounter(st) {
+		if (!st || !st.activeField || Number(st.activeField.cardId) !== PREVIEW_CARD_IDS.WEEKLY_SHONEN_CAMP) {
+			return 0;
+		}
+		return Math.max(0, Math.floor(Number(st.weeklyShonenCampFieldCounterDisplay != null ? st.weeklyShonenCampFieldCounterDisplay : 0)));
+	}
+
+	/** 週刊少年 CAMP: カウント3のターン中のみ配置コスト+1 */
+	function weeklyShonenCampDeployCostPlusOne(st) {
+		return weeklyShonenCampFieldCounter(st) === 3 ? 1 : 0;
+	}
+
 	/** 週刊少年 CAMP（CpuBattleEngine.weeklyShonenCampComicPowerForFighter と同趣旨） */
 	function weeklyShonenCampComicPowerBonusPreview(st, def, battleCard) {
 		if (!st || !def || def.fieldCard) return 0;
-		if (!st.activeField || Number(st.activeField.cardId) !== PREVIEW_CARD_IDS.WEEKLY_SHONEN_CAMP) return 0;
 		if (!hasCardAttributeResolved(def, battleCard, 'COMIC')) return 0;
-		let p = 2;
-		if (st.weeklyShonenCampCount2ComicBonus === true || st.weeklyShonenCampCount2ComicBonus === 'true') {
-			p += 4;
-		}
+		const c = weeklyShonenCampFieldCounter(st);
+		let p = 0;
+		if (c === 6) p += 2;
+		if (c === 2) p += 4;
 		return p;
 	}
 
@@ -3518,12 +3525,7 @@
 		const printed = Number(def.cost != null ? def.cost : 0);
 		const discountRest = humanSlot ? st && st.humanRest : st && st.cpuRest;
 
-		const shonenCampCost =
-			st &&
-			(st.weeklyShonenCampGlobalDeployCostPlusOneThisTurn === true ||
-				st.weeklyShonenCampGlobalDeployCostPlusOneThisTurn === 'true')
-				? 1
-				: 0;
+		const shonenCampCost = weeklyShonenCampDeployCostPlusOne(st);
 
 		if (def.fieldCard) {
 			if (blank) {

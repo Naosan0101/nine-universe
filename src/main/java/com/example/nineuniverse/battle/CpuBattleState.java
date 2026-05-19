@@ -124,10 +124,6 @@ public class CpuBattleState implements Serializable {
 	 * ターン開始ごとに 1 ずつ減り（1 の間は減らさない）、1 の相手ターン終了時に場から使用者レストへ。
 	 */
 	private int weeklyShonenCampFieldCounterDisplay;
-	/** カウント2 マイルストーン到達後、〈常時〉相当のコミック+4（+2 と合わせて+6） */
-	private boolean weeklyShonenCampCount2ComicBonus;
-	/** カウント3 到達ターン中のみ。すべてのカードの配置コスト+1（ターン終了で解除） */
-	private boolean weeklyShonenCampGlobalDeployCostPlusOneThisTurn;
 
 	/**
 	 * 世界の再構築〈フィールド〉のカウント（4→0）。該当〈フィールド〉でないときは 0。

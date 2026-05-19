@@ -3873,8 +3873,6 @@ public class CpuBattleEngine {
 		ns.setAtlantisFieldCounterDisplay(st.getAtlantisFieldCounterDisplay());
 		ns.setAtlantisAwaitingCount0(st.isAtlantisAwaitingCount0());
 		ns.setWeeklyShonenCampFieldCounterDisplay(st.getWeeklyShonenCampFieldCounterDisplay());
-		ns.setWeeklyShonenCampCount2ComicBonus(st.isWeeklyShonenCampCount2ComicBonus());
-		ns.setWeeklyShonenCampGlobalDeployCostPlusOneThisTurn(st.isWeeklyShonenCampGlobalDeployCostPlusOneThisTurn());
 		ns.setWorldRebuildFieldCounterDisplay(st.getWorldRebuildFieldCounterDisplay());
 		ns.setPaperCityFieldCounterDisplay(st.getPaperCityFieldCounterDisplay());
 		ns.setChojuGigaPendingHumanSlotNextDeployDragon(st.isChojuGigaPendingHumanSlotNextDeployDragon());
@@ -3959,9 +3957,7 @@ public class CpuBattleEngine {
 			st.setWorldRebuildFieldCounterDisplay(0);
 			st.setPaperCityFieldCounterDisplay(0);
 			st.setWeeklyShonenCampFieldCounterDisplay(6);
-			st.setWeeklyShonenCampCount2ComicBonus(false);
-			st.setWeeklyShonenCampGlobalDeployCostPlusOneThisTurn(false);
-			st.addLog("週刊少年 CAMP: カウント6 — 種族：コミックの強さ+2（場にある間）");
+			st.addLog("週刊少年 CAMP: カウント6 — 種族：コミックの強さ+2（このターン中）");
 		} else if (newField != null && newField.getCardId() == GameConstants.WORLD_REBUILD_FIELD_CARD_ID) {
 			st.setScrapyardFieldTurnsRemaining(0);
 			st.setDeathbounceFieldTurnsRemaining(0);
@@ -5808,8 +5804,6 @@ public class CpuBattleEngine {
 		ns.setAtlantisFieldCounterDisplay(st.getAtlantisFieldCounterDisplay());
 		ns.setAtlantisAwaitingCount0(st.isAtlantisAwaitingCount0());
 		ns.setWeeklyShonenCampFieldCounterDisplay(st.getWeeklyShonenCampFieldCounterDisplay());
-		ns.setWeeklyShonenCampCount2ComicBonus(st.isWeeklyShonenCampCount2ComicBonus());
-		ns.setWeeklyShonenCampGlobalDeployCostPlusOneThisTurn(st.isWeeklyShonenCampGlobalDeployCostPlusOneThisTurn());
 		ns.setWorldRebuildFieldCounterDisplay(st.getWorldRebuildFieldCounterDisplay());
 		ns.setPaperCityFieldCounterDisplay(st.getPaperCityFieldCounterDisplay());
 		ns.setChojuGigaPendingHumanSlotNextDeployDragon(st.isChojuGigaPendingHumanSlotNextDeployDragon());
@@ -6696,8 +6690,6 @@ public class CpuBattleEngine {
 			return;
 		}
 		st.setWeeklyShonenCampFieldCounterDisplay(0);
-		st.setWeeklyShonenCampCount2ComicBonus(false);
-		st.setWeeklyShonenCampGlobalDeployCostPlusOneThisTurn(false);
 	}
 
 	/** 週刊少年 CAMP: ターン開始時に 6→5→…→1（1 の間は減らさない） */
@@ -6725,12 +6717,10 @@ public class CpuBattleEngine {
 			return;
 		}
 		if (counterAfterTick == 3) {
-			st.setWeeklyShonenCampGlobalDeployCostPlusOneThisTurn(true);
-			st.addLog("週刊少年 CAMP: カウント3 — ターンの終わりまですべてのカードのコスト+1");
+			st.addLog("週刊少年 CAMP: カウント3 — このターン中、すべてのカードのコスト+1");
 		}
 		if (counterAfterTick == 2) {
-			st.setWeeklyShonenCampCount2ComicBonus(true);
-			st.addLog("週刊少年 CAMP: カウント2 — 種族：コミックの強さ+4");
+			st.addLog("週刊少年 CAMP: カウント2 — 種族：コミックの強さ+4（このターン中）");
 		}
 	}
 
@@ -7271,7 +7261,6 @@ public class CpuBattleEngine {
 			}
 		}
 		st.setPowerSwapActive(false);
-		st.setWeeklyShonenCampGlobalDeployCostPlusOneThisTurn(false);
 	}
 
 	/**
@@ -11537,7 +11526,7 @@ public class CpuBattleEngine {
 				: 0;
 		if (deployedMain != null && deployedMain.isBlankEffects()) {
 			int c = Math.max(0, base + mechanicExtraCost + handAdj);
-			if (st != null && st.isWeeklyShonenCampGlobalDeployCostPlusOneThisTurn()) {
+			if (st != null && weeklyShonenCampGlobalDeployCostPlusOne(st)) {
 				c += 1;
 			}
 			return Math.max(0, c);
@@ -11549,7 +11538,7 @@ public class CpuBattleEngine {
 			int disc = countAttributeInRest(st, ownersRestForDiscount, defs, "CARBUNCLE");
 			core = Math.max(0, base - disc);
 		}
-		int shonen = st != null && st.isWeeklyShonenCampGlobalDeployCostPlusOneThisTurn() ? 1 : 0;
+		int shonen = st != null && weeklyShonenCampGlobalDeployCostPlusOne(st) ? 1 : 0;
 		return Math.max(0, core + mechanicExtraCost + handAdj + shonen);
 	}
 
@@ -11568,15 +11557,15 @@ public class CpuBattleEngine {
 			base = 1;
 		}
 		if (deployedMain != null && deployedMain.isBlankEffects()) {
-			int sh = st != null && st.isWeeklyShonenCampGlobalDeployCostPlusOneThisTurn() ? 1 : 0;
+			int sh = st != null && weeklyShonenCampGlobalDeployCostPlusOne(st) ? 1 : 0;
 			return Math.max(0, base + sh);
 		}
 		if (d.getId() != null && d.getId() == NEMURY_ID) {
 			int disc = countAttributeInRest(st, discountRest, defs, "CARBUNCLE");
-			int sh = st != null && st.isWeeklyShonenCampGlobalDeployCostPlusOneThisTurn() ? 1 : 0;
+			int sh = st != null && weeklyShonenCampGlobalDeployCostPlusOne(st) ? 1 : 0;
 			return Math.max(0, base - disc) + sh;
 		}
-		int shonen = st != null && st.isWeeklyShonenCampGlobalDeployCostPlusOneThisTurn() ? 1 : 0;
+		int shonen = st != null && weeklyShonenCampGlobalDeployCostPlusOne(st) ? 1 : 0;
 		return base + shonen;
 	}
 
@@ -11654,21 +11643,37 @@ public class CpuBattleEngine {
 		return 2;
 	}
 
-	/** 週刊少年 CAMP: カウント6で+2、カウント2到達後さらに+4（種族：コミックの前列ファイター） */
-	private static int weeklyShonenCampComicPowerForFighter(CpuBattleState st, CardDefinition fighterDef,
-			BattleCard mainCard, Map<Short, CardDefinition> defs) {
-		if (st == null || fighterDef == null || mainCard == null || defs == null) {
+	/** 週刊少年 CAMP: カウント表示が6のターン中+2、2のターン中+4（種族：コミックの前列ファイター） */
+	private static int weeklyShonenCampFieldCounter(CpuBattleState st) {
+		if (st == null) {
 			return 0;
 		}
 		BattleCard field = st.getActiveField();
 		if (field == null || field.getCardId() != GameConstants.WEEKLY_SHONEN_CAMP_FIELD_CARD_ID) {
 			return 0;
 		}
+		return Math.max(0, st.getWeeklyShonenCampFieldCounterDisplay());
+	}
+
+	/** 週刊少年 CAMP: カウント表示が3のターン中、すべてのカードの配置コスト+1 */
+	private static boolean weeklyShonenCampGlobalDeployCostPlusOne(CpuBattleState st) {
+		return weeklyShonenCampFieldCounter(st) == 3;
+	}
+
+	private static int weeklyShonenCampComicPowerForFighter(CpuBattleState st, CardDefinition fighterDef,
+			BattleCard mainCard, Map<Short, CardDefinition> defs) {
+		if (st == null || fighterDef == null || mainCard == null || defs == null) {
+			return 0;
+		}
 		if (!CardAttributes.hasAttribute(fighterDef, mainCard, "COMIC")) {
 			return 0;
 		}
-		int p = 2;
-		if (st.isWeeklyShonenCampCount2ComicBonus()) {
+		int counter = weeklyShonenCampFieldCounter(st);
+		int p = 0;
+		if (counter == 6) {
+			p += 2;
+		}
+		if (counter == 2) {
 			p += 4;
 		}
 		return p;

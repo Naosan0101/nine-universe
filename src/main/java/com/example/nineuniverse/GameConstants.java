@@ -153,6 +153,9 @@ public final class GameConstants {
 	/** インクキング（id=111・キングメーカー等で生成。パック・ライブラリ一覧除外） */
 	public static final short INK_KING_FIGHTER_CARD_ID = 111;
 
+	/** インクキングのカード面イラスト（{@code static/images/cards/incking.PNG}） */
+	public static final String INK_KING_PORTRAIT_FILE = "incking.PNG";
+
 	/** キングメーカー（id=90） */
 	public static final short KING_MAKER_FIGHTER_CARD_ID = 90;
 
@@ -315,16 +318,33 @@ public final class GameConstants {
 	}
 
 	/**
+	 * カード面用の {@code image_file}。DB がプレースホルダのままでも、実装済みトークンは固定ファイル名に差し替える。
+	 */
+	public static String effectiveCardImageFile(Short cardId, String imageFile) {
+		if (cardId != null && cardId.shortValue() == INK_KING_FIGHTER_CARD_ID
+				&& isMissingImageFilePlaceholder(imageFile)) {
+			return INK_KING_PORTRAIT_FILE;
+		}
+		return imageFile;
+	}
+
+	/**
 	 * キャライラスト（DB {@code image_file} または「カード名.PNG」）。{@link #encCardFile}（NFD）でリポジトリ資産と一致。
 	 */
 	public static String cardPortraitPath(String imageFile) {
-		if (imageFile == null || imageFile.isBlank()) {
+		return cardPortraitPath(null, imageFile);
+	}
+
+	/** {@link #effectiveCardImageFile} を反映したサムネ URL。 */
+	public static String cardPortraitPath(Short cardId, String imageFile) {
+		String resolved = effectiveCardImageFile(cardId, imageFile);
+		if (resolved == null || resolved.isBlank()) {
 			return "";
 		}
-		if (isMissingImageFilePlaceholder(imageFile)) {
+		if (isMissingImageFilePlaceholder(resolved)) {
 			return "";
 		}
-		return encCardFile(imageFile);
+		return encCardFile(resolved);
 	}
 
 	/**
@@ -427,6 +447,7 @@ public final class GameConstants {
 
 	private static String cardFacePortraitLayerPathInternal(
 			String attribute, String cardName, String imageFile, Short cardId, boolean nfdUrl) {
+		imageFile = effectiveCardImageFile(cardId, imageFile);
 		String img = imageFile != null ? imageFile.trim() : "";
 		boolean missingArt = isMissingImageFilePlaceholder(imageFile);
 		if (cardId != null
