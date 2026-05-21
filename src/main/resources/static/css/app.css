@@ -2938,6 +2938,32 @@ html.nu-has-desktop-app-update-gate body {
 	gap: 1rem 1.35rem;
 	align-items: start;
 }
+.page--how-to-play .how-to-play__card-sample-block .how-to-play__card-row {
+	display: block;
+}
+.page--how-to-play .how-to-play__card-sample-block .how-to-play__card-col--art,
+.page--how-to-play .how-to-play__card-col--art:has(.how-to-play__manual-card-figure) {
+	min-width: max-content;
+}
+.page--how-to-play .how-to-play__card-sample-block .how-to-play__card-art,
+.page--how-to-play .how-to-play__manual-card-figure .how-to-play__card-art {
+	width: 280px;
+	max-width: none;
+}
+.page--how-to-play .how-to-play__card-sample-block .how-to-play__card-caption,
+.page--how-to-play .how-to-play__manual-card-figure .how-to-play__card-caption {
+	max-width: 280px;
+}
+.page--how-to-play .how-to-play__manual-card-figure .card-face,
+.page--how-to-play .how-to-play__card-sample-block .card-face {
+	--cf-name-size: 5.1cqi;
+	--cf-name-width: 76%;
+}
+.page--how-to-play .how-to-play__manual-card-figure .card-face--field,
+.page--how-to-play .how-to-play__card-sample-block .card-face--field {
+	--cf-name-size: 4.55cqi;
+	--cf-name-width: 82%;
+}
 .page--how-to-play .how-to-play__card-col--art {
 	min-width: 0;
 }
@@ -2960,6 +2986,7 @@ html.nu-has-desktop-app-update-gate body {
 }
 .page--how-to-play .how-to-play__card-art .card-face {
 	width: 100%;
+	aspect-ratio: 5 / 7;
 	display: block;
 	border-radius: 12px;
 	box-shadow:

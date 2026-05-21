@@ -25,14 +25,15 @@
 		<ul class="how-to-play__list">
 			<li>ジェムでカードパックを購入し、カードを集めます。</li>
 			<li>バトルに使うデッキは8枚です。同じカードは最大2枚まで入れられます。</li>
-			<li>「デッキを作成」で編集し、CPU戦・対人戦の前に使うデッキを選びます。</li>
+			<li>「デッキを作成」で編集し、CPU戦・カジュアル対人戦の前に使うデッキを選びます。</li>
+			<li>リーグ対戦では、デッキ1・デッキ2の2つをまとめた<strong>リーグデッキ</strong>を使います（下の「リーグ対戦」参照）。</li>
 		</ul>
 
 		<div class="how-to-play__sample" th:if="${sampleCard != null}">
 			<h4 class="how-to-play__card-heading">カード</h4>
 			<div class="how-to-play__card-row">
 				<div class="how-to-play__card-col how-to-play__card-col--art">
-					<figure class="how-to-play__card-figure">
+					<figure class="how-to-play__card-figure how-to-play__manual-card-figure">
 						<div class="how-to-play__card-art">
 							<div th:replace="~{fragments/card-face :: layers(c=${sampleCard}, cp=${contextPath})}"></div>
 						</div>
@@ -124,6 +125,18 @@
 				ストーンの支払いが済むと場に残り、この操作だけではターンは終わりません。続けて、同じターンにファイターをバトルゾーンへ出せます。
 			</li>
 		</ul>
+		<div class="how-to-play__sample how-to-play__card-sample-block" th:if="${fieldSampleCard != null}">
+			<div class="how-to-play__card-row">
+				<div class="how-to-play__card-col how-to-play__card-col--art">
+					<figure class="how-to-play__card-figure how-to-play__manual-card-figure">
+						<div class="how-to-play__card-art">
+							<div th:replace="~{fragments/card-face :: layers(c=${fieldSampleCard}, cp=${contextPath})}"></div>
+						</div>
+						<figcaption class="how-to-play__card-caption muted">サンプルカード：探鉱の洞窟 ネビュラ坑道</figcaption>
+					</figure>
+				</div>
+			</div>
+		</div>
 
 		<h3 class="how-to-play__sub how-to-play__heading-gap-before">勝敗</h3>
 		<ul class="how-to-play__list">
@@ -131,19 +144,45 @@
 			<li>CPU戦では相手のレベル（強さ）を選べます。慣れたら「フレンド」で友だちを登録し、「だれかと対戦」から対人戦に挑めます。</li>
 		</ul>
 
+		<h3 class="how-to-play__sub how-to-play__heading-gap-before">リーグ対戦</h3>
+		<p class="muted" style="margin:0 0 0.75rem;">
+			リーグ対戦は、2つのデッキを持つ<strong>リーグデッキ</strong>で<strong>2本先取</strong>の連戦を行うモードです。1ゲームごとのバトルルールは「バトルの基本」と同じです。
+		</p>
+		<h4 class="how-to-play__card-heading">リーグデッキの準備</h4>
+		<ul class="how-to-play__list">
+			<li>「デッキを作成」のリーグデッキ欄でセットを作成し、<strong>デッキ1</strong>と<strong>デッキ2</strong>をそれぞれ8枚ずつ編成します。</li>
+			<li>各デッキはカジュアルと同様8枚で、同じカードは最大2枚まで入れられます。</li>
+			<li>1つのリーグセット内では、<strong>同じカードをデッキ1とデッキ2の両方に入れることはできません</strong>（片方に入れたカードは、もう片方では使えません）。</li>
+			<li>対戦開始前に、デッキ1・デッキ2がそれぞれ8枚そろっている必要があります。</li>
+		</ul>
+		<h4 class="how-to-play__card-heading">マッチのルール</h4>
+		<ul class="how-to-play__list">
+			<li>先に<strong>2ゲーム勝った方</strong>がマッチの勝者です（2本先取）。</li>
+			<li><strong>第1ゲーム</strong>では、各自がデッキ1かデッキ2のどちらを使うかを選びます（相手がどちらを選んだかは見えません）。</li>
+			<li>ゲームに<strong>勝った側</strong>は、次のゲームで<strong>もう片方のデッキ</strong>に自動で切り替わります。<strong>負けた側</strong>は同じデッキのまま続けます。</li>
+			<li>ゲームとゲームのあいだは、結果を確認してから次のゲームへ進みます。</li>
+		</ul>
+		<h4 class="how-to-play__card-heading">遊び方</h4>
+		<ul class="how-to-play__list">
+			<li><strong>CPUとバトル</strong> → リーグ対戦（CPU） … 自分のリーグデッキで練習。CPUは固定の2デッキを使います。</li>
+			<li><strong>他のプレイヤーとバトル</strong> → リーグ対戦 … フレンドに申し込み、承諾後に第1ゲームのデッキを選びます。</li>
+		</ul>
+
 		<h3 class="how-to-play__sub how-to-play__heading-gap-before">ホームからできること</h3>
 		<ul class="how-to-play__list">
 			<li>カードパックを購入 … 新しいカードを入手</li>
-			<li>CPUとバトル … 練習・立ち回りの確認</li>
-			<li>他のプレイヤーとバトル … 対戦（部屋の作成・参加）</li>
+			<li>CPUとバトル … 練習・立ち回りの確認（カジュアル／リーグ）</li>
+			<li>他のプレイヤーとバトル … カジュアル・リーグの対戦（申し込み・参加）</li>
 			<li>デッキを作成 … 所持カードから8枚を編成</li>
 			<li>ライブラリを見る … カードの種族・強さ・テキストを確認</li>
 			<li>ミッション … 条件を達成したらミッション画面で「受け取る」からジェムを獲得（デイリー・ウィークリー）</li>
 		</ul>
 	</section>
 </div>
+<script th:src="@{/js/card-face-layer.js(v=${assetVersion})}"></script>
 <script th:replace="~{fragments/tab-fullscreen :: script}"></script>
 <script th:replace="~{fragments/click-sparkle :: script}"></script>
 <th:block th:replace="~{fragments/cursor-feedback :: scripts}"></th:block>
+<th:block th:replace="~{fragments/web-desktop-migration-notice :: overlay}"></th:block>
 </body>
 </html>

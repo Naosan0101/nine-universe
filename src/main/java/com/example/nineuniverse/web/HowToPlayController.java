@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class HowToPlayController {
 
 	private static final short SAMPLE_CARD_KARYUDO_ID = 9;
+	/** 遊び方の〈フィールド〉サンプル：探鉱の洞窟 ネビュラ坑道 */
+	private static final short SAMPLE_FIELD_NEBULA_ID = 42;
 
 	private final LibraryService libraryService;
 
@@ -22,6 +24,10 @@ public class HowToPlayController {
 		var faces = libraryService.displayFacesForCardIds(List.of(SAMPLE_CARD_KARYUDO_ID));
 		if (!faces.isEmpty()) {
 			model.addAttribute("sampleCard", faces.get(0));
+		}
+		var fieldFaces = libraryService.displayFacesForCardIds(List.of(SAMPLE_FIELD_NEBULA_ID));
+		if (!fieldFaces.isEmpty()) {
+			model.addAttribute("fieldSampleCard", fieldFaces.get(0));
 		}
 		String cp = request.getContextPath();
 		model.addAttribute("contextPath", cp != null ? cp : "");
