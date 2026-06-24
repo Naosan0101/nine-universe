@@ -95,13 +95,9 @@
 		revealed++;
 		updateRevealAllEnabled();
 		if (revealed >= cards.length) {
-			var nextMs = 2000;
-			if (String(afterOpenUrl || '').indexOf('openTimePackChoice') !== -1) {
-				nextMs = 550;
-			}
 			setTimeout(function () {
 				window.location.href = afterOpenUrl;
-			}, nextMs);
+			}, 2000);
 			return;
 		}
 		setActive(Math.min(cards.length - 1, active + 1));

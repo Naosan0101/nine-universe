@@ -1,8 +1,11 @@
 package com.example.nineuniverse.web;
 
 import com.example.nineuniverse.GameConstants;
+import com.example.nineuniverse.season.SeasonSchedule;
 import com.example.nineuniverse.service.LibraryService;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -27,6 +30,8 @@ public class HowToPlayController {
 		model.addAttribute("contextPath", cp != null ? cp : "");
 		model.addAttribute("cardPlateUrl", GameConstants.CARD_LAYER_BASE);
 		model.addAttribute("cardDataUrl", GameConstants.CARD_LAYER_DATA);
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		model.addAttribute("howToPlayFieldUnlocked", SeasonSchedule.isHowToPlayFieldSectionVisible(today));
 		return "how-to-play";
 	}
 }

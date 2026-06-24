@@ -8,6 +8,9 @@ import com.example.nineuniverse.repository.DeckEntryMapper;
 import com.example.nineuniverse.repository.DeckMapper;
 import com.example.nineuniverse.repository.LeagueDeckSetMapper;
 import com.example.nineuniverse.repository.UserCollectionMapper;
+import com.example.nineuniverse.season.SeasonSchedule;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -129,6 +132,7 @@ public class DeckService {
 	 */
 	@Transactional
 	public LeagueDeckSetSummary createLeagueDeckSet(long userId, String setName) {
+		SeasonSchedule.requireLeagueDeckCreationUnlocked(LocalDate.now(ZoneId.systemDefault()));
 		String base = setName == null || setName.trim().isEmpty() ? "リーグデッキ" : setName.trim();
 		LeagueDeckSet row = new LeagueDeckSet();
 		row.setUserId(userId);

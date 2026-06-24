@@ -6,6 +6,7 @@ import com.example.nineuniverse.domain.CardDefinition;
 import com.example.nineuniverse.domain.UserDisplayNames;
 import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.battle.CpuBattleMode;
+import com.example.nineuniverse.season.SeasonSchedule;
 import com.example.nineuniverse.service.CpuBattleService;
 import com.example.nineuniverse.service.DeckService;
 import com.example.nineuniverse.service.NicknameEpithetService;
@@ -13,6 +14,7 @@ import com.example.nineuniverse.web.dto.CpuBattleCommitRequest;
 import com.example.nineuniverse.web.dto.CpuBattleChoiceRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -48,20 +50,28 @@ public class CpuBattleController {
 	}
 
 	@GetMapping
-	public String hub() {
+	public String hub(Model model) {
+		SeasonLockViewHelper.addBattleModeLocks(model);
 		return "cpu-hub";
 	}
 
 	@GetMapping("/casual")
 	public String casualMenu(Model model) {
 		long uid = CurrentUser.require().getId();
+		SeasonLockViewHelper.addBattleModeLocks(model);
 		model.addAttribute("decks", deckService.listDecks(uid));
 		return "cpu-menu";
 	}
 
 	@GetMapping("/league")
-	public String leagueMenu(Model model) {
+	public String leagueMenu(Model model, RedirectAttributes ra) {
+		LocalDate today = SeasonLockViewHelper.today();
+		if (!SeasonSchedule.isLeagueBattleUnlocked(today)) {
+			ra.addFlashAttribute("error", "リーグ対戦はまだ利用できません。（" + SeasonSchedule.leagueBattleUnlockHint(today) + "）");
+			return "redirect:/battle/cpu";
+		}
 		long uid = CurrentUser.require().getId();
+		SeasonLockViewHelper.addBattleModeLocks(model);
 		model.addAttribute("leagueSets", deckService.listLeagueDeckSetSummaries(uid));
 		return "cpu-league-menu";
 	}
@@ -73,6 +83,9 @@ public class CpuBattleController {
 		try {
 			long uid = CurrentUser.require().getId();
 			CpuBattleMode mode = parseCpuBattleMode(cpuMode);
+			if (mode == CpuBattleMode.ADVANCED) {
+				SeasonSchedule.requireCpuAdvancedUnlocked(SeasonLockViewHelper.today());
+			}
 			cpuBattleService.start(uid, deckId, level, mode, session);
 			return "redirect:/battle/cpu/play";
 		} catch (Exception e) {
@@ -86,8 +99,13 @@ public class CpuBattleController {
 			@RequestParam int level, @RequestParam(defaultValue = "ORIGIN") String cpuMode,
 			HttpSession session, RedirectAttributes ra) {
 		try {
+			LocalDate today = SeasonLockViewHelper.today();
+			SeasonSchedule.requireLeagueBattleUnlocked(today);
 			long uid = CurrentUser.require().getId();
 			CpuBattleMode mode = parseCpuBattleMode(cpuMode);
+			if (mode == CpuBattleMode.ADVANCED) {
+				SeasonSchedule.requireCpuAdvancedUnlocked(today);
+			}
 			cpuBattleService.startLeagueBattle(uid, leagueSetId, humanDeckSlot, level, mode, session);
 			return "redirect:/battle/cpu/play";
 		} catch (Exception e) {

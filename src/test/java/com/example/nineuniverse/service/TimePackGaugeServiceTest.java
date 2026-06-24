@@ -74,6 +74,20 @@ class TimePackGaugeServiceTest {
 	}
 
 	@Test
+	void afterMaxTwoPackSequence_gaugeEndsAtZero() {
+		long dur = GameConstants.TIME_PACK_CYCLE_DURATION_MS;
+		Instant now = Instant.EPOCH.plusMillis(dur);
+		// MAX から1パック目: carry=0 で cycleStart が now にリセットされ、預り1パック
+		var afterFirst = TimePackGaugeService.computeSnapshot(now, now);
+		assertEquals(0, afterFirst.availablePacks());
+		assertEquals(0.0, afterFirst.fillRatio(), 1e-12);
+		// 2パック目は預り消費のみ（cycleStart 不変）→ ゲージ0%・開封可能0
+		var afterSecond = TimePackGaugeService.computeSnapshot(now, now);
+		assertEquals(0, afterSecond.availablePacks());
+		assertEquals(0.0, afterSecond.fillRatio(), 1e-12);
+	}
+
+	@Test
 	void afterFullDoubleClaim_carryAtOrAboveHalfIsDiscardedToAvoidTriplePack() {
 		long dur = GameConstants.TIME_PACK_CYCLE_DURATION_MS;
 		long half = dur / 2;

@@ -188,8 +188,12 @@ public class RecycleController {
 	}
 
 	private List<RecycleStandardPackOption> buildRecycleStandardPackOptions() {
+		java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.systemDefault());
 		List<RecycleStandardPackOption> list = new ArrayList<>();
 		for (PackType t : packService.recycleStandardBundlePackTypes()) {
+			if (!com.example.nineuniverse.season.SeasonSchedule.isPackUnlocked(t, today)) {
+				continue;
+			}
 			RecycleStandardPackOption o = new RecycleStandardPackOption();
 			o.setPackTypeParam(t.name());
 			o.setDisplayName(switch (t) {

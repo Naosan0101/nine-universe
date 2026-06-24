@@ -12,6 +12,10 @@ import com.example.nineuniverse.web.dto.PackOpeningSessionSlot;
 import com.example.nineuniverse.web.dto.PackOpeningSlotView;
 import com.example.nineuniverse.web.dto.PackPreviewLine;
 import com.example.nineuniverse.web.dto.PackRarityRateRow;
+import com.example.nineuniverse.web.dto.PackShopSlotView;
+import com.example.nineuniverse.season.SeasonSchedule;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.io.IOException;
 import java.text.Normalizer;
 import java.util.ArrayList;
@@ -46,6 +50,12 @@ public class PackController {
 	 * 右上ナビを「ホームに戻る」のみにする。
 	 */
 	public static final String SESSION_PACK_RESULT_FROM_BONUS_PACK = "pack_result_from_bonus_pack";
+
+	/**
+	 * 新規登録プレゼントのスタンダードパック1開封から結果画面へ来た場合 true（表示後に {@link #result} でクリア）。
+	 * 「もう一度引く」を出さない。
+	 */
+	public static final String SESSION_PACK_RESULT_FROM_STARTER_GIFT = "pack_result_from_starter_gift";
 
 	/** 時間ゲージボーナス：開封順（カード／二つ名が混在しうる）。{@link com.example.nineuniverse.web.dto.PackOpeningSessionSlot} のリスト */
 	public static final String SESSION_PACK_OPENING_SLOTS = "pack_opening_slots";
@@ -107,6 +117,7 @@ public class PackController {
 	public String page(Model model) {
 		long uid = CurrentUser.require().getId();
 		var fresh = appUserMapper.findById(uid);
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
 		model.addAttribute("packArtCacheKey", PACK_ART_CACHE_KEY);
 		model.addAttribute("gems", fresh != null && fresh.getCoins() != null ? fresh.getCoins() : 0);
 		int starterGift = fresh != null && fresh.getStarterGiftStandard1Remaining() != null
@@ -114,25 +125,67 @@ public class PackController {
 				: 0;
 		model.addAttribute("starterGiftStandard1Remaining", starterGift);
 		model.addAttribute("packRarityRates", PACK_RARITY_RATES);
-		model.addAttribute("standardPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.STANDARD)));
-		model.addAttribute("windyHillPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.WINDY_HILL)));
-		model.addAttribute("evilThreatPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.EVIL_THREAT)));
-		model.addAttribute("standard2PackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.STANDARD_2)));
-		model.addAttribute("jewelUtopiaPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.JEWEL_UTOPIA)));
-		model.addAttribute("ironFleetPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.IRON_FLEET)));
-		model.addAttribute("standard3PackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.STANDARD_3)));
-		model.addAttribute("oceanTidePackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.OCEAN_TIDE)));
-		model.addAttribute("creationSanctumPackPreview", toPreviewLines(packService.sortedEligibleCardsForPreview(PackType.CREATION_SANCTUM)));
-		model.addAttribute("packBuyArtStandard1", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_1));
-		model.addAttribute("packBuyArtWindyHill", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_WINDY_HILL));
-		model.addAttribute("packBuyArtEvilThreat", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_EVIL_THREAT));
-		model.addAttribute("packBuyArtStandard2", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_2));
-		model.addAttribute("packBuyArtJewelUtopia", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_JEWEL_UTOPIA));
-		model.addAttribute("packBuyArtIronFleet", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_IRON_FLEET));
-		model.addAttribute("packBuyArtStandard3", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_3));
-		model.addAttribute("packBuyArtOceanTide", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_OCEAN_TIDE));
-		model.addAttribute("packBuyArtCreationSanctum", GameConstants.PACK_ART_WEB_CREATION_SANCTUM);
+		model.addAttribute("packShopSlots", buildPackShopSlots(today));
 		return "pack-buy";
+	}
+
+	private static final List<PackShopSlotView> PACK_SHOP_CATALOG = List.of(
+			slotDef(PackType.STANDARD, "STANDARD", "スタンダードパック1（WH+ET）", 3,
+					GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_1),
+					"pack-detail-standard", "スタンダードパック1（WH+ET）"),
+			slotDef(PackType.WINDY_HILL, "WINDY_HILL", "風吹く丘パック（WH）", 4,
+					GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_WINDY_HILL),
+					"pack-detail-windy-hill", "風吹く丘パック（WH）"),
+			slotDef(PackType.EVIL_THREAT, "EVIL_THREAT", "邪悪なる脅威パック（ET）", 5,
+					GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_EVIL_THREAT),
+					"pack-detail-evil-threat", "邪悪なる脅威パック（ET）"),
+			slotDef(PackType.STANDARD_2, "STANDARD_2", "スタンダードパック2（JU+IF）", 3,
+					GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_2),
+					"pack-detail-standard-2", "スタンダードパック2（JU+IF）"),
+			slotDef(PackType.JEWEL_UTOPIA, "JEWEL_UTOPIA", "宝石の秘境パック（JU）", 4,
+					GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_JEWEL_UTOPIA),
+					"pack-detail-jewel-utopia", "宝石の秘境パック（JU）"),
+			slotDef(PackType.IRON_FLEET, "IRON_FLEET", "鉄面の艦隊パック（IF）", 5,
+					GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_IRON_FLEET),
+					"pack-detail-iron-fleet", "鉄面の艦隊パック（IF）"),
+			slotDef(PackType.STANDARD_3, "STANDARD_3", "スタンダードパック3（OT/CS）", 3,
+					GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_3),
+					"pack-detail-standard-3", "スタンダードパック3（OT/CS）"),
+			slotDef(PackType.OCEAN_TIDE, "OCEAN_TIDE", "海底の潮流パック（OT）", 4,
+					GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_OCEAN_TIDE),
+					"pack-detail-ocean-tide", "海底の潮流パック（OT）"),
+			slotDef(PackType.CREATION_SANCTUM, "CREATION_SANCTUM", "創世の神域パック（CS）", 5,
+					GameConstants.PACK_ART_WEB_CREATION_SANCTUM,
+					"pack-detail-creation-sanctum", "創世の神域パック（CS）"));
+
+	private static PackShopSlotView slotDef(
+			PackType type, String param, String name, int cost, String art, String modalId, String heading) {
+		return new PackShopSlotView(type, param, true, name, "", cost, art, modalId, heading, List.of());
+	}
+
+	private List<PackShopSlotView> buildPackShopSlots(LocalDate today) {
+		List<PackShopSlotView> out = new ArrayList<>();
+		for (PackShopSlotView def : PACK_SHOP_CATALOG) {
+			boolean unlocked = SeasonSchedule.isPackUnlocked(def.packType(), today);
+			String unlockHint = unlocked ? "" : SeasonSchedule.unlockLabelJa(
+					SeasonSchedule.unlockDateFor(def.packType(), today));
+			String displayName = unlocked ? def.displayName() : "？？？？";
+			List<PackPreviewLine> preview = unlocked
+					? toPreviewLines(packService.sortedEligibleCardsForPreview(def.packType()))
+					: List.of(new PackPreviewLine("？？？？", "？？？？", "C"));
+			out.add(new PackShopSlotView(
+					def.packType(),
+					def.packTypeParam(),
+					unlocked,
+					displayName,
+					unlockHint,
+					def.cost(),
+					def.artWebPath(),
+					def.detailModalId(),
+					unlocked ? def.detailHeading() : "？？？？",
+					preview));
+		}
+		return out;
 	}
 
 	/** 画像差し替え後もブラウザキャッシュで古い絵が残らないよう、最新の lastModified をクエリに付ける。 */
@@ -208,6 +261,7 @@ public class PackController {
 		try {
 			long uid = CurrentUser.require().getId();
 			session.removeAttribute(SESSION_PACK_RESULT_FROM_BONUS_PACK);
+			session.removeAttribute(SESSION_PACK_RESULT_FROM_STARTER_GIFT);
 			session.removeAttribute(SESSION_PACK_OPENING_SLOTS);
 			session.removeAttribute(SESSION_PACK_LAST_EPITHET_RESULTS);
 			session.removeAttribute(SESSION_PACK_LAST_PULLED_NEW_FLAGS);
@@ -215,6 +269,7 @@ public class PackController {
 			session.setAttribute("pack_last_pulled_ids", pulled.stream().map(r -> r.card().getId()).toList());
 			session.setAttribute(SESSION_PACK_LAST_PULLED_NEW_FLAGS, pulled.stream().map(PackService.PackOpenRow::newToCollection).toList());
 			session.setAttribute("pack_last_type", PackType.STANDARD.name());
+			session.setAttribute(SESSION_PACK_RESULT_FROM_STARTER_GIFT, Boolean.TRUE);
 		} catch (IllegalArgumentException e) {
 			ra.addFlashAttribute("error", e.getMessage());
 			return "redirect:/pack";
@@ -228,6 +283,7 @@ public class PackController {
 		try {
 			long uid = CurrentUser.require().getId();
 			session.removeAttribute(SESSION_PACK_RESULT_FROM_BONUS_PACK);
+			session.removeAttribute(SESSION_PACK_RESULT_FROM_STARTER_GIFT);
 			session.removeAttribute(SESSION_PACK_OPENING_SLOTS);
 			session.removeAttribute(SESSION_PACK_LAST_EPITHET_RESULTS);
 			session.removeAttribute(SESSION_PACK_LAST_PULLED_NEW_FLAGS);
@@ -359,7 +415,10 @@ public class PackController {
 			bonusAutoAdvance = gauge.availablePacks() + bank > 0;
 		}
 		model.addAttribute("packResultBonusAutoAdvance", bonusAutoAdvance);
+		Object starterGiftObj = session.getAttribute(SESSION_PACK_RESULT_FROM_STARTER_GIFT);
+		model.addAttribute("packResultFromStarterGift", Boolean.TRUE.equals(starterGiftObj));
 		session.removeAttribute(SESSION_PACK_RESULT_FROM_BONUS_PACK);
+		session.removeAttribute(SESSION_PACK_RESULT_FROM_STARTER_GIFT);
 		return "pack-result";
 	}
 

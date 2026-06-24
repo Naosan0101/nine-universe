@@ -6,6 +6,7 @@ import com.example.nineuniverse.domain.Deck;
 import com.example.nineuniverse.domain.LibraryCardView;
 import com.example.nineuniverse.service.DeckService;
 import com.example.nineuniverse.service.LibraryService;
+import com.example.nineuniverse.season.SeasonSchedule;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,6 +41,7 @@ public class DeckController {
 		devTestUserLoginBaselineService.syncTestuserCollectionOnlyIfLocal(request);
 		model.addAttribute("decks", deckService.listDecks(uid));
 		model.addAttribute("leagueSets", deckService.listLeagueDeckSetSummaries(uid));
+		SeasonLockViewHelper.addBattleModeLocks(model);
 		String cp = request.getContextPath();
 		model.addAttribute("contextPath", cp != null ? cp : "");
 		addDeckEditStaticUrls(model);
@@ -69,6 +71,7 @@ public class DeckController {
 	public String createLeagueSet(@RequestParam(defaultValue = "") String name, RedirectAttributes ra) {
 		long uid = CurrentUser.require().getId();
 		try {
+			SeasonSchedule.requireLeagueDeckCreationUnlocked(SeasonLockViewHelper.today());
 			deckService.createLeagueDeckSet(uid, name);
 			ra.addFlashAttribute("msg", "リーグデッキを作成しました。デッキ1・2を編集してください。");
 		} catch (IllegalArgumentException e) {

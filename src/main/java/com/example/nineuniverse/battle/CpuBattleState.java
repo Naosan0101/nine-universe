@@ -126,7 +126,7 @@ public class CpuBattleState implements Serializable {
 	private boolean weeklyShonenCampGlobalDeployCostPlusOneThisTurn;
 
 	/**
-	 * 世界の再構築〈フィールド〉のカウント（4→0）。該当〈フィールド〉でないときは 0。
+	 * 世界の再構築〈フィールド〉のカウント（6→0）。該当〈フィールド〉でないときは 0。
 	 * ターン開始ごとに 1 減らし、0 になったターンに条件を満たせばバトル開始時の手札・デッキ・ストーンに戻す。
 	 */
 	private int worldRebuildFieldCounterDisplay;

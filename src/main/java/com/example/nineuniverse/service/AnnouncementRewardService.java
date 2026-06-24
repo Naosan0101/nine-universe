@@ -1,6 +1,7 @@
 package com.example.nineuniverse.service;
 
 import com.example.nineuniverse.GameConstants;
+import com.example.nineuniverse.season.SeasonSchedule;
 import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.repository.UserAnnouncementClaimMapper;
 import java.time.LocalDate;
@@ -1051,5 +1052,51 @@ public class AnnouncementRewardService {
 			return;
 		}
 		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_STD3_LEAGUE_UI_UPDATE_2026_05_GEMS);
+	}
+
+	/** シーズン区切り内のパック段階アンロック記念ジェム（40）を初回ホーム表示時に付与（冪等）。 */
+	@Transactional
+	public void ensureSeasonPackUnlockRewardsGranted(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		grantSeasonPackUnlockIfPending(userId, today, SeasonSchedule.tier2Announcement(today));
+		grantSeasonPackUnlockIfPending(userId, today, SeasonSchedule.tier3Announcement(today));
+	}
+
+	private void grantSeasonPackUnlockIfPending(
+			long userId, LocalDate today, com.example.nineuniverse.season.SeasonSchedule.PackUnlockAnnouncement ann) {
+		if (ann == null || today.isAfter(ann.lastDay())) {
+			return;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(userId, ann.key());
+		if (inserted == 0) {
+			return;
+		}
+		appUserMapper.addCoinsDelta(userId, ann.gems());
+	}
+
+	public boolean isWithinSeasonPackUnlockWindow(
+			LocalDate today, com.example.nineuniverse.season.SeasonSchedule.PackUnlockAnnouncement ann) {
+		if (ann == null) {
+			return false;
+		}
+		return !today.isBefore(ann.start()) && !today.isAfter(ann.lastDay());
+	}
+
+	public boolean hasSuppressedSeasonPackLoginPopup(
+			long userId, com.example.nineuniverse.season.SeasonSchedule.PackUnlockAnnouncement ann) {
+		if (ann == null) {
+			return true;
+		}
+		return userAnnouncementClaimMapper.exists(userId, SeasonSchedule.seasonPackPopupSuppressKey(ann));
+	}
+
+	/** 「もう表示しない」: シーズンパック追加ポップアップのみ抑止（本文はおしらせから閲覧可）。 */
+	@Transactional
+	public void suppressSeasonPackLoginPopup(
+			long userId, com.example.nineuniverse.season.SeasonSchedule.PackUnlockAnnouncement ann) {
+		if (ann == null) {
+			return;
+		}
+		userAnnouncementClaimMapper.insertIfAbsent(userId, SeasonSchedule.seasonPackPopupSuppressKey(ann));
 	}
 }

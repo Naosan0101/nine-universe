@@ -19,6 +19,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
 	private final LastAccessUpdateFilter lastAccessUpdateFilter;
+	private final com.example.nineuniverse.season.SeasonResetFilter seasonResetFilter;
 	private final DevTestUserLoginBaselineService devTestUserLoginBaselineService;
 	private final UserDetailsService userDetailsService;
 
@@ -55,7 +56,8 @@ public class SecurityConfig {
 				.logout(logout -> logout
 						.logoutSuccessUrl("/login?logout")
 						.permitAll())
-				.addFilterAfter(lastAccessUpdateFilter, UsernamePasswordAuthenticationFilter.class);
+				.addFilterAfter(lastAccessUpdateFilter, UsernamePasswordAuthenticationFilter.class)
+				.addFilterAfter(seasonResetFilter, LastAccessUpdateFilter.class);
 		return http.build();
 	}
 }

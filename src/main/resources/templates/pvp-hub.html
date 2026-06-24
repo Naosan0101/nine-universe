@@ -13,18 +13,26 @@
 </header>
 
 <div class="container stack" style="max-width:36rem">
+	<p class="error" th:if="${error}" th:text="${error}"></p>
 	<p class="muted">遊び方に応じてモードを選んでください。</p>
 	<section class="panel stack">
 		<h2 style="margin-top:0;">カジュアル対戦</h2>
 		<p class="muted" style="margin:0 0 0.75rem;">1デッキで1ゲーム。これまで通りのフレンド対戦です。</p>
 		<a class="btn btn--primary" th:href="@{/battle/pvp/casual}">カジュアル対戦へ</a>
 	</section>
-	<section class="panel stack">
+	<section class="panel stack" th:if="${seasonLeagueUnlocked}">
 		<h2 style="margin-top:0;">リーグ対戦</h2>
 		<p class="muted" style="margin:0 0 0.75rem;">リーグデッキ（2デッキセット）で2本先取。各ゲーム前に使用デッキを選び、勝者は必ずもう片方のデッキに切り替えます。</p>
 		<a class="btn btn--primary" th:href="@{/battle/pvp/league}">リーグ対戦へ</a>
 	</section>
+	<section class="panel stack season-locked-panel js-season-locked" th:unless="${seasonLeagueUnlocked}"
+	         th:attr="data-season-lock-name='リーグ対戦',data-season-lock-hint=${seasonLeagueUnlockHint}">
+		<h2 style="margin-top:0;">リーグ対戦</h2>
+		<p class="muted" style="margin:0 0 0.75rem;">リーグデッキ（2デッキセット）で2本先取。各ゲーム前に使用デッキを選び、勝者は必ずもう片方のデッキに切り替えます。</p>
+		<span class="btn btn--primary season-locked-panel__fake-btn" aria-disabled="true">？？？？</span>
+	</section>
 </div>
+<th:block th:replace="~{fragments/season-lock-tooltip :: tooltip}"></th:block>
 <th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>

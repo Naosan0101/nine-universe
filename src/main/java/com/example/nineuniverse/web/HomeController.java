@@ -1,6 +1,8 @@
 package com.example.nineuniverse.web;
 
 import com.example.nineuniverse.GameConstants;
+import com.example.nineuniverse.season.SeasonSchedule;
+import com.example.nineuniverse.season.SeasonSchedule.PackUnlockAnnouncement;
 import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.service.AnnouncementRewardService;
 import com.example.nineuniverse.service.AnnouncementRewardService.BulkGemClaimResult;
@@ -167,8 +169,30 @@ public class HomeController {
 
 		announcementRewardService.ensure80UsersMilestoneRewardGranted(uid);
 		announcementRewardService.ensureStd3LeagueUiUpdate202605RewardGranted(uid);
+		announcementRewardService.ensureSeasonPackUnlockRewardsGranted(uid);
 
 		Set<String> claimedKeys = announcementRewardService.findClaimedKeys(uid);
+
+		PackUnlockAnnouncement seasonTier2Ann = SeasonSchedule.tier2Announcement(today);
+		PackUnlockAnnouncement seasonTier3Ann = SeasonSchedule.tier3Announcement(today);
+		boolean listSeasonPackTier2 = seasonTier2Ann != null && GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				seasonTier2Ann.start());
+		boolean listSeasonPackTier3 = seasonTier3Ann != null && GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				seasonTier3Ann.start());
+		model.addAttribute("announcementListSeasonPackTier2", listSeasonPackTier2);
+		model.addAttribute("announcementListSeasonPackTier3", listSeasonPackTier3);
+		wireSeasonPackUnlockAnnouncement(model, claimedKeys, today, seasonTier2Ann, "seasonPackTier2");
+		wireSeasonPackUnlockAnnouncement(model, claimedKeys, today, seasonTier3Ann, "seasonPackTier3");
+		boolean seasonPackTier2PopupSuppress = seasonTier2Ann != null
+				&& announcementRewardService.hasSuppressedSeasonPackLoginPopup(uid, seasonTier2Ann);
+		boolean seasonPackTier3PopupSuppress = seasonTier3Ann != null
+				&& announcementRewardService.hasSuppressedSeasonPackLoginPopup(uid, seasonTier3Ann);
+		model.addAttribute("seasonPackTier2LoginPopupShow",
+				listSeasonPackTier2 && seasonTier2Ann != null && !seasonPackTier2PopupSuppress);
+		model.addAttribute("seasonPackTier3LoginPopupShow",
+				listSeasonPackTier3 && seasonTier3Ann != null && !seasonPackTier3PopupSuppress);
 
 		boolean perfClaimed = claimedKeys.contains(GameConstants.ANNOUNCEMENT_PERF_LIGHT_KEY);
 		boolean perfInWindow = announcementRewardService.isWithinPerfLightWindow(today);
@@ -641,6 +665,8 @@ public class HomeController {
 		model.addAttribute("timePackChoiceArtStandard1", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_1));
 		model.addAttribute("timePackChoiceArtStandard2", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_2));
 		model.addAttribute("timePackChoiceArtStandard3", GameConstants.packArtImageWebPath(GameConstants.PACK_ART_FILE_STANDARD_3));
+		model.addAttribute("timePackBonusStandard2Unlocked", SeasonSchedule.isPackUnlocked(PackType.STANDARD_2, today));
+		model.addAttribute("timePackBonusStandard3Unlocked", SeasonSchedule.isPackUnlocked(PackType.STANDARD_3, today));
 		model.addAttribute("packRarityRates", PackController.getPackRarityRatesForView());
 		model.addAttribute("standardPackPreview", PackController.buildPackPreviewLines(packService, PackType.STANDARD));
 		model.addAttribute("standard2PackPreview", PackController.buildPackPreviewLines(packService, PackType.STANDARD_2));
@@ -1281,6 +1307,24 @@ public class HomeController {
 		return "redirect:/home";
 	}
 
+	@PostMapping("/home/announcements/season-pack-tier2/suppress-popup")
+	public String suppressSeasonPackTier2LoginPopup() {
+		long uid = CurrentUser.require().getId();
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		PackUnlockAnnouncement ann = SeasonSchedule.tier2Announcement(today);
+		announcementRewardService.suppressSeasonPackLoginPopup(uid, ann);
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/season-pack-tier3/suppress-popup")
+	public String suppressSeasonPackTier3LoginPopup() {
+		long uid = CurrentUser.require().getId();
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		PackUnlockAnnouncement ann = SeasonSchedule.tier3Announcement(today);
+		announcementRewardService.suppressSeasonPackLoginPopup(uid, ann);
+		return "redirect:/home";
+	}
+
 	@PostMapping("/home/announcements/claim-all-gems")
 	public String claimAllAnnouncementGems(RedirectAttributes ra) {
 		long uid = CurrentUser.require().getId();
@@ -1341,12 +1385,9 @@ public class HomeController {
 			session.setAttribute(PackController.SESSION_PACK_LAST_PULLED_NEW_FLAGS, packNewFlags);
 			session.setAttribute(PackController.SESSION_PACK_LAST_EPITHET_RESULTS, outcome.epithetResults());
 			session.setAttribute("pack_last_type", choice.name());
+			session.removeAttribute(PackController.SESSION_PACK_RESULT_FROM_STARTER_GIFT);
 			session.setAttribute(PackController.SESSION_PACK_RESULT_FROM_BONUS_PACK, Boolean.TRUE);
-			if (canOpenAnother) {
-				session.setAttribute(PackController.SESSION_PACK_AFTER_OPEN_REDIRECT, "/home?openTimePackChoice=1");
-			} else {
-				session.removeAttribute(PackController.SESSION_PACK_AFTER_OPEN_REDIRECT);
-			}
+			session.removeAttribute(PackController.SESSION_PACK_AFTER_OPEN_REDIRECT);
 			return "redirect:/pack/opening";
 		} catch (IllegalStateException | IllegalArgumentException e) {
 			ra.addFlashAttribute("flashTimePackError", e.getMessage());
@@ -1366,5 +1407,26 @@ public class HomeController {
 			case "BONUS_EPITHET_GACHA" -> PackType.BONUS_EPITHET_GACHA;
 			default -> throw new IllegalArgumentException("開封できるのはスタンダードパック1・2・3、または二つ名ガチャです。");
 		};
+	}
+
+	private void wireSeasonPackUnlockAnnouncement(
+			Model model, Set<String> claimedKeys, LocalDate today, PackUnlockAnnouncement ann, String prefix) {
+		if (ann == null) {
+			model.addAttribute(prefix + "AnnouncementBody", "");
+			model.addAttribute(prefix + "AnnouncementClaimed", false);
+			model.addAttribute(prefix + "AnnouncementInWindow", false);
+			model.addAttribute(prefix + "AnnouncementExpiredUnclaimed", false);
+			model.addAttribute(prefix + "AnnouncementFutureUnclaimed", false);
+			model.addAttribute(prefix + "AnnouncementGemAmount", SeasonSchedule.SEASON_PACK_UNLOCK_GEMS);
+			return;
+		}
+		boolean claimed = claimedKeys.contains(ann.key());
+		boolean inWindow = announcementRewardService.isWithinSeasonPackUnlockWindow(today, ann);
+		model.addAttribute(prefix + "AnnouncementBody", ann.bodyText());
+		model.addAttribute(prefix + "AnnouncementClaimed", claimed);
+		model.addAttribute(prefix + "AnnouncementInWindow", inWindow);
+		model.addAttribute(prefix + "AnnouncementExpiredUnclaimed", !claimed && today.isAfter(ann.lastDay()));
+		model.addAttribute(prefix + "AnnouncementFutureUnclaimed", !claimed && today.isBefore(ann.start()));
+		model.addAttribute(prefix + "AnnouncementGemAmount", ann.gems());
 	}
 }

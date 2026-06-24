@@ -75,7 +75,7 @@
 			<h2 id="decks-league-heading" class="decks-list-frame__title">リーグデッキ</h2>
 			<p class="muted decks-list-frame__lead">名前をつけたセットでデッキ1・デッキ2の計16枚を管理します。同じカードは両方のデッキに入れられません。リーグ対戦で使います。</p>
 			<div class="decks-list-frame__body">
-			<div class="decks-list-league-create stack">
+			<div class="decks-list-league-create stack" th:if="${seasonLeagueUnlocked}">
 				<form th:action="@{/decks/league/set/new}" method="post" class="stack">
 					<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 					<label>リーグデッキ名
@@ -83,6 +83,13 @@
 					</label>
 					<button type="submit" class="btn btn--primary">リーグデッキを作成</button>
 				</form>
+			</div>
+			<div class="decks-list-league-create stack season-locked-panel js-season-locked" th:unless="${seasonLeagueUnlocked}"
+			     th:attr="data-season-lock-name='リーグデッキの作成',data-season-lock-hint=${seasonLeagueUnlockHint}">
+				<label>リーグデッキ名
+					<input type="text" maxlength="64" placeholder="例：大会用" disabled aria-disabled="true"/>
+				</label>
+				<span class="btn btn--primary season-locked-panel__fake-btn" aria-disabled="true">？？？？</span>
 			</div>
 			<ul class="deck-names" th:if="${leagueSets != null && !leagueSets.isEmpty()}">
 				<li th:each="s : ${leagueSets}" class="panel deck-row deck-row--card">
@@ -108,7 +115,10 @@
 					</p>
 				</li>
 			</ul>
-			<p th:if="${leagueSets == null || leagueSets.isEmpty()}" class="muted decks-list-frame__empty">リーグデッキがありません。上のフォームから作成できます。</p>
+			<p th:if="${leagueSets == null || leagueSets.isEmpty()}" class="muted decks-list-frame__empty">
+				<span th:if="${seasonLeagueUnlocked}">リーグデッキがありません。上のフォームから作成できます。</span>
+				<span th:unless="${seasonLeagueUnlocked}">リーグデッキがありません。</span>
+			</p>
 			</div>
 		</section>
 	</div>
@@ -116,6 +126,7 @@
 <script th:src="@{/js/card-spark.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/card-face-layer.js(v=${assetVersion})}"></script>
 <script th:src="@{/js/decks-list.js(v=${assetVersion})}"></script>
+<th:block th:replace="~{fragments/season-lock-tooltip :: tooltip}"></th:block>
 <th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>

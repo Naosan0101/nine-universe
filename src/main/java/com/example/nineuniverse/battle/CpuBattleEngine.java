@@ -3,7 +3,10 @@ package com.example.nineuniverse.battle;
 import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.card.CardAttributes;
 import com.example.nineuniverse.domain.CardDefinition;
+import com.example.nineuniverse.season.SeasonSchedule;
 import com.example.nineuniverse.web.dto.BattlePowerModifierDto;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -27,6 +30,8 @@ public class CpuBattleEngine {
 	private static final short KUSURI_ID = 8;
 	private static final short ARCHER_ID = 12;
 	private static final short DRAGON_RIDER_ID = 10;
+	/** ドラゴンライダー〈常時〉: レストにドラゴンがいれば強さ加算 */
+	private static final int DRAGON_RIDER_REST_DRAGON_POWER_BONUS = 3;
 	/** アクアガーディアン〈常時〉: 自分レストの「種族：マーフォーク」1枚につき強さ+1 */
 	private static final short AQUA_GUARDIAN_ID = 75;
 	/** ポセイドン〈配置〉: 自分ターン終了までの強さ加算 */
@@ -169,6 +174,31 @@ public class CpuBattleEngine {
 	private static final String KENTOSHI_SOLO_DEPLOY_CODE = "KENTOSHI_SOLO";
 	/** 剣闘士: 相手側の手札1枚選択（{@link #KENTOSHI_PAIR_FIRST_DEPLOY_CODE} の直後のみ） */
 	private static final String KENTOSHI_OPPONENT_FOLLOWUP_DEPLOY_CODE = "KENTOSHI_OPP";
+
+	/**
+	 * 〈配置〉解決の段階。相手より弱い配置では、敗北確認の前に「強さ比較に効く効果」だけ先に適用する。
+	 */
+	private enum DeployResolvePass {
+		FULL,
+		POWER_COMPARISON_ONLY,
+		REMAINDER_ONLY
+	}
+
+	/**
+	 * いまの対戦列の強さ比較に直接効く〈配置〉コード（{@link #effectiveBattlePower} と同視点）。
+	 * それ以外（ストーン獲得・手札追加・〈フィールド〉カウント進行など）は、敗北確認で取り消す可能性がある間は後回し。
+	 */
+	private static final Set<String> DEPLOY_CODES_AFFECTING_BATTLE_POWER_COMPARISON = Set.of(
+			"KAGAKUSHA", "KUSURI",
+			"OKAMI_OTOKO",
+			"POSEIDON", "INK_KING", MINION_SOLDIER_DEPLOY_CODE,
+			"HALF_ELF", "FAFNIR", "BAHAMUT",
+			"SIREN", "KAENRYU", "DAKU_DORAGON",
+			"MIKAEL_MINION_A", "MIKAEL_PUNCH",
+			"BOT_BIKE", "SPEC777", "STONIA",
+			// 任意ストーン確認後に戦闘加算へ反映され、強さ判定前に resolve される
+			"KORYU"
+	);
 
 	/**
 	 * レベルアップでレストへ捨てられるカード枚数の上限（配置するファイターを手札に残すため、手札枚数−1）。
@@ -518,6 +548,14 @@ public class CpuBattleEngine {
 		st.setWorldRebuildOpenCpuStones(st.isHumanGoesFirst() ? 1 : 0);
 	}
 
+	private static boolean cpuCardEligibleForDeck(CardDefinition d) {
+		if (d == null) {
+			return false;
+		}
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		return SeasonSchedule.isPackInitialVisible(d.getPackInitial(), today);
+	}
+
 	private static int clampInt(int n, int min, int max) {
 		return Math.max(min, Math.min(max, n));
 	}
@@ -719,7 +757,7 @@ public class CpuBattleEngine {
 				continue;
 			}
 			CardDefinition d = defs.get(id);
-			if (d == null) {
+			if (d == null || !cpuCardEligibleForDeck(d)) {
 				continue;
 			}
 			int c = cpuDeckBaseCost(d);
@@ -805,7 +843,7 @@ public class CpuBattleEngine {
 					continue;
 				}
 				CardDefinition d = defs != null ? defs.get(id) : null;
-				if (d == null) {
+				if (d == null || !cpuCardEligibleForDeck(d)) {
 					w[id] = 0.0;
 					continue;
 				}
@@ -872,7 +910,7 @@ public class CpuBattleEngine {
 						continue;
 					}
 					CardDefinition d = defs != null ? defs.get(id) : null;
-					if (d == null || cpuDeckBaseCost(d) != 0) {
+					if (d == null || !cpuCardEligibleForDeck(d) || cpuDeckBaseCost(d) != 0) {
 						continue;
 					}
 					zvalid.add(id);
@@ -1317,6 +1355,9 @@ public class CpuBattleEngine {
 				continue;
 			}
 			if (GameConstants.excludedFromPackOpenAndLibraryListing(d.getId())) {
+				continue;
+			}
+			if (!cpuCardEligibleForDeck(d)) {
 				continue;
 			}
 			String kind = d.getCardKind();
@@ -1983,24 +2024,13 @@ public class CpuBattleEngine {
 					}
 				}
 			}
-			// 相手の竜王、ミスティンクル／ワイバーン、または相手側フレイムガルド〈フィールド〉で〈配置〉が無効（クリスタクル任意ストーンは例外）
+			// 相手の竜王、ミスティンクル／ワイバーンで〈配置〉が無効（クリスタクル任意ストーンは例外）
 			boolean deploySuppressed = deployAbilitySuppressedByOpponentLine(st, deployerActsAsHuman, fighterDefForFieldTriggers);
 			// pendingEffect の cardId と defs の不整合でも、ゾーン上の実カードで〈配置〉を解決する
 			CardDefinition abilityDefToResolve = fighterDefForFieldTriggers != null ? fighterDefForFieldTriggers : d;
 			if (!deploySuppressed && abilityDefToResolve != null) {
-				if (pendingOnHumanSlot) {
-					applyDeployHuman(st, abilityDefToResolve, defs, deployedMain);
-				} else if (pendingOnCpuSlot && st.isPvp()) {
-					applyDeployHumanAsCpuSide(st, abilityDefToResolve, defs, deployedMain);
-				} else if (pendingOnCpuSlot) {
-					applyDeployCpu(st, abilityDefToResolve, defs, rnd != null ? rnd : new Random(), deployedMain);
-				} else if (pe.isOwnerHuman()) {
-					applyDeployHuman(st, abilityDefToResolve, defs, deployedMain);
-				} else if (st.isPvp()) {
-					applyDeployHumanAsCpuSide(st, abilityDefToResolve, defs, deployedMain);
-				} else {
-					applyDeployCpu(st, abilityDefToResolve, defs, rnd != null ? rnd : new Random(), deployedMain);
-				}
+				applyPendingDeployAbility(st, deployerActsAsHuman, pendingOnHumanSlot, pendingOnCpuSlot, pe,
+						abilityDefToResolve, defs, deployedMain, rnd);
 			}
 			if (fighterDefForFieldTriggers != null && !isFieldCard(fighterDefForFieldTriggers)) {
 				if (pendingOnHumanSlot) {
@@ -2116,50 +2146,7 @@ public class CpuBattleEngine {
 				} else {
 					CpuBattleState snap = st.getConfirmAcceptLossSnapshot();
 					if (snap != null) {
-						// スナップショットへ復帰
-						st.setCpuLevel(snap.getCpuLevel());
-						st.setHumanGoesFirst(snap.isHumanGoesFirst());
-						st.setHumansTurn(snap.isHumansTurn());
-						st.setHumanTurnStarts(snap.getHumanTurnStarts());
-						st.setCpuTurnStarts(snap.getCpuTurnStarts());
-						st.setPhase(BattlePhase.HUMAN_INPUT);
-						st.setPendingEffect(null);
-						st.setPendingChoice(null);
-						st.setHumanNextDeployBonus(snap.getHumanNextDeployBonus());
-						st.setCpuNextDeployBonus(snap.getCpuNextDeployBonus());
-						st.setHumanNextElfOnlyBonus(snap.getHumanNextElfOnlyBonus());
-						st.setCpuNextElfOnlyBonus(snap.getCpuNextElfOnlyBonus());
-						st.setHumanNextDeployCostBonusTimes(snap.getHumanNextDeployCostBonusTimes());
-						st.setCpuNextDeployCostBonusTimes(snap.getCpuNextDeployCostBonusTimes());
-						st.setHumanNextMechanicStacks(snap.getHumanNextMechanicStacks());
-						st.setCpuNextMechanicStacks(snap.getCpuNextMechanicStacks());
-						st.setPowerSwapActive(snap.isPowerSwapActive());
-						st.setHumanKoryuBonus(snap.getHumanKoryuBonus());
-						st.setCpuKoryuBonus(snap.getCpuKoryuBonus());
-						st.setHumanNextCrystakulDeployBonus(snap.getHumanNextCrystakulDeployBonus());
-						st.setCpuNextCrystakulDeployBonus(snap.getCpuNextCrystakulDeployBonus());
-						st.setHumanCrystakulCombatBonus(snap.getHumanCrystakulCombatBonus());
-						st.setCpuCrystakulCombatBonus(snap.getCpuCrystakulCombatBonus());
-						st.setSpec666NextHumanUndead(snap.isSpec666NextHumanUndead());
-						st.setSpec666NextCpuUndead(snap.isSpec666NextCpuUndead());
-
-						st.setHumanPendingZadkielNextDeployOppTurnPower3(snap.isHumanPendingZadkielNextDeployOppTurnPower3());
-						st.setCpuPendingZadkielNextDeployOppTurnPower3(snap.isCpuPendingZadkielNextDeployOppTurnPower3());
-
-						st.setHumanDeck(copyCards(snap.getHumanDeck()));
-						st.setHumanHand(copyCards(snap.getHumanHand()));
-						st.setHumanRest(copyCards(snap.getHumanRest()));
-						st.setHumanBattle(copyZone(snap.getHumanBattle()));
-						st.setHumanStones(snap.getHumanStones());
-
-						st.setCpuDeck(copyCards(snap.getCpuDeck()));
-						st.setCpuHand(copyCards(snap.getCpuHand()));
-						st.setCpuRest(copyCards(snap.getCpuRest()));
-						st.setCpuBattle(copyZone(snap.getCpuBattle()));
-						st.setCpuStones(snap.getCpuStones());
-						st.setHumanSlotDeckId(snap.getHumanSlotDeckId());
-						st.setCpuSlotDeckId(snap.getCpuSlotDeckId());
-
+						restoreFromConfirmAcceptLossSnapshot(st, snap, BattlePhase.HUMAN_INPUT);
 						st.setLastMessage("操作をキャンセルしました");
 					} else {
 						st.setPhase(BattlePhase.HUMAN_INPUT);
@@ -2742,50 +2729,7 @@ public class CpuBattleEngine {
 				} else {
 					CpuBattleState snap = st.getConfirmAcceptLossSnapshot();
 					if (snap != null) {
-						st.setCpuLevel(snap.getCpuLevel());
-						st.setPvp(snap.isPvp());
-						st.setHumanGoesFirst(snap.isHumanGoesFirst());
-						st.setHumansTurn(snap.isHumansTurn());
-						st.setHumanTurnStarts(snap.getHumanTurnStarts());
-						st.setCpuTurnStarts(snap.getCpuTurnStarts());
-						st.setPhase(BattlePhase.CPU_THINKING);
-						st.setPendingEffect(null);
-						st.setPendingChoice(null);
-						st.setHumanNextDeployBonus(snap.getHumanNextDeployBonus());
-						st.setCpuNextDeployBonus(snap.getCpuNextDeployBonus());
-						st.setHumanNextElfOnlyBonus(snap.getHumanNextElfOnlyBonus());
-						st.setCpuNextElfOnlyBonus(snap.getCpuNextElfOnlyBonus());
-						st.setHumanNextDeployCostBonusTimes(snap.getHumanNextDeployCostBonusTimes());
-						st.setCpuNextDeployCostBonusTimes(snap.getCpuNextDeployCostBonusTimes());
-						st.setHumanNextMechanicStacks(snap.getHumanNextMechanicStacks());
-						st.setCpuNextMechanicStacks(snap.getCpuNextMechanicStacks());
-						st.setPowerSwapActive(snap.isPowerSwapActive());
-						st.setHumanKoryuBonus(snap.getHumanKoryuBonus());
-						st.setCpuKoryuBonus(snap.getCpuKoryuBonus());
-						st.setHumanNextCrystakulDeployBonus(snap.getHumanNextCrystakulDeployBonus());
-						st.setCpuNextCrystakulDeployBonus(snap.getCpuNextCrystakulDeployBonus());
-						st.setHumanCrystakulCombatBonus(snap.getHumanCrystakulCombatBonus());
-						st.setCpuCrystakulCombatBonus(snap.getCpuCrystakulCombatBonus());
-						st.setSpec666NextHumanUndead(snap.isSpec666NextHumanUndead());
-						st.setSpec666NextCpuUndead(snap.isSpec666NextCpuUndead());
-
-						st.setHumanPendingZadkielNextDeployOppTurnPower3(snap.isHumanPendingZadkielNextDeployOppTurnPower3());
-						st.setCpuPendingZadkielNextDeployOppTurnPower3(snap.isCpuPendingZadkielNextDeployOppTurnPower3());
-
-						st.setHumanDeck(copyCards(snap.getHumanDeck()));
-						st.setHumanHand(copyCards(snap.getHumanHand()));
-						st.setHumanRest(copyCards(snap.getHumanRest()));
-						st.setHumanBattle(copyZone(snap.getHumanBattle()));
-						st.setHumanStones(snap.getHumanStones());
-
-						st.setCpuDeck(copyCards(snap.getCpuDeck()));
-						st.setCpuHand(copyCards(snap.getCpuHand()));
-						st.setCpuRest(copyCards(snap.getCpuRest()));
-						st.setCpuBattle(copyZone(snap.getCpuBattle()));
-						st.setCpuStones(snap.getCpuStones());
-						st.setHumanSlotDeckId(snap.getHumanSlotDeckId());
-						st.setCpuSlotDeckId(snap.getCpuSlotDeckId());
-
+						restoreFromConfirmAcceptLossSnapshot(st, snap, BattlePhase.CPU_THINKING);
 						st.setLastMessage("操作をキャンセルしました");
 					} else {
 						st.setPhase(BattlePhase.CPU_THINKING);
@@ -3743,6 +3687,151 @@ public class CpuBattleEngine {
 		};
 	}
 
+	private boolean isDeployerBelowOpponentBattlePower(CpuBattleState st, boolean deployerActsAsHuman,
+			Map<Short, CardDefinition> defs) {
+		if (st == null || defs == null) {
+			return false;
+		}
+		ZoneFighter deployer = deployerActsAsHuman ? st.getHumanBattle() : st.getCpuBattle();
+		ZoneFighter opponent = deployerActsAsHuman ? st.getCpuBattle() : st.getHumanBattle();
+		if (deployer == null || opponent == null) {
+			return false;
+		}
+		int me = effectiveBattlePower(deployer, deployerActsAsHuman, st, defs);
+		int opp = effectiveBattlePower(opponent, !deployerActsAsHuman, st, defs);
+		return me < opp;
+	}
+
+	private static boolean deployAbilityCodeAffectsBattlePowerComparison(String code) {
+		return code != null && DEPLOY_CODES_AFFECTING_BATTLE_POWER_COMPARISON.contains(code);
+	}
+
+	private static boolean shouldSkipDeployAbilityForResolvePass(String code, DeployResolvePass pass) {
+		if (pass == DeployResolvePass.FULL || code == null) {
+			return false;
+		}
+		boolean power = deployAbilityCodeAffectsBattlePowerComparison(code);
+		return pass == DeployResolvePass.POWER_COMPARISON_ONLY ? !power : power;
+	}
+
+	private void applyPendingDeployAbility(CpuBattleState st, boolean deployerActsAsHuman, boolean pendingOnHumanSlot,
+			boolean pendingOnCpuSlot, PendingEffect pe, CardDefinition abilityDef, Map<Short, CardDefinition> defs,
+			BattleCard deployedMain, Random rnd) {
+		boolean belowOpp = isDeployerBelowOpponentBattlePower(st, deployerActsAsHuman, defs);
+		if (!belowOpp) {
+			invokeDeployAbilityForSlot(st, deployerActsAsHuman, pendingOnHumanSlot, pendingOnCpuSlot, pe, abilityDef,
+					defs, deployedMain, rnd, DeployResolvePass.FULL);
+			return;
+		}
+		invokeDeployAbilityForSlot(st, deployerActsAsHuman, pendingOnHumanSlot, pendingOnCpuSlot, pe, abilityDef, defs,
+				deployedMain, rnd, DeployResolvePass.POWER_COMPARISON_ONLY);
+		if (!isDeployerBelowOpponentBattlePower(st, deployerActsAsHuman, defs)) {
+			invokeDeployAbilityForSlot(st, deployerActsAsHuman, pendingOnHumanSlot, pendingOnCpuSlot, pe, abilityDef,
+					defs, deployedMain, rnd, DeployResolvePass.REMAINDER_ONLY);
+			return;
+		}
+		String nm = abilityDef.getName() != null ? abilityDef.getName() : "？";
+		st.addLog("「" + nm + "」: 強さが相手に及ばないため、敗北確認まで〈配置〉の残りの効果は発動しない");
+	}
+
+	private void invokeDeployAbilityForSlot(CpuBattleState st, boolean deployerActsAsHuman, boolean pendingOnHumanSlot,
+			boolean pendingOnCpuSlot, PendingEffect pe, CardDefinition abilityDef, Map<Short, CardDefinition> defs,
+			BattleCard deployedMain, Random rnd, DeployResolvePass pass) {
+		if (pendingOnHumanSlot) {
+			applyDeployHuman(st, abilityDef, defs, deployedMain, pass);
+		} else if (pendingOnCpuSlot && st.isPvp()) {
+			applyDeployHumanAsCpuSide(st, abilityDef, defs, deployedMain, pass);
+		} else if (pendingOnCpuSlot) {
+			applyDeployCpu(st, abilityDef, defs, rnd != null ? rnd : new Random(), deployedMain, pass);
+		} else if (pe.isOwnerHuman()) {
+			applyDeployHuman(st, abilityDef, defs, deployedMain, pass);
+		} else if (st.isPvp()) {
+			applyDeployHumanAsCpuSide(st, abilityDef, defs, deployedMain, pass);
+		} else {
+			applyDeployCpu(st, abilityDef, defs, rnd != null ? rnd : new Random(), deployedMain, pass);
+		}
+	}
+
+	/** 敗北確認キャンセル時に {@link #copyState} で保存した盤面へ戻す。 */
+	private void restoreFromConfirmAcceptLossSnapshot(CpuBattleState st, CpuBattleState snap, BattlePhase phaseAfterCancel) {
+		if (st == null || snap == null) {
+			return;
+		}
+		st.setCpuLevel(snap.getCpuLevel());
+		st.setPvp(snap.isPvp());
+		st.setHumanGoesFirst(snap.isHumanGoesFirst());
+		st.setHumansTurn(snap.isHumansTurn());
+		st.setHumanTurnStarts(snap.getHumanTurnStarts());
+		st.setCpuTurnStarts(snap.getCpuTurnStarts());
+		st.setPhase(phaseAfterCancel);
+		st.setPendingEffect(null);
+		st.setPendingChoice(null);
+		st.setHumanNextDeployBonus(snap.getHumanNextDeployBonus());
+		st.setCpuNextDeployBonus(snap.getCpuNextDeployBonus());
+		st.setHumanNextElfOnlyBonus(snap.getHumanNextElfOnlyBonus());
+		st.setCpuNextElfOnlyBonus(snap.getCpuNextElfOnlyBonus());
+		st.setHumanNextDeployCostBonusTimes(snap.getHumanNextDeployCostBonusTimes());
+		st.setCpuNextDeployCostBonusTimes(snap.getCpuNextDeployCostBonusTimes());
+		st.setHumanNextMechanicStacks(snap.getHumanNextMechanicStacks());
+		st.setCpuNextMechanicStacks(snap.getCpuNextMechanicStacks());
+		st.setPowerSwapActive(snap.isPowerSwapActive());
+		st.setHumanKoryuBonus(snap.getHumanKoryuBonus());
+		st.setCpuKoryuBonus(snap.getCpuKoryuBonus());
+		st.setHumanNextCrystakulDeployBonus(snap.getHumanNextCrystakulDeployBonus());
+		st.setCpuNextCrystakulDeployBonus(snap.getCpuNextCrystakulDeployBonus());
+		st.setHumanCrystakulCombatBonus(snap.getHumanCrystakulCombatBonus());
+		st.setCpuCrystakulCombatBonus(snap.getCpuCrystakulCombatBonus());
+		st.setSpec666NextHumanUndead(snap.isSpec666NextHumanUndead());
+		st.setSpec666NextCpuUndead(snap.isSpec666NextCpuUndead());
+		st.setHumanPendingZadkielNextDeployOppTurnPower3(snap.isHumanPendingZadkielNextDeployOppTurnPower3());
+		st.setCpuPendingZadkielNextDeployOppTurnPower3(snap.isCpuPendingZadkielNextDeployOppTurnPower3());
+		st.setHumanKrakenNextTurnSwordfishAdds(snap.getHumanKrakenNextTurnSwordfishAdds());
+		st.setCpuKrakenNextTurnSwordfishAdds(snap.getCpuKrakenNextTurnSwordfishAdds());
+		st.setHumanRamielNextTurnMiracleAdds(snap.getHumanRamielNextTurnMiracleAdds());
+		st.setCpuRamielNextTurnMiracleAdds(snap.getCpuRamielNextTurnMiracleAdds());
+		st.setHumanMiraclesBecomeFallenLucifer(snap.isHumanMiraclesBecomeFallenLucifer());
+		st.setCpuMiraclesBecomeFallenLucifer(snap.isCpuMiraclesBecomeFallenLucifer());
+
+		st.setHumanDeck(copyCards(snap.getHumanDeck()));
+		st.setHumanHand(copyCards(snap.getHumanHand()));
+		st.setHumanRest(copyCards(snap.getHumanRest()));
+		st.setHumanBattle(copyZone(snap.getHumanBattle()));
+		st.setHumanStones(snap.getHumanStones());
+
+		st.setCpuDeck(copyCards(snap.getCpuDeck()));
+		st.setCpuHand(copyCards(snap.getCpuHand()));
+		st.setCpuRest(copyCards(snap.getCpuRest()));
+		st.setCpuBattle(copyZone(snap.getCpuBattle()));
+		st.setCpuStones(snap.getCpuStones());
+
+		st.setActiveField(copyCard(snap.getActiveField()));
+		st.setActiveFieldOwnerHuman(snap.getActiveFieldOwnerHuman());
+		st.setScrapyardFieldTurnsRemaining(snap.getScrapyardFieldTurnsRemaining());
+		st.setDeathbounceFieldTurnsRemaining(snap.getDeathbounceFieldTurnsRemaining());
+		st.setAtlantisFieldCounterDisplay(snap.getAtlantisFieldCounterDisplay());
+		st.setAtlantisAwaitingCount0(snap.isAtlantisAwaitingCount0());
+		st.setWeeklyShonenCampFieldCounterDisplay(snap.getWeeklyShonenCampFieldCounterDisplay());
+		st.setWeeklyShonenCampCount2ComicBonus(snap.isWeeklyShonenCampCount2ComicBonus());
+		st.setWeeklyShonenCampGlobalDeployCostPlusOneThisTurn(snap.isWeeklyShonenCampGlobalDeployCostPlusOneThisTurn());
+		st.setWorldRebuildFieldCounterDisplay(snap.getWorldRebuildFieldCounterDisplay());
+		st.setPaperCityFieldCounterDisplay(snap.getPaperCityFieldCounterDisplay());
+		st.setChojuGigaPendingHumanSlotNextDeployDragon(snap.isChojuGigaPendingHumanSlotNextDeployDragon());
+		st.setChojuGigaPendingCpuSlotNextDeployHuman(snap.isChojuGigaPendingCpuSlotNextDeployHuman());
+		st.setWorldRebuildOpenHumanHand(copyCards(snap.getWorldRebuildOpenHumanHand()));
+		st.setWorldRebuildOpenHumanDeck(copyCards(snap.getWorldRebuildOpenHumanDeck()));
+		st.setWorldRebuildOpenCpuHand(copyCards(snap.getWorldRebuildOpenCpuHand()));
+		st.setWorldRebuildOpenCpuDeck(copyCards(snap.getWorldRebuildOpenCpuDeck()));
+		st.setWorldRebuildOpenHumanStones(snap.getWorldRebuildOpenHumanStones());
+		st.setWorldRebuildOpenCpuStones(snap.getWorldRebuildOpenCpuStones());
+		st.setHumanSlotDeckId(snap.getHumanSlotDeckId());
+		st.setCpuSlotDeckId(snap.getCpuSlotDeckId());
+		st.setBattleMainLineSeqCounter(snap.getBattleMainLineSeqCounter());
+		st.setEventLog(new ArrayList<>(snap.getEventLog()));
+		st.setGameOver(snap.isGameOver());
+		st.setHumanWon(snap.isHumanWon());
+		st.setLastMessage(snap.getLastMessage());
+	}
+
 	private CpuBattleState copyState(CpuBattleState st) {
 		CpuBattleState ns = new CpuBattleState();
 		ns.setPvp(st.isPvp());
@@ -3897,8 +3986,8 @@ public class CpuBattleEngine {
 			st.setAtlantisAwaitingCount0(false);
 			st.setPaperCityFieldCounterDisplay(0);
 			clearWeeklyShonenCampFieldTracking(st);
-			st.setWorldRebuildFieldCounterDisplay(4);
-			st.addLog("世界の再構築: カウント4");
+			st.setWorldRebuildFieldCounterDisplay(GameConstants.WORLD_REBUILD_FIELD_INITIAL_COUNTER);
+			st.addLog("世界の再構築: カウント" + GameConstants.WORLD_REBUILD_FIELD_INITIAL_COUNTER);
 		} else if (newField != null && newField.getCardId() == GameConstants.HEAVENS_GATE_FIELD_CARD_ID) {
 			st.setScrapyardFieldTurnsRemaining(0);
 			st.setDeathbounceFieldTurnsRemaining(0);
@@ -7345,12 +7434,12 @@ public class CpuBattleEngine {
 
 		if (id == DRAGON_RIDER_ID && ownerIsHuman) {
 			if (restContainsAttribute(st, st.getHumanRest(), defs, "DRAGON")) {
-				p += 4;
+				p += DRAGON_RIDER_REST_DRAGON_POWER_BONUS;
 			}
 		}
 		if (id == DRAGON_RIDER_ID && !ownerIsHuman) {
 			if (restContainsAttribute(st, st.getCpuRest(), defs, "DRAGON")) {
-				p += 4;
+				p += DRAGON_RIDER_REST_DRAGON_POWER_BONUS;
 			}
 		}
 
@@ -7935,31 +8024,8 @@ public class CpuBattleEngine {
 	}
 
 	/**
-	 * 紅蓮峡谷 フレイムガルド: 〈フィールド〉が場にある間、その〈フィールド〉を置いたプレイヤーの相手の〈配置〉を封じる（〈常時〉は対象外）。
-	 * 〈クリスタクル〉の任意ストーン〈配置〉のみ例外（ミスティンクル／ワイバーンと同様）。
-	 */
-	private boolean activeFieldFlameguardSuppressesOpponentDeploy(CpuBattleState st, boolean deployerIsHuman,
-			CardDefinition abilityDef) {
-		if (st == null) {
-			return false;
-		}
-		BattleCard field = st.getActiveField();
-		if (field == null || field.getCardId() != GameConstants.FLAMEGUARD_FIELD_CARD_ID) {
-			return false;
-		}
-		Boolean ownerHuman = st.getActiveFieldOwnerHuman();
-		if (ownerHuman == null) {
-			return false;
-		}
-		if (deployerIsHuman == ownerHuman.booleanValue()) {
-			return false;
-		}
-		return abilityDef == null || !isCrystakulCardDefinition(abilityDef);
-	}
-
-	/**
-	 * 〈配置〉能力1枚分が、相手前列（竜王／ミスティンクル／ワイバーン）または相手側のフレイムガルド〈フィールド〉に封じられるか。
-	 * 〈クリスタクル〉の〈配置〉（任意ストーン）のみミスティンクル／ワイバーン／フレイムガルドでは封じない。ネビュラ坑道で先にストーンが増えたあとに確認を出せるようにする。竜王は従来どおりすべて無効。
+	 * 〈配置〉能力1枚分が、相手前列（竜王／ミスティンクル／ワイバーン）に封じられるか。
+	 * 〈クリスタクル〉の〈配置〉（任意ストーン）のみミスティンクル／ワイバーンでは封じない。ネビュラ坑道で先にストーンが増えたあとに確認を出せるようにする。竜王は従来どおりすべて無効。
 	 */
 	private boolean deployAbilitySuppressedByOpponentLine(CpuBattleState st, boolean deployerIsHuman,
 			CardDefinition abilityDef) {
@@ -7972,9 +8038,6 @@ public class CpuBattleEngine {
 		}
 		if (opponentLineSuppressesDeployOnly(opp)) {
 			return abilityDef == null || !isCrystakulCardDefinition(abilityDef);
-		}
-		if (activeFieldFlameguardSuppressesOpponentDeploy(st, deployerIsHuman, abilityDef)) {
-			return true;
 		}
 		return false;
 	}
@@ -8118,12 +8181,34 @@ public class CpuBattleEngine {
 				}
 			}
 		}
+		boolean belowOpp = isDeployerBelowOpponentBattlePower(st, mirageOwnerIsHuman, defs);
+		if (!belowOpp) {
+			if (mirageOwnerIsHuman) {
+				applyDeployHuman(st, deployAbilityDef, defs, null, DeployResolvePass.FULL);
+			} else if (st.isPvp()) {
+				applyDeployHumanAsCpuSide(st, deployAbilityDef, defs, null, DeployResolvePass.FULL);
+			} else {
+				applyDeployCpu(st, deployAbilityDef, defs, rnd != null ? rnd : new Random(), null, DeployResolvePass.FULL);
+			}
+			return;
+		}
 		if (mirageOwnerIsHuman) {
-			applyDeployHuman(st, deployAbilityDef, defs, null);
+			applyDeployHuman(st, deployAbilityDef, defs, null, DeployResolvePass.POWER_COMPARISON_ONLY);
 		} else if (st.isPvp()) {
-			applyDeployHumanAsCpuSide(st, deployAbilityDef, defs, null);
+			applyDeployHumanAsCpuSide(st, deployAbilityDef, defs, null, DeployResolvePass.POWER_COMPARISON_ONLY);
 		} else {
-			applyDeployCpu(st, deployAbilityDef, defs, rnd != null ? rnd : new Random(), null);
+			applyDeployCpu(st, deployAbilityDef, defs, rnd != null ? rnd : new Random(), null,
+					DeployResolvePass.POWER_COMPARISON_ONLY);
+		}
+		if (!isDeployerBelowOpponentBattlePower(st, mirageOwnerIsHuman, defs)) {
+			if (mirageOwnerIsHuman) {
+				applyDeployHuman(st, deployAbilityDef, defs, null, DeployResolvePass.REMAINDER_ONLY);
+			} else if (st.isPvp()) {
+				applyDeployHumanAsCpuSide(st, deployAbilityDef, defs, null, DeployResolvePass.REMAINDER_ONLY);
+			} else {
+				applyDeployCpu(st, deployAbilityDef, defs, rnd != null ? rnd : new Random(), null,
+						DeployResolvePass.REMAINDER_ONLY);
+			}
 		}
 	}
 
@@ -8614,7 +8699,7 @@ public class CpuBattleEngine {
 			}
 			case DRAGON_RIDER_ID -> {
 				List<BattleCard> rest = ownerIsHuman ? st.getHumanRest() : st.getCpuRest();
-				yield restContainsAttribute(st, rest, defs, "DRAGON") ? 4 : 0;
+				yield restContainsAttribute(st, rest, defs, "DRAGON") ? DRAGON_RIDER_REST_DRAGON_POWER_BONUS : 0;
 			}
 			case GAIKOTSU_ID -> {
 				ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
@@ -8990,6 +9075,11 @@ public class CpuBattleEngine {
 
 	private void applyDeployHuman(CpuBattleState st, CardDefinition d, Map<Short, CardDefinition> defs,
 			BattleCard deployedMain) {
+		applyDeployHuman(st, d, defs, deployedMain, DeployResolvePass.FULL);
+	}
+
+	private void applyDeployHuman(CpuBattleState st, CardDefinition d, Map<Short, CardDefinition> defs,
+			BattleCard deployedMain, DeployResolvePass pass) {
 		deployedMain = st.getHumanBattle() != null ? st.getHumanBattle().getMain() : null;
 		applySpec666UndeadToDeployedFighterIfPending(st, true, defs);
 		if (st != null && deployAbilitySuppressedByOpponentLine(st, true, d)) {
@@ -9075,6 +9165,9 @@ public class CpuBattleEngine {
 			} else {
 				return;
 			}
+		}
+		if (shouldSkipDeployAbilityForResolvePass(code, pass)) {
+			return;
 		}
 		switch (code) {
 			case "SAKUSHI" -> {
@@ -9750,6 +9843,11 @@ public class CpuBattleEngine {
 	 */
 	private void applyDeployHumanAsCpuSide(CpuBattleState st, CardDefinition d, Map<Short, CardDefinition> defs,
 			BattleCard deployedMain) {
+		applyDeployHumanAsCpuSide(st, d, defs, deployedMain, DeployResolvePass.FULL);
+	}
+
+	private void applyDeployHumanAsCpuSide(CpuBattleState st, CardDefinition d, Map<Short, CardDefinition> defs,
+			BattleCard deployedMain, DeployResolvePass pass) {
 		deployedMain = st.getCpuBattle() != null ? st.getCpuBattle().getMain() : null;
 		applySpec666UndeadToDeployedFighterIfPending(st, false, defs);
 		if (st != null && deployAbilitySuppressedByOpponentLine(st, false, d)) {
@@ -9835,6 +9933,9 @@ public class CpuBattleEngine {
 			} else {
 				return;
 			}
+		}
+		if (shouldSkipDeployAbilityForResolvePass(code, pass)) {
+			return;
 		}
 		switch (code) {
 			case "SAKUSHI" -> {
@@ -10522,6 +10623,11 @@ public class CpuBattleEngine {
 
 	private void applyDeployCpu(CpuBattleState st, CardDefinition d, Map<Short, CardDefinition> defs, Random rnd,
 			BattleCard deployedMain) {
+		applyDeployCpu(st, d, defs, rnd, deployedMain, DeployResolvePass.FULL);
+	}
+
+	private void applyDeployCpu(CpuBattleState st, CardDefinition d, Map<Short, CardDefinition> defs, Random rnd,
+			BattleCard deployedMain, DeployResolvePass pass) {
 		deployedMain = st.getCpuBattle() != null ? st.getCpuBattle().getMain() : null;
 		applySpec666UndeadToDeployedFighterIfPending(st, false, defs);
 		if (st != null && deployAbilitySuppressedByOpponentLine(st, false, d)) {
@@ -10607,6 +10713,9 @@ public class CpuBattleEngine {
 			} else {
 				return;
 			}
+		}
+		if (shouldSkipDeployAbilityForResolvePass(code, pass)) {
+			return;
 		}
 		switch (code) {
 			case "SAKUSHI" -> {
@@ -11240,7 +11349,7 @@ public class CpuBattleEngine {
 		if (z == null || z.getMain() == null || st == null) return;
 		for (int i = 0; i < z.getCostUnder().size(); i++) {
 			BattleCard c = z.getCostUnder().get(i);
-			if (c != null && c.getCardId() == 21) {
+			if (c != null && c.getCardId() == GameConstants.OKAMI_FIGHTER_CARD_ID) {
 				BattleCard oldMain = z.getMain();
 				z.getCostUnder().set(i, oldMain);
 				z.setMain(c);
@@ -11367,6 +11476,32 @@ public class CpuBattleEngine {
 		return fid != null && fid.shortValue() == WEAPON_DEPOT_FIELD_ID;
 	}
 
+	/** 紅蓮峡谷 フレイムガルド: 〈フィールド〉が場にある間、双方の「種族：ドラゴン」ファイター（〈フィールド〉以外）のコストは -1。 */
+	private static boolean flameguardFieldActive(CpuBattleState st) {
+		if (st == null || st.getActiveField() == null) {
+			return false;
+		}
+		Short fid = st.getActiveField().getCardId();
+		return fid != null && fid.shortValue() == GameConstants.FLAMEGUARD_FIELD_CARD_ID;
+	}
+
+	/** 〈フィールド〉以外のドラゴン・ファイター（種族は {@link CardAttributes#hasAttribute} と同じ） */
+	private static boolean isDragonFighterForFlameguardCost(CardDefinition d, BattleCard c, CpuBattleState st,
+			List<BattleCard> ownersRestForDiscount) {
+		if (d == null || !isNonFieldFighterCardDef(d)) {
+			return false;
+		}
+		if (st != null && ownersRestForDiscount != null && c != null) {
+			boolean ownerHuman = ownersRestForDiscount == st.getHumanRest();
+			boolean spec666 = ownerHuman ? st.isSpec666NextHumanUndead() : st.isSpec666NextCpuUndead();
+			int mechStacks = ownerHuman ? st.getHumanNextMechanicStacks() : st.getCpuNextMechanicStacks();
+			if (CardAttributes.hasAttributeForDeployPreview(d, c, spec666, mechStacks, "DRAGON")) {
+				return true;
+			}
+		}
+		return CardAttributes.hasAttribute(d, c, "DRAGON");
+	}
+
 	/** 〈フィールド〉以外のマシン・ファイター（種族は {@link CardAttributes#hasAttribute(CardDefinition, BattleCard, String)} と同じ） */
 	private static boolean isMachineFighterForWeaponDepotCost(CardDefinition d, BattleCard c, CpuBattleState st,
 			List<BattleCard> ownersRestForDiscount) {
@@ -11398,6 +11533,10 @@ public class CpuBattleEngine {
 		if (st != null && weaponDepotFieldActive(st) && isMachineFighterForWeaponDepotCost(d, deployedMain, st,
 				ownersRestForDiscount)) {
 			base = 1;
+		}
+		if (st != null && flameguardFieldActive(st) && isDragonFighterForFlameguardCost(d, deployedMain, st,
+				ownersRestForDiscount)) {
+			base = Math.max(0, base - 1);
 		}
 		int handAdj = deployedMain != null
 				? deployedMain.getHandDeployCostModifier() + deployedMain.getDeathbounceHandCostStacks()
@@ -11433,6 +11572,10 @@ public class CpuBattleEngine {
 		if (st != null && weaponDepotFieldActive(st) && isMachineFighterForWeaponDepotCost(d, deployedMain, st,
 				discountRest)) {
 			base = 1;
+		}
+		if (st != null && flameguardFieldActive(st) && isDragonFighterForFlameguardCost(d, deployedMain, st,
+				discountRest)) {
+			base = Math.max(0, base - 1);
 		}
 		if (deployedMain != null && deployedMain.isBlankEffects()) {
 			int sh = st != null && st.isWeeklyShonenCampGlobalDeployCostPlusOneThisTurn() ? 1 : 0;

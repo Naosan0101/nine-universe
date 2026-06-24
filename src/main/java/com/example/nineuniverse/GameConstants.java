@@ -87,6 +87,18 @@ public final class GameConstants {
 	/** 漫画家（id=96） */
 	public static final short MANGAKA_FIGHTER_CARD_ID = 96;
 
+	/** オオカミ男（id=7） */
+	public static final short OKAMI_OTOKO_FIGHTER_CARD_ID = 7;
+
+	/** オオカミ（id=21） */
+	public static final short OKAMI_FIGHTER_CARD_ID = 21;
+
+	/** がいこつ兵（id=18） */
+	public static final short GAIKOTSU_SOLDIER_CARD_ID = 18;
+
+	/** ネクロマンサー（id=23） */
+	public static final short NECROMANCER_FIGHTER_CARD_ID = 23;
+
 	/** アーサー（id=43） */
 	public static final short ARTHUR_FIGHTER_CARD_ID = 43;
 
@@ -164,6 +176,9 @@ public final class GameConstants {
 
 	/** 世界の再構築（〈フィールド〉・id=92） */
 	public static final short WORLD_REBUILD_FIELD_CARD_ID = 92;
+
+	/** 世界の再構築〈フィールド〉: 配置時からカウントダウンする初期値（6ターン＝6→0） */
+	public static final int WORLD_REBUILD_FIELD_INITIAL_COUNTER = 6;
 
 	/** ペーパーシティ（〈フィールド〉・id=95） */
 	public static final short PAPER_CITY_FIELD_CARD_ID = 95;
@@ -904,7 +919,7 @@ public final class GameConstants {
 	/**
 	 * おしらせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
 	 */
-	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-05-16";
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-06-24";
 
 	/** リサイクル：レア度ごとに得るクリスタル（1枚あたり） */
 	public static final int RECYCLE_CRYSTAL_PER_CARD_C = 20;

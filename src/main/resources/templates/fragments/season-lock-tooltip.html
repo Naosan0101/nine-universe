@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="tooltip">
+	<div id="season-lock-tooltip" class="deck-tooltip pack-buy-lock-tooltip" hidden role="tooltip" aria-live="polite">
+		<div class="deck-tooltip__inner">
+			<p class="deck-tooltip__name pack-buy-lock-tooltip__name">？？？？</p>
+			<p class="deck-tooltip__label">解放予定</p>
+			<p class="pack-buy-lock-tooltip__unlock"></p>
+		</div>
+	</div>
+	<script th:src="@{/js/season-lock-tooltip.js(v=${assetVersion})}"></script>
+</th:block>
+</body>
+</html>

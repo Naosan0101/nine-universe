@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.nineuniverse.repository.SeasonResetMapper">
+
+	<delete id="deleteAllUserCollections">
+		DELETE FROM user_collection
+	</delete>
+
+	<delete id="deleteAllDeckEntries">
+		DELETE FROM deck_entry
+	</delete>
+
+	<delete id="deleteAllDecks">
+		DELETE FROM deck
+	</delete>
+
+	<delete id="deleteAllLeagueDeckSets">
+		DELETE FROM league_deck_set
+	</delete>
+
+	<delete id="deleteAllDailyMissions">
+		DELETE FROM user_daily_mission
+	</delete>
+
+	<delete id="deleteAllWeeklyMissions">
+		DELETE FROM user_weekly_mission
+	</delete>
+
+	<delete id="deleteAllUserEpithetsOwned">
+		DELETE FROM user_nickname_epithet_owned
+	</delete>
+
+	<update id="resetAllUsersForSeason">
+		UPDATE app_user
+		SET coins = 0,
+		    recycle_crystal = 0,
+		    welcome_home_bonus_granted = FALSE,
+		    starter_gift_standard1_remaining = 0,
+		    last_mission_date = NULL,
+		    time_pack_cycle_start = NULL,
+		    time_pack_bonus_bank = 0,
+		    selected_epithet_upper_id = (SELECT id FROM nickname_epithet WHERE kind = 'UPPER' AND phrase = 'ビギナー中の' LIMIT 1),
+		    selected_epithet_lower_id = (SELECT id FROM nickname_epithet WHERE kind = 'LOWER' AND phrase = 'ビギナー' LIMIT 1)
+	</update>
+
+	<insert id="grantBeginnerEpithetsToAllUsers">
+		INSERT INTO user_nickname_epithet_owned (user_id, epithet_id)
+		SELECT u.id, e.id
+		FROM app_user u
+		CROSS JOIN nickname_epithet e
+		WHERE (e.kind = 'UPPER' AND e.phrase = 'ビギナー中の')
+		   OR (e.kind = 'LOWER' AND e.phrase = 'ビギナー')
+		ON CONFLICT DO NOTHING
+	</insert>
+</mapper>

@@ -15,11 +15,6 @@
 	</div>
 </header>
 
-<div class="hub-screen-title hub-screen-title--pack-shop">
-	<h2 class="hub-screen-title__h">カードパックを購入</h2>
-	<p class="hub-screen-title__sub">パックをタップして選び、画面下で購入を確定できます。</p>
-</div>
-
 <div class="container hub-main">
 	<section class="panel pack-buy-head" th:if="${error}">
 		<p class="error pack-buy-head__error" th:text="${error}"></p>
@@ -29,7 +24,7 @@
 	         th:if="${starterGiftStandard1Remaining != null and starterGiftStandard1Remaining > 0}">
 		<h2 class="pack-starter-gift__title">新規登録プレゼント</h2>
 		<p class="pack-starter-gift__text">
-			「スタンダードパック1」を <strong th:text="${starterGiftStandard1Remaining}">10</strong> パックお渡ししています。通常の開封と同じく、1パックずつ開けられます。
+			「スタンダードパック1」を <strong th:text="${starterGiftStandard1Remaining}">10</strong> パックお渡ししています。
 		</p>
 		<form th:action="@{/pack/open-starter-gift}" method="post" class="pack-starter-gift__form">
 			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
@@ -39,95 +34,28 @@
 
 	<section class="pack-buy pack-buy--shop">
 		<div class="pack-buy__grid">
-			<div class="pack-buy__cell">
-				<button type="button" class="pack-buy__item" data-pack-type="STANDARD" data-pack-name="スタンダードパック1（WH+ET）" data-pack-cost="3">
+			<div class="pack-buy__cell" th:each="slot : ${packShopSlots}">
+				<button type="button" class="pack-buy__item"
+				        th:classappend="${!slot.unlocked()} ? ' pack-buy__item--locked js-season-locked' : ''"
+				        th:attr="data-pack-type=${slot.unlocked()} ? ${slot.packTypeParam()} : null,
+				                 data-pack-name=${slot.displayName()},
+				                 data-pack-cost=${slot.unlocked()} ? ${slot.cost()} : null,
+				                 data-pack-locked=${!slot.unlocked()},
+				                 data-season-lock-name=${slot.displayName()},
+				                 data-season-lock-hint=${!slot.unlocked()} ? ${slot.unlockHint()} : null">
 					<div class="pack-buy__art">
-						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtStandard1}?v=${packArtCacheKey}|" alt="スタンダードパック1（WH+ET）" onerror="this.hidden=true; this.removeAttribute('src');"/>
+						<img class="pack-buy__img" th:if="${slot.unlocked()}"
+						     th:src="|${contextPath != null ? contextPath : ''}${slot.artWebPath()}?v=${packArtCacheKey}|"
+						     th:alt="${slot.displayName()}" onerror="this.hidden=true; this.removeAttribute('src');"/>
 					</div>
-					<span class="pack-buy__label">スタンダードパック1（WH+ET）</span>
-					<span class="pack-buy__price" aria-label="価格3ジェム"><span class="pack-buy__price-num">3</span><span class="pack-buy__price-unit">ジェム</span></span>
+					<span class="pack-buy__label" th:text="${slot.displayName()}">パック</span>
+					<span class="pack-buy__price" th:attr="aria-label=${slot.unlocked()} ? |価格${slot.cost()}ジェム| : null">
+						<span class="pack-buy__price-num" th:text="${slot.unlocked()} ? ${slot.cost()} : '？'">3</span>
+						<span class="pack-buy__price-unit" th:if="${slot.unlocked()}">ジェム</span>
+					</span>
 				</button>
-				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-standard">詳細を見る</button>
-			</div>
-			<div class="pack-buy__cell">
-				<button type="button" class="pack-buy__item" data-pack-type="WINDY_HILL" data-pack-name="風吹く丘パック（WH）" data-pack-cost="4">
-					<div class="pack-buy__art">
-						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtWindyHill}?v=${packArtCacheKey}|" alt="風吹く丘パック（WH）" onerror="this.hidden=true; this.removeAttribute('src');"/>
-					</div>
-					<span class="pack-buy__label">風吹く丘パック（WH）</span>
-					<span class="pack-buy__price" aria-label="価格4ジェム"><span class="pack-buy__price-num">4</span><span class="pack-buy__price-unit">ジェム</span></span>
-				</button>
-				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-windy-hill">詳細を見る</button>
-			</div>
-			<div class="pack-buy__cell">
-				<button type="button" class="pack-buy__item" data-pack-type="EVIL_THREAT" data-pack-name="邪悪なる脅威パック（ET）" data-pack-cost="5">
-					<div class="pack-buy__art">
-						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtEvilThreat}?v=${packArtCacheKey}|" alt="邪悪なる脅威パック（ET）" onerror="this.hidden=true; this.removeAttribute('src');"/>
-					</div>
-					<span class="pack-buy__label">邪悪なる脅威パック（ET）</span>
-					<span class="pack-buy__price" aria-label="価格5ジェム"><span class="pack-buy__price-num">5</span><span class="pack-buy__price-unit">ジェム</span></span>
-				</button>
-				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-evil-threat">詳細を見る</button>
-			</div>
-			<div class="pack-buy__cell">
-				<button type="button" class="pack-buy__item" data-pack-type="STANDARD_2" data-pack-name="スタンダードパック2（JU+IF）" data-pack-cost="3">
-					<div class="pack-buy__art">
-						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtStandard2}?v=${packArtCacheKey}|" alt="スタンダードパック2（JU+IF）" onerror="this.hidden=true; this.removeAttribute('src');"/>
-					</div>
-					<span class="pack-buy__label">スタンダードパック2（JU+IF）</span>
-					<span class="pack-buy__price" aria-label="価格3ジェム"><span class="pack-buy__price-num">3</span><span class="pack-buy__price-unit">ジェム</span></span>
-				</button>
-				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-standard-2">詳細を見る</button>
-			</div>
-			<div class="pack-buy__cell">
-				<button type="button" class="pack-buy__item" data-pack-type="JEWEL_UTOPIA" data-pack-name="宝石の秘境パック（JU）" data-pack-cost="4">
-					<div class="pack-buy__art">
-						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtJewelUtopia}?v=${packArtCacheKey}|" alt="宝石の秘境パック（JU）" onerror="this.hidden=true; this.removeAttribute('src');"/>
-					</div>
-					<span class="pack-buy__label">宝石の秘境パック（JU）</span>
-					<span class="pack-buy__price" aria-label="価格4ジェム"><span class="pack-buy__price-num">4</span><span class="pack-buy__price-unit">ジェム</span></span>
-				</button>
-				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-jewel-utopia">詳細を見る</button>
-			</div>
-			<div class="pack-buy__cell">
-				<button type="button" class="pack-buy__item" data-pack-type="IRON_FLEET" data-pack-name="鉄面の艦隊パック（IF）" data-pack-cost="5">
-					<div class="pack-buy__art">
-						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtIronFleet}?v=${packArtCacheKey}|" alt="鉄面の艦隊パック（IF）" onerror="this.hidden=true; this.removeAttribute('src');"/>
-					</div>
-					<span class="pack-buy__label">鉄面の艦隊パック（IF）</span>
-					<span class="pack-buy__price" aria-label="価格5ジェム"><span class="pack-buy__price-num">5</span><span class="pack-buy__price-unit">ジェム</span></span>
-				</button>
-				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-iron-fleet">詳細を見る</button>
-			</div>
-			<div class="pack-buy__cell">
-				<button type="button" class="pack-buy__item" data-pack-type="STANDARD_3" data-pack-name="スタンダードパック3（OT/CS）" data-pack-cost="3">
-					<div class="pack-buy__art">
-						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtStandard3}?v=${packArtCacheKey}|" alt="スタンダードパック3（OT/CS）" onerror="this.hidden=true; this.removeAttribute('src');"/>
-					</div>
-					<span class="pack-buy__label">スタンダードパック3（OT/CS）</span>
-					<span class="pack-buy__price" aria-label="価格3ジェム"><span class="pack-buy__price-num">3</span><span class="pack-buy__price-unit">ジェム</span></span>
-				</button>
-				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-standard-3">詳細を見る</button>
-			</div>
-			<div class="pack-buy__cell">
-				<button type="button" class="pack-buy__item" data-pack-type="OCEAN_TIDE" data-pack-name="海底の潮流パック（OT）" data-pack-cost="4">
-					<div class="pack-buy__art">
-						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtOceanTide}?v=${packArtCacheKey}|" alt="海底の潮流パック（OT）" onerror="this.hidden=true; this.removeAttribute('src');"/>
-					</div>
-					<span class="pack-buy__label">海底の潮流パック（OT）</span>
-					<span class="pack-buy__price" aria-label="価格4ジェム"><span class="pack-buy__price-num">4</span><span class="pack-buy__price-unit">ジェム</span></span>
-				</button>
-				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-ocean-tide">詳細を見る</button>
-			</div>
-			<div class="pack-buy__cell">
-				<button type="button" class="pack-buy__item" data-pack-type="CREATION_SANCTUM" data-pack-name="創世の神域パック（CS）" data-pack-cost="5">
-					<div class="pack-buy__art">
-						<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packBuyArtCreationSanctum}?v=${packArtCacheKey}|" alt="創世の神域パック（CS）" onerror="this.hidden=true; this.removeAttribute('src');"/>
-					</div>
-					<span class="pack-buy__label">創世の神域パック（CS）</span>
-					<span class="pack-buy__price" aria-label="価格5ジェム"><span class="pack-buy__price-num">5</span><span class="pack-buy__price-unit">ジェム</span></span>
-				</button>
-				<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-creation-sanctum">詳細を見る</button>
+				<button type="button" class="btn btn--ghost pack-buy__detail"
+				        th:attr="data-open-pack-detail=${slot.detailModalId()}">詳細を見る</button>
 			</div>
 		</div>
 	</section>
@@ -136,7 +64,6 @@
 	<div class="pack-buy-confirm__inner">
 		<div class="pack-buy-confirm__text">
 			<p class="pack-buy-confirm__title" id="pack-buy-confirm-title" role="status" aria-live="polite">
-				<span class="pack-buy-confirm__hint" id="pack-buy-confirm-hint">パックを選択してください</span>
 				<span class="pack-buy-confirm__question" id="pack-buy-confirm-question" hidden>
 					<span class="pack-buy-confirm__name" id="pack-buy-confirm-name"></span><span class="pack-buy-confirm__suffix">を購入しますか？</span>
 				</span>
@@ -155,25 +82,31 @@
 </section>
  </div>
 
-<!-- スタンダード -->
-<div id="pack-detail-standard" class="pack-detail-modal" hidden>
+<div th:each="slot : ${packShopSlots}" th:id="${slot.detailModalId()}" class="pack-detail-modal" hidden>
 	<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
-	<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="pack-detail-standard-title">
+	<div class="pack-detail-modal__panel" role="dialog" aria-modal="true"
+	     th:attr="aria-labelledby=${slot.detailModalId()} + '-title'">
 		<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
-		<h2 id="pack-detail-standard-title" class="pack-detail-modal__heading">スタンダードパック1（WH+ET）</h2>
-		<p class="pack-detail-modal__price"><span class="muted">1パックあたりの支払い</span> <strong>3ジェム</strong></p>
+		<h2 th:id="${slot.detailModalId()} + '-title'" class="pack-detail-modal__heading" th:text="${slot.detailHeading()}">パック</h2>
+		<p class="pack-detail-modal__price" th:if="${slot.unlocked()}">
+			<span class="muted">1パックあたりの支払い</span> <strong th:text="|${slot.cost()}ジェム|">3ジェム</strong>
+		</p>
+		<p class="pack-detail-modal__price" th:if="${!slot.unlocked()}"><span class="muted">1パックあたりの支払い</span> <strong>？？？？</strong></p>
 		<h3 class="pack-detail-modal__sub">レア度別の排出率</h3>
-		<ul class="pack-detail-modal__rates">
+		<ul class="pack-detail-modal__rates" th:if="${slot.unlocked()}">
 			<li th:each="r : ${packRarityRates}">
 				<span class="pack-detail-modal__rate-label" th:text="${r.label}">レジェンダリー</span>
 				<span class="pack-detail-modal__rate-pct" th:text="${r.percent}">2%</span>
 			</li>
 		</ul>
+		<ul class="pack-detail-modal__rates" th:if="${!slot.unlocked()}">
+			<li><span class="pack-detail-modal__rate-label">？？？？</span><span class="pack-detail-modal__rate-pct">？？？？</span></li>
+		</ul>
 		<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
 		<ul class="pack-detail-modal__cards">
-			<li th:each="line : ${standardPackPreview}"
+			<li th:each="line : ${slot.previewLines()}"
 			    class="pack-detail-modal__card-row"
-			    th:classappend="${'pack-detail-modal__card-row--' + line.rarityCode}">
+			    th:classappend="${slot.unlocked()} ? ${'pack-detail-modal__card-row--' + line.rarityCode} : ''">
 				<span class="pack-detail-modal__card-name" th:text="${line.name}">名前</span>
 				<span class="pack-detail-modal__card-rarity" th:text="${line.rarityLabel}">コモン</span>
 			</li>
@@ -181,214 +114,7 @@
 	</div>
 </div>
 
-<!-- 風吹く丘 -->
-<div id="pack-detail-windy-hill" class="pack-detail-modal" hidden>
-	<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
-	<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="pack-detail-windy-title">
-		<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
-		<h2 id="pack-detail-windy-title" class="pack-detail-modal__heading">風吹く丘パック（WH）</h2>
-		<p class="pack-detail-modal__price"><span class="muted">1パックあたりの支払い</span> <strong>4ジェム</strong></p>
-		<h3 class="pack-detail-modal__sub">レア度別の排出率</h3>
-		<ul class="pack-detail-modal__rates">
-			<li th:each="r : ${packRarityRates}">
-				<span class="pack-detail-modal__rate-label" th:text="${r.label}">レジェンダリー</span>
-				<span class="pack-detail-modal__rate-pct" th:text="${r.percent}">2%</span>
-			</li>
-		</ul>
-		<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
-		<ul class="pack-detail-modal__cards">
-			<li th:each="line : ${windyHillPackPreview}"
-			    class="pack-detail-modal__card-row"
-			    th:classappend="${'pack-detail-modal__card-row--' + line.rarityCode}">
-				<span class="pack-detail-modal__card-name" th:text="${line.name}">名前</span>
-				<span class="pack-detail-modal__card-rarity" th:text="${line.rarityLabel}">コモン</span>
-			</li>
-		</ul>
-	</div>
-</div>
-
-<!-- 邪悪なる脅威 -->
-<div id="pack-detail-evil-threat" class="pack-detail-modal" hidden>
-	<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
-	<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="pack-detail-evil-title">
-		<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
-		<h2 id="pack-detail-evil-title" class="pack-detail-modal__heading">邪悪なる脅威パック（ET）</h2>
-		<p class="pack-detail-modal__price"><span class="muted">1パックあたりの支払い</span> <strong>5ジェム</strong></p>
-		<h3 class="pack-detail-modal__sub">レア度別の排出率</h3>
-		<ul class="pack-detail-modal__rates">
-			<li th:each="r : ${packRarityRates}">
-				<span class="pack-detail-modal__rate-label" th:text="${r.label}">レジェンダリー</span>
-				<span class="pack-detail-modal__rate-pct" th:text="${r.percent}">2%</span>
-			</li>
-		</ul>
-		<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
-		<ul class="pack-detail-modal__cards">
-			<li th:each="line : ${evilThreatPackPreview}"
-			    class="pack-detail-modal__card-row"
-			    th:classappend="${'pack-detail-modal__card-row--' + line.rarityCode}">
-				<span class="pack-detail-modal__card-name" th:text="${line.name}">名前</span>
-				<span class="pack-detail-modal__card-rarity" th:text="${line.rarityLabel}">コモン</span>
-			</li>
-		</ul>
-	</div>
-</div>
-
-<!-- スタンダード2 -->
-<div id="pack-detail-standard-2" class="pack-detail-modal" hidden>
-	<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
-	<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="pack-detail-standard-2-title">
-		<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
-		<h2 id="pack-detail-standard-2-title" class="pack-detail-modal__heading">スタンダードパック2（JU+IF）</h2>
-		<p class="pack-detail-modal__price"><span class="muted">1パックあたりの支払い</span> <strong>3ジェム</strong></p>
-		<h3 class="pack-detail-modal__sub">レア度別の排出率</h3>
-		<ul class="pack-detail-modal__rates">
-			<li th:each="r : ${packRarityRates}">
-				<span class="pack-detail-modal__rate-label" th:text="${r.label}">レジェンダリー</span>
-				<span class="pack-detail-modal__rate-pct" th:text="${r.percent}">2%</span>
-			</li>
-		</ul>
-		<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
-		<ul class="pack-detail-modal__cards">
-			<li th:each="line : ${standard2PackPreview}"
-			    class="pack-detail-modal__card-row"
-			    th:classappend="${'pack-detail-modal__card-row--' + line.rarityCode}">
-				<span class="pack-detail-modal__card-name" th:text="${line.name}">名前</span>
-				<span class="pack-detail-modal__card-rarity" th:text="${line.rarityLabel}">コモン</span>
-			</li>
-		</ul>
-	</div>
-</div>
-
-<!-- 宝石の秘境 -->
-<div id="pack-detail-jewel-utopia" class="pack-detail-modal" hidden>
-	<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
-	<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="pack-detail-jewel-title">
-		<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
-		<h2 id="pack-detail-jewel-title" class="pack-detail-modal__heading">宝石の秘境パック（JU）</h2>
-		<p class="pack-detail-modal__price"><span class="muted">1パックあたりの支払い</span> <strong>4ジェム</strong></p>
-		<h3 class="pack-detail-modal__sub">レア度別の排出率</h3>
-		<ul class="pack-detail-modal__rates">
-			<li th:each="r : ${packRarityRates}">
-				<span class="pack-detail-modal__rate-label" th:text="${r.label}">レジェンダリー</span>
-				<span class="pack-detail-modal__rate-pct" th:text="${r.percent}">2%</span>
-			</li>
-		</ul>
-		<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
-		<ul class="pack-detail-modal__cards">
-			<li th:each="line : ${jewelUtopiaPackPreview}"
-			    class="pack-detail-modal__card-row"
-			    th:classappend="${'pack-detail-modal__card-row--' + line.rarityCode}">
-				<span class="pack-detail-modal__card-name" th:text="${line.name}">名前</span>
-				<span class="pack-detail-modal__card-rarity" th:text="${line.rarityLabel}">コモン</span>
-			</li>
-		</ul>
-	</div>
-</div>
-
-<!-- 鉄面の艦隊 -->
-<div id="pack-detail-iron-fleet" class="pack-detail-modal" hidden>
-	<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
-	<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="pack-detail-iron-title">
-		<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
-		<h2 id="pack-detail-iron-title" class="pack-detail-modal__heading">鉄面の艦隊パック（IF）</h2>
-		<p class="pack-detail-modal__price"><span class="muted">1パックあたりの支払い</span> <strong>5ジェム</strong></p>
-		<h3 class="pack-detail-modal__sub">レア度別の排出率</h3>
-		<ul class="pack-detail-modal__rates">
-			<li th:each="r : ${packRarityRates}">
-				<span class="pack-detail-modal__rate-label" th:text="${r.label}">レジェンダリー</span>
-				<span class="pack-detail-modal__rate-pct" th:text="${r.percent}">2%</span>
-			</li>
-		</ul>
-		<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
-		<ul class="pack-detail-modal__cards">
-			<li th:each="line : ${ironFleetPackPreview}"
-			    class="pack-detail-modal__card-row"
-			    th:classappend="${'pack-detail-modal__card-row--' + line.rarityCode}">
-				<span class="pack-detail-modal__card-name" th:text="${line.name}">名前</span>
-				<span class="pack-detail-modal__card-rarity" th:text="${line.rarityLabel}">コモン</span>
-			</li>
-		</ul>
-	</div>
-</div>
-
-<!-- スタンダード3 -->
-<div id="pack-detail-standard-3" class="pack-detail-modal" hidden>
-	<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
-	<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="pack-detail-standard-3-title">
-		<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
-		<h2 id="pack-detail-standard-3-title" class="pack-detail-modal__heading">スタンダードパック3（OT/CS）</h2>
-		<p class="pack-detail-modal__price"><span class="muted">1パックあたりの支払い</span> <strong>3ジェム</strong></p>
-		<h3 class="pack-detail-modal__sub">レア度別の排出率</h3>
-		<ul class="pack-detail-modal__rates">
-			<li th:each="r : ${packRarityRates}">
-				<span class="pack-detail-modal__rate-label" th:text="${r.label}">レジェンダリー</span>
-				<span class="pack-detail-modal__rate-pct" th:text="${r.percent}">2%</span>
-			</li>
-		</ul>
-		<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
-		<ul class="pack-detail-modal__cards">
-			<li th:each="line : ${standard3PackPreview}"
-			    class="pack-detail-modal__card-row"
-			    th:classappend="${'pack-detail-modal__card-row--' + line.rarityCode}">
-				<span class="pack-detail-modal__card-name" th:text="${line.name}">名前</span>
-				<span class="pack-detail-modal__card-rarity" th:text="${line.rarityLabel}">コモン</span>
-			</li>
-		</ul>
-	</div>
-</div>
-
-<!-- 海底の潮流 -->
-<div id="pack-detail-ocean-tide" class="pack-detail-modal" hidden>
-	<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
-	<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="pack-detail-ocean-tide-title">
-		<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
-		<h2 id="pack-detail-ocean-tide-title" class="pack-detail-modal__heading">海底の潮流パック（OT）</h2>
-		<p class="pack-detail-modal__price"><span class="muted">1パックあたりの支払い</span> <strong>4ジェム</strong></p>
-		<h3 class="pack-detail-modal__sub">レア度別の排出率</h3>
-		<ul class="pack-detail-modal__rates">
-			<li th:each="r : ${packRarityRates}">
-				<span class="pack-detail-modal__rate-label" th:text="${r.label}">レジェンダリー</span>
-				<span class="pack-detail-modal__rate-pct" th:text="${r.percent}">2%</span>
-			</li>
-		</ul>
-		<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
-		<ul class="pack-detail-modal__cards">
-			<li th:each="line : ${oceanTidePackPreview}"
-			    class="pack-detail-modal__card-row"
-			    th:classappend="${'pack-detail-modal__card-row--' + line.rarityCode}">
-				<span class="pack-detail-modal__card-name" th:text="${line.name}">名前</span>
-				<span class="pack-detail-modal__card-rarity" th:text="${line.rarityLabel}">コモン</span>
-			</li>
-		</ul>
-	</div>
-</div>
-
-<!-- 創世の神域 -->
-<div id="pack-detail-creation-sanctum" class="pack-detail-modal" hidden>
-	<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
-	<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="pack-detail-creation-sanctum-title">
-		<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
-		<h2 id="pack-detail-creation-sanctum-title" class="pack-detail-modal__heading">創世の神域パック（CS）</h2>
-		<p class="pack-detail-modal__price"><span class="muted">1パックあたりの支払い</span> <strong>5ジェム</strong></p>
-		<h3 class="pack-detail-modal__sub">レア度別の排出率</h3>
-		<ul class="pack-detail-modal__rates">
-			<li th:each="r : ${packRarityRates}">
-				<span class="pack-detail-modal__rate-label" th:text="${r.label}">レジェンダリー</span>
-				<span class="pack-detail-modal__rate-pct" th:text="${r.percent}">2%</span>
-			</li>
-		</ul>
-		<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
-		<ul class="pack-detail-modal__cards">
-			<li th:each="line : ${creationSanctumPackPreview}"
-			    class="pack-detail-modal__card-row"
-			    th:classappend="${'pack-detail-modal__card-row--' + line.rarityCode}">
-				<span class="pack-detail-modal__card-name" th:text="${line.name}">名前</span>
-				<span class="pack-detail-modal__card-rarity" th:text="${line.rarityLabel}">コモン</span>
-			</li>
-		</ul>
-	</div>
-</div>
-
+<th:block th:replace="~{fragments/season-lock-tooltip :: tooltip}"></th:block>
 <script th:src="@{/js/pack-buy.js(v=${assetVersion})}"></script>
 <th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>

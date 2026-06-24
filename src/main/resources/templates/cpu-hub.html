@@ -12,17 +12,25 @@
 	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
 </header>
 <div class="container stack" style="max-width:36rem">
+	<p class="error" th:if="${error}" th:text="${error}"></p>
 	<section class="panel stack">
 		<h2 style="margin-top:0;">カジュアル対戦</h2>
 		<p class="muted" style="margin:0 0 0.75rem;">1デッキで1ゲーム。CPUと対戦します。</p>
 		<a class="btn btn--primary" th:href="@{/battle/cpu/casual}">カジュアルCPU戦へ</a>
 	</section>
-	<section class="panel stack">
+	<section class="panel stack" th:if="${seasonLeagueUnlocked}">
 		<h2 style="margin-top:0;">リーグ対戦（CPU）</h2>
 		<p class="muted" style="margin:0 0 0.75rem;">リーグデッキで2本先取。CPUも固定の2デッキを使います。</p>
 		<a class="btn btn--primary" th:href="@{/battle/cpu/league}">リーグCPU戦へ</a>
 	</section>
+	<section class="panel stack season-locked-panel js-season-locked" th:unless="${seasonLeagueUnlocked}"
+	         th:attr="data-season-lock-name='リーグ対戦（CPU）',data-season-lock-hint=${seasonLeagueUnlockHint}">
+		<h2 style="margin-top:0;">リーグ対戦（CPU）</h2>
+		<p class="muted" style="margin:0 0 0.75rem;">リーグデッキで2本先取。CPUも固定の2デッキを使います。</p>
+		<span class="btn btn--primary season-locked-panel__fake-btn" aria-disabled="true">？？？？</span>
+	</section>
 </div>
+<th:block th:replace="~{fragments/season-lock-tooltip :: tooltip}"></th:block>
 <th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>

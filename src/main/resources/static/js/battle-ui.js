@@ -2796,7 +2796,15 @@
 		KUSURI: 8,
 		ARCHER: 12,
 		DRAGON_RIDER: 10,
+		/** ドラゴンライダー〈常時〉: レストのドラゴンで強さ+3（CpuBattleEngine と同値） */
+		DRAGON_RIDER_REST_DRAGON_POWER_BONUS: 3,
 		GAIKOTSU: 18,
+		/** オオカミ男 / GameConstants.OKAMI_OTOKO_FIGHTER_CARD_ID */
+		OKAMI_OTOKO: 7,
+		/** オオカミ / GameConstants.OKAMI_FIGHTER_CARD_ID */
+		OKAMI: 21,
+		/** ネクロマンサー / GameConstants.NECROMANCER_FIGHTER_CARD_ID */
+		NECROMANCER: 23,
 		SHIREI: 20,
 		HONE: 24,
 		ARTHUR: 43,
@@ -2804,6 +2812,8 @@
 		FIELD_KAMUI: 49,
 		/** 武器庫 VV-E4-PON（〈フィールド〉・マシン・ファイターコスト1） */
 		WEAPON_DEPOT_FIELD: 64,
+		/** 紅蓮峡谷 フレイムガルド（〈フィールド〉・ドラゴン・ファイターコスト-1） */
+		FLAMEGUARD_FIELD: 84,
 		/** ネムリィ（CpuBattleEngine.NEMURY_ID） */
 		NEMURY: 40,
 		/** ノクスクル（id=37 / STONIA：所持ストーン1つにつき強さ+1 / CpuBattleEngine） */
@@ -2975,6 +2985,26 @@
 		return st && st.activeField && Number(st.activeField.cardId) === PREVIEW_CARD_IDS.WEAPON_DEPOT_FIELD;
 	}
 
+	function flameguardFieldActive(st) {
+		return st && st.activeField && Number(st.activeField.cardId) === PREVIEW_CARD_IDS.FLAMEGUARD_FIELD;
+	}
+
+	/** 〈フィールド〉以外のドラゴン・ファイター */
+	function flameguardDragonFighterForCost(def, handCard, st) {
+		if (!def || def.fieldCard) return false;
+		const ck = String(def.cardKind || '').trim().toUpperCase();
+		if (ck !== '' && ck !== 'FIGHTER') return false;
+		if (st && handCard) {
+			const humanSlot = deployPreviewUsesHumanSlotBonuses(st, handCard);
+			const p666 = humanSlot
+				? st.spec666NextHumanUndead === true || st.spec666NextHumanUndead === 'true'
+				: st.spec666NextCpuUndead === true || st.spec666NextCpuUndead === 'true';
+			const mech = Number((humanSlot ? st.humanNextMechanicStacks : st.cpuNextMechanicStacks) || 0);
+			return hasCardAttributeForDeployPreview(def, handCard, p666, mech, 'DRAGON');
+		}
+		return hasCardAttributeResolved(def, handCard, 'DRAGON');
+	}
+
 	/** 〈フィールド〉以外のマシン・ファイター（印字コストとの差で緑／赤表示） */
 	function weaponDepotMachineFighterForCost(def, handCard, st) {
 		if (!def || def.fieldCard) return false;
@@ -2998,6 +3028,9 @@
 		let base = Number(def.cost != null ? def.cost : 0);
 		if (weaponDepotFieldActive(st) && weaponDepotMachineFighterForCost(def, handCard, st)) {
 			base = 1;
+		}
+		if (flameguardFieldActive(st) && flameguardDragonFighterForCost(def, handCard, st)) {
+			base = Math.max(0, base - 1);
 		}
 		const sh =
 			st &&
@@ -3259,7 +3292,7 @@
 			return 0;
 		}
 		if (sid === PREVIEW_CARD_IDS.DRAGON_RIDER) {
-			return restContainsTribe(rest, defs, 'DRAGON', st) ? 4 : 0;
+			return restContainsTribe(rest, defs, 'DRAGON', st) ? PREVIEW_CARD_IDS.DRAGON_RIDER_REST_DRAGON_POWER_BONUS : 0;
 		}
 		if (sid === PREVIEW_CARD_IDS.GAIKOTSU) {
 			const opp = ownerIsHuman ? st.cpuBattle : st.humanBattle;
@@ -3350,6 +3383,29 @@
 		if (oSeq <= 0 || mSeq <= 0) return true;
 		if (oSeq === mSeq) return true;
 		return oSeq < mSeq;
+	}
+
+	/**
+	 * オオカミ男: コストに「オオカミ」が含まれるとき、配置後の前列はオオカミの強さで比較する。
+	 */
+	function resolveOkamiOtokoEffectiveDeploy(defs, st, mainDef, handCard, paidInstanceIds) {
+		if (!mainDef || Number(mainDef.id) !== PREVIEW_CARD_IDS.OKAMI_OTOKO) {
+			return { def: mainDef, handCard: handCard };
+		}
+		const hand = st && st.humanHand ? st.humanHand : [];
+		const ids = paidInstanceIds || (ui.pay && ui.pay.cardInstanceIds ? ui.pay.cardInstanceIds : []);
+		for (let i = 0; i < ids.length; i++) {
+			const c = hand.find(function (h) {
+				return h && String(h.instanceId) === String(ids[i]);
+			});
+			if (c && Number(c.cardId) === PREVIEW_CARD_IDS.OKAMI) {
+				const wolfDef = resolveCardDef(defs, PREVIEW_CARD_IDS.OKAMI);
+				if (wolfDef) {
+					return { def: wolfDef, handCard: c };
+				}
+			}
+		}
+		return { def: mainDef, handCard: handCard };
 	}
 
 	/**
@@ -3502,7 +3558,7 @@
 	/**
 	 * ファイター・〈フィールド〉配置の必要コスト（CpuBattleEngine.effectiveDeployCost と同順）
 	 * ・〈フィールド〉: 武器庫の「コスト1」はマシン・ファイターのみ（〈フィールド〉は対象外）。手札補正・ネムリィ割引を反映（メカニックはファイターのみ）
-	 * ・ファイター: 武器庫・ネムリィ・メカニック残機・手札補正
+	 * ・ファイター: 武器庫・フレイムガルド（双方ドラゴン-1）・ネムリィ・メカニック残機・手札補正
 	 */
 	function effectiveFighterDeployCostFromState(def, st, handCard) {
 		if (!def) return 0;
@@ -3541,6 +3597,9 @@
 		let base = printed;
 		if (weaponDepotFieldActive(st) && weaponDepotMachineFighterForCost(def, handCard, st)) {
 			base = 1;
+		}
+		if (flameguardFieldActive(st) && flameguardDragonFighterForCost(def, handCard, st)) {
+			base = Math.max(0, base - 1);
 		}
 		if (blank) {
 			return Math.max(0, base + mechanic + handAdj + shonenCampCost);
@@ -3638,7 +3697,7 @@
 
 		if (id === PREVIEW_CARD_IDS.DRAGON_RIDER) {
 			if (restContainsTribe(st.humanRest || [], defs, 'DRAGON', st)) {
-				p += 4;
+				p += PREVIEW_CARD_IDS.DRAGON_RIDER_REST_DRAGON_POWER_BONUS;
 			}
 		}
 
@@ -3719,6 +3778,9 @@
 	 */
 	function previewHumanBattlePower(st, defs, mainDef, deployBonus, handCard) {
 		if (!mainDef) return 0;
+		const okamiSwap = resolveOkamiOtokoEffectiveDeploy(defs, st, mainDef, handCard, null);
+		mainDef = okamiSwap.def;
+		handCard = okamiSwap.handCard;
 		const id = Number(mainDef.id);
 		const base = Number(mainDef.basePower != null ? mainDef.basePower : 0);
 		let p = base + deployBonus;
@@ -3778,7 +3840,7 @@
 
 		if (id === PREVIEW_CARD_IDS.DRAGON_RIDER) {
 			if (restContainsTribe(simRest, defs, 'DRAGON', st)) {
-				p += 4;
+				p += PREVIEW_CARD_IDS.DRAGON_RIDER_REST_DRAGON_POWER_BONUS;
 			}
 		}
 
@@ -4956,6 +5018,14 @@
 			battleState && battleState.defs
 				? resolveCardDef(battleState.defs, PREVIEW_CARD_IDS.MINION_CHAMPION)
 				: null;
+		const okamiDefNav =
+			battleState && battleState.defs
+				? resolveCardDef(battleState.defs, PREVIEW_CARD_IDS.OKAMI)
+				: null;
+		const gaikotsuDefNav =
+			battleState && battleState.defs
+				? resolveCardDef(battleState.defs, PREVIEW_CARD_IDS.GAIKOTSU)
+				: null;
 		function buildMikaelZoneNavChain(st) {
 			if (!st || !st.defs) return null;
 			const m = resolveCardDef(st.defs, PREVIEW_CARD_IDS.MIRACLE);
@@ -5120,6 +5190,14 @@
 			companionNavTargetDef = inkKnightDefNav;
 			companionNavTok = 'インクナイト';
 			companionNavAria = 'インクナイト';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.OKAMI_OTOKO && okamiDefNav != null) {
+			companionNavTargetDef = okamiDefNav;
+			companionNavTok = '「オオカミ」';
+			companionNavAria = 'オオカミ';
+		} else if (Number(def.id) === PREVIEW_CARD_IDS.NECROMANCER && gaikotsuDefNav != null) {
+			companionNavTargetDef = gaikotsuDefNav;
+			companionNavTok = '「がいこつ兵」';
+			companionNavAria = 'がいこつ兵';
 		}
 
 		let battleCompanionNavBtn = null;

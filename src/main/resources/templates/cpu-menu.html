@@ -53,7 +53,7 @@
 			</form>
 		</section>
 
-		<section class="panel panel--narrow stack">
+		<section class="panel panel--narrow stack" th:if="${seasonCpuAdvancedUnlocked}">
 			<h2 style="margin-top:0;">CPU（アドバンスド）</h2>
 			<p class="muted" style="margin:0 0 0.75rem;">
 				すべてのカードと〈フィールド〉を使うCPU。<br/>
@@ -79,10 +79,21 @@
 				<button type="submit" class="btn btn--primary">バトル開始</button>
 			</form>
 		</section>
+
+		<section class="panel panel--narrow stack season-locked-panel js-season-locked" th:unless="${seasonCpuAdvancedUnlocked}"
+		         th:attr="data-season-lock-name='CPU（アドバンスド）',data-season-lock-hint=${seasonCpuAdvancedUnlockHint}">
+			<h2 style="margin-top:0;">CPU（アドバンスド）</h2>
+			<p class="muted" style="margin:0 0 0.75rem;">
+				すべてのカードと〈フィールド〉を使うCPU。<br/>
+				実践に近い。
+			</p>
+			<span class="btn btn--primary season-locked-panel__fake-btn" aria-disabled="true">？？？？</span>
+		</section>
 		</div>
 	</th:block>
 </div>
 <script th:src="@{/js/battle-deck-select.js(v=${assetVersion})}"></script>
+<th:block th:replace="~{fragments/season-lock-tooltip :: tooltip}"></th:block>
 <th:block th:replace="~{fragments/authenticated-common-tail :: tail}"></th:block>
 </body>
 </html>

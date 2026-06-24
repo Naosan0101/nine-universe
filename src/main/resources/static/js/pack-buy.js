@@ -1,6 +1,5 @@
 (function () {
 	const bar = document.getElementById('pack-buy-confirm-bar');
-	const hintEl = document.getElementById('pack-buy-confirm-hint');
 	const questionEl = document.getElementById('pack-buy-confirm-question');
 	const nameEl = document.getElementById('pack-buy-confirm-name');
 	const paymentEl = document.getElementById('pack-buy-confirm-payment');
@@ -78,7 +77,6 @@
 		});
 		if (!selected) {
 			if (typeInput) typeInput.value = '';
-			if (hintEl) hintEl.hidden = false;
 			if (questionEl) questionEl.hidden = true;
 			if (nameEl) nameEl.textContent = '';
 			updatePaymentSummary('');
@@ -95,7 +93,6 @@
 		const packName = selected.dataset.packName || 'パック';
 		const packCost = selected.dataset.packCost || '';
 		if (typeInput) typeInput.value = packType;
-		if (hintEl) hintEl.hidden = true;
 		if (questionEl) questionEl.hidden = false;
 		if (nameEl) nameEl.textContent = packName;
 		updatePaymentSummary(packCost);
@@ -111,8 +108,11 @@
 		setSelected(null);
 	}
 
-	document.querySelectorAll('.pack-buy__item[data-pack-type]').forEach(function (btn) {
+	document.querySelectorAll('.pack-buy__item[data-pack-type], .pack-buy__item[data-pack-locked="true"]').forEach(function (btn) {
 		btn.addEventListener('click', function () {
+			if (btn.getAttribute('data-pack-locked') === 'true') {
+				return;
+			}
 			setSelected(btn);
 		});
 	});

@@ -1,7 +1,9 @@
 package com.example.nineuniverse.service;
 
 import com.example.nineuniverse.GameConstants;
-import com.example.nineuniverse.GameConstants;
+import com.example.nineuniverse.season.SeasonSchedule;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import com.example.nineuniverse.domain.AppUser;
 import com.example.nineuniverse.domain.CardDefinition;
 import com.example.nineuniverse.repository.AppUserMapper;
@@ -60,6 +62,11 @@ public class PackService {
 			throw new IllegalStateException("ユーザーが見つかりません");
 		}
 		PackType t = type != null ? type : PackType.STANDARD;
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (!SeasonSchedule.isPackUnlocked(t, today)) {
+			String hint = SeasonSchedule.unlockLabelJa(SeasonSchedule.unlockDateFor(t, today));
+			throw new IllegalArgumentException("このパックはまだ購入できません。" + (hint.isBlank() ? "" : "（" + hint + "）"));
+		}
 		if (u.getCoins() < t.cost) {
 			throw new IllegalArgumentException("ジェムが足りません（" + t.cost + "ジェム必要）");
 		}
@@ -82,6 +89,10 @@ public class PackService {
 	public List<PackOpenRow> openBonusPackWithoutGemCost(long userId, PackType type) {
 		if (type != PackType.STANDARD && type != PackType.STANDARD_2 && type != PackType.STANDARD_3) {
 			throw new IllegalArgumentException("ボーナスパックではスタンダードパック1・2・3のみ選べます");
+		}
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (!SeasonSchedule.isPackUnlocked(type, today)) {
+			throw new IllegalArgumentException("このパックはまだ開封できません。");
 		}
 		return pullPackIntoCollection(userId, type, false);
 	}

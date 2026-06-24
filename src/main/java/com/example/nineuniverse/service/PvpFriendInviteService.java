@@ -4,6 +4,7 @@ import com.example.nineuniverse.domain.PvpFriendInvite;
 import com.example.nineuniverse.domain.PvpInviteNotice;
 import com.example.nineuniverse.pvp.PvpMatch;
 import com.example.nineuniverse.repository.PvpFriendInviteMapper;
+import com.example.nineuniverse.season.SeasonSchedule;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -11,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDate;
+import java.time.ZoneId;
 
 @Service
 @RequiredArgsConstructor
@@ -62,6 +65,9 @@ public class PvpFriendInviteService {
 		if (!friendService.areFriends(challengerUserId, friendUserId)) {
 			throw new IllegalStateException("フレンドのみに対戦申し込みができます");
 		}
+		if (league) {
+			SeasonSchedule.requireLeagueBattleUnlocked(LocalDate.now(ZoneId.systemDefault()));
+		}
 		PvpMatch m = league
 				? pvpBattleService.createWaitingRoomLeague(challengerUserId, selectionId, friendUserId)
 				: pvpBattleService.createWaitingRoom(challengerUserId, selectionId, friendUserId);
@@ -103,6 +109,7 @@ public class PvpFriendInviteService {
 			throw new IllegalStateException("対戦が見つかりません");
 		}
 		if (m.getFormat() == PvpMatch.Format.LEAGUE) {
+			SeasonSchedule.requireLeagueBattleUnlocked(LocalDate.now(ZoneId.systemDefault()));
 			if (guestLeagueSetId == null) {
 				throw new IllegalArgumentException("リーグデッキを選んでください");
 			}

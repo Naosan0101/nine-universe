@@ -38,7 +38,7 @@ public record CpuBattleStateDto(
 		boolean weeklyShonenCampCount2ComicBonus,
 		/** 週刊少年 CAMP のカウント3到達ターン中、全カード配置コスト+1 */
 		boolean weeklyShonenCampGlobalDeployCostPlusOneThisTurn,
-		/** 世界の再構築〈フィールド〉のカウント（4→0）。該当でないときは 0 */
+		/** 世界の再構築〈フィールド〉のカウント（6→0）。該当でないときは 0 */
 		int worldRebuildFieldCounterDisplay,
 		/** ペーパーシティ〈フィールド〉のカウント（6→0）。該当でないときは 0 */
 		int paperCityFieldCounterDisplay,

@@ -1,6 +1,9 @@
 package com.example.nineuniverse.service;
 
 import com.example.nineuniverse.GameConstants;
+import com.example.nineuniverse.season.SeasonSchedule;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import com.example.nineuniverse.domain.CardDefinition;
 import com.example.nineuniverse.domain.CardIdCount;
 import com.example.nineuniverse.domain.DeckEntry;
@@ -234,6 +237,10 @@ public class RecycleService {
 	private void requireRecycleStandardPack(PackService.PackType standardPack) {
 		if (!packService.isRecycleStandardBundlePack(standardPack)) {
 			throw new IllegalArgumentException("スタンダードパックの指定が不正です。");
+		}
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (!SeasonSchedule.isPackUnlocked(standardPack, today)) {
+			throw new IllegalArgumentException("このパックはまだ開封できません。");
 		}
 	}
 

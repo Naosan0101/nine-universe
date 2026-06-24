@@ -107,8 +107,8 @@
 			<figcaption class="how-to-play__figcaption muted">図：強さの比較（イメージ）</figcaption>
 		</figure>
 
-		<h3 class="how-to-play__sub how-to-play__heading-gap-before">〈フィールド〉カード</h3>
-		<ul class="how-to-play__list">
+		<h3 class="how-to-play__sub how-to-play__heading-gap-before" th:if="${howToPlayFieldUnlocked}">〈フィールド〉カード</h3>
+		<ul class="how-to-play__list" th:if="${howToPlayFieldUnlocked}">
 			<li>
 				ファイターとは別の種類のカードで、場に出すと<strong>ステージ全体</strong>に影響する効果を持ちます。
 				効果の説明は、カード下のテキストで〈フィールド〉と書かれた箇所にあります。デッキ8枚のうちに入れて使えます。

@@ -11,9 +11,11 @@ import com.example.nineuniverse.service.FriendService;
 import com.example.nineuniverse.service.NicknameEpithetService;
 import com.example.nineuniverse.service.PvpBattleService;
 import com.example.nineuniverse.service.PvpFriendInviteService;
+import com.example.nineuniverse.season.SeasonSchedule;
 import com.example.nineuniverse.web.dto.CpuBattleChoiceRequest;
 import com.example.nineuniverse.web.dto.CpuBattleCommitRequest;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -51,7 +53,8 @@ public class PvpController {
 	}
 
 	@GetMapping
-	public String pvpHub() {
+	public String pvpHub(Model model) {
+		SeasonLockViewHelper.addBattleModeLocks(model);
 		return "pvp-hub";
 	}
 
@@ -67,9 +70,15 @@ public class PvpController {
 	}
 
 	@GetMapping("/league")
-	public String leagueMenu(Model model) {
+	public String leagueMenu(Model model, RedirectAttributes ra) {
+		LocalDate today = SeasonLockViewHelper.today();
+		if (!SeasonSchedule.isLeagueBattleUnlocked(today)) {
+			ra.addFlashAttribute("error", "リーグ対戦はまだ利用できません。（" + SeasonSchedule.leagueBattleUnlockHint(today) + "）");
+			return "redirect:/battle/pvp";
+		}
 		pvpFriendInviteService.expireStalePendingInvites();
 		long uid = CurrentUser.require().getId();
+		SeasonLockViewHelper.addBattleModeLocks(model);
 		model.addAttribute("leagueSets", deckService.listLeagueDeckSetSummaries(uid));
 		model.addAttribute("friends", friendService.listFriends(uid));
 		model.addAttribute("pvpPendingInbound", pvpFriendInviteService.listPendingInbound(uid));
@@ -93,6 +102,7 @@ public class PvpController {
 	@PostMapping("/league/challenge")
 	public String sendChallengeLeague(@RequestParam long friendUserId, @RequestParam long leagueSetId, RedirectAttributes ra) {
 		try {
+			SeasonSchedule.requireLeagueBattleUnlocked(SeasonLockViewHelper.today());
 			pvpFriendInviteService.expireStalePendingInvites();
 			long uid = CurrentUser.require().getId();
 			var created = pvpFriendInviteService.createInvite(uid, friendUserId, leagueSetId, true);

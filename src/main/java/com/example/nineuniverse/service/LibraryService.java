@@ -1,6 +1,9 @@
 package com.example.nineuniverse.service;
 
 import com.example.nineuniverse.CanonicalLibraryCardText;
+import com.example.nineuniverse.season.SeasonSchedule;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.card.CardAttributeLabels;
 import com.example.nineuniverse.card.CardAttributes;
@@ -29,11 +32,15 @@ public class LibraryService {
 	private final UserCollectionMapper userCollectionMapper;
 
 	public List<LibraryCardView> library(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
 		Map<Short, Integer> qty = userCollectionMapper.findByUserId(userId).stream()
 				.collect(Collectors.toMap(r -> r.getCardId(), r -> r.getQuantity()));
 		List<LibraryCardView> out = new ArrayList<>();
 		for (CardDefinition c : cardCatalogService.all()) {
 			if (GameConstants.excludedFromPackOpenAndLibraryListing(c.getId())) {
+				continue;
+			}
+			if (!SeasonSchedule.isPackInitialVisible(c.getPackInitial(), today)) {
 				continue;
 			}
 			LibraryCardView v = new LibraryCardView();
@@ -68,9 +75,13 @@ public class LibraryService {
 	 * レジェンダリー交換：一覧用。詳細表示のため {@link LibraryCardView#setOwned(boolean)} は呼び出し側で true にする。
 	 */
 	public List<LibraryCardView> legendaryDefinitionsAsViews() {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
 		List<LibraryCardView> out = new ArrayList<>();
 		for (CardDefinition c : cardCatalogService.all()) {
 			if (GameConstants.excludedFromPackOpenAndLibraryListing(c.getId())) {
+				continue;
+			}
+			if (!SeasonSchedule.isPackInitialVisible(c.getPackInitial(), today)) {
 				continue;
 			}
 			String r = c.getRarity();
@@ -216,6 +227,10 @@ public class LibraryService {
 				v.setCompanionDetailJson(buildKamuiFieldLinkCompanionDetailJson());
 			} else if (c.getId() != null && c.getId() == GameConstants.BOT_BIKE_FIGHTER_CARD_ID) {
 				v.setCompanionDetailJson(buildMechanicRuleCardLinkCompanionDetailJson());
+			} else if (c.getId() != null && c.getId() == GameConstants.OKAMI_OTOKO_FIGHTER_CARD_ID) {
+				v.setCompanionDetailJson(buildOkamiCompanionDetailJson());
+			} else if (c.getId() != null && c.getId() == GameConstants.NECROMANCER_FIGHTER_CARD_ID) {
+				v.setCompanionDetailJson(buildGaikotsuCompanionDetailJson());
 			} else {
 				v.setCompanionDetailJson(null);
 			}
@@ -672,6 +687,42 @@ public class LibraryService {
 				return null;
 			}
 			m.put("linkToken", "「メカニック」");
+			return OBJECT_MAPPER.writeValueAsString(m);
+		} catch (JsonProcessingException e) {
+			return null;
+		} catch (RuntimeException e) {
+			return null;
+		}
+	}
+
+	/**
+	 * オオカミ男拡大詳細: 効果文中の「オオカミ」を化石リンクと同様にクリック可能にする。
+	 */
+	private String buildOkamiCompanionDetailJson() {
+		try {
+			LinkedHashMap<String, Object> m = companionCardFaceJsonMap(GameConstants.OKAMI_FIGHTER_CARD_ID, false);
+			if (m == null) {
+				return null;
+			}
+			m.put("linkToken", "「オオカミ」");
+			return OBJECT_MAPPER.writeValueAsString(m);
+		} catch (JsonProcessingException e) {
+			return null;
+		} catch (RuntimeException e) {
+			return null;
+		}
+	}
+
+	/**
+	 * ネクロマンサー拡大詳細: 効果文中の「がいこつ兵」を化石リンクと同様にクリック可能にする。
+	 */
+	private String buildGaikotsuCompanionDetailJson() {
+		try {
+			LinkedHashMap<String, Object> m = companionCardFaceJsonMap(GameConstants.GAIKOTSU_SOLDIER_CARD_ID, false);
+			if (m == null) {
+				return null;
+			}
+			m.put("linkToken", "「がいこつ兵」");
 			return OBJECT_MAPPER.writeValueAsString(m);
 		} catch (JsonProcessingException e) {
 			return null;
