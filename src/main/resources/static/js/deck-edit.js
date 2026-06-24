@@ -784,6 +784,7 @@
 	function canAppendAutoDeck(deckIds, id, tribe) {
 		const c = seedById(id);
 		if (!c || c.qty <= 0) return false;
+		if (leagueBlockedSet.has(id)) return false;
 		if (deckIds.length >= 8) return false;
 		const cap = maxPerForId(id);
 		const n = deckIds.filter(function (x) {

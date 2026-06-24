@@ -9,4 +9,6 @@ public class PvpInviteNotice {
 	private long counterpartUserId;
 	/** 相手側に表示する名前（申し込み受信なら申込者、送信なら相手フレンド） */
 	private String counterpartDisplayName;
+	/** 待機ルームの形式（{@code CASUAL} / {@code LEAGUE}）。ルームが無いときは null */
+	private String format;
 }

@@ -1,6 +1,6 @@
 /**
  * 届いている対戦申し込みをポーリングし、右下にバナーを出す。
- * クリックで「だれかと対戦」へ。× は今の件数まで非表示（新規が来たら再表示）。
+ * クリックでカジュアル／リーグの対戦ページへ（最新の申し込み形式に合わせる）。× は今の件数まで非表示（新規が来たら再表示）。
  * 設定で ON のとき、ブラウザのデスクトップ通知も送る（許可が必要）。
  */
 (function () {
@@ -26,6 +26,8 @@
 	var closeBtn = null;
 	var pollTimer = null;
 	var lastPolledCount = null;
+	var lastNavigateUrl = pvpMenuUrl;
+	var bannerHintEl = null;
 
 	function pathForMatch() {
 		var p = window.location.pathname || '';
@@ -57,12 +59,32 @@
 		}
 	}
 
-	function tryDesktopNotify(count) {
+	function hintForFormat(format) {
+		if (format === 'LEAGUE') {
+			return 'タップして「リーグ対戦」へ';
+		}
+		if (format === 'CASUAL') {
+			return 'タップして「カジュアル対戦」へ';
+		}
+		return 'タップして対戦モードへ';
+	}
+
+	function bodyForFormat(format) {
+		if (format === 'LEAGUE') {
+			return '「リーグ対戦」を開いて承諾してください。';
+		}
+		if (format === 'CASUAL') {
+			return '「カジュアル対戦」を開いて承諾してください。';
+		}
+		return '対戦モードを開いて承諾してください。';
+	}
+
+	function tryDesktopNotify(count, format) {
 		if (!notifyEnabled) {
 			return;
 		}
 		var title = 'ナインユニバース：対戦の申し込み';
-		var body = '「だれかと対戦」を開いて承諾してください。';
+		var body = bodyForFormat(format);
 		/* Electron シェルはメインプロセスのネイティブ通知（Windows のトースト等） */
 		if (
 			typeof window.nuElectron !== 'undefined' &&
@@ -132,7 +154,8 @@
 		title.textContent = '対戦の申し込みを受け取りました';
 		var hint = document.createElement('p');
 		hint.className = 'pvp-invite-banner__hint';
-		hint.textContent = 'タップして「だれかと対戦」へ';
+		hint.textContent = hintForFormat(null);
+		bannerHintEl = hint;
 		body.appendChild(title);
 		body.appendChild(hint);
 
@@ -150,7 +173,7 @@
 			if (ev.target === closeBtn) {
 				return;
 			}
-			window.location.href = pvpMenuUrl;
+			window.location.href = lastNavigateUrl || pvpMenuUrl;
 		});
 		closeBtn.addEventListener('click', function (ev) {
 			ev.preventDefault();
@@ -222,8 +245,20 @@
 					return;
 				}
 				var c = Math.max(0, Math.floor(data.count));
+				var fmt =
+					data.latestFormat && typeof data.latestFormat === 'string'
+						? String(data.latestFormat)
+						: null;
+				if (data.navigateUrl && typeof data.navigateUrl === 'string') {
+					lastNavigateUrl = String(data.navigateUrl);
+				} else {
+					lastNavigateUrl = pvpMenuUrl;
+				}
+				if (bannerHintEl) {
+					bannerHintEl.textContent = hintForFormat(fmt);
+				}
 				if (lastPolledCount !== null && c > lastPolledCount && notifyEnabled) {
-					tryDesktopNotify(c);
+					tryDesktopNotify(c, fmt);
 				}
 				lastPolledCount = c;
 				syncVisibility(c);
