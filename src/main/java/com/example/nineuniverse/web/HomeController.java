@@ -681,6 +681,9 @@ public class HomeController {
 		missionService.ensureDailyMissions(uid);
 		missionService.ensureWeeklyMissions(uid);
 		var fresh = appUserMapper.findById(uid);
+		if (fresh == null) {
+			return "redirect:/logout";
+		}
 		model.addAttribute("user", fresh);
 		model.addAttribute("missionHasUnclaimedReward", missionService.hasUnclaimedMissionRewards(uid));
 		model.addAttribute("friendHubPendingInbound", friendService.countPendingInbound(uid) > 0);

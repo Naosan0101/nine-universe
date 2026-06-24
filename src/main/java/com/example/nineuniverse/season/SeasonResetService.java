@@ -27,7 +27,12 @@ public class SeasonResetService {
 		}
 		LocalDate currentStart = SeasonSchedule.periodStartContaining(today);
 		LocalDate lastReset = seasonMetaMapper.findLastResetPeriodStart();
-		if (lastReset != null && !currentStart.isAfter(lastReset)) {
+		if (lastReset == null) {
+			// 行が無いだけのときは全ユーザー消去せず、現在区切りを記録するだけにする
+			seasonMetaMapper.insertInitialIfAbsent(currentStart);
+			return;
+		}
+		if (!currentStart.isAfter(lastReset)) {
 			return;
 		}
 		resetIfNewPeriodLocked(currentStart);
@@ -35,7 +40,11 @@ public class SeasonResetService {
 
 	private void resetIfNewPeriodLocked(LocalDate currentStart) {
 		LocalDate lastReset = seasonMetaMapper.findLastResetPeriodStartForUpdate();
-		if (lastReset != null && !currentStart.isAfter(lastReset)) {
+		if (lastReset == null) {
+			seasonMetaMapper.insertInitialIfAbsent(currentStart);
+			return;
+		}
+		if (!currentStart.isAfter(lastReset)) {
 			return;
 		}
 		wipeAllUserProgress();

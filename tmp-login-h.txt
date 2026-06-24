@@ -1,0 +1,13 @@
+HTTP/1.1 302 
+Set-Cookie: JSESSIONID=1C82461589D18A2E480FAB605F7915D3; Path=/; HttpOnly
+Set-Cookie: remember-me=ZGJnNTgzNTE5OjE3ODI5MjQyNzcyMDE6U0hBMjU2OjFjNmI3OTdlNjQ3YWRmMjQ2ODNkNDQzYjJjNWUxYTJmMWNiMTU3ZWEyNWJkM2I5NjgyZGI5ZGI4Mzg5OWI4OTg; Expires=Wed, 01 Jul 2026 16:44:37 GMT; Max-Age=604800; Path=/; HttpOnly
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Location: http://127.0.0.1:8080/home
+Content-Length: 0
+Date: Wed, 24 Jun 2026 16:44:37 GMT
+

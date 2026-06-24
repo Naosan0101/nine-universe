@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>Nine Universe — ホーム</title>
+	<link rel="stylesheet" href="/css/app.css?v=dev"/>
+</head>
+<body class="page page--theme-arcane page--single-screen-hub" data-announce-epoch="2026-06-24" data-perf-claimable="false" data-ttp-claimable="false" data-balance-claimable="false" data-pack-rates-claimable="false" data-pack-result-draw-again-claimable="false" data-captain-text-claimable="false" data-mission-fix-claimable="false" data-card-text-fix-claimable="false" data-samurai-fix-claimable="false" data-pack-mission-bonus-fix-claimable="false" data-celebrate-30-users-claimable="false" data-kaenryu-status-claimable="false" data-samurai-status-claimable="false" data-major-update-claimable="false" data-denzirion-fix-claimable="false" data-ninja-dark-dragon-fix-claimable="false" data-weapon-depot-denzirion-fix-claimable="false" data-field-display-settings-bonus-claimable="false" data-denzirion-garakuta-fusion-fix-claimable="false" data-platform-apr-2026-claimable="false" data-friend-pvp-update-claimable="false" data-apr-23-2026-bundle-claimable="false" data-mechanic-pvp-preview-fix-claimable="false" data-kentoshi-fix-claimable="false" data-kusuri-fix-claimable="false" data-card-display-server-ops-2026-05-claimable="false" data-fossil-field-fix-2026-05-claimable="false" data-major-update-login-popup="false" data-80-users-login-popup="false" data-season-pack-tier2-login-popup="false" data-season-pack-tier3-login-popup="false" data-user-id="4" data-home-bonus-epithet-reveal="false">
+<header class="topbar">
+	<h1 class="game-title game-title--brand">
+	<span class="game-title__mark">
+		<span class="game-title__en" lang="en">Nine Universe</span>
+		<span class="game-title__ja">ナインユニバース</span>
+	</span>
+</h1>
+	<div class="topbar__meta">
+		<span>ジェム: <strong>30</strong></span>
+		<div class="topbar__auth-actions">
+			<form action="/logout" method="post" class="inline"><input type="hidden" name="_csrf" value="7KFUe77rMvyRPyjU9IVyi-nn-kZVjgHslDIz_SnbyzFkNwpniZZsH4eJUcy8XRC2xKhG7tqB135iumXB8ABXzhvi8wlUUz5T"/>
+				<input type="hidden" name="_csrf" value="7KFUe77rMvyRPyjU9IVyi-nn-kZVjgHslDIz_SnbyzFkNwpniZZsH4eJUcy8XRC2xKhG7tqB135iumXB8ABXzhvi8wlUUz5T"/>
+				<button type="submit" class="btn btn--ghost">ログアウト</button>
+			</form>
+			<span class="topbar__quit-wrap">
+				<button type="button" class="btn btn--danger" id="home-quit-app-btn">終了</button>
+			</span>
+		</div>
+	</div>
+</header>
+
+<div id="nu-home-quit-modal"
+     class="nu-home-quit-modal"
+     hidden
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="nu-home-quit-title"
+     aria-hidden="true">
+	<div class="nu-home-quit-modal__panel" role="document">
+		<h2 id="nu-home-quit-title" class="nu-home-quit-modal__title">ゲームを終了しますか？</h2>
+		<div class="nu-home-quit-modal__actions">
+			<button type="button" class="btn btn--ghost" id="nu-home-quit-cancel">キャンセル</button>
+			<button type="button" class="btn btn--primary" id="nu-home-quit-confirm">終了</button>
+		</div>
+	</div>
+</div>
+
+
+
+<div id="announcement-modal"
+     class="announcement-modal"
+     hidden
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="announcement-modal-title"
+     aria-hidden="true">
+	<div class="announcement-modal__panel" role="document">
+		<h2 id="announcement-modal-title" class="announcement-modal__heading">おしらせ</h2>
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+
+		
+		
+
+		
+		
+
+		
+		
+
+		
+		
+		<div class="announcement-modal__footer">
+			
+			<button type="button" class="btn btn--ghost announcement-modal__close" id="announcement-close">閉じる</button>
+		</div>
+	</div>
+</div>
+
+
+
+
+
+
+
+
+
+<div id="welcome-bonus-modal"
+     class="welcome-bonus-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="welcome-bonus-title">
+	<div class="welcome-bonus-modal__panel">
+		<h2 id="welcome-bonus-title" class="welcome-bonus-modal__heading">新規ユーザープレゼント！</h2>
+		<p class="welcome-bonus-modal__text">30ジェムを付与しました。</p>
+		<button type="button" class="btn btn--primary welcome-bonus-modal__close" id="welcome-bonus-close">閉じる</button>
+	</div>
+</div>
+
+<div class="container hub-main">
+	<section class="home-time-pack" data-duration-ms="43200000" data-start-ms="1782319476948" data-bonus-bank="0">
+		<div class="home-time-pack__head">
+			<h2 class="home-time-pack__title">ボーナスパック</h2>
+			<div class="home-time-pack__lead">
+				<p class="home-time-pack__lead-line">時間の経過でゲージが溜まります。</p>
+			</div>
+		</div>
+		<div class="home-time-pack__bar-wrap" aria-hidden="true">
+			<div class="home-time-pack__ruler home-time-pack__ruler--labels">
+				<div class="home-time-pack__ruler-point" style="left:50%">
+					<span class="home-time-pack__scale-label">50%</span>
+				</div>
+				<div class="home-time-pack__ruler-point home-time-pack__ruler-point--max" style="left:100%">
+					<span class="home-time-pack__scale-label">MAX</span>
+				</div>
+			</div>
+			<div class="home-time-pack__track">
+				<div class="home-time-pack__fill"
+				     style="width: 0%;"
+				     id="time-pack-fill"></div>
+			</div>
+			<div class="home-time-pack__ruler home-time-pack__ruler--times">
+				<div class="home-time-pack__ruler-point" style="left:50%">
+					<span class="home-time-pack__cd" id="time-pack-cd-half">0時間0分0秒</span>
+				</div>
+				<div class="home-time-pack__ruler-point home-time-pack__ruler-point--max" style="left:100%">
+					<span class="home-time-pack__cd" id="time-pack-cd-max">0時間0分0秒</span>
+				</div>
+			</div>
+		</div>
+		<button type="button"
+		        class="btn btn--primary home-time-pack__btn"
+		        id="time-pack-open-btn"
+		        disabled="disabled">開封できるまで待機中</button>
+		
+	</section>
+
+	<!-- ボーナス：二つ名ガチャ結果（カード開封演出とは別） -->
+	<div id="home-bonus-epithet-modal" class="epithet-gacha-result-layer" hidden role="dialog" aria-modal="true"
+	     aria-labelledby="home-bonus-epithet-title" aria-hidden="true">
+		<div class="epithet-gacha-result-layer__backdrop" data-home-bonus-epithet-close tabindex="-1" aria-hidden="true"></div>
+		<div class="epithet-gacha-result-modal pack-detail-modal__panel">
+			<h2 id="home-bonus-epithet-title" class="pack-detail-modal__heading">二つ名ガチャの結果</h2>
+			<p class="epithet-gacha-result-modal__lead muted">バトルや設定で表示できる二つ名が追加されました。</p>
+			<div class="epithet-gacha-result-modal__plate" aria-live="polite">
+				<span class="epithet-gacha-result-modal__chunk epithet-gacha-result-modal__chunk--upper" id="home-bonus-epithet-upper">—</span>
+				<span class="epithet-gacha-result-modal__mid" aria-hidden="true">/</span>
+				<span class="epithet-gacha-result-modal__chunk epithet-gacha-result-modal__chunk--lower" id="home-bonus-epithet-lower">—</span>
+			</div>
+			<div class="epithet-gacha-result-modal__actions">
+				<button type="button" class="btn btn--primary" data-home-bonus-epithet-close>OK</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- ボーナスパック：スタンダード1/2/3 または二つ名ガチャ -->
+	<div id="time-pack-choice-modal" class="time-pack-choice-layer" hidden role="dialog" aria-modal="true" aria-labelledby="time-pack-choice-title">
+		<div class="pack-detail-modal__backdrop" data-time-pack-choice-close tabindex="-1" aria-hidden="true"></div>
+		<div class="pack-detail-modal__panel time-pack-choice-modal__panel">
+			<button type="button" class="pack-detail-modal__close" data-time-pack-choice-close aria-label="閉じる">×</button>
+			<h2 id="time-pack-choice-title" class="pack-detail-modal__heading">ボーナスパックを開封</h2>
+			<p class="time-pack-choice-modal__lead">開封する内容を選んでください（1回につき1パック＝カード4枚分。スタンダードパック1・2・3、または二つ名ガチャ）。</p>
+			<form action="/home/time-pack/open" method="post" class="time-pack-choice-modal__form" id="time-pack-choice-form"><input type="hidden" name="_csrf" value="7KFUe77rMvyRPyjU9IVyi-nn-kZVjgHslDIz_SnbyzFkNwpniZZsH4eJUcy8XRC2xKhG7tqB135iumXB8ABXzhvi8wlUUz5T"/>
+				<input type="hidden" name="_csrf" value="7KFUe77rMvyRPyjU9IVyi-nn-kZVjgHslDIz_SnbyzFkNwpniZZsH4eJUcy8XRC2xKhG7tqB135iumXB8ABXzhvi8wlUUz5T"/>
+				<div class="time-pack-choice-modal__slot">
+					<p class="time-pack-choice-modal__slot-label" id="time-pack-label-slot1">開封するパック</p>
+					<div class="time-pack-choice-modal__grid">
+						<div class="time-pack-choice-modal__cell">
+							<label class="time-pack-choice-modal__opt">
+								<input type="radio" name="pack0" value="STANDARD" checked="checked"/>
+								<img class="time-pack-choice-modal__img" src="/images/cards/%E3%82%B9%E3%82%BF%E3%83%B3%E3%82%BF%E3%82%99%E3%83%BC%E3%83%88%E3%82%99%E3%83%8F%E3%82%9A%E3%83%83%E3%82%AF1.PNG?v=1778845658033" alt="" onerror="this.hidden=true; this.removeAttribute('src');"/>
+								<span class="time-pack-choice-modal__name">スタンダードパック1（WH+ET）</span>
+							</label>
+							<button type="button" class="btn btn--ghost time-pack-choice-modal__detail" data-open-pack-detail="home-pack-detail-standard">詳細を見る</button>
+						</div>
+						
+						
+						<div class="time-pack-choice-modal__cell time-pack-choice-modal__cell--epithet">
+							<label class="time-pack-choice-modal__opt">
+								<input type="radio" name="pack0" value="BONUS_EPITHET_GACHA"/>
+								<div class="time-pack-choice-modal__epithet-art" aria-hidden="true">〈〉/〈〉</div>
+								<span class="time-pack-choice-modal__name">二つ名ガチャ</span>
+							</label>
+						</div>
+					</div>
+				</div>
+				<div class="time-pack-choice-modal__actions">
+					<button type="button" class="btn btn--ghost" data-time-pack-choice-close>キャンセル</button>
+					<button type="submit" class="btn btn--primary">開封する</button>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	<div id="home-pack-detail-standard" class="pack-detail-modal" hidden>
+		<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
+		<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="home-pack-detail-standard-title">
+			<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
+			<h2 id="home-pack-detail-standard-title" class="pack-detail-modal__heading">スタンダードパック1（WH+ET）</h2>
+			<p class="pack-detail-modal__price"><span class="muted">ボーナス開封（0ジェム）</span></p>
+			<h3 class="pack-detail-modal__sub">レア度別の排出率</h3>
+			<ul class="pack-detail-modal__rates">
+				<li>
+					<span class="pack-detail-modal__rate-label">レジェンダリー</span>
+					<span class="pack-detail-modal__rate-pct">2%</span>
+				</li>
+				<li>
+					<span class="pack-detail-modal__rate-label">エピック</span>
+					<span class="pack-detail-modal__rate-pct">10%</span>
+				</li>
+				<li>
+					<span class="pack-detail-modal__rate-label">レア</span>
+					<span class="pack-detail-modal__rate-pct">30%</span>
+				</li>
+				<li>
+					<span class="pack-detail-modal__rate-label">コモン</span>
+					<span class="pack-detail-modal__rate-pct">58%</span>
+				</li>
+			</ul>
+			<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
+			<ul class="pack-detail-modal__cards">
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Reg">
+					<span class="pack-detail-modal__card-name">ふわふわゴースト</span>
+					<span class="pack-detail-modal__card-rarity">レジェンダリー</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Reg">
+					<span class="pack-detail-modal__card-name">サムライ</span>
+					<span class="pack-detail-modal__card-rarity">レジェンダリー</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Reg">
+					<span class="pack-detail-modal__card-name">竜王</span>
+					<span class="pack-detail-modal__card-rarity">レジェンダリー</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Reg">
+					<span class="pack-detail-modal__card-name">風の魔人</span>
+					<span class="pack-detail-modal__card-rarity">レジェンダリー</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">オオカミ</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">オオカミ男</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">グリフォン</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">サキュバス</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">ドラゴンライダー</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">森の守護者</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">火炎竜</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">ウッドエルフ</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">ピクシー</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">剣闘士</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">古竜</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">呪われた亡者</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">死霊騎士</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">科学者</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">がいこつ兵</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">アーチャー</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">エルフの巫女</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">ダークドラゴン</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">ドラゴン</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">ドラゴンの卵</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">ネクロマンサー</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">狩人</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">用心棒</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">策士</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">薬売り</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">隊長</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+			</ul>
+		</div>
+	</div>
+
+	<div id="home-pack-detail-standard-2" class="pack-detail-modal" hidden>
+		<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
+		<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="home-pack-detail-standard-2-title">
+			<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
+			<h2 id="home-pack-detail-standard-2-title" class="pack-detail-modal__heading">スタンダードパック2（JU+IF）</h2>
+			<p class="pack-detail-modal__price"><span class="muted">ボーナス開封（0ジェム）</span></p>
+			<h3 class="pack-detail-modal__sub">レア度別の排出率</h3>
+			<ul class="pack-detail-modal__rates">
+				<li>
+					<span class="pack-detail-modal__rate-label">レジェンダリー</span>
+					<span class="pack-detail-modal__rate-pct">2%</span>
+				</li>
+				<li>
+					<span class="pack-detail-modal__rate-label">エピック</span>
+					<span class="pack-detail-modal__rate-pct">10%</span>
+				</li>
+				<li>
+					<span class="pack-detail-modal__rate-label">レア</span>
+					<span class="pack-detail-modal__rate-pct">30%</span>
+				</li>
+				<li>
+					<span class="pack-detail-modal__rate-label">コモン</span>
+					<span class="pack-detail-modal__rate-pct">58%</span>
+				</li>
+			</ul>
+			<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
+			<ul class="pack-detail-modal__cards">
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Reg">
+					<span class="pack-detail-modal__card-name">アーサー</span>
+					<span class="pack-detail-modal__card-rarity">レジェンダリー</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Reg">
+					<span class="pack-detail-modal__card-name">シャイニ</span>
+					<span class="pack-detail-modal__card-rarity">レジェンダリー</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Reg">
+					<span class="pack-detail-modal__card-name">磁力合体デンジリオン</span>
+					<span class="pack-detail-modal__card-rarity">レジェンダリー</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Reg">
+					<span class="pack-detail-modal__card-name">神秘の大樹 スカイア</span>
+					<span class="pack-detail-modal__card-rarity">レジェンダリー</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">SPEC-123</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">ネムリィ</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">フェザリア</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">マシンガンナー</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">宝石の地 グロリア輝石台地</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">忍者</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">決戦の地 カムイ</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">艦隊 HO-IVI-I3</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">霊園教会 デスバウンス</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">SPEC-1</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">SPEC-666</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">SPEC-777</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">クリスタクル</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">ハーフエルフ</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">ミラージュクル</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">ルミナンク</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">探鉱の洞窟 ネビュラ坑道</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">森のハープ弾き</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">武器庫 VV-E4-PON</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">炭鉱夫</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">研究者アストリア</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">ガラクタアーム</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">ガラクタレッグ</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">ストーニア</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">ノクスクル</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">フロストクル</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">ボットバイク</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">ミスティンクル</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">メカニック</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">レッドアイ</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">信奉者</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">助手</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">墓守神父</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">廃棄工場 5C-R4P</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+			</ul>
+		</div>
+	</div>
+
+	<div id="home-pack-detail-standard-3" class="pack-detail-modal" hidden>
+		<div class="pack-detail-modal__backdrop" data-pack-detail-close tabindex="-1" aria-hidden="true"></div>
+		<div class="pack-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="home-pack-detail-standard-3-title">
+			<button type="button" class="pack-detail-modal__close" data-pack-detail-close aria-label="閉じる">×</button>
+			<h2 id="home-pack-detail-standard-3-title" class="pack-detail-modal__heading">スタンダードパック3（OT/CS）</h2>
+			<p class="pack-detail-modal__price"><span class="muted">ボーナス開封（0ジェム）</span></p>
+			<h3 class="pack-detail-modal__sub">レア度別の排出率</h3>
+			<ul class="pack-detail-modal__rates">
+				<li>
+					<span class="pack-detail-modal__rate-label">レジェンダリー</span>
+					<span class="pack-detail-modal__rate-pct">2%</span>
+				</li>
+				<li>
+					<span class="pack-detail-modal__rate-label">エピック</span>
+					<span class="pack-detail-modal__rate-pct">10%</span>
+				</li>
+				<li>
+					<span class="pack-detail-modal__rate-label">レア</span>
+					<span class="pack-detail-modal__rate-pct">30%</span>
+				</li>
+				<li>
+					<span class="pack-detail-modal__rate-label">コモン</span>
+					<span class="pack-detail-modal__rate-pct">58%</span>
+				</li>
+			</ul>
+			<h3 class="pack-detail-modal__sub">このパックから排出されるカード</h3>
+			<ul class="pack-detail-modal__cards">
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Reg">
+					<span class="pack-detail-modal__card-name">セイレーン</span>
+					<span class="pack-detail-modal__card-rarity">レジェンダリー</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Reg">
+					<span class="pack-detail-modal__card-name">ミカエル</span>
+					<span class="pack-detail-modal__card-rarity">レジェンダリー</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Reg">
+					<span class="pack-detail-modal__card-name">紅蓮峡谷 フレイムガルド</span>
+					<span class="pack-detail-modal__card-rarity">レジェンダリー</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Reg">
+					<span class="pack-detail-modal__card-name">週刊少年 CAMP</span>
+					<span class="pack-detail-modal__card-rarity">レジェンダリー</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">アクアガーディアン</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">コミックヒーロー</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">ドミニオン</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">バハムート</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">ページウォーカー</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">マーメイド</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">ルシファー</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">世界の再構築</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">天界門 ヘヴンズゲート</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">深海神殿 アトランティス</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--Ep">
+					<span class="pack-detail-modal__card-name">龍鱗海峡 ラグナロク</span>
+					<span class="pack-detail-modal__card-rarity">エピック</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">エンジェルメイジ</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">キングメーカー</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">シーサーペント</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">セラフィム</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">セレスティア</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">ペーパーシティ</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">ポセイドン</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">リヴァイアサン</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">漫画家</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--R">
+					<span class="pack-detail-modal__card-name">鳥獣戯画</span>
+					<span class="pack-detail-modal__card-rarity">レア</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">インクナイト</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">ガブリエル</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">クラーケン</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">コミックウィッチ</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">コミックダイナソー</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">ザドキエル</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">スケッチャー</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">ファフニール</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">ベヒモス</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">メガロドン</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">ラミエル</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">ワイバーン</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">ヴァーチャー</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">化石</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+				<li class="pack-detail-modal__card-row pack-detail-modal__card-row--C">
+					<span class="pack-detail-modal__card-name">研究者フローラ</span>
+					<span class="pack-detail-modal__card-rarity">コモン</span>
+				</li>
+			</ul>
+		</div>
+	</div>
+
+	<section class="home-hero" aria-label="メインメニュー">
+		<div class="home-hero__bg" aria-hidden="true"></div>
+		<div class="home-hero__body">
+			<div class="home-hero__stats">
+				<div class="stat-pill" role="status" aria-label="所持ジェム">
+					<span class="stat-pill__label">ジェム</span>
+					<span class="stat-pill__value">30</span>
+				</div>
+				<a class="btn btn--primary home-hero__cta" href="/pack">パック購入へ</a>
+				<a class="btn btn--ghost home-hero__cta" href="/decks">デッキ編集</a>
+				<button type="button"
+				        class="btn btn--ghost home-hero__announce topbar__announce"
+				        id="announcement-open"
+				        aria-haspopup="dialog"
+				        aria-controls="announcement-modal">
+					<span class="topbar__announce-label">
+						<span class="topbar__announce-dot" id="announcement-unread-dot" hidden aria-hidden="true"></span>
+						おしらせ
+					</span>
+				</button>
+			</div>
+		</div>
+	</section>
+
+	<main class="home-grid--primary" aria-label="メニュー">
+		<!-- 1行目: カードパック → だれかと対戦 → ひとりで対戦 → デッキを作成 -->
+		<a class="tile tile--featured tile--home-primary" href="/pack">
+			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="12" height="16" rx="1"/><rect x="8" y="3" width="12" height="16" rx="1"/></svg></span>
+			<span class="tile__label">カードパックを購入</span>
+			<span class="tile__hint">新たなファイターを仲間に</span>
+		</a>
+		<a class="tile tile--home-primary" href="/battle/pvp">
+			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 5v8l-8 5-8-5V8l8-5z"/><line x1="12" y1="8" x2="12" y2="21"/></svg></span>
+			<span class="tile__label">
+				
+				だれかと対戦
+			</span>
+			<span class="tile__hint">フレンドと対人戦</span>
+		</a>
+		<a class="tile tile--home-primary" href="/battle/cpu">
+			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M7 5l10 14M17 5L7 19"/></svg></span>
+			<span class="tile__label">ひとりで対戦</span>
+			<span class="tile__hint">CPUとバトル</span>
+		</a>
+		<a class="tile tile--home-primary" href="/decks">
+			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="8" height="5" rx="0.8"/><rect x="3" y="12" width="8" height="7" rx="0.8"/><rect x="13" y="5" width="8" height="14" rx="0.8"/></svg></span>
+			<span class="tile__label">デッキを作成</span>
+			<span class="tile__hint">バトルの準備</span>
+		</a>
+		<!-- 2行目: ライブラリ → フレンド → ミッション → カードリサイクル -->
+		<a class="tile tile--home-primary" href="/library">
+			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="14" y2="16"/></svg></span>
+			<span class="tile__label">ライブラリ</span>
+			<span class="tile__hint">すべてのカードを確認</span>
+		</a>
+		<a class="tile tile--home-primary" href="/friends">
+			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+			<span class="tile__label">
+				
+				フレンド
+			</span>
+			<span class="tile__hint">フレンドを登録</span>
+		</a>
+		<a class="tile tile--home-primary" href="/missions">
+			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></span>
+			<span class="tile__label">
+				
+				ミッション
+			</span>
+			<span class="tile__hint">ジェムを獲得</span>
+		</a>
+		<a class="tile tile--home-primary" href="/recycle">
+			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M6 7V5a1 1 0 011-1h10a1 1 0 011 1v2"/><path d="M9 11v6M15 11v6"/><path d="M8 21h8l1-7H7l1 7z"/></svg></span>
+			<span class="tile__label">カードリサイクル</span>
+			<span class="tile__hint">余剰カードを交換</span>
+		</a>
+	</main>
+
+	<nav class="home-icon-dock" aria-label="ヘルプ・設定">
+		<a class="tile tile--icon-only home-icon-dock__btn" href="/how-to-play" aria-label="遊び方">
+			<span class="home-icon-dock__hover-label" aria-hidden="true">遊び方</span>
+			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h7a3 3 0 013 3v13H9a3 3 0 01-3-3V4z"/><path d="M9 4v13h7"/></svg></span>
+		</a>
+		<a class="tile tile--icon-only home-icon-dock__btn" href="/settings" aria-label="設定">
+			<span class="home-icon-dock__hover-label" aria-hidden="true">設定</span>
+			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33 1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82 1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span>
+		</a>
+	</nav>
+
+</div>
+<script>
+(function () {
+	var modal = document.getElementById('welcome-bonus-modal');
+	var btn = document.getElementById('welcome-bonus-close');
+	if (!modal || !btn) return;
+	document.body.style.overflow = 'hidden';
+	btn.focus();
+	btn.addEventListener('click', function () {
+		modal.hidden = true;
+		document.body.style.overflow = '';
+	});
+})();
+</script>
+<script>
+(function () {
+	var ann = document.getElementById('announcement-modal');
+	var openBtn = document.getElementById('announcement-open');
+	var closeBtn = document.getElementById('announcement-close');
+	if (!ann || !openBtn || !closeBtn) return;
+	/* data-announce-sort = GameConstants の各おしらせ開始日（YYYYMMDD + 同日内的な番号） */
+	function sortAnnouncementCardsInModal() {
+		var panel = ann.querySelector('.announcement-modal__panel');
+		if (!panel) return;
+		var insertPoint = panel.querySelector('.announcement-modal__flash');
+		if (!insertPoint) insertPoint = panel.querySelector('.announcement-modal__footer');
+		if (!insertPoint) return;
+		var cards = Array.prototype.slice.call(panel.querySelectorAll('article.announcement-modal__card'));
+		if (cards.length <= 1) return;
+		function sortKey(el) {
+			var raw = el.getAttribute('data-announce-sort');
+			if (raw == null || raw === '') return 9999999999;
+			var n = parseInt(raw, 10);
+			return isNaN(n) ? 9999999999 : n;
+		}
+		cards.sort(function (a, b) {
+			return sortKey(a) - sortKey(b);
+		});
+		for (var i = cards.length - 1; i >= 0; i--) {
+			panel.insertBefore(cards[i], insertPoint);
+			insertPoint = cards[i];
+		}
+	}
+	function openAnn() {
+		sortAnnouncementCardsInModal();
+		ann.hidden = false;
+		ann.setAttribute('aria-hidden', 'false');
+		document.body.style.overflow = 'hidden';
+		closeBtn.focus();
+	}
+	function closeAnn() {
+		ann.hidden = true;
+		ann.setAttribute('aria-hidden', 'true');
+		document.body.style.overflow = '';
+		openBtn.focus();
+		var epoch = document.body.getAttribute('data-announce-epoch');
+		if (epoch) {
+			try {
+				localStorage.setItem('nu_ann_ack', epoch);
+			} catch (e) { /* ignore */ }
+		}
+		if (typeof window.syncAnnouncementUnreadDot === 'function') {
+			window.syncAnnouncementUnreadDot();
+		}
+	}
+	openBtn.addEventListener('click', openAnn);
+	closeBtn.addEventListener('click', closeAnn);
+	ann.addEventListener('click', function (e) {
+		if (e.target === ann) closeAnn();
+	});
+	document.addEventListener('keydown', function (e) {
+		if (e.key === 'Escape' && !ann.hidden) closeAnn();
+	});
+	sortAnnouncementCardsInModal();
+	/* 受け取り直後のフラッシュメッセージがあるときは自動で開く */
+	if (document.querySelector('.announcement-modal__flash')) {
+		openAnn();
+	}
+})();
+</script>
+<script>
+(function () {
+	var dot = document.getElementById('announcement-unread-dot');
+	function syncAnnouncementUnreadDot() {
+		if (!dot) return;
+		var epoch = document.body.getAttribute('data-announce-epoch') || '';
+		var perf = document.body.getAttribute('data-perf-claimable') === 'true';
+		var ttp = document.body.getAttribute('data-ttp-claimable') === 'true';
+		var bal = document.body.getAttribute('data-balance-claimable') === 'true';
+		var pack = document.body.getAttribute('data-pack-rates-claimable') === 'true';
+		var drawAgain = document.body.getAttribute('data-pack-result-draw-again-claimable') === 'true';
+		var captainText = document.body.getAttribute('data-captain-text-claimable') === 'true';
+		var missionFix = document.body.getAttribute('data-mission-fix-claimable') === 'true';
+		var cardTextFix = document.body.getAttribute('data-card-text-fix-claimable') === 'true';
+		var samuraiFix = document.body.getAttribute('data-samurai-fix-claimable') === 'true';
+		var packMissionBonusFix = document.body.getAttribute('data-pack-mission-bonus-fix-claimable') === 'true';
+		var celebrate30 = document.body.getAttribute('data-celebrate-30-users-claimable') === 'true';
+		var kaenryuStatus = document.body.getAttribute('data-kaenryu-status-claimable') === 'true';
+		var samuraiStatus = document.body.getAttribute('data-samurai-status-claimable') === 'true';
+		var majorUpdate = document.body.getAttribute('data-major-update-claimable') === 'true';
+		var denzirionFix = document.body.getAttribute('data-denzirion-fix-claimable') === 'true';
+		var ninjaDarkDragonFix = document.body.getAttribute('data-ninja-dark-dragon-fix-claimable') === 'true';
+		var weaponDepotDenzirionFix = document.body.getAttribute('data-weapon-depot-denzirion-fix-claimable') === 'true';
+		var fieldDisplaySettingsBonus = document.body.getAttribute('data-field-display-settings-bonus-claimable') === 'true';
+		var denzirionGarakutaFusionFix = document.body.getAttribute('data-denzirion-garakuta-fusion-fix-claimable') === 'true';
+		var platformApr2026 = document.body.getAttribute('data-platform-apr-2026-claimable') === 'true';
+		var friendPvpUpdate = document.body.getAttribute('data-friend-pvp-update-claimable') === 'true';
+		var apr23Bundle = document.body.getAttribute('data-apr-23-2026-bundle-claimable') === 'true';
+		var mechanicPvpPreviewFix = document.body.getAttribute('data-mechanic-pvp-preview-fix-claimable') === 'true';
+		var kentoshiFix = document.body.getAttribute('data-kentoshi-fix-claimable') === 'true';
+		var kusuriFix = document.body.getAttribute('data-kusuri-fix-claimable') === 'true';
+		var cardDisplayServerOps202605 = document.body.getAttribute('data-card-display-server-ops-2026-05-claimable') === 'true';
+		var fossilFieldFix202605 = document.body.getAttribute('data-fossil-field-fix-2026-05-claimable') === 'true';
+		var ack = '';
+		try {
+			ack = localStorage.getItem('nu_ann_ack') || '';
+		} catch (e) {
+			ack = '';
+		}
+		var unseen = epoch !== '' && ack !== epoch;
+		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || cardTextFix || samuraiFix || packMissionBonusFix || celebrate30 || kaenryuStatus || samuraiStatus || majorUpdate || denzirionFix || ninjaDarkDragonFix || weaponDepotDenzirionFix || fieldDisplaySettingsBonus || denzirionGarakutaFusionFix || platformApr2026 || friendPvpUpdate || apr23Bundle || kentoshiFix || kusuriFix || mechanicPvpPreviewFix || cardDisplayServerOps202605 || fossilFieldFix202605 || unseen;
+		dot.hidden = !show;
+		dot.setAttribute('aria-hidden', show ? 'false' : 'true');
+	}
+	window.syncAnnouncementUnreadDot = syncAnnouncementUnreadDot;
+	syncAnnouncementUnreadDot();
+})();
+</script>
+<script>
+(function () {
+	var tier2Modal = document.getElementById('season-pack-tier2-modal');
+	var tier2OpenBtn = document.getElementById('season-pack-tier2-open');
+	var tier2CloseBtn = document.getElementById('season-pack-tier2-close');
+	var tier2OpenedFromAnnouncementList = false;
+
+	var tier3Modal = document.getElementById('season-pack-tier3-modal');
+	var tier3OpenBtn = document.getElementById('season-pack-tier3-open');
+	var tier3CloseBtn = document.getElementById('season-pack-tier3-close');
+	var tier3OpenedFromAnnouncementList = false;
+
+	var majorModal = document.getElementById('major-update-modal');
+	var majorOpenBtn = document.getElementById('major-update-open');
+	var majorCloseBtn = document.getElementById('major-update-close');
+	var majorOpenedFromAnnouncementList = false;
+
+	var u80Modal = document.getElementById('users-80-milestone-modal');
+	var u80OpenBtn = document.getElementById('users-80-milestone-open');
+	var u80CloseBtn = document.getElementById('users-80-milestone-close');
+
+	function openSeasonPackTier2Modal() {
+		if (!tier2Modal || !tier2CloseBtn) return;
+		tier2Modal.hidden = false;
+		tier2Modal.setAttribute('aria-hidden', 'false');
+		document.body.style.overflow = 'hidden';
+		tier2CloseBtn.focus();
+	}
+	function closeSeasonPackTier2Modal() {
+		if (!tier2Modal) return;
+		tier2Modal.hidden = true;
+		tier2Modal.setAttribute('aria-hidden', 'true');
+		document.body.style.overflow = '';
+		if (tier2OpenBtn) tier2OpenBtn.focus();
+		if (!tier2OpenedFromAnnouncementList) {
+			continueLoginPopupChain('tier2');
+		}
+		tier2OpenedFromAnnouncementList = false;
+	}
+	if (tier2Modal && tier2CloseBtn) {
+		if (tier2OpenBtn) {
+			tier2OpenBtn.addEventListener('click', function () {
+				tier2OpenedFromAnnouncementList = true;
+				openSeasonPackTier2Modal();
+			});
+		}
+		tier2CloseBtn.addEventListener('click', closeSeasonPackTier2Modal);
+		tier2Modal.addEventListener('click', function (e) {
+			if (e.target === tier2Modal) closeSeasonPackTier2Modal();
+		});
+	}
+
+	function openSeasonPackTier3Modal() {
+		if (!tier3Modal || !tier3CloseBtn) return;
+		tier3Modal.hidden = false;
+		tier3Modal.setAttribute('aria-hidden', 'false');
+		document.body.style.overflow = 'hidden';
+		tier3CloseBtn.focus();
+	}
+	function closeSeasonPackTier3Modal() {
+		if (!tier3Modal) return;
+		tier3Modal.hidden = true;
+		tier3Modal.setAttribute('aria-hidden', 'true');
+		document.body.style.overflow = '';
+		if (tier3OpenBtn) tier3OpenBtn.focus();
+		if (!tier3OpenedFromAnnouncementList) {
+			continueLoginPopupChain('tier3');
+		}
+		tier3OpenedFromAnnouncementList = false;
+	}
+	if (tier3Modal && tier3CloseBtn) {
+		if (tier3OpenBtn) {
+			tier3OpenBtn.addEventListener('click', function () {
+				tier3OpenedFromAnnouncementList = true;
+				openSeasonPackTier3Modal();
+			});
+		}
+		tier3CloseBtn.addEventListener('click', closeSeasonPackTier3Modal);
+		tier3Modal.addEventListener('click', function (e) {
+			if (e.target === tier3Modal) closeSeasonPackTier3Modal();
+		});
+	}
+
+	function openMajorUpdateModal() {
+		if (!majorModal || !majorCloseBtn) return;
+		majorModal.hidden = false;
+		majorModal.setAttribute('aria-hidden', 'false');
+		document.body.style.overflow = 'hidden';
+		majorCloseBtn.focus();
+	}
+	function closeMajorUpdateModal() {
+		if (!majorModal) return;
+		majorModal.hidden = true;
+		majorModal.setAttribute('aria-hidden', 'true');
+		document.body.style.overflow = '';
+		if (majorOpenBtn) majorOpenBtn.focus();
+		if (!majorOpenedFromAnnouncementList) {
+			continueLoginPopupChain('major');
+		}
+		majorOpenedFromAnnouncementList = false;
+	}
+	if (majorModal && majorCloseBtn) {
+		if (majorOpenBtn) {
+			majorOpenBtn.addEventListener('click', function () {
+				majorOpenedFromAnnouncementList = true;
+				openMajorUpdateModal();
+			});
+		}
+		majorCloseBtn.addEventListener('click', closeMajorUpdateModal);
+		majorModal.addEventListener('click', function (e) {
+			if (e.target === majorModal) closeMajorUpdateModal();
+		});
+	}
+
+	function openUsers80MilestoneModal() {
+		if (!u80Modal || !u80CloseBtn) return;
+		u80Modal.hidden = false;
+		u80Modal.setAttribute('aria-hidden', 'false');
+		document.body.style.overflow = 'hidden';
+		u80CloseBtn.focus();
+	}
+	function closeUsers80MilestoneModal() {
+		if (!u80Modal) return;
+		u80Modal.hidden = true;
+		u80Modal.setAttribute('aria-hidden', 'true');
+		document.body.style.overflow = '';
+		if (u80OpenBtn) u80OpenBtn.focus();
+	}
+	if (u80Modal && u80CloseBtn) {
+		if (u80OpenBtn) {
+			u80OpenBtn.addEventListener('click', openUsers80MilestoneModal);
+		}
+		u80CloseBtn.addEventListener('click', closeUsers80MilestoneModal);
+		u80Modal.addEventListener('click', function (e) {
+			if (e.target === u80Modal) closeUsers80MilestoneModal();
+		});
+	}
+
+	document.addEventListener('keydown', function (e) {
+		if (e.key !== 'Escape') return;
+		if (tier2Modal && !tier2Modal.hidden) {
+			closeSeasonPackTier2Modal();
+			return;
+		}
+		if (tier3Modal && !tier3Modal.hidden) {
+			closeSeasonPackTier3Modal();
+			return;
+		}
+		if (majorModal && !majorModal.hidden) {
+			closeMajorUpdateModal();
+			return;
+		}
+		if (u80Modal && !u80Modal.hidden) {
+			closeUsers80MilestoneModal();
+		}
+	});
+
+	function tryAutoOpenSeasonPackTier2LoginPopup() {
+		if (document.body.getAttribute('data-season-pack-tier2-login-popup') !== 'true') return false;
+		if (!tier2Modal || !tier2CloseBtn) return false;
+		if (tier2Modal.hidden === false) return true;
+		openSeasonPackTier2Modal();
+		return true;
+	}
+	function tryAutoOpenSeasonPackTier3LoginPopup() {
+		if (document.body.getAttribute('data-season-pack-tier3-login-popup') !== 'true') return false;
+		if (!tier3Modal || !tier3CloseBtn) return false;
+		if (tier3Modal.hidden === false) return true;
+		openSeasonPackTier3Modal();
+		return true;
+	}
+	function tryAutoOpenMajorUpdateLoginPopup() {
+		if (document.body.getAttribute('data-major-update-login-popup') !== 'true') return false;
+		if (!majorModal || !majorCloseBtn) return false;
+		if (majorModal.hidden === false) return true;
+		openMajorUpdateModal();
+		return true;
+	}
+	function tryAutoOpen80UsersLoginPopup() {
+		if (document.body.getAttribute('data-80-users-login-popup') !== 'true') return false;
+		if (!u80Modal || !u80CloseBtn) return false;
+		if (u80Modal.hidden === false) return true;
+		openUsers80MilestoneModal();
+		return true;
+	}
+	function continueLoginPopupChain(fromStep) {
+		setTimeout(function () {
+			if ((fromStep === 'welcome' || fromStep === 'start') && tryAutoOpenSeasonPackTier2LoginPopup()) return;
+			if ((fromStep === 'welcome' || fromStep === 'start' || fromStep === 'tier2')
+					&& tryAutoOpenSeasonPackTier3LoginPopup()) return;
+			if (fromStep !== 'major' && tryAutoOpenMajorUpdateLoginPopup()) return;
+			tryAutoOpen80UsersLoginPopup();
+		}, 0);
+	}
+
+	var welcome = document.getElementById('welcome-bonus-modal');
+	if (welcome) {
+		var wbtn = document.getElementById('welcome-bonus-close');
+		if (wbtn) {
+			wbtn.addEventListener('click', function () { continueLoginPopupChain('welcome'); }, { once: true });
+		}
+		return;
+	}
+	continueLoginPopupChain('start');
+})();
+</script>
+<script src="/js/home-time-pack-choice.js?v=dev"></script>
+<script>
+(function () {
+	var root = document.querySelector('.home-time-pack');
+	var fill = document.getElementById('time-pack-fill');
+	var btn = document.getElementById('time-pack-open-btn');
+	var cdHalf = document.getElementById('time-pack-cd-half');
+	var cdMax = document.getElementById('time-pack-cd-max');
+	if (!root || !fill || !btn || !cdHalf || !cdMax) return;
+	var dur = parseInt(root.getAttribute('data-duration-ms'), 10);
+	var start = parseInt(root.getAttribute('data-start-ms'), 10);
+	if (!dur || isNaN(start)) return;
+	function fmtHms(ms) {
+		if (ms <= 0) return '0時間0分0秒';
+		var s = Math.floor(ms / 1000);
+		var h = Math.floor(s / 3600);
+		var m = Math.floor((s % 3600) / 60);
+		var sec = s % 60;
+		return h + '時間' + m + '分' + sec + '秒';
+	}
+	function tick() {
+		var elapsed = Date.now() - start;
+		if (elapsed < 0) elapsed = 0;
+		var ratio = Math.min(1, elapsed / dur);
+		var pct = Math.round(ratio * 100);
+		fill.style.width = pct + '%';
+		var timerPacks = ratio >= 1 ? 2 : (ratio >= 0.5 ? 1 : 0);
+		var bonusBank = parseInt(root.getAttribute('data-bonus-bank'), 10);
+		if (isNaN(bonusBank)) bonusBank = 0;
+		var packs = timerPacks + bonusBank;
+		btn.disabled = packs === 0;
+		var halfAt = start + Math.floor(dur / 2);
+		var maxAt = start + dur;
+		var toHalf = halfAt - Date.now();
+		var toMax = maxAt - Date.now();
+		if (ratio < 0.5) {
+			cdHalf.textContent = fmtHms(toHalf);
+		} else {
+			cdHalf.textContent = '0時間0分0秒';
+		}
+		if (ratio < 1) {
+			cdMax.textContent = fmtHms(toMax);
+		} else {
+			cdMax.textContent = '0時間0分0秒';
+		}
+		if (packs > 1) {
+			btn.textContent = 'パックを選んで開封（' + packs + 'パック分）';
+		} else if (packs === 1) {
+			btn.textContent = 'パックを選んで開封';
+		} else {
+			btn.textContent = '開封できるまで待機中';
+		}
+	}
+	tick();
+	setInterval(tick, 1000);
+})();
+</script>
+<script>
+(function () {
+	var openBtn = document.getElementById('home-quit-app-btn');
+	var modal = document.getElementById('nu-home-quit-modal');
+	var cancelBtn = document.getElementById('nu-home-quit-cancel');
+	var confirmBtn = document.getElementById('nu-home-quit-confirm');
+	if (!openBtn || !modal || !cancelBtn || !confirmBtn) {
+		return;
+	}
+	var prevFocus = null;
+	function closeModal() {
+		modal.hidden = true;
+		modal.setAttribute('aria-hidden', 'true');
+		document.removeEventListener('keydown', onKeyDown);
+		if (prevFocus && typeof prevFocus.focus === 'function') {
+			try {
+				prevFocus.focus();
+			} catch (_) {
+				/* ignore */
+			}
+		}
+		prevFocus = null;
+	}
+	function openModal() {
+		prevFocus = document.activeElement;
+		modal.hidden = false;
+		modal.setAttribute('aria-hidden', 'false');
+		document.addEventListener('keydown', onKeyDown);
+		try {
+			cancelBtn.focus();
+		} catch (_) {
+			/* ignore */
+		}
+	}
+	function onKeyDown(e) {
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			closeModal();
+		}
+	}
+	openBtn.addEventListener('click', function () {
+		openModal();
+	});
+	cancelBtn.addEventListener('click', function () {
+		closeModal();
+	});
+	modal.addEventListener('click', function (e) {
+		if (e.target === modal) {
+			closeModal();
+		}
+	});
+	confirmBtn.addEventListener('click', function () {
+		if (window.nuElectron && typeof window.nuElectron.quitApp === 'function') {
+			window.nuElectron.quitApp();
+			return;
+		}
+		try {
+			window.close();
+		} catch (_) {
+			/* ignore */
+		}
+		closeModal();
+	});
+})();
+</script>
+
+	
+	
+
+	<script src="/js/pvp-invite-banner.js?v=dev" data-poll-url="/battle/pvp/pending-inbound.json" data-pvp-menu-url="/battle/pvp" data-pvp-invite-notify-enabled="true" data-pvp-notify-icon-url="/images/cards/desktop_icon_01.PNG"></script>
+	<script src="/js/tab-fullscreen.js?v=dev"></script>
+	<script src="/js/click-sparkle.js?v=dev"></script>
+	<script src="/js/nu-native-select.js?v=dev"></script>
+	
+	<script>
+		/*<![CDATA[*/
+		window.__NU_CURSOR_ICON_HREF = "\/images\/cards\/cursor_icon.PNG?v=20260423";
+		/*]]>*/
+	</script>
+	<script src="/js/nu-cursor-feedback.js?v=dev"></script>
+
+	
+	<aside id="nu-desktop-opt-update-root"
+	       class="nu-desktop-opt-update"
+	       hidden
+	       role="dialog"
+	       aria-modal="true"
+	       aria-labelledby="nu-desktop-opt-update-title">
+		<div class="nu-desktop-opt-update__panel" role="document">
+			<div id="nu-desktop-opt-step-notice">
+				<h2 id="nu-desktop-opt-update-title" class="nu-desktop-opt-update__title">アプリの更新があります</h2>
+				<p class="nu-desktop-opt-update__text">
+					アイコンや実行ファイルの変更など、再インストールが必要な更新です。アプリ内から最新のインストーラを取得し、案内に従って更新できます。
+				</p>
+				<p id="nu-desktop-opt-vers" class="nu-desktop-opt-update__vers"></p>
+				<div class="nu-desktop-opt-update__actions">
+					<button type="button" class="btn btn--primary" id="nu-desktop-opt-btn-install">更新する</button>
+					<button type="button" class="btn btn--ghost" id="nu-desktop-opt-btn-later">後で</button>
+				</div>
+			</div>
+			<div id="nu-desktop-opt-step-progress" hidden>
+				<h2 class="nu-desktop-opt-update__title">インストーラを取得しています</h2>
+				<p class="nu-desktop-opt-update__text" id="nu-desktop-opt-progress-msg">最新のセットアップをダウンロードしています。完了するとログイン画面へ移り、インストーラが起動します。</p>
+				<p id="nu-desktop-opt-pct" class="nu-desktop-opt-update__pct" aria-live="polite"></p>
+				<div class="nu-desktop-opt-update__track" aria-hidden="true">
+					<div id="nu-desktop-opt-bar" class="nu-desktop-opt-update__fill"></div>
+				</div>
+				<p class="nu-desktop-opt-update__hint">
+					インストール完了後は、このアプリを再度起動してログインしてください。
+				</p>
+			</div>
+			<div id="nu-desktop-opt-step-error" hidden>
+				<h2 class="nu-desktop-opt-update__title">ダウンロードに失敗しました</h2>
+				<p class="nu-desktop-opt-update__text" id="nu-desktop-opt-err-msg"></p>
+				<div class="nu-desktop-opt-update__actions">
+					<button type="button" class="btn btn--primary" id="nu-desktop-opt-btn-retry">再試行</button>
+					<button type="button" class="btn btn--ghost" id="nu-desktop-opt-btn-close-err">閉じる</button>
+				</div>
+			</div>
+		</div>
+	</aside>
+
+	<script src="/js/desktop-app-update-ui.js?v=dev"></script>
+
+</body>
+</html>

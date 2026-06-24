@@ -13,4 +13,10 @@
 	<update id="updateLastResetPeriodStart">
 		UPDATE season_meta SET last_reset_period_start = #{start} WHERE id = 1
 	</update>
+
+	<insert id="insertInitialIfAbsent">
+		INSERT INTO season_meta (id, last_reset_period_start)
+		VALUES (1, #{start})
+		ON CONFLICT (id) DO NOTHING
+	</insert>
 </mapper>
