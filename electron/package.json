@@ -1,6 +1,6 @@
 {
   "name": "nine-universe-desktop",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Dedicated window shell for nine-universe.jp (Steam / desktop)",
   "main": "main.js",
   "private": true,
@@ -33,7 +33,7 @@
     ],
     "win": {
       "icon": "build-resources/app-win.ico",
-      "signAndEditExecutable": true,
+      "signAndEditExecutable": false,
       "target": [
         {
           "target": "nsis",
@@ -64,11 +64,10 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "include": "build/installer.nsh",
       "createDesktopShortcut": false,
       "shortcutName": "Nine Universe",
-      "installerIcon": "installerIcon.ico",
-      "uninstallerIcon": "uninstallerIcon.ico"
+      "installerIcon": "build-resources/app-win.ico",
+      "uninstallerIcon": "build-resources/app-win.ico"
     }
   },
   "devDependencies": {

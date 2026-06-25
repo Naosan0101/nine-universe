@@ -19,12 +19,22 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @RestController
 public class DesktopInstallerDownloadController {
 
-	private static final String CANONICAL_WIN_RESOURCE = "static/downloads/nine-universe-setup-0.1.5.exe";
-	private static final String LEGACY_SPACED_WIN_RESOURCE = "static/downloads/Nine Universe Setup 0.1.5.exe";
 	private static final String DOWNLOAD_WIN_FILENAME = "Nine Universe Setup 0.1.5.exe";
-
-	private static final String CANONICAL_MAC_RESOURCE = "static/downloads/nine-universe-0.1.5.dmg";
 	private static final String DOWNLOAD_MAC_FILENAME = "Nine Universe 0.1.5.dmg";
+
+	private static final String[] WINDOWS_INSTALLER_RESOURCE_CANDIDATES = {
+			"static/downloads/nine-universe-setup-0.1.5.exe",
+			"static/downloads/Nine Universe Setup 0.1.5.exe",
+			"static/downloads/nine-universe-setup-0.1.4.exe",
+			"static/downloads/Nine Universe Setup 0.1.4.exe",
+	};
+
+	private static final String[] MAC_INSTALLER_RESOURCE_CANDIDATES = {
+			"static/downloads/nine-universe-0.1.5.dmg",
+			"static/downloads/Nine Universe-0.1.5-universal.dmg",
+			"static/downloads/nine-universe-0.1.4.dmg",
+			"static/downloads/Nine Universe-0.1.4-universal.dmg",
+	};
 
 	@GetMapping("/downloads/nine-universe-setup-0.1.5.exe")
 	public ResponseEntity<Resource> desktopInstallerWindows() {
@@ -137,21 +147,19 @@ public class DesktopInstallerDownloadController {
 	}
 
 	private static Resource resolveWindowsInstallerBody() {
-		ClassPathResource canonical = new ClassPathResource(CANONICAL_WIN_RESOURCE);
-		if (canonical.exists()) {
-			return canonical;
-		}
-		ClassPathResource legacy = new ClassPathResource(LEGACY_SPACED_WIN_RESOURCE);
-		if (legacy.exists()) {
-			return legacy;
-		}
-		return null;
+		return firstExistingResource(WINDOWS_INSTALLER_RESOURCE_CANDIDATES);
 	}
 
 	private static Resource resolveMacInstallerBody() {
-		ClassPathResource canonical = new ClassPathResource(CANONICAL_MAC_RESOURCE);
-		if (canonical.exists()) {
-			return canonical;
+		return firstExistingResource(MAC_INSTALLER_RESOURCE_CANDIDATES);
+	}
+
+	private static Resource firstExistingResource(String[] candidates) {
+		for (String path : candidates) {
+			ClassPathResource resource = new ClassPathResource(path);
+			if (resource.exists()) {
+				return resource;
+			}
 		}
 		return null;
 	}

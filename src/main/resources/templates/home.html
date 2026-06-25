@@ -1231,6 +1231,16 @@
 	</main>
 
 	<nav class="home-icon-dock" aria-label="ヘルプ・設定">
+		<button type="button"
+		        class="tile tile--icon-only home-icon-dock__btn"
+		        th:if="${webDesktopMigrationNoticeEnabled and webDesktopMigrationInstallerHref != null and !webDesktopMigrationInstallerHref.isEmpty()}"
+		        id="web-desktop-app-download-open"
+		        aria-label="アプリ版ダウンロード"
+		        aria-controls="web-desktop-migration-notice"
+		        aria-haspopup="dialog">
+			<span class="home-icon-dock__hover-label" aria-hidden="true">アプリ版ダウンロード</span>
+			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg></span>
+		</button>
 		<a class="tile tile--icon-only home-icon-dock__btn" th:href="@{/how-to-play}" aria-label="遊び方">
 			<span class="home-icon-dock__hover-label" aria-hidden="true">遊び方</span>
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h7a3 3 0 013 3v13H9a3 3 0 01-3-3V4z"/><path d="M9 4v13h7"/></svg></span>

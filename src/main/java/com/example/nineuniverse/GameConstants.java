@@ -874,16 +874,18 @@ public final class GameConstants {
 	public static final String ANNOUNCEMENT_MAJOR_UPDATE_POPUP_SUPPRESS_KEY = "major_update_popup_suppress_2026_04";
 
 	/**
-	 * おしらせモーダルで「新規ユーザー」に古い項目を出さないための判定。
-	 * 登録からこの日数以内を新規とみなし、{@link #announcementVisibleInNewUserWindow} と組み合わせる。
+	 * おしらせモーダルに載せる開始日の遡り日数（全ユーザー共通）。これより前に開始したおしらせは一覧に出さない。
 	 */
+	public static final int ANNOUNCEMENT_LIST_VISIBLE_LOOKBACK_DAYS = 14;
+
+	/** 登録からこの日数以内を新規とみなす。 */
 	public static final int ANNOUNCEMENT_NEW_USER_ACCOUNT_MAX_AGE_DAYS = 14;
 
-	/** 新規ユーザーには、開始日が「今日から遡ってこの日数以内」のおしらせだけを表示する。 */
-	public static final int ANNOUNCEMENT_NEW_USER_VISIBLE_LOOKBACK_DAYS = 14;
+	/** {@link #ANNOUNCEMENT_LIST_VISIBLE_LOOKBACK_DAYS} の別名（後方互換）。 */
+	public static final int ANNOUNCEMENT_NEW_USER_VISIBLE_LOOKBACK_DAYS = ANNOUNCEMENT_LIST_VISIBLE_LOOKBACK_DAYS;
 
 	/**
-	 * 登録から {@link #ANNOUNCEMENT_NEW_USER_ACCOUNT_MAX_AGE_DAYS} 日以内なら、おしらせ一覧を直近分に制限する対象。
+	 * 登録から {@link #ANNOUNCEMENT_NEW_USER_ACCOUNT_MAX_AGE_DAYS} 日以内か。
 	 */
 	public static boolean isNewUserForAnnouncementList(LocalDate today, LocalDateTime createdAt, ZoneId zone) {
 		if (createdAt == null || zone == null) {
@@ -894,23 +896,25 @@ public final class GameConstants {
 	}
 
 	/**
-	 * 新規ユーザー向けおしらせの表示可否（開始日が直近 {@link #ANNOUNCEMENT_NEW_USER_VISIBLE_LOOKBACK_DAYS} 日以内）。
+	 * おしらせ一覧の表示可否（開始日が直近 {@link #ANNOUNCEMENT_LIST_VISIBLE_LOOKBACK_DAYS} 日以内）。
 	 */
-	public static boolean announcementVisibleInNewUserWindow(LocalDate today, LocalDate announcementStart) {
+	public static boolean announcementVisibleInListWindow(LocalDate today, LocalDate announcementStart) {
 		if (today == null || announcementStart == null) {
 			return false;
 		}
-		LocalDate cutoff = today.minusDays(ANNOUNCEMENT_NEW_USER_VISIBLE_LOOKBACK_DAYS);
+		LocalDate cutoff = today.minusDays(ANNOUNCEMENT_LIST_VISIBLE_LOOKBACK_DAYS);
 		return !announcementStart.isBefore(cutoff);
 	}
 
-	/** おしらせカードを出すか（既存ユーザーは常に候補を見る／新規は直近開始のものだけ）。 */
+	/** 後方互換。{@link #announcementVisibleInListWindow} と同一。 */
+	public static boolean announcementVisibleInNewUserWindow(LocalDate today, LocalDate announcementStart) {
+		return announcementVisibleInListWindow(today, announcementStart);
+	}
+
+	/** おしらせカードを出すか（開始日が直近2週間以内のものだけ）。 */
 	public static boolean shouldListAnnouncementForUser(
 			LocalDate today, LocalDateTime userCreatedAt, ZoneId zone, LocalDate announcementStart) {
-		if (!isNewUserForAnnouncementList(today, userCreatedAt, zone)) {
-			return true;
-		}
-		return announcementVisibleInNewUserWindow(today, announcementStart);
+		return announcementVisibleInListWindow(today, announcementStart);
 	}
 
 	/** ホームの無料スタンダードパック用ゲージが MAX になるまでの時間（ミリ秒） */
@@ -919,7 +923,7 @@ public final class GameConstants {
 	/**
 	 * おしらせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
 	 */
-	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-06-24";
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-06-25";
 
 	/** リサイクル：レア度ごとに得るクリスタル（1枚あたり） */
 	public static final int RECYCLE_CRYSTAL_PER_CARD_C = 20;

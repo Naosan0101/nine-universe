@@ -2,6 +2,7 @@ package com.example.nineuniverse.web;
 
 import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.dev.DevTestUserLoginBaselineService;
+import com.example.nineuniverse.service.CardToolbarFilterService;
 import com.example.nineuniverse.service.LibraryService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 public class LibraryController {
 
 	private final LibraryService libraryService;
+	private final CardToolbarFilterService cardToolbarFilterService;
 	private final DevTestUserLoginBaselineService devTestUserLoginBaselineService;
 
 	@GetMapping
@@ -27,6 +29,7 @@ public class LibraryController {
 		model.addAttribute("contextPath", cp != null ? cp : "");
 		model.addAttribute("cardPlateUrl", GameConstants.CARD_LAYER_BASE);
 		model.addAttribute("cardDataUrl", GameConstants.CARD_LAYER_DATA);
+		CardToolbarFilterViewHelper.addToolbarFilterOptions(model, cardToolbarFilterService);
 		return "library";
 	}
 }

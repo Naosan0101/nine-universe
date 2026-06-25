@@ -1781,6 +1781,27 @@ html.nu-has-desktop-app-update-gate body {
 	line-height: 1.45 !important;
 	text-align: left;
 }
+.web-desktop-migration-notice__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.65rem 1rem;
+	justify-content: center;
+	align-items: center;
+	margin-top: clamp(0.55rem, 2vmin, 0.95rem);
+	padding-top: clamp(0.55rem, 2vmin, 0.85rem);
+	border-top: 1px solid rgba(255, 255, 255, 0.12);
+	flex: 0 0 auto;
+}
+.web-desktop-migration-notice__close {
+	border-radius: 8px;
+	font-weight: 700;
+	min-width: 6.5rem;
+}
+.home-icon-dock__btn.tile--icon-only:is(button) {
+	font: inherit;
+	color: inherit;
+	cursor: url('../images/cards/cursor_icon.PNG?v=20260423') 0 0, auto;
+}
 @media (max-height: 520px) {
 	.web-desktop-migration-notice__body {
 		font-size: clamp(0.7rem, 2.1vmin, 0.88rem);

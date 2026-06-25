@@ -66,9 +66,29 @@
 		]
 	};
 
+	function loadServerOptionSets() {
+		var el = document.getElementById('toolbar-filter-option-sets');
+		if (!el || !el.textContent || !el.textContent.trim()) {
+			return null;
+		}
+		try {
+			return JSON.parse(el.textContent);
+		} catch (e) {
+			return null;
+		}
+	}
+
+	var SERVER_OPTION_SETS = loadServerOptionSets();
+
 	function optionsFor(root) {
 		var key = root.getAttribute('data-filter-set');
-		return key ? FILTER_OPTION_SETS[key] : null;
+		if (!key) {
+			return null;
+		}
+		if (SERVER_OPTION_SETS && SERVER_OPTION_SETS[key] && SERVER_OPTION_SETS[key].length) {
+			return SERVER_OPTION_SETS[key];
+		}
+		return FILTER_OPTION_SETS[key] || null;
 	}
 
 	function labelForValue(opts, val) {

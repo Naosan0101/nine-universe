@@ -2,6 +2,7 @@ package com.example.nineuniverse.web;
 
 import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.repository.AppUserMapper;
+import com.example.nineuniverse.service.CardToolbarFilterService;
 import com.example.nineuniverse.service.LibraryService;
 import com.example.nineuniverse.service.PackService;
 import com.example.nineuniverse.service.PackService.PackType;
@@ -46,6 +47,7 @@ public class RecycleController {
 
 	private final RecycleService recycleService;
 	private final AppUserMapper appUserMapper;
+	private final CardToolbarFilterService cardToolbarFilterService;
 	private final LibraryService libraryService;
 	private final PackService packService;
 	private final NicknameEpithetService nicknameEpithetService;
@@ -72,6 +74,7 @@ public class RecycleController {
 		model.addAttribute("contextPath", cp != null ? cp : "");
 		model.addAttribute("cardPlateUrl", GameConstants.CARD_LAYER_BASE);
 		model.addAttribute("cardDataUrl", GameConstants.CARD_LAYER_DATA);
+		CardToolbarFilterViewHelper.addToolbarFilterOptions(model, cardToolbarFilterService);
 		return "recycle-cards";
 	}
 
@@ -296,6 +299,7 @@ public class RecycleController {
 		model.addAttribute("contextPath", cp != null ? cp : "");
 		model.addAttribute("cardPlateUrl", GameConstants.CARD_LAYER_BASE);
 		model.addAttribute("cardDataUrl", GameConstants.CARD_LAYER_DATA);
+		CardToolbarFilterViewHelper.addToolbarFilterOptions(model, cardToolbarFilterService);
 		return "recycle-legendary-pick";
 	}
 

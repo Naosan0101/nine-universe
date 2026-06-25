@@ -4,6 +4,7 @@ import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.dev.DevTestUserLoginBaselineService;
 import com.example.nineuniverse.domain.Deck;
 import com.example.nineuniverse.domain.LibraryCardView;
+import com.example.nineuniverse.service.CardToolbarFilterService;
 import com.example.nineuniverse.service.DeckService;
 import com.example.nineuniverse.service.LibraryService;
 import com.example.nineuniverse.season.SeasonSchedule;
@@ -33,6 +34,7 @@ public class DeckController {
 
 	private final DeckService deckService;
 	private final LibraryService libraryService;
+	private final CardToolbarFilterService cardToolbarFilterService;
 	private final DevTestUserLoginBaselineService devTestUserLoginBaselineService;
 
 	@GetMapping
@@ -177,9 +179,10 @@ public class DeckController {
 		return "deck-edit";
 	}
 
-	private static void addDeckEditStaticUrls(Model model) {
+	private void addDeckEditStaticUrls(Model model) {
 		model.addAttribute("cardPlateUrl", GameConstants.CARD_LAYER_BASE);
 		model.addAttribute("cardDataUrl", GameConstants.CARD_LAYER_DATA);
+		CardToolbarFilterViewHelper.addToolbarFilterOptions(model, cardToolbarFilterService);
 	}
 
 	@PostMapping("/save")

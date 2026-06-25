@@ -39,6 +39,11 @@
 						<p class="announcement-modal__card-text">ナインユニバース 運営</p>
 					</div>
 				</div>
+				<div class="web-desktop-migration-notice__actions">
+					<button type="button"
+					        class="btn btn--ghost web-desktop-migration-notice__close"
+					        id="web-desktop-migration-notice-close">閉じる</button>
+				</div>
 			</div>
 		</aside>
 		<script>
@@ -47,8 +52,61 @@
 				if (!el) return;
 				var isApp = typeof window.nuElectron !== 'undefined' && window.nuElectron;
 				if (isApp) return;
-				el.removeAttribute('hidden');
-				document.documentElement.classList.add('nu-has-web-migration-notice');
+				var closeBtn = document.getElementById('web-desktop-migration-notice-close');
+				var html = document.documentElement;
+				var openTrigger = null;
+
+				function openNotice(trigger) {
+					openTrigger = trigger && trigger.focus ? trigger : null;
+					el.removeAttribute('hidden');
+					el.setAttribute('aria-hidden', 'false');
+					html.classList.add('nu-has-web-migration-notice');
+					if (closeBtn) {
+						try {
+							closeBtn.focus();
+						} catch (_) {
+							/* ignore */
+						}
+					}
+				}
+
+				function closeNotice() {
+					el.setAttribute('hidden', '');
+					el.setAttribute('aria-hidden', 'true');
+					html.classList.remove('nu-has-web-migration-notice');
+					if (openTrigger) {
+						try {
+							openTrigger.focus();
+						} catch (_) {
+							/* ignore */
+						}
+					}
+					openTrigger = null;
+				}
+
+				window.openWebDesktopMigrationNotice = openNotice;
+				window.closeWebDesktopMigrationNotice = closeNotice;
+
+				if (closeBtn) {
+					closeBtn.addEventListener('click', closeNotice);
+				}
+				el.addEventListener('click', function (e) {
+					if (e.target === el) {
+						closeNotice();
+					}
+				});
+				document.addEventListener('keydown', function (e) {
+					if (e.key === 'Escape' && !el.hasAttribute('hidden')) {
+						closeNotice();
+					}
+				});
+
+				var dockBtn = document.getElementById('web-desktop-app-download-open');
+				if (dockBtn) {
+					dockBtn.addEventListener('click', function () {
+						openNotice(dockBtn);
+					});
+				}
 			})();
 		</script>
 	</th:block>
