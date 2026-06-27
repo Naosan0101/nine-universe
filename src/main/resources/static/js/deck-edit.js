@@ -67,7 +67,7 @@
 		COMIC: 'コミック',
 		ANGEL: 'エンジェル'
 	};
-	/** 上段カードの種族ソート順（種族フィルターと同じ並び） */
+	/** 上段カードの種族ソート順（サーバー JSON 未読込時のフォールバック） */
 	const TRIBE_SORT_ORDER = [
 		'HUMAN',
 		'ELF',
@@ -79,6 +79,31 @@
 		'COMIC',
 		'ANGEL'
 	];
+
+	function loadToolbarFilterOptionSets() {
+		const el = document.getElementById('toolbar-filter-option-sets');
+		if (!el || !el.textContent || !String(el.textContent).trim()) {
+			return null;
+		}
+		try {
+			return JSON.parse(el.textContent);
+		} catch (_) {
+			return null;
+		}
+	}
+
+	/** 絞り込みと同じ：その日時点でアンロック済みの種族のみ（「すべて」除く） */
+	function unlockedTribeOptionsForAutoDeck() {
+		const sets = loadToolbarFilterOptionSets();
+		if (sets && sets.tribe && sets.tribe.length) {
+			return sets.tribe.filter(function (row) {
+				return row && row.v;
+			});
+		}
+		return TRIBE_SORT_ORDER.map(function (code) {
+			return { v: code, t: ATTR_LABEL[code] || code };
+		});
+	}
 
 	function tribeSortIndex(segment) {
 		const u = (segment || '').trim().toUpperCase();
@@ -1410,12 +1435,13 @@
 	}
 
 	if (autoDeckTribeGrid) {
-		TRIBE_SORT_ORDER.forEach(function (code) {
+		unlockedTribeOptionsForAutoDeck().forEach(function (row) {
+			const code = row.v;
 			const b = document.createElement('button');
 			b.type = 'button';
 			b.className = 'btn btn--ghost deck-auto-deck-tribe-btn';
 			b.dataset.tribe = code;
-			b.textContent = ATTR_LABEL[code] || code;
+			b.textContent = row.t || ATTR_LABEL[code] || code;
 			b.addEventListener('click', function () {
 				const ids = buildAutoDeckIds(code);
 				if (!ids || ids.length !== 8) {

@@ -1,6 +1,7 @@
 package com.example.nineuniverse.security;
 
 import com.example.nineuniverse.dev.DevTestUserLoginBaselineService;
+import com.example.nineuniverse.season.SeasonResetFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -19,7 +20,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
 	private final LastAccessUpdateFilter lastAccessUpdateFilter;
-	private final com.example.nineuniverse.season.SeasonResetFilter seasonResetFilter;
+	private final SeasonResetFilter seasonResetFilter;
+	private final PlayTesterSeasonUnlockFilter playTesterSeasonUnlockFilter;
 	private final DevTestUserLoginBaselineService devTestUserLoginBaselineService;
 	private final UserDetailsService userDetailsService;
 
@@ -57,7 +59,8 @@ public class SecurityConfig {
 						.logoutSuccessUrl("/login?logout")
 						.permitAll())
 				.addFilterAfter(lastAccessUpdateFilter, UsernamePasswordAuthenticationFilter.class)
-				.addFilterAfter(seasonResetFilter, LastAccessUpdateFilter.class);
+				.addFilterAfter(seasonResetFilter, LastAccessUpdateFilter.class)
+				.addFilterAfter(playTesterSeasonUnlockFilter, SeasonResetFilter.class);
 		return http.build();
 	}
 }

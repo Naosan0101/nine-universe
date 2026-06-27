@@ -63,6 +63,9 @@ public final class SeasonSchedule {
 
 	/** 区切り内の段階（1=最初の2か月, 2=次の2か月, 3=最後の2か月）。シーズン前は 3（全パック解放扱い）。 */
 	public static int unlockTier(LocalDate today) {
+		if (SeasonUnlockContext.isFullUnlock()) {
+			return 3;
+		}
 		SeasonPeriod period = currentPeriod(today);
 		if (period == null) {
 			return 3;
