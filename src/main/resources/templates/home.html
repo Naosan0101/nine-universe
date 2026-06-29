@@ -36,6 +36,7 @@
                data-card-display-server-ops-2026-05-claimable=${cardDisplayServerOps202605AnnouncementClaimable and announcementListCardDisplayServerOps202605},
                data-fossil-field-fix-2026-05-claimable=${fossilFieldFix202605AnnouncementClaimable and announcementListFossilFieldFix202605},
                data-new-season-opening-claimable=${newSeasonOpeningAnnouncementClaimable and announcementListNewSeasonOpening2026},
+               data-sakushi-fix-claimable=${sakushiFixAnnouncementClaimable and announcementListSakushiFix2026},
                data-major-update-login-popup=${majorUpdateLoginPopupShow},
                data-80-users-login-popup=${users80MilestoneLoginPopupShow},
                data-season-pack-tier2-login-popup=${seasonPackTier2LoginPopupShow},
@@ -90,6 +91,29 @@
      aria-hidden="true">
 	<div class="announcement-modal__panel" role="document">
 		<h2 id="announcement-modal-title" class="announcement-modal__heading">おしらせ</h2>
+
+		<article class="announcement-modal__card" data-announce-sort="2026062801"
+		         th:if="${announcementListSakushiFix2026 and (sakushiFixAnnouncementClaimable or sakushiFixAnnouncementClaimed or sakushiFixAnnouncementExpiredUnclaimed or sakushiFixAnnouncementFutureUnclaimed)}">
+			<div class="announcement-modal__mailbox">
+				<div class="announcement-modal__mailbox-body">
+					<p class="announcement-modal__card-text">・「策士」の効果を調整しました。</p>
+				</div>
+				<aside class="announcement-modal__mailbox-aside">
+					<span th:if="${sakushiFixAnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
+					<form th:if="${sakushiFixAnnouncementClaimable}"
+					      th:action="@{/home/announcements/sakushi-fix/claim}"
+					      method="post"
+					      class="announcement-modal__gem-form">
+						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+						<button type="submit" class="btn btn--primary announcement-modal__gem-btn"
+						        th:text="|${sakushiFixAnnouncementGemAmount}ジェム|">3ジェム</button>
+					</form>
+					<p th:if="${sakushiFixAnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
+					<p th:if="${sakushiFixAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
+					<p th:if="${sakushiFixAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
+				</aside>
+			</div>
+		</article>
 
 		<article class="announcement-modal__card" data-announce-sort="2026062701"
 		         th:if="${announcementListNewSeasonOpening2026 and (newSeasonOpeningAnnouncementClaimable or newSeasonOpeningAnnouncementClaimed or newSeasonOpeningAnnouncementExpiredUnclaimed or newSeasonOpeningAnnouncementFutureUnclaimed)}">
@@ -1389,6 +1413,7 @@
 		var cardDisplayServerOps202605 = document.body.getAttribute('data-card-display-server-ops-2026-05-claimable') === 'true';
 		var fossilFieldFix202605 = document.body.getAttribute('data-fossil-field-fix-2026-05-claimable') === 'true';
 		var newSeasonOpening = document.body.getAttribute('data-new-season-opening-claimable') === 'true';
+		var sakushiFix = document.body.getAttribute('data-sakushi-fix-claimable') === 'true';
 		var ack = '';
 		try {
 			ack = localStorage.getItem('nu_ann_ack') || '';
@@ -1396,7 +1421,7 @@
 			ack = '';
 		}
 		var unseen = epoch !== '' && ack !== epoch;
-		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || cardTextFix || samuraiFix || packMissionBonusFix || celebrate30 || kaenryuStatus || samuraiStatus || majorUpdate || denzirionFix || ninjaDarkDragonFix || weaponDepotDenzirionFix || fieldDisplaySettingsBonus || denzirionGarakutaFusionFix || platformApr2026 || friendPvpUpdate || apr23Bundle || kentoshiFix || kusuriFix || mechanicPvpPreviewFix || cardDisplayServerOps202605 || fossilFieldFix202605 || newSeasonOpening || unseen;
+		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || cardTextFix || samuraiFix || packMissionBonusFix || celebrate30 || kaenryuStatus || samuraiStatus || majorUpdate || denzirionFix || ninjaDarkDragonFix || weaponDepotDenzirionFix || fieldDisplaySettingsBonus || denzirionGarakutaFusionFix || platformApr2026 || friendPvpUpdate || apr23Bundle || kentoshiFix || kusuriFix || mechanicPvpPreviewFix || cardDisplayServerOps202605 || fossilFieldFix202605 || newSeasonOpening || sakushiFix || unseen;
 		dot.hidden = !show;
 		dot.setAttribute('aria-hidden', show ? 'false' : 'true');
 	}

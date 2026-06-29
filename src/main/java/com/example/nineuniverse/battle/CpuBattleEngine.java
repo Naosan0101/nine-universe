@@ -164,6 +164,7 @@ public class CpuBattleEngine {
 	private static final short GARAKUTA_ARM_ID = 60;
 	/** クリスタクル〈配置〉: 任意で支払うストーン数 */
 	private static final int CRYSTAKUL_OPTIONAL_STONE_COST = 2;
+	private static final int SAKUSHI_OPTIONAL_STONE_COST = 2;
 	/** フェザリア〈配置〉: 任意で支払うストーン数 */
 	private static final int FEZARIA_OPTIONAL_STONE_COST = 3;
 	/** クリスタクル〈配置〉: 次の配置に与える強さ（次の相手ターン終了まで） */
@@ -2213,7 +2214,12 @@ public class CpuBattleEngine {
 						st.addLog("ストーンを" + pc.getStoneCost() + "使用");
 					}
 					// ability ごとの追加処理
-					if ("SAMURAI".equals(pc.getAbilityDeployCode())) {
+					if ("SAKUSHI".equals(pc.getAbilityDeployCode())) {
+						if (!st.getCpuDeck().isEmpty()) {
+							st.getCpuRest().add(st.getCpuDeck().remove(0));
+							st.addLog("策士: 相手デッキ上をレストへ");
+						}
+					} else if ("SAMURAI".equals(pc.getAbilityDeployCode())) {
 						// 対人戦: 相手（ゲスト）が選んで捨てる。CPU戦: CPUは自動で捨てる。
 						if (st.isPvp()) {
 							List<String> opts = new ArrayList<>();
@@ -2794,7 +2800,12 @@ public class CpuBattleEngine {
 						st.setCpuStones(st.getCpuStones() - pc.getStoneCost());
 						st.addLog("ストーンを" + pc.getStoneCost() + "使用");
 					}
-					if ("SAMURAI".equals(pc.getAbilityDeployCode())) {
+					if ("SAKUSHI".equals(pc.getAbilityDeployCode())) {
+						if (!st.getHumanDeck().isEmpty()) {
+							st.getHumanRest().add(st.getHumanDeck().remove(0));
+							st.addLog("策士: 相手デッキ上をレストへ");
+						}
+					} else if ("SAMURAI".equals(pc.getAbilityDeployCode())) {
 						// 対人戦: 相手（ホスト）が選んで捨てる。CPU戦: 人間が選ぶ（CPUが出した場合は applyDeployCpu で処理）。
 						if (st.isPvp()) {
 							List<String> opts = new ArrayList<>();
@@ -8075,6 +8086,7 @@ public class CpuBattleEngine {
 		String code = abilityDeployCode.trim();
 		int stones = mirageOwnerIsHuman ? st.getHumanStones() : st.getCpuStones();
 		return switch (code) {
+			case "SAKUSHI" -> stones >= SAKUSHI_OPTIONAL_STONE_COST;
 			case "SAMURAI" -> stones >= 3;
 			case "YOSEI", "NOROWARETA", "FUWAFUWA", "NIDONEBI", "KORYU", "SEASERPENT", "CELESTIA", RAMIEL_DEPLOY_CODE, "RESEARCHER_FLORA", "COMIC_WITCH" -> stones >= 1;
 			case "CRYSTAKUL" -> stones >= CRYSTAKUL_OPTIONAL_STONE_COST;
@@ -8090,6 +8102,10 @@ public class CpuBattleEngine {
 			boolean mirageOwnerIsHuman) {
 		if (st == null || abilityDeployCode == null) {
 			return true;
+		}
+		if ("SAKUSHI".equals(abilityDeployCode.trim())) {
+			List<BattleCard> deck = mirageOwnerIsHuman ? st.getCpuDeck() : st.getHumanDeck();
+			return deck != null && !deck.isEmpty();
 		}
 		if ("COMIC_DINOSAUR".equals(abilityDeployCode.trim()) || SKETCHER_DEPLOY_CODE.equals(abilityDeployCode.trim())) {
 			List<BattleCard> h = mirageOwnerIsHuman ? st.getHumanHand() : st.getCpuHand();
@@ -9171,9 +9187,15 @@ public class CpuBattleEngine {
 		}
 		switch (code) {
 			case "SAKUSHI" -> {
-				if (!st.getCpuDeck().isEmpty()) {
-					st.getCpuRest().add(st.getCpuDeck().remove(0));
-					st.addLog("策士: 相手デッキ上をレストへ");
+				if (st.getHumanStones() >= SAKUSHI_OPTIONAL_STONE_COST && !st.getCpuDeck().isEmpty()) {
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.CONFIRM_OPTIONAL_STONE,
+							"策士",
+							true,
+							"SAKUSHI",
+							SAKUSHI_OPTIONAL_STONE_COST,
+							List.of()
+					));
 				}
 			}
 			case "SAMURAI" -> {
@@ -9939,9 +9961,16 @@ public class CpuBattleEngine {
 		}
 		switch (code) {
 			case "SAKUSHI" -> {
-				if (!st.getHumanDeck().isEmpty()) {
-					st.getHumanRest().add(st.getHumanDeck().remove(0));
-					st.addLog("策士: 相手デッキ上をレストへ");
+				if (st.getCpuStones() >= SAKUSHI_OPTIONAL_STONE_COST && !st.getHumanDeck().isEmpty()) {
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.CONFIRM_OPTIONAL_STONE,
+							"策士",
+							false,
+							"SAKUSHI",
+							SAKUSHI_OPTIONAL_STONE_COST,
+							List.of(),
+							true
+					));
 				}
 			}
 			case "SAMURAI" -> {
@@ -10719,9 +10748,10 @@ public class CpuBattleEngine {
 		}
 		switch (code) {
 			case "SAKUSHI" -> {
-				if (!st.getHumanDeck().isEmpty()) {
+				if (st.getCpuStones() >= SAKUSHI_OPTIONAL_STONE_COST && !st.getHumanDeck().isEmpty()) {
+					st.setCpuStones(st.getCpuStones() - SAKUSHI_OPTIONAL_STONE_COST);
 					st.getHumanRest().add(st.getHumanDeck().remove(0));
-					st.addLog("CPU策士: あなたのデッキ上をレストへ");
+					st.addLog("CPU策士: ストーン2使用。あなたのデッキ上をレストへ");
 				}
 			}
 			case "SAMURAI" -> {

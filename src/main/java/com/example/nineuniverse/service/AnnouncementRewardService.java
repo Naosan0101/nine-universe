@@ -301,6 +301,13 @@ public class AnnouncementRewardService {
 		return !today.isAfter(GameConstants.ANNOUNCEMENT_NEW_SEASON_OPENING_2026_LAST_DAY);
 	}
 
+	public boolean isWithinSakushiFix2026AnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_SAKUSHI_FIX_2026_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_SAKUSHI_FIX_2026_LAST_DAY);
+	}
+
 	public boolean isWithin80UsersMilestoneAnnouncementWindow(LocalDate today) {
 		if (today.isBefore(GameConstants.ANNOUNCEMENT_80_USERS_MILESTONE_START)) {
 			return false;
@@ -525,6 +532,13 @@ public class AnnouncementRewardService {
 				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_NEW_SEASON_OPENING_2026_START)) {
 			if (claimNewSeasonOpening2026AnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
 				totalGems += GameConstants.ANNOUNCEMENT_NEW_SEASON_OPENING_2026_GEMS;
+				claimed++;
+			}
+		}
+		if (GameConstants.shouldListAnnouncementForUser(
+				today, userCreatedAt, zone, GameConstants.ANNOUNCEMENT_SAKUSHI_FIX_2026_START)) {
+			if (claimSakushiFix2026AnnouncementBonus(userId) == ClaimOutcome.SUCCESS) {
+				totalGems += GameConstants.ANNOUNCEMENT_SAKUSHI_FIX_2026_GEMS;
 				claimed++;
 			}
 		}
@@ -1030,6 +1044,24 @@ public class AnnouncementRewardService {
 			return ClaimOutcome.ALREADY_CLAIMED;
 		}
 		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_NEW_SEASON_OPENING_2026_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimSakushiFix2026AnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_SAKUSHI_FIX_2026_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_SAKUSHI_FIX_2026_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(
+				userId, GameConstants.ANNOUNCEMENT_SAKUSHI_FIX_2026_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_SAKUSHI_FIX_2026_GEMS);
 		return ClaimOutcome.SUCCESS;
 	}
 
