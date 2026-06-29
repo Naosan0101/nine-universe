@@ -136,6 +136,9 @@ public class HomeController {
 		boolean listFossilFieldFix202605 = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_START);
+		boolean listNewSeasonOpening2026 = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_NEW_SEASON_OPENING_2026_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -166,6 +169,7 @@ public class HomeController {
 		model.addAttribute("announcementList80UsersMilestone", list80UsersMilestone);
 		model.addAttribute("announcementListStd3LeagueUiUpdate202605", listStd3LeagueUiUpdate202605);
 		model.addAttribute("announcementListFossilFieldFix202605", listFossilFieldFix202605);
+		model.addAttribute("announcementListNewSeasonOpening2026", listNewSeasonOpening2026);
 
 		announcementRewardService.ensure80UsersMilestoneRewardGranted(uid);
 		announcementRewardService.ensureStd3LeagueUiUpdate202605RewardGranted(uid);
@@ -565,6 +569,25 @@ public class HomeController {
 				"fossilFieldFix202605AnnouncementGemAmount",
 				GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_GEMS);
 
+		boolean newSeasonOpeningAnnClaimed =
+				claimedKeys.contains(GameConstants.ANNOUNCEMENT_NEW_SEASON_OPENING_2026_KEY);
+		boolean newSeasonOpeningAnnInWindow =
+				announcementRewardService.isWithinNewSeasonOpening2026AnnouncementWindow(today);
+		model.addAttribute("newSeasonOpeningAnnouncementClaimed", newSeasonOpeningAnnClaimed);
+		model.addAttribute("newSeasonOpeningAnnouncementClaimable",
+				newSeasonOpeningAnnInWindow && !newSeasonOpeningAnnClaimed);
+		model.addAttribute(
+				"newSeasonOpeningAnnouncementExpiredUnclaimed",
+				!newSeasonOpeningAnnClaimed
+						&& today.isAfter(GameConstants.ANNOUNCEMENT_NEW_SEASON_OPENING_2026_LAST_DAY));
+		model.addAttribute(
+				"newSeasonOpeningAnnouncementFutureUnclaimed",
+				!newSeasonOpeningAnnClaimed
+						&& today.isBefore(GameConstants.ANNOUNCEMENT_NEW_SEASON_OPENING_2026_START));
+		model.addAttribute(
+				"newSeasonOpeningAnnouncementGemAmount",
+				GameConstants.ANNOUNCEMENT_NEW_SEASON_OPENING_2026_GEMS);
+
 		int announcementBulkClaimableGemTotal = 0;
 		if (listPerfLight && perfInWindow && !perfClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_PERF_LIGHT_GEMS;
@@ -649,6 +672,9 @@ public class HomeController {
 		}
 		if (listFossilFieldFix202605 && fossilFieldFix202605AnnInWindow && !fossilFieldFix202605AnnClaimed) {
 			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_FOSSIL_FIELD_FIX_2026_05_GEMS;
+		}
+		if (listNewSeasonOpening2026 && newSeasonOpeningAnnInWindow && !newSeasonOpeningAnnClaimed) {
+			announcementBulkClaimableGemTotal += GameConstants.ANNOUNCEMENT_NEW_SEASON_OPENING_2026_GEMS;
 		}
 		model.addAttribute("announcementBulkClaimableGemTotal", announcementBulkClaimableGemTotal);
 		model.addAttribute("announcementAnyGemClaimable", announcementBulkClaimableGemTotal > 0);
@@ -1248,6 +1274,28 @@ public class HomeController {
 		switch (outcome) {
 			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
 					GameConstants.ANNOUNCEMENT_DESKTOP_APP_ICON_DESKTOP01_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/new-season-opening-2026/claim")
+	public String claimNewSeasonOpening2026Announcement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_NEW_SEASON_OPENING_2026_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このおしらせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimNewSeasonOpening2026AnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_NEW_SEASON_OPENING_2026_GEMS + "ジェムを受け取りました。");
 			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
 			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
 		}
