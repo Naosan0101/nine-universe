@@ -17,11 +17,14 @@ public class SeasonResetService {
 
 	/**
 	 * 現在の日付が新しい6か月区切りに入っていれば、全ユーザーの進行データを消去する（ログイン・フレンド情報は維持）。
-	 * カジュアル／リーグの作成デッキ・所持カード・ミッション等もすべて削除する。
+	 * カジュアル／リーグの作成デッキ・ミッション等は削除するが、所持カード（{@code user_collection}）は維持する。
 	 */
 	@Transactional
 	public void ensureCurrentPeriodReset() {
-		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		ensureCurrentPeriodResetOnDate(LocalDate.now(ZoneId.systemDefault()));
+	}
+
+	void ensureCurrentPeriodResetOnDate(LocalDate today) {
 		if (!SeasonSchedule.isSeasonActive(today)) {
 			return;
 		}
@@ -55,7 +58,6 @@ public class SeasonResetService {
 		seasonResetMapper.deleteAllDeckEntries();
 		seasonResetMapper.deleteAllDecks();
 		seasonResetMapper.deleteAllLeagueDeckSets();
-		seasonResetMapper.deleteAllUserCollections();
 		seasonResetMapper.deleteAllDailyMissions();
 		seasonResetMapper.deleteAllWeeklyMissions();
 		seasonResetMapper.deleteAllUserEpithetsOwned();

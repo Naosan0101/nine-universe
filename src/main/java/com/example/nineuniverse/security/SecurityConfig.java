@@ -1,6 +1,7 @@
 package com.example.nineuniverse.security;
 
 import com.example.nineuniverse.dev.DevTestUserLoginBaselineService;
+import com.example.nineuniverse.support.PlayTesterCollectionService;
 import com.example.nineuniverse.season.SeasonResetFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +24,7 @@ public class SecurityConfig {
 	private final SeasonResetFilter seasonResetFilter;
 	private final PlayTesterSeasonUnlockFilter playTesterSeasonUnlockFilter;
 	private final DevTestUserLoginBaselineService devTestUserLoginBaselineService;
+	private final PlayTesterCollectionService playTesterCollectionService;
 	private final UserDetailsService userDetailsService;
 
 	@Bean
@@ -32,7 +34,8 @@ public class SecurityConfig {
 
 	@Bean
 	DevTestUserAwareAuthenticationSuccessHandler devTestUserAwareAuthenticationSuccessHandler() {
-		return new DevTestUserAwareAuthenticationSuccessHandler(devTestUserLoginBaselineService);
+		return new DevTestUserAwareAuthenticationSuccessHandler(devTestUserLoginBaselineService,
+				playTesterCollectionService);
 	}
 
 	@Bean

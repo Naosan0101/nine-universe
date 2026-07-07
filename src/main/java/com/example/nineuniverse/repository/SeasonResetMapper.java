@@ -2,8 +2,6 @@ package com.example.nineuniverse.repository;
 
 public interface SeasonResetMapper {
 
-	int deleteAllUserCollections();
-
 	int deleteAllDeckEntries();
 
 	int deleteAllDecks();

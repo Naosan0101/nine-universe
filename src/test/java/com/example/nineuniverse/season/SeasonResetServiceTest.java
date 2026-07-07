@@ -31,10 +31,10 @@ class SeasonResetServiceTest {
 		LocalDate currentStart = SeasonSchedule.periodStartContaining(LocalDate.of(2026, 6, 25));
 		when(seasonMetaMapper.findLastResetPeriodStart()).thenReturn(null);
 
-		seasonResetService.ensureCurrentPeriodReset();
+		seasonResetService.ensureCurrentPeriodResetOnDate(LocalDate.of(2026, 6, 25));
 
 		verify(seasonMetaMapper).insertInitialIfAbsent(currentStart);
-		verify(seasonResetMapper, never()).deleteAllUserCollections();
+		verify(seasonResetMapper, never()).deleteAllDecks();
 		verify(seasonResetMapper, never()).resetAllUsersForSeason();
 	}
 
@@ -43,9 +43,24 @@ class SeasonResetServiceTest {
 		LocalDate currentStart = SeasonSchedule.periodStartContaining(LocalDate.of(2026, 6, 25));
 		when(seasonMetaMapper.findLastResetPeriodStart()).thenReturn(currentStart);
 
-		seasonResetService.ensureCurrentPeriodReset();
+		seasonResetService.ensureCurrentPeriodResetOnDate(LocalDate.of(2026, 6, 25));
 
 		verify(seasonMetaMapper, never()).insertInitialIfAbsent(any());
-		verify(seasonResetMapper, never()).deleteAllUserCollections();
+		verify(seasonResetMapper, never()).deleteAllDecks();
+	}
+
+	@Test
+	void ensureCurrentPeriodReset_whenNewPeriod_wipesDecksButNotCollections() {
+		LocalDate previousStart = LocalDate.of(2026, 6, 1);
+		LocalDate nextStart = LocalDate.of(2026, 12, 1);
+		when(seasonMetaMapper.findLastResetPeriodStart()).thenReturn(previousStart);
+		when(seasonMetaMapper.findLastResetPeriodStartForUpdate()).thenReturn(previousStart);
+
+		seasonResetService.ensureCurrentPeriodResetOnDate(LocalDate.of(2026, 12, 15));
+
+		verify(seasonResetMapper).deleteAllDeckEntries();
+		verify(seasonResetMapper).deleteAllDecks();
+		verify(seasonResetMapper).resetAllUsersForSeason();
+		verify(seasonMetaMapper).updateLastResetPeriodStart(nextStart);
 	}
 }

@@ -2,10 +2,6 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.nineuniverse.repository.SeasonResetMapper">
 
-	<delete id="deleteAllUserCollections">
-		DELETE FROM user_collection
-	</delete>
-
 	<delete id="deleteAllDeckEntries">
 		DELETE FROM deck_entry
 	</delete>

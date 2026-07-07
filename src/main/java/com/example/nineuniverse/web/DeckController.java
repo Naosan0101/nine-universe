@@ -2,6 +2,7 @@ package com.example.nineuniverse.web;
 
 import com.example.nineuniverse.GameConstants;
 import com.example.nineuniverse.dev.DevTestUserLoginBaselineService;
+import com.example.nineuniverse.support.PlayTesterCollectionService;
 import com.example.nineuniverse.domain.Deck;
 import com.example.nineuniverse.domain.LibraryCardView;
 import com.example.nineuniverse.service.CardToolbarFilterService;
@@ -36,11 +37,13 @@ public class DeckController {
 	private final LibraryService libraryService;
 	private final CardToolbarFilterService cardToolbarFilterService;
 	private final DevTestUserLoginBaselineService devTestUserLoginBaselineService;
+	private final PlayTesterCollectionService playTesterCollectionService;
 
 	@GetMapping
 	public String list(Model model, HttpServletRequest request) {
 		long uid = CurrentUser.require().getId();
 		devTestUserLoginBaselineService.syncTestuserCollectionOnlyIfLocal(request);
+		playTesterCollectionService.syncIfPlayTester();
 		model.addAttribute("decks", deckService.listDecks(uid));
 		model.addAttribute("leagueSets", deckService.listLeagueDeckSetSummaries(uid));
 		SeasonLockViewHelper.addBattleModeLocks(model);
@@ -54,6 +57,7 @@ public class DeckController {
 	public String newForm(Model model, HttpServletRequest request) {
 		long uid = CurrentUser.require().getId();
 		devTestUserLoginBaselineService.syncTestuserCollectionOnlyIfLocal(request);
+		playTesterCollectionService.syncIfPlayTester();
 		var library = libraryService.library(uid);
 		int maxBuildable = maxBuildableDeckSlots(library);
 		boolean noOwned = library.stream().noneMatch(LibraryCardView::isOwned);
@@ -103,6 +107,7 @@ public class DeckController {
 		}
 		long uid = CurrentUser.require().getId();
 		devTestUserLoginBaselineService.syncTestuserCollectionOnlyIfLocal(request);
+		playTesterCollectionService.syncIfPlayTester();
 		try {
 			long deckId = deckService.deckIdForLeagueSlot(uid, setId, slot);
 			var deck = deckService.requireDeck(uid, deckId);
@@ -169,6 +174,7 @@ public class DeckController {
 	public String edit(@PathVariable long id, Model model, HttpServletRequest request) {
 		long uid = CurrentUser.require().getId();
 		devTestUserLoginBaselineService.syncTestuserCollectionOnlyIfLocal(request);
+		playTesterCollectionService.syncIfPlayTester();
 		var deck = deckService.requireDeck(uid, id);
 		model.addAttribute("library", libraryService.library(uid));
 		model.addAttribute("deckName", deck.getName());

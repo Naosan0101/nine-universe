@@ -1,7 +1,8 @@
 package com.example.nineuniverse.support;
 
 /**
- * ユーザー名末尾 {@code _PlayTester} のアカウント向け。シーズン段階ロックをすべて解除する。
+ * ユーザー名末尾 {@code _PlayTester} のアカウント向け。
+ * シーズン段階ロックをすべて解除し、所持カードは {@link PlayTesterCollectionService} で各2枚に揃える。
  */
 public final class PlayTesterSupport {
 
